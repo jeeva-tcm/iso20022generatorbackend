@@ -34,7 +34,7 @@
     {
         "rule_id": "PACS008_DBTR_NM_REQUIRED",
         "description": "CBPR+: Debtor Name is mandatory in pacs.008.",
-        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Dbtr)",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Dbtr) and not exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Dbtr.Id.OrgId.AnyBIC)",
         "mandatory_fields": [
             "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Dbtr.Nm"
         ],
@@ -44,7 +44,7 @@
     {
         "rule_id": "PACS008_CDTR_NM_REQUIRED",
         "description": "CBPR+: Creditor Name is mandatory in pacs.008.",
-        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Cdtr)",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Cdtr) and not exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Cdtr.Id.OrgId.AnyBIC)",
         "mandatory_fields": [
             "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Cdtr.Nm"
         ],

@@ -435,7 +435,8 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                     self._validate_cbpr_datetime(xml_content, report)
                     
                     # Global Rule: Name & Address Co-existence (CBPR+)
-                    self._validate_name_address_coexistence(xml_content, report)
+                    if not report.message_type.startswith("pain"):
+                        self._validate_name_address_coexistence(xml_content, report)
 
                     # Global Rule: Empty mandatory containers (e.g. <FinInstnId/>) —
                     # caught BEFORE Layer 2 so missing identifiers fail validation even
@@ -471,9 +472,16 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                     "Non-fatal — the rest of the validation still runs.",
                 ))
 
-            if report.errors > 0:
+            # Only skip Layer 3 if there are errors in Layer 1 or Layer 2. 
+            # Layer 3 errors (like from CBPR_JSON check) should not prevent the rest of Layer 3 from running,
+            # nor should they cause themselves to be erased by the SKIPPED cleanup logic.
+            l1_l2_errors = sum(1 for i in report.issues if str(getattr(i, 'layer', i.get('layer', ''))) in ['1', '2'] and getattr(i, 'severity', i.get('severity', '')) == 'ERROR')
+            
+            if l1_l2_errors > 0:
                 report.layer_status['3'] = {"status": "SKIPPED", "time": 0}
                 return self._finalize_report(report, start_time)
+            
+            print(f"DEBUG: Entering Layer 3 normalization...")
             
             # STEP 5: Canonical Normalization for Rule Execution
             try:

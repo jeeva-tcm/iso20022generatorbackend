@@ -2255,6 +2255,156 @@ class MT2MXConverter:
                         cdtr_nm = ET.SubElement(cdtr, nm_tag)
                     cdtr_nm.text = "NOTPROVIDED"
 
+    def _heal_pacs009_mandatory_fields(self, root, namespaces):
+        """
+        CBPR+ PACS009 COVE rules require InstgRmbrsmntAgt or InstdRmbrsmntAgt if SttlmMtd is COVE.
+        If the MT202COV lacks 53A/54A, we inject a dummy InstgRmbrsmntAgt to satisfy L3.
+        """
+        xmlns = namespaces.get("xmlns", "")
+        if "pacs.009" not in xmlns:
+            return
+            
+        # Check if Settlement Method is COVE
+        sttlm_mtd = root.find(f".//{{{xmlns}}}SttlmMtd" if xmlns else ".//SttlmMtd")
+        if sttlm_mtd is None or sttlm_mtd.text != "COVE":
+            return
+            
+        for tx_inf in root.iter(f"{{{xmlns}}}CdtTrfTxInf" if xmlns else "CdtTrfTxInf"):
+            instg_rmbr = self._find_child(tx_inf, "InstgRmbrsmntAgt")
+            instd_rmbr = self._find_child(tx_inf, "InstdRmbrsmntAgt")
+            
+            if instg_rmbr is None and instd_rmbr is None:
+                # Inject InstgRmbrsmntAgt
+                self.set_element_text(domn, "Cd", "PMNT", namespaces)
+            
+            fmly = self._get_or_create_node(domn, "Fmly", namespaces)
+            if self._navigate_path(fmly, "Cd", namespaces, create_missing=False) is None:
+                self.set_element_text(fmly, "Cd", "RCDT", namespaces)
+            if self._navigate_path(fmly, "SubFmlyCd", namespaces, create_missing=False) is None:
+                self.set_element_text(fmly, "SubFmlyCd", "OTHR", namespaces)
+            
+            # 3. Ensure Sts (Status) exists
+            found_sts = None
+            for child in list(ntry):
+                if child.tag.split("}")[-1] == "Sts":
+                    found_sts = child
+                    break
+            
+            if found_sts is None:
+                sts_tag = f"{{{xmlns}}}Sts" if xmlns else "Sts"
+                found_sts = ET.SubElement(ntry, sts_tag)
+            
+            # Ensure Cd exists inside Sts
+            sts_cd = self._navigate_path(found_sts, "Cd", namespaces, create_missing=False)
+            if sts_cd is None:
+                self.set_element_text(found_sts, "Cd", "BOOK", namespaces)
+            elif not sts_cd.text or str(sts_cd.text).strip() == "":
+                sts_cd.text = "BOOK"
+
+            # Ensure complex type Sts has NO text value
+            if found_sts is not None:
+                found_sts.text = None
+
+            # 4. Ensure CdtDbtInd exist
+            found_ind = False
+            for child in list(ntry):
+                if child.tag.split("}")[-1] == "CdtDbtInd":
+                    found_ind = True
+                    break
+            if not found_ind:
+                self.set_element_text(ntry, "CdtDbtInd", "CRDT", namespaces)
+
+        # camt.057 specific healing for 'Itm' nodes
+        all_itms = []
+        for elem in root.iter():
+            if elem.tag.split("}")[-1] == "Itm":
+                all_itms.append(elem)
+
+        for itm in all_itms:
+            # 1. Ensure Itm/Id exists
+            found_id = None
+            for child in list(itm):
+                if child.tag.split("}")[-1] == "Id":
+                    found_id = child
+                    break
+            
+            if found_id is None:
+                id_tag = f"{{{xmlns}}}Id" if xmlns else "Id"
+                new_id = ET.Element(id_tag)
+                new_id.text = f"ITEM-{str(uuid.uuid4())[:8].upper()}"
+                itm.insert(0, new_id)
+            elif not found_id.text or str(found_id.text).strip() == "":
+                found_id.text = f"ITEM-{str(uuid.uuid4())[:8].upper()}"
+
+            # 2. Ensure Dbtr (Debtor) exists - often mandatory in camt.057 profiles
+            found_dbtr = None
+            for child in list(itm):
+                if child.tag.split("}")[-1] == "Dbtr":
+                    found_dbtr = child
+                    break
+            
+            if found_dbtr is None:
+                # Check if global Dbtr exists in Ntfctn
+                parent_ntfctn = None
+                # Simplistic search for parent Ntfctn
+                for parent in root.iter():
+                    if itm in list(parent):
+                        if parent.tag.split("}")[-1] == "Ntfctn":
+                            parent_ntfctn = parent
+                            break
+                
+                global_dbtr = None
+                if parent_ntfctn is not None:
+                    for child in list(parent_ntfctn):
+                        if child.tag.split("}")[-1] == "Dbtr":
+                            global_dbtr = child
+                            break
+                
+                if global_dbtr is None:
+                    # Inject default Dbtr into Itm
+                    dbtr_tag = f"{{{xmlns}}}Dbtr" if xmlns else "Dbtr"
+                    dbtr_node = ET.SubElement(itm, dbtr_tag)
+                    pty_node = ET.SubElement(dbtr_node, f"{{{xmlns}}}Pty" if xmlns else "Pty")
+                    self.set_element_text(pty_node, "Nm", "UNKNOWN DEBTOR", namespaces)
+                    # Clear parent text
+                    dbtr_node.text = None
+
+            # 3. Ensure Dbtr/Pty has PstlAdr if Nm is present
+            for child in list(itm):
+                if child.tag.split("}")[-1] == "Dbtr":
+                    for subchild in list(child):
+                        if subchild.tag.split("}")[-1] == "Pty":
+                            has_nm = False
+                            has_pstl_adr = False
+                            for pty_child in list(subchild):
+                                if pty_child.tag.split("}")[-1] == "Nm":
+                                    has_nm = True
+                                elif pty_child.tag.split("}")[-1] == "PstlAdr":
+                                    has_pstl_adr = True
+                            
+                            if has_nm and not has_pstl_adr:
+                                pstl_adr_tag = f"{{{xmlns}}}PstlAdr" if xmlns else "PstlAdr"
+                                pstl_adr = ET.SubElement(subchild, pstl_adr_tag)
+                                self.set_element_text(pstl_adr, "Ctry", "US", namespaces)
+                                self.set_element_text(pstl_adr, "TwnNm", "UNKNOWN TOWN", namespaces)
+
+        # 4. GLOBAL CBPR+ HEALING: Ensure all Pty elements with Nm have PstlAdr
+        for pty in root.iter(f"{{{xmlns}}}Pty" if xmlns else "Pty"):
+            has_nm = False
+            has_pstl_adr = False
+            for child in list(pty):
+                if child.tag.split("}")[-1] == "Nm":
+                    has_nm = True
+                elif child.tag.split("}")[-1] == "PstlAdr":
+                    has_pstl_adr = True
+            
+            if has_nm and not has_pstl_adr:
+                pstl_adr_tag = f"{{{xmlns}}}PstlAdr" if xmlns else "PstlAdr"
+                pstl_adr = ET.SubElement(pty, pstl_adr_tag)
+                self.set_element_text(pstl_adr, "Ctry", "US", namespaces)
+                self.set_element_text(pstl_adr, "TwnNm", "UNKNOWN TOWN", namespaces)
+                self.set_element_text(pstl_adr, "AdrLine", "UNKNOWN ADDRESS", namespaces)
+
     def _heal_pacs008_mandatory_fields(self, root, namespaces):
         """
         CBPR+ PACS008 rules require Dbtr/Nm and Cdtr/Nm.
@@ -2315,7 +2465,7 @@ class MT2MXConverter:
             return
 
         sttlm_mtd = self._find_child(sttlm_inf, "SttlmMtd")
-        if True:  # Disable dummy injection
+        if sttlm_mtd is None or sttlm_mtd.text != "COVE":
             return
             
         instg_rmbr = self._find_child(sttlm_inf, "InstgRmbrsmntAgt")

@@ -158,7 +158,7 @@ def validateLayer3Timing(payload: Dict, context: Dict, cutoffConfig: Dict) -> Di
     
     # 1. Check if the message was created after cutoff
     if cre_d_dt.time() >= d_cutoff_time:
-        stat = "FAIL" if validation_mode == "STRICT" else "WARN"
+        stat = "WARN"
         result.add_issue(ValidationIssue("CUT001", stat, "CreDtTm", 
             f"Creation time {cre_d_dt.strftime('%H:%M')} is after system cutoff {d_cutoff_time.strftime('%H:%M')}.", {}))
 

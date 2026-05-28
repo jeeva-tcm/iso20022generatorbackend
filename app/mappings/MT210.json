@@ -4,6 +4,7 @@
     "xml_namespaces": {
         "xmlns": "urn:iso:std:iso:20022:tech:xsd:camt.057.001.06"
     },
+    "biz_svc": "swift.cbprplus.03",
     "root_element": "Document",
     "mappings": [
         {

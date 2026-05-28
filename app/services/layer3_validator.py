@@ -47,7 +47,7 @@ class Layer3Mixin:
 
         # 2. Load CBPR Common (universal cross-message rules: BAH, BICFI exclusivity, AnyBIC exclusivity)
         cbpr_common_file = os.path.join(self.rules_path, "cbpr_common.json")
-        if os.path.exists(cbpr_common_file):
+        if os.path.exists(cbpr_common_file) and not message_type.startswith("pain"):
             try:
                 with open(cbpr_common_file, "r", encoding='utf-8-sig') as f:
                     rules.extend(json.load(f))
@@ -115,7 +115,12 @@ class Layer3Mixin:
         codelists = self.codelists
 
         for rule in layer_rules:
+            if rule.get("type") == "bic":
+                print(f"DEBUG LAYER3: Executing BIC rule. len(data)={len(data)}")
+                issues_before = len(report.issues)
             self._execute_rule_logic(rule, data, line_map, codelists, report)
+            if rule.get("type") == "bic":
+                print(f"DEBUG LAYER3: BIC rule done. Issues added: {len(report.issues) - issues_before}")
         
         # Assessment for layer dashboard
         success = not any(

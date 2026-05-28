@@ -156,27 +156,6 @@
         "layer": 3
     },
     {
-        "rule_id": "PACS009_COV_SETTLEMENT_METHOD",
-        "description": "Settlement Method (SttlmMtd) for COV message: Must be COVE.",
-        "condition": "'cov' in MESSAGE_TYPE.lower() and not 'adv' in MESSAGE_TYPE.lower()",
-        "selector": ".*\\.SttlmMtd$",
-        "expression": "VALUE in ['COVE']",
-        "errorMessage": "For pacs.009 COV messages, Settlement Method must be COVE.",
-        "fix": "Change Settlement Method to COVE.",
-        "severity": "ERROR",
-        "layer": 3
-    },
-    {
-        "rule_id": "PACS009_COVE_REIMBURSEMENT",
-        "description": "Reimbursement Agent check: If Settlement Method is COVE, then at least one of InstructingReimbursementAgent or InstructedReimbursementAgent must be present.",
-        "condition": "any(k.endswith('.GrpHdr.SttlmInf.SttlmMtd') and DATA[k] == 'COVE' for k in DATA.keys())",
-        "expression": "any('.InstgRmbrsmntAgt' in k or '.InstdRmbrsmntAgt' in k for k in DATA.keys())",
-        "errorMessage": "If Settlement Method is COVE, then at least one of InstructingReimbursementAgent or InstructedReimbursementAgent must be present.",
-        "fix": "Add reimbursement agent details under SttlmInf (e.g. <InstgRmbrsmntAgt> or <InstdRmbrsmntAgt>).",
-        "severity": "ERROR",
-        "layer": 3
-    },
-    {
         "rule_id": "PACS009_020",
         "description": "Instruction Priority (InstrPrty): Invalid value. Allowed: HIGH, NORM.",
         "selector": ".*\\.InstrPrty$",

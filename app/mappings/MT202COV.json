@@ -1,7 +1,7 @@
 {
     "source_mt": "202COV",
     "target_mx": "pacs.009.001.08",
-    "biz_svc": "swift.cbprplus.cov.04",
+    "biz_svc": "swift.cbprplus.cov.03",
     "xml_namespaces": {
         "xmlns": "urn:iso:std:iso:20022:tech:xsd:pacs.009.001.08"
     },
@@ -60,6 +60,56 @@
             "name": "Instructed Agent",
             "type": "bic",
             "mx_path": "FICdtTrf/CdtTrfTxInf/InstdAgt/FinInstnId/BICFI"
+        },
+        {
+            "mt_tag": "53A",
+            "name": "Sender's Correspondent",
+            "mandatory": false,
+            "type": "account_bic",
+            "mx_path_bic": "FICdtTrf/GrpHdr/SttlmInf/PrvsInstgAgt1/FinInstnId/BICFI",
+            "mx_path_account": "FICdtTrf/GrpHdr/SttlmInf/PrvsInstgAgt1Acct/Id/Othr/Id"
+        },
+        {
+            "mt_tag": "54A",
+            "name": "Receiver's Correspondent",
+            "mandatory": false,
+            "type": "account_bic",
+            "mx_path_bic": "FICdtTrf/GrpHdr/SttlmInf/IntrmyAgt1/FinInstnId/BICFI",
+            "mx_path_account": "FICdtTrf/GrpHdr/SttlmInf/IntrmyAgt1Acct/Id/Othr/Id"
+        },
+        {
+            "mt_tag": "53B",
+            "name": "Sender's Correspondent (B)",
+            "mandatory": false,
+            "type": "account_bic",
+            "mx_path_bic": "FICdtTrf/GrpHdr/SttlmInf/PrvsInstgAgt1/FinInstnId/Othr/Id",
+            "mx_path_account": "FICdtTrf/GrpHdr/SttlmInf/PrvsInstgAgt1Acct/Id/Othr/Id"
+        },
+        {
+            "mt_tag": "53D",
+            "name": "Sender's Correspondent (D)",
+            "mandatory": false,
+            "type": "account_name_address",
+            "mx_path_name": "FICdtTrf/GrpHdr/SttlmInf/PrvsInstgAgt1/Nm",
+            "mx_path_address": "FICdtTrf/GrpHdr/SttlmInf/PrvsInstgAgt1/PstlAdr/AdrLine",
+            "mx_path_account": "FICdtTrf/GrpHdr/SttlmInf/PrvsInstgAgt1Acct/Id/Othr/Id"
+        },
+        {
+            "mt_tag": "54B",
+            "name": "Receiver's Correspondent (B)",
+            "mandatory": false,
+            "type": "account_bic",
+            "mx_path_bic": "FICdtTrf/GrpHdr/SttlmInf/IntrmyAgt1/FinInstnId/Othr/Id",
+            "mx_path_account": "FICdtTrf/GrpHdr/SttlmInf/IntrmyAgt1Acct/Id/Othr/Id"
+        },
+        {
+            "mt_tag": "54D",
+            "name": "Receiver's Correspondent (D)",
+            "mandatory": false,
+            "type": "account_name_address",
+            "mx_path_name": "FICdtTrf/GrpHdr/SttlmInf/IntrmyAgt1/Nm",
+            "mx_path_address": "FICdtTrf/GrpHdr/SttlmInf/IntrmyAgt1/PstlAdr/AdrLine",
+            "mx_path_account": "FICdtTrf/GrpHdr/SttlmInf/IntrmyAgt1Acct/Id/Othr/Id"
         },
         {
             "mt_tag": "21",

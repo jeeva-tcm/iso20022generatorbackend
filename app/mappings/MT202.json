@@ -4,6 +4,7 @@
     "xml_namespaces": {
         "xmlns": "urn:iso:std:iso:20022:tech:xsd:pacs.009.001.08"
     },
+    "biz_svc": "swift.cbprplus.03",
     "root_element": "Document",
     "mappings": [
         {
@@ -67,14 +68,6 @@
             "type": "text",
             "max_length": 16,
             "mx_path": "FICdtTrf/CdtTrfTxInf/PmtId/EndToEndId"
-        },
-        {
-            "mt_tag": "_static_pmttype",
-            "name": "Payment Type",
-            "mandatory": false,
-            "type": "static",
-            "value": "TRF",
-            "mx_path": "FICdtTrf/CdtTrfTxInf/PmtTpInf/SvcLvl/Cd"
         },
         {
             "mt_tag": "32A",

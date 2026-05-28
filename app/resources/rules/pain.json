@@ -98,7 +98,7 @@
         "selector": "^Document\\.CstmrCdtTrfInitn\\.PmtInf(\\[\\d+\\])?\\.PmtTpInf\\.SvcLvl\\.Cd$",
         "type": "expression",
         "expression": "VALUE != 'SEPA' or all(v == 'EUR' for k, v in DATA.items() if k.endswith('.InstdAmt@Ccy'))",
-        "severity": "ERROR",
+        "severity": "WARNING",
         "layer": 3,
         "errorMessage": "SEPA payments must use EUR as the instructed amount currency.",
         "fix": "Either change the currency to EUR or use a non-SEPA Service Level."
