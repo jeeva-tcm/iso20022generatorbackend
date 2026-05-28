@@ -83,7 +83,7 @@
         "CBPR_DATETIME_Z_FORBIDDEN": {
             "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
             "description": "CBPR+ forbids the 'Z' UTC suffix. An explicit offset like +00:00 must be used.",
-            "affects_tags": ["CreDtTm", "IntrBkSttlmTm", "PmtStpTm", "SttlmTmReq", "CLSTm"],
+            "affects_tags": ["CreDt", "CreDtTm", "IntrBkSttlmTm", "PmtStpTm", "SttlmTmReq", "CLSTm", "FrTm", "TillTm", "RjctTm"],
             "fix_action": "Replace the trailing 'Z' with '+00:00'. Do NOT change the date or time part.",
             "example_before": "2026-05-28T10:00:00Z",
             "example_after": "2026-05-28T10:00:00+00:00"
@@ -92,7 +92,7 @@
         "CBPR_DATETIME_MILLISECONDS": {
             "error_code": "CBPR_DATETIME_MILLISECONDS",
             "description": "CBPR+ forbids milliseconds in datetime fields.",
-            "affects_tags": ["CreDtTm", "IntrBkSttlmTm"],
+            "affects_tags": ["CreDt", "CreDtTm", "IntrBkSttlmTm", "PmtStpTm", "SttlmTmReq", "CLSTm", "FrTm", "TillTm", "RjctTm"],
             "fix_action": "Remove the .sss fractional seconds part. Keep the rest unchanged.",
             "example_before": "2026-05-28T10:00:00.123+00:00",
             "example_after": "2026-05-28T10:00:00+00:00"
@@ -101,7 +101,7 @@
         "CBPR_DATETIME_NO_TIMEZONE": {
             "error_code": "CBPR_DATETIME_NO_TIMEZONE",
             "description": "CBPR+ requires a timezone offset on all datetime fields.",
-            "affects_tags": ["CreDtTm", "IntrBkSttlmTm"],
+            "affects_tags": ["CreDt", "CreDtTm", "IntrBkSttlmTm", "PmtStpTm", "SttlmTmReq", "CLSTm", "FrTm", "TillTm", "RjctTm"],
             "fix_action": "Append '+00:00' to a datetime that has no timezone suffix.",
             "example_before": "2026-05-28T10:00:00",
             "example_after": "2026-05-28T10:00:00+00:00"

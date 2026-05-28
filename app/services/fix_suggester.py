@@ -114,6 +114,115 @@ def _kb_get(path: str, default: Any = None) -> Any:
     return cur
 
 
+# ── Enterprise KB (swift_mx_enterprise_llm_kb.json) — cached, app-wide ───────
+# 17-module knowledge base with per-message field_rules, dependency_rules,
+# error_resolution_rules, tag_templates, and shared dummy data.
+
+_ENTERPRISE_KB_CACHE: Optional[Dict[str, Any]] = None
+_ENTERPRISE_MODULE_INDEX: Dict[str, Any] = {}
+
+
+def _load_enterprise_kb() -> Dict[str, Any]:
+    global _ENTERPRISE_KB_CACHE, _ENTERPRISE_MODULE_INDEX
+    if _ENTERPRISE_KB_CACHE is not None:
+        return _ENTERPRISE_KB_CACHE
+    kb_path = os.path.normpath(
+        os.path.join(os.path.dirname(__file__), "..", "resources", "swift_mx_enterprise_llm_kb.json")
+    )
+    try:
+        with open(kb_path, "r", encoding="utf-8-sig") as f:
+            _ENTERPRISE_KB_CACHE = json.load(f)
+        for mod in _ENTERPRISE_KB_CACHE.get("modules", []):
+            name = mod.get("module_name")
+            if name:
+                _ENTERPRISE_MODULE_INDEX[name] = mod
+    except Exception as e:
+        logger.warning(f"[FixSuggester] swift_mx_enterprise_llm_kb.json load failed: {e}")
+        _ENTERPRISE_KB_CACHE = {}
+    return _ENTERPRISE_KB_CACHE
+
+
+def _enterprise_module(msg_type: str) -> Dict[str, Any]:
+    """Return the enterprise KB module for this message type, or {}."""
+    _load_enterprise_kb()
+    if not msg_type:
+        return {}
+    if msg_type in _ENTERPRISE_MODULE_INDEX:
+        return _ENTERPRISE_MODULE_INDEX[msg_type]
+    family = ".".join(msg_type.split(".")[:2]) if "." in msg_type else msg_type
+    return _ENTERPRISE_MODULE_INDEX.get(family, {})
+
+
+def _enterprise_field_constraint_any(tag_name: str) -> Dict[str, Any]:
+    """Search all enterprise KB modules for a field_rules entry for tag_name."""
+    _load_enterprise_kb()
+    for mod in _ENTERPRISE_MODULE_INDEX.values():
+        rules = mod.get("field_rules", {})
+        if tag_name in rules:
+            return rules[tag_name]
+    return {}
+
+
+def _enterprise_tag_template_any(tag_name: str, msg_type: str = "") -> Optional[str]:
+    """Return the enterprise KB tag template for tag_name, msg-type-specific first."""
+    _load_enterprise_kb()
+    mod = _enterprise_module(msg_type)
+    if mod:
+        tmpl = mod.get("tag_templates", {}).get(tag_name)
+        if tmpl:
+            return tmpl
+    # Fall back: search all modules
+    for m in _ENTERPRISE_MODULE_INDEX.values():
+        tmpl = m.get("tag_templates", {}).get(tag_name)
+        if tmpl:
+            return tmpl
+    return None
+
+
+def _enterprise_error_resolution_any(code: str) -> Dict[str, Any]:
+    """Search all enterprise KB modules for an error_resolution_rules entry."""
+    _load_enterprise_kb()
+    for mod in _ENTERPRISE_MODULE_INDEX.values():
+        rules = mod.get("error_resolution_rules", {})
+        if code in rules:
+            return rules[code]
+    return {}
+
+
+def _enterprise_date_fix_rules() -> Dict[str, Any]:
+    """Return global date_fix_rules from the enterprise KB."""
+    kb = _load_enterprise_kb()
+    return kb.get("global_rules", {}).get("date_fix_rules", {})
+
+
+def _enterprise_dependencies_all(dep_kind: str) -> list:
+    """Return all dependency rules of dep_kind across all modules, deduplicated by id."""
+    _load_enterprise_kb()
+    seen_ids: set = set()
+    result: list = []
+    for mod in _ENTERPRISE_MODULE_INDEX.values():
+        for dep in mod.get("dependency_rules", {}).get(dep_kind, []) or []:
+            dep_id = dep.get("id", "")
+            if dep_id and dep_id not in seen_ids:
+                seen_ids.add(dep_id)
+                result.append(dep)
+            elif not dep_id:
+                result.append(dep)
+    return result
+
+
+def _enterprise_shared(path: str, default: Any = None) -> Any:
+    """Walk a dotted path through shared_resources of the enterprise KB."""
+    kb = _load_enterprise_kb()
+    cur: Any = kb.get("shared_resources", {})
+    for part in path.split("."):
+        if isinstance(cur, dict) and part in cur:
+            cur = cur[part]
+        else:
+            return default
+    return cur
+
+
 def _kb_msg_family(msg_type: str) -> str:
     """Reduce 'pacs.008.001.08' → 'pacs.008'."""
     if not msg_type:
@@ -129,11 +238,15 @@ def _kb_tag_template(tag_name: str, msg_type: str) -> Optional[str]:
     """
     templates = _kb_get(f"tag_templates.{tag_name}", {})
     if not isinstance(templates, dict):
-        return None
+        return _enterprise_tag_template_any(tag_name, msg_type)
     family = _kb_msg_family(msg_type)
     if family and family in templates:
         return templates[family]
-    return templates.get("default")
+    result = templates.get("default")
+    if result is None:
+        # Enterprise KB has module-specific tag_templates with $PLACEHOLDER support
+        result = _enterprise_tag_template_any(tag_name, msg_type)
+    return result
 
 
 def _kb_field_constraint(tag_name: str) -> Dict[str, Any]:
@@ -170,6 +283,10 @@ def _kb_field_constraint(tag_name: str) -> Dict[str, Any]:
         return {"type": "Currency", "max_length": 3, "min_length": 3, "example": "USD"}
     if tn == "UETR":
         return {"type": "UUID", "max_length": 36, "min_length": 36}
+    # Fall back to the enterprise KB (covers all 17 message-type modules)
+    ent = _enterprise_field_constraint_any(tag_name)
+    if ent:
+        return ent
     return {}
 
 
@@ -654,6 +771,10 @@ class FixSuggester:
         Extract candidate tag names from msg + fix_hint and find the first
         matching element in the document. Used when path="/" or path is unparseable.
         Looks for <Tag> or 'Tag' patterns in the text.
+
+        When the message mentions both a container (e.g. <Fr>) and a leaf
+        (e.g. BICFI), descend into the container to return the leaf element —
+        otherwise _fix_value receives an opaque container and bails out.
         """
         text = f"{msg} {fix_hint}"
         # Tags mentioned in the text — look for <TagName> first (highest signal)
@@ -670,10 +791,78 @@ class FixSuggester:
             }
             tags = [t for t in tags if t not in skipwords]
 
+        if not tags:
+            return None
+
+        # Known leaf tags whose values carry the actual constraint. If any
+        # is mentioned alongside a container tag, prefer the leaf inside that
+        # container.
+        LEAF_TAGS = {
+            "BICFI", "IBAN", "Othr", "Id", "Ctry", "CtryOfRes", "AdrLine",
+            "Nm", "BirthDt", "PrvcOfBirth", "CityOfBirth", "CtryOfBirth",
+            "InstrId", "EndToEndId", "TxId", "UETR", "MsgId", "BizMsgIdr",
+            "MsgDefIdr", "CreDt", "CreDtTm",
+        }
+        # Containers that wrap one of the above leaves; ordered roughly
+        # leaf-first so a Fr+BICFI message resolves the BICFI inside Fr.
+        CONTAINER_TAGS = {
+            "Fr", "To", "InstgAgt", "InstdAgt", "FwdgAgt",
+            "DbtrAgt", "CdtrAgt", "IntrmyAgt1", "IntrmyAgt2", "IntrmyAgt3",
+            "PrvsInstgAgt1", "PrvsInstgAgt2", "PrvsInstgAgt3",
+            "Dbtr", "Cdtr", "UltmtDbtr", "UltmtCdtr", "InitgPty",
+            "FIId", "FinInstnId", "PstlAdr",
+        }
+
+        mentioned_leaves     = [t for t in tags if t in LEAF_TAGS]
+        mentioned_containers = [t for t in tags if t in CONTAINER_TAGS]
+
+        # Also catch bare-word leaf mentions in the prose (e.g. "BICFI" without
+        # angle brackets, "must match BICFI...").
+        if mentioned_containers and not mentioned_leaves:
+            for leaf in LEAF_TAGS:
+                if re.search(r'\b' + re.escape(leaf) + r's?\b', text):
+                    mentioned_leaves.append(leaf)
+                    break
+
+        line_hint = getattr(self, "_line_hint", None)
+
+        def _pick(candidates):
+            """Return the candidate whose source line is closest to line_hint
+            (when known), else the first candidate. Empty list → None."""
+            if not candidates:
+                return None
+            if line_hint is None:
+                return candidates[0]
+            return min(
+                candidates,
+                key=lambda e: abs((e.sourceline or 0) - line_hint),
+            )
+
+        # If a container + leaf are both named, descend into the container
+        # and return the matching leaf — that's the element _fix_value can act on.
+        if mentioned_leaves and mentioned_containers:
+            leaf = mentioned_leaves[0]
+            leaf_candidates = []
+            for cont in mentioned_containers:
+                for cont_el in root.iter():
+                    if etree.QName(cont_el.tag).localname != cont:
+                        continue
+                    for desc in cont_el.iter():
+                        if etree.QName(desc.tag).localname == leaf:
+                            leaf_candidates.append(desc)
+            picked = _pick(leaf_candidates)
+            if picked is not None:
+                return picked
+            # Container present but leaf not found inside it — fall through
+            # so we still return the container rather than nothing.
+
+        # Default: pick the line-nearest element matching any mentioned tag.
         for tag in tags:
-            for el in root.iter():
-                if etree.QName(el.tag).localname == tag:
-                    return el
+            matches = [el for el in root.iter()
+                       if etree.QName(el.tag).localname == tag]
+            picked = _pick(matches)
+            if picked is not None:
+                return picked
         return None
 
     # ── XSD loading ───────────────────────────────────────────────────────────
@@ -926,7 +1115,11 @@ class FixSuggester:
         if not raw_xml:
             return raw_xml
 
-        resolution_map = _kb_get("placeholder_resolution", {}) or {}
+        # Merge enterprise KB shared placeholder_resolution with legacy KB (legacy wins)
+        resolution_map = {
+            **(_enterprise_shared("placeholder_resolution", {}) or {}),
+            **(_kb_get("placeholder_resolution", {}) or {}),
+        }
 
         def _resolve_one(placeholder: str) -> str:
             cfg = resolution_map.get(placeholder, {})
@@ -1112,6 +1305,12 @@ class FixSuggester:
         code      = str(issue.get("code", ""))
         msg       = str(issue.get("message", ""))
         fix_hint  = str(issue.get("fix_suggestion", ""))
+        line_hint = issue.get("line")
+        try:
+            line_hint = int(line_hint) if line_hint is not None else None
+        except (TypeError, ValueError):
+            line_hint = None
+        self._line_hint = line_hint  # consumed by _recover_target_from_message
 
         try:
             root = self._parse_xml(xml)
@@ -1157,6 +1356,23 @@ class FixSuggester:
             if target_el is not None:
                 return self._fix_attribute(target_el, attr_target,
                                             code, msg, fix_hint, ns)
+
+        # ── Infer @Ccy attribute fix when validator reports an Amt element ────
+        # XSD currency-attribute errors are usually reported on the Amt element
+        # without an explicit "@Ccy" path suffix. Detect by message keywords and
+        # by the element actually having a Ccy attribute.
+        if not attr_target and parts:
+            msg_lc = (msg + " " + fix_hint).lower()
+            looks_like_ccy = (
+                "currency code" in msg_lc
+                or "ccy" in msg_lc
+                or "iso 4217" in msg_lc
+            )
+            if looks_like_ccy:
+                target_el = self._walk_dot_path(root, parts)
+                if target_el is not None and target_el.get("Ccy") is not None:
+                    return self._fix_attribute(target_el, "Ccy",
+                                                code, msg, fix_hint, ns)
 
         # ── If path is empty/"/", try to extract a target from message text ───
         # Rule-level errors (e.g. cross-field checks) report path="/" but mention
@@ -1440,7 +1656,7 @@ class FixSuggester:
         A candidate is only considered when its xpath contains the partner's
         discriminator AND does NOT contain THIS side's discriminator.
         """
-        equals_deps = _kb_get("dependencies.equals", []) or []
+        equals_deps = (_kb_get("dependencies.equals", []) or []) + _enterprise_dependencies_all("equals")
         my_xpath_lc = my_xpath.lower()
 
         def _tokens(field: str) -> list[str]:
@@ -1585,13 +1801,14 @@ class FixSuggester:
         if ctype == "UUID" or "uetr" in tn:
             return str(uuid.uuid4())
         if ctype == "BICFI" or ctype == "AnyBIC" or "bic" in tn:
-            # Pick from KB banks list
-            banks = _kb_get("dummy_data.banks", []) or []
+            banks = (_kb_get("dummy_data.banks", []) or
+                     _enterprise_shared("dummy_data.banks", []) or [])
             if banks:
                 return banks[0].get("bicfi", "DEUTDEFFXXX")
             return "DEUTDEFFXXX"
         if ctype == "IBAN" or "iban" in tn:
-            ibans = _kb_get("dummy_data.ibans", {}) or {}
+            ibans = (_kb_get("dummy_data.ibans", {}) or
+                     _enterprise_shared("dummy_data.ibans", {}) or {})
             if isinstance(ibans, dict):
                 return ibans.get("default", "GB29NWBK60161331926819")
             return "GB29NWBK60161331926819"
@@ -1600,16 +1817,20 @@ class FixSuggester:
         if ctype == "Country":
             return "US"
         if ctype == "Amount":
-            return _kb_get("dummy_data.amounts.default") or "1000.00"
+            return (_kb_get("dummy_data.amounts.default") or
+                    _enterprise_shared("dummy_data.amounts.default") or "1000.00")
         if ctype == "Date":
             import datetime
-            val = _kb_get("dummy_data.dates.today") or "2026-05-27"
+            val = (_kb_get("dummy_data.dates.today") or
+                   _enterprise_shared("dummy_data.dates.today") or "2026-05-27")
             if val == "USE_TODAY": return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
             return val
         if ctype == "DateTime":
             import datetime
-            val = _kb_get("dummy_data.dates.today_iso") or "2026-05-27T10:00:00Z"
-            if val == "USE_NOW_OFFSET": return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+            val = (_kb_get("dummy_data.dates.today_iso") or
+                   _enterprise_shared("dummy_data.dates.now_offset") or "USE_NOW_OFFSET")
+            if val in ("USE_NOW_OFFSET", "2026-05-27T10:00:00Z"):
+                return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
             return val
         if ctype == "Numeric15":
             return "1"
@@ -1697,7 +1918,8 @@ class FixSuggester:
         el_local          = etree.QName(el.tag).localname
 
         # --- Dynamic Date Rule Integration ---
-        date_rules = _kb_get("date_fix_rules", {}) or {}
+        # Merge: enterprise KB global_rules.date_fix_rules + legacy ai_knowledge_base
+        date_rules = {**(_enterprise_date_fix_rules() or {}), **(_kb_get("date_fix_rules", {}) or {})}
         if code in date_rules:
             rule = date_rules[code]
             if el_local in rule.get("affects_tags", []):
@@ -1911,6 +2133,21 @@ class FixSuggester:
         """Last-resort LLM call with rich context. max_tokens=400, temperature=0."""
         # Build context: include rule hint, codelists, field constraints, deps
         context_lines = []
+
+        # ── Enterprise KB: error-specific fix recipe (highest priority context) ──
+        if code:
+            err_res = _enterprise_error_resolution_any(code)
+            if err_res:
+                recipe_parts = []
+                if err_res.get("root_cause"):
+                    recipe_parts.append(f"Root cause: {err_res['root_cause']}")
+                if err_res.get("fix"):
+                    recipe_parts.append(f"Fix recipe: {err_res['fix']}")
+                if err_res.get("do_not"):
+                    recipe_parts.append(f"Do NOT: {err_res['do_not']}")
+                if recipe_parts:
+                    context_lines.append("Error resolution guide:\n" + "\n".join(recipe_parts))
+
         if fix_hint:
             context_lines.append(f"Rule fix suggestion: {fix_hint}")
 

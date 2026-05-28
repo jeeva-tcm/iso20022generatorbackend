@@ -659,11 +659,15 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             r'</\1>'                               # matching closing tag
         )
 
-        seen = set()  # avoid duplicate errors for the same tag+value
+        seen = set()  # avoid duplicate errors for the EXACT same occurrence
         for m in xml_date_patt.finditer(xml_content):
             tag_name  = m.group(1)
             raw_value = m.group(2).strip()
-            key = (tag_name, raw_value)
+            # Include the byte-offset so multiple occurrences of the same
+            # (tag, value) pair (e.g. AppHdr/CreDtTm AND GrpHdr/CreDtTm both
+            # holding the same past datetime) each get their own issue and
+            # therefore their own fix suggestion.
+            key = (tag_name, raw_value, m.start())
             if key in seen:
                 continue
             seen.add(key)
