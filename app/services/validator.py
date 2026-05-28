@@ -802,7 +802,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                 if 'T' in raw_value:
                     line_num = xml_content.count('\n', 0, m.start()) + 1
                     report.add_issue(ValidationIssue(
-                        "ERROR", 2, "CBPR_DATETIME_MS_FORBIDDEN", str(line_num),
+                        "ERROR", 2, "CBPR_DATETIME_MILLISECONDS", str(line_num),
                         f"Element <{tag_name}> contains milliseconds which are forbidden in CBPR+.",
                         f"Remove the decimal part (e.g., '.415') from the time."
                     ))
@@ -814,7 +814,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             if not offset_patt.match(raw_value):
                 line_num = xml_content.count('\n', 0, m.start()) + 1
                 report.add_issue(ValidationIssue(
-                    "ERROR", 2, "CBPR_DATETIME_OFFSET_MANDATORY", str(line_num),
+                    "ERROR", 2, "CBPR_DATETIME_NO_TIMEZONE", str(line_num),
                     f"Element <{tag_name}> is missing a mandatory timezone offset.",
                     f"Ensure the format is YYYY-MM-DDThh:mm:ss(+/-)HH:MM (e.g., +00:00)."
                 ))

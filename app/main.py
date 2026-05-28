@@ -4,6 +4,11 @@ if hasattr(sys.stdout, 'reconfigure'):
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8')
 
+# Load .env early so all os.getenv() calls (OpenAI, Firebase, etc.) see the keys
+import os as _os
+from dotenv import load_dotenv as _load_dotenv
+_load_dotenv(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", ".env"))
+
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
@@ -30,6 +35,8 @@ from app.services.bic_refresh_service import BicRefreshService
 from app.services.bulk_generator import generate_single_xml, get_blocks_for_message
 from app.chatbot.routes import router as chatbot_router
 from app.chatbot.chat_service import chat_service
+from app.routes.fixes import router as fixes_router
+from app.services.fix_suggester import fix_suggester
 
 # Initialize services
 history_service = FirebaseHistoryService()
@@ -60,6 +67,9 @@ app.add_middleware(
 
 # Include chatbot router
 app.include_router(chatbot_router)
+
+# Include fixes router (Inline Fix Suggester)
+app.include_router(fixes_router)
 
 # Initialize chatbot knowledge base and BIC refresh scheduler on startup
 @app.on_event("startup")
@@ -113,12 +123,34 @@ async def shutdown_event():
         scheduler.shutdown(wait=False)
         print("[BIC Refresh] Scheduler stopped.")
 
+def _apply_auto_fixes(report_dict, original_xml):
+    if report_dict.get("errors", 0) > 0 and report_dict.get("details"):
+        try:
+            issues_list = report_dict["details"]
+            suggestions = fix_suggester.suggest_batch(original_xml, issues_list[:20])
+            fixes_list = [
+                {
+                    "xpath": s.xpath,
+                    "original_fragment": s.original_fragment,
+                    "fragment_xml": s.fragment_xml,
+                    "issue_code": s.issue_code,
+                    "issue_message": s.issue_message,
+                    "confidence": s.confidence
+                } for s in suggestions
+            ]
+            fixed_xml = fix_suggester.apply_batch(original_xml, fixes_list)
+            report_dict["fixed_xml"] = fixed_xml
+        except Exception as e:
+            report_dict["fixed_xml"] = None
+            print(f"Auto-fix failed: {e}")
+
 @app.post("/validate", response_model=schemas.ValidationResponse)
 async def validate_message(
     request: schemas.ValidationRequest
 ):
     report = await validator.validate(request.xml_content, request.mode, request.message_type, validation_id=request.batch_id)
     report_dict = report.to_dict()
+    _apply_auto_fixes(report_dict, request.xml_content)
     
     # Attach file_id and batch_id to the report dict for frontend display
     if request.file_id:
@@ -160,6 +192,7 @@ async def validate_file(
     
     report = await validator.validate(xml_content, mode, message_type, filename=file.filename, validation_id=batch_id)
     report_dict = report.to_dict()
+    _apply_auto_fixes(report_dict, xml_content)
     
     # Attach file_id and batch_id to the report dict
     if file_id:

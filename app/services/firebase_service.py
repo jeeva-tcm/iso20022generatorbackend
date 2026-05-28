@@ -65,6 +65,13 @@ class FirebaseHistoryService:
         self._firebase_stats_cache = None
         self._firebase_stats_cache_time = None
 
+        # Check if Firebase is enabled via env var
+        firebase_enabled = os.getenv("FIREBASE_ENABLED", "true").lower() == "true"
+        if not firebase_enabled:
+            print("ALERT: Firebase is explicitly disabled via FIREBASE_ENABLED=false. Falling back to local JSON database.")
+            self.enabled = False
+            return
+
         try:
             cred = self._build_credentials()
             if cred is not None:
@@ -80,8 +87,9 @@ class FirebaseHistoryService:
                 # signature is only verified when we make a real RPC. Do a
                 # tiny throwaway read to surface "invalid_grant" / "Invalid
                 # JWT Signature" at boot, BEFORE the first user request
-                # hangs for 5 minutes.
-                self._run_boot_health_check()
+                # hangs for 5 minutes. Run in a background thread to avoid blocking.
+                import threading
+                threading.Thread(target=self._run_boot_health_check, daemon=True).start()
             else:
                 print("ALERT: No Firebase credentials found. Falling back to local JSON database.")
                 self.enabled = False
@@ -93,6 +101,17 @@ class FirebaseHistoryService:
         """Issue a single tiny Firestore read to verify the credentials actually
         work against Google's OAuth endpoint. If it fails, disable Firestore
         immediately so subsequent calls don't sit on 300-second timeouts."""
+        # First do a quick TCP check to avoid gRPC connection hang when offline
+        import socket
+        try:
+            # Try to connect to firestore.googleapis.com:443 with a 2-second timeout
+            socket.create_connection(("firestore.googleapis.com", 443), timeout=2.0).close()
+        except Exception as e:
+            self.enabled = False
+            self._circuit_broken_reason = f"Network unreachable: {e}"
+            print(f"[Firebase] Network check failed: firestore.googleapis.com is unreachable ({e}). Falling back to local JSON.")
+            return
+
         try:
             # Limit to 1 doc, short timeout. We don't care about the result —
             # we only care whether the RPC authenticates and responds.
