@@ -765,7 +765,8 @@ class FixSuggester:
             parent = cur.getparent()
             local = etree.QName(cur.tag).localname
             if parent is not None:
-                sibs = [c for c in parent if etree.QName(c.tag).localname == local]
+                sibs = [c for c in parent
+                        if isinstance(c.tag, str) and etree.QName(c.tag).localname == local]
                 idx = sibs.index(cur) + 1
                 parts.append(f"{local}[{idx}]" if len(sibs) > 1 else local)
             else:
@@ -787,7 +788,7 @@ class FixSuggester:
         for part in parts[start:]:
             found = None
             for child in cur:
-                if etree.QName(child.tag).localname == part:
+                if isinstance(child.tag, str) and etree.QName(child.tag).localname == part:
                     found = child
                     break
             if found is None:
@@ -797,7 +798,7 @@ class FixSuggester:
 
     def _child_exists(self, parent: etree._Element, local_name: str) -> Optional[etree._Element]:
         for child in parent:
-            if etree.QName(child.tag).localname == local_name:
+            if isinstance(child.tag, str) and etree.QName(child.tag).localname == local_name:
                 return child
         return None
 
@@ -902,10 +903,12 @@ class FixSuggester:
             leaf_candidates = []
             for cont in mentioned_containers:
                 for cont_el in root.iter():
+                    if not isinstance(cont_el.tag, str):
+                        continue  # skip comment / processing-instruction nodes
                     if etree.QName(cont_el.tag).localname != cont:
                         continue
                     for desc in cont_el.iter():
-                        if etree.QName(desc.tag).localname == leaf:
+                        if isinstance(desc.tag, str) and etree.QName(desc.tag).localname == leaf:
                             leaf_candidates.append(desc)
             picked = _pick(leaf_candidates)
             if picked is not None:
@@ -916,7 +919,7 @@ class FixSuggester:
         # Default: pick the line-nearest element matching any mentioned tag.
         for tag in tags:
             matches = [el for el in root.iter()
-                       if etree.QName(el.tag).localname == tag]
+                       if isinstance(el.tag, str) and etree.QName(el.tag).localname == tag]
             picked = _pick(matches)
             if picked is not None:
                 return picked
@@ -1305,9 +1308,12 @@ class FixSuggester:
         """
         existing_local_names = {
             etree.QName(c.tag).localname for c in existing_parent
+            if isinstance(c.tag, str)
         }
         # Prune sub-children of new_el that already sit at parent level
         for child in list(new_el):
+            if not isinstance(child.tag, str):
+                continue
             child_local = etree.QName(child.tag).localname
             if child_local in existing_local_names:
                 new_el.remove(child)
@@ -1555,7 +1561,7 @@ class FixSuggester:
         for i, part in enumerate(parts[start:], start=start):
             found = None
             for child in cur:
-                if etree.QName(child.tag).localname == part:
+                if isinstance(child.tag, str) and etree.QName(child.tag).localname == part:
                     found = child
                     break
             if found is None:
@@ -1696,6 +1702,8 @@ class FixSuggester:
         new_pos = order.index(new_tag)
         # Find the first existing child whose order position is > new_pos
         for idx, child in enumerate(parent_copy):
+            if not isinstance(child.tag, str):
+                continue
             child_local = etree.QName(child.tag).localname
             if child_local in order and order.index(child_local) > new_pos:
                 return idx
@@ -2132,6 +2140,25 @@ class FixSuggester:
                         return FixSuggestion(xpath, original_fragment,
                                               self._serialize(el_copy), code, msg, "high")
 
+            # 3. Already valid → nothing to fix (no-op).
+            # If this leaf's value already satisfies its FORMAT constraint
+            # (UUID/BIC/IBAN/date/length/regex), the format/value defect is
+            # stale or was resolved by an earlier fix in the batch. Returning a
+            # no-op stops the value-guessing branches below from "repairing" a
+            # valid value with the INVALID value quoted in the error message —
+            # e.g. extracting 'UETR' from "...required format for 'UETR'" and
+            # writing it back into <UETR>, which corrupts an already-fixed UUID.
+            con = _kb_field_constraint(el_local)
+            is_format_con = (
+                isinstance(con, dict)
+                and con.get("type") != "codelist"
+                and (con.get("type") in self._CONSTRAINT_REGEX
+                     or con.get("max_length") or con.get("min_length"))
+            )
+            if is_format_con and not self._violates_constraint(current_text, con):
+                return FixSuggestion(xpath, original_fragment, original_fragment,
+                                     code, msg, "low")
+
         # ── Disallowed / duplicate → remove the offending child ──────────────
         if code == "DUPLICATE_TAG" or "duplicate" in msg_l:
             m = re.search(r"<(\w+)>", msg)
@@ -2139,7 +2166,7 @@ class FixSuggester:
                 el_copy = self._copy(el)
                 seen = False
                 for child in list(el_copy):
-                    if etree.QName(child.tag).localname == m.group(1):
+                    if isinstance(child.tag, str) and etree.QName(child.tag).localname == m.group(1):
                         if seen:
                             el_copy.remove(child)
                         else:
@@ -2152,7 +2179,7 @@ class FixSuggester:
             if m:
                 el_copy = self._copy(el)
                 for child in list(el_copy):
-                    if etree.QName(child.tag).localname == m.group(1):
+                    if isinstance(child.tag, str) and etree.QName(child.tag).localname == m.group(1):
                         el_copy.remove(child)
                 return FixSuggestion(xpath, original_fragment, self._serialize(el_copy), code, msg, "high")
 
@@ -2259,10 +2286,19 @@ class FixSuggester:
             el_copy.text = "GB29NWBK60161331926819"
             return FixSuggestion(xpath, original_fragment, self._serialize(el_copy), code, msg, "high")
 
+        # A candidate value extracted from free-text is only acceptable if it
+        # isn't just the tag name echoed back and doesn't itself violate the
+        # element's constraint (guards against e.g. writing 'UETR' into <UETR>).
+        def _usable_candidate(val: str) -> bool:
+            if not val or val == el_local:
+                return False
+            con = _kb_field_constraint(el_local)
+            return not (isinstance(con, dict) and con and self._violates_constraint(val, con))
+
         # ── Hint contains a direct value (short, no XML) ──────────────────────
         if fix_hint.strip() and "<" not in fix_hint and len(fix_hint.strip()) <= 50:
             val_m = re.search(r"['\"]([A-Z0-9]{2,11})['\"]", fix_hint)
-            if val_m and not list(el):
+            if val_m and not list(el) and _usable_candidate(val_m.group(1)):
                 el_copy = self._copy(el)
                 el_copy.text = val_m.group(1)
                 return FixSuggestion(xpath, original_fragment, self._serialize(el_copy), code, msg, "high")
@@ -2271,7 +2307,7 @@ class FixSuggester:
         smart_val = self._extract_value_from_hint(
             etree.QName(el.tag).localname, fix_hint + " " + msg
         )
-        if smart_val and not list(el):
+        if smart_val and not list(el) and _usable_candidate(smart_val):
             el_copy = self._copy(el)
             el_copy.text = smart_val
             return FixSuggestion(xpath, original_fragment, self._serialize(el_copy), code, msg, "high")
@@ -2527,6 +2563,8 @@ class FixSuggester:
             tag_idx  = int(idx_m.group(2)) if idx_m.group(2) else 1
             count = 0
             for el in root.iter():
+                if not isinstance(el.tag, str):
+                    continue  # skip comment / processing-instruction nodes
                 if etree.QName(el.tag).localname == tag_name:
                     count += 1
                     if count == tag_idx:
@@ -2554,6 +2592,8 @@ class FixSuggester:
             count = 0
             found = None
             for child in cur:
+                if not isinstance(child.tag, str):
+                    continue  # skip comment / processing-instruction nodes
                 if etree.QName(child.tag).localname == tag_name:
                     count += 1
                     if count == want_idx:
