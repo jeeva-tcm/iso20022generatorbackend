@@ -114,38 +114,83 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
         return {}
 
     def _load_bics(self) -> Set[str]:
-        """Loads BIC codes from the entities.ftm.json file (JSONL format)"""
+        """
+        Loads BIC codes from the entities.ftm.json file (JSONL format).
+
+        Parsing the 19 MB JSONL line-by-line costs ~0.3s and is paid on every
+        process (re)start — which dominates the dev `--reload` cycle. We cache
+        the parsed result to a pickle keyed by the source file's (mtime, size);
+        a subsequent start with an unchanged source loads it in a few ms. The
+        output (the BIC set + self.bic_records) is byte-for-byte identical to a
+        full parse, and any change to the source file invalidates the cache.
+        """
         bics = set()
         self.bic_records = [] # Store simplified records for search
         file_path = os.path.join(self.bics_path, "entities.ftm.json")
-        if os.path.exists(file_path):
+        if not os.path.exists(file_path):
+            return bics
+
+        cache_path = os.path.join(self.bics_path, "entities.ftm.cache.pkl")
+        sig = None
+        try:
+            st = os.stat(file_path)
+            sig = (int(st.st_mtime), st.st_size)
+        except OSError:
+            sig = None
+
+        # Fast path: reuse the cache when the source file is unchanged.
+        if sig is not None and os.path.exists(cache_path):
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    for i, line in enumerate(f, 1):
-                        if not line.strip(): continue
-                        try:
-                            data = json.loads(line)
-                            props = data.get("properties", {})
-                            swift_bics = props.get("swiftBic", [])
-                            name = str(data.get("caption") or props.get("name", ["Unknown Bank"])[0])
-                            country = str(props.get("country", [""])[0]).upper()
-                            address = str(props.get("address", [""])[0])
-                            
-                            for bic in swift_bics:
-                                if not bic: continue
-                                bic_upper = str(bic).upper()
-                                bics.add(bic_upper)
-                                self.bic_records.append({
-                                    "bic": bic_upper,
-                                    "name": name,
-                                    "country": country,
-                                    "address": address
-                                })
-                        except Exception as e:
-                            print(f"Skipping line {i} in entities.ftm.json due to error: {e}")
-                            continue
+                import pickle
+                with open(cache_path, "rb") as cf:
+                    cached = pickle.load(cf)
+                if cached.get("sig") == sig:
+                    self.bic_records = cached["records"]
+                    return set(cached["bics"])
             except Exception as e:
-                print(f"Error loading BICs from {file_path}: {e}")
+                print(f"[BIC Cache] ignoring unreadable cache: {e}")
+
+        # Slow path: parse the JSONL source.
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                for i, line in enumerate(f, 1):
+                    if not line.strip(): continue
+                    try:
+                        data = json.loads(line)
+                        props = data.get("properties", {})
+                        swift_bics = props.get("swiftBic", [])
+                        name = str(data.get("caption") or props.get("name", ["Unknown Bank"])[0])
+                        country = str(props.get("country", [""])[0]).upper()
+                        address = str(props.get("address", [""])[0])
+
+                        for bic in swift_bics:
+                            if not bic: continue
+                            bic_upper = str(bic).upper()
+                            bics.add(bic_upper)
+                            self.bic_records.append({
+                                "bic": bic_upper,
+                                "name": name,
+                                "country": country,
+                                "address": address
+                            })
+                    except Exception as e:
+                        print(f"Skipping line {i} in entities.ftm.json due to error: {e}")
+                        continue
+        except Exception as e:
+            print(f"Error loading BICs from {file_path}: {e}")
+            return bics
+
+        # Write the cache for the next start (best-effort — never fatal).
+        if sig is not None:
+            try:
+                import pickle
+                tmp_path = cache_path + ".tmp"
+                with open(tmp_path, "wb") as cf:
+                    pickle.dump({"sig": sig, "bics": list(bics), "records": self.bic_records},
+                                cf, protocol=pickle.HIGHEST_PROTOCOL)
+                os.replace(tmp_path, cache_path)
+            except Exception as e:
+                print(f"[BIC Cache] could not write cache: {e}")
         return bics
 
     def reload_bics(self) -> None:
