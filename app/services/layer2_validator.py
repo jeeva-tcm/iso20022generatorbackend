@@ -12,6 +12,44 @@ class Layer2Mixin:
     # Cache: xsd_path → parsed (xsd_doc, schema) — avoids re-parsing the XSD on every
     # validation call. XSD files are large and parsing them dominated the L2 wall time.
     _xsd_schema_cache: dict = {}
+    # Cache: head xsd_path → ordered list of mandatory direct children of AppHdr
+    _hdr_mandatory_cache: dict = {}
+
+    def _mandatory_header_children(self, xsd_path: str) -> list:
+        """
+        Parse a head.001 (BAH) XSD and return the ORDERED list of mandatory
+        direct children of AppHdr — e.g. ['Fr','To','BizMsgIdr','MsgDefIdr',
+        'CreDt']. Used to report EVERY missing mandatory header field at once,
+        instead of relying on libxml2 which stops at the first sequence error.
+        """
+        if xsd_path in Layer2Mixin._hdr_mandatory_cache:
+            return Layer2Mixin._hdr_mandatory_cache[xsd_path]
+        XS = 'http://www.w3.org/2001/XMLSchema'
+        result: list = []
+        try:
+            root = etree.parse(xsd_path).getroot()
+            # <xs:element name="AppHdr" type="BusinessApplicationHeaderVxx"/>
+            type_name = None
+            for el in root.iter(f'{{{XS}}}element'):
+                if el.get('name') == 'AppHdr':
+                    type_name = (el.get('type') or '').split(':')[-1]
+                    break
+            ctype = None
+            if type_name:
+                for ct in root.iter(f'{{{XS}}}complexType'):
+                    if ct.get('name') == type_name:
+                        ctype = ct
+                        break
+            seq = ctype.find(f'{{{XS}}}sequence') if ctype is not None else None
+            if seq is not None:
+                for el in seq.findall(f'{{{XS}}}element'):
+                    nm = el.get('name')
+                    if nm and el.get('minOccurs', '1') != '0':
+                        result.append(nm)
+        except Exception as ex:
+            print(f'[DEBUG] header mandatory parse failed: {ex}')
+        Layer2Mixin._hdr_mandatory_cache[xsd_path] = result
+        return result
 
     async def _run_layer_2(self, xml_content: str, report: ValidationReport, message_type: str) -> bool:
         """
@@ -239,31 +277,36 @@ class Layer2Mixin:
                         # 2. Validate
                         h_schema.assertValid(h_val_doc)
                     except etree.DocumentInvalid as deh:
+                        # Collect libxml2's own header errors first. libxml2 stops at
+                        # the FIRST content-model violation, so on a missing Fr it only
+                        # complains that the NEXT element "is not expected" — hiding any
+                        # other missing mandatory fields.
+                        hdr_libxml_issues = []
                         for error in deh.error_log:
                             # 1. Simplify
                             friendly_msg, suggestion = self._simplify_error_message(error.message, h_tag_info, xml_content=xml_content)
-                            
+
                             # 2. Estimate
                             h_real_line = h_line_offset + error.line - 1
                             best_n = None
-                            
+
                             # 3. High-Precision correction for AppHdr
                             try:
                                 tag_m = re.search(r"Element '([^']+)'", error.message)
                                 val_m = re.search(r"[Vv]alue '([^']*)'", error.message)
-                                
+
                                 if tag_m:
                                     t_full = tag_m.group(1)
                                     t_name = t_full.split('}')[-1] if '}' in t_full else t_full
-                                    
+
                                     is_empty_h = "Empty" in friendly_msg or "minLength" in error.message
-                                    
+
                                     # Find in AppHdr specifically
                                     h_candidates = app_hdr_node.xpath(f"descendant-or-self::*[local-name()='{t_name}']")
                                     if h_candidates:
                                         if is_empty_h:
                                             h_candidates = [c for c in h_candidates if not (c.text or "").strip()]
-                                            
+
                                         if h_candidates:
                                             best_n = min(h_candidates, key=lambda c: abs((c.sourceline or 0) - h_real_line))
                                             h_real_line = best_n.sourceline
@@ -281,7 +324,40 @@ class Layer2Mixin:
                             except:
                                 pass
 
-                            issues.append(ValidationIssue("ERROR", 2, "HEADER_VAL", h_node_path, friendly_msg, suggestion, line=h_real_line))
+                            hdr_libxml_issues.append(ValidationIssue("ERROR", 2, "HEADER_VAL", h_node_path, friendly_msg, suggestion, line=h_real_line))
+
+                        # Completeness scan — report EVERY missing mandatory direct
+                        # child of AppHdr at once, so the user sees all of them in a
+                        # single pass instead of one-per-revalidation.
+                        present_children = {etree.QName(c.tag).localname for c in app_hdr_node
+                                            if isinstance(c.tag, str)}
+                        hdr_missing_issues = []
+                        for tag in self._mandatory_header_children(h_path):
+                            if tag not in present_children:
+                                label = (h_tag_info.get(tag, {}) or {}).get('label', tag)
+                                hdr_missing_issues.append(ValidationIssue(
+                                    "ERROR", 2, "HEADER_VAL", f"/AppHdr/{tag}",
+                                    f"The mandatory header element '{tag}' is missing from the Business Application Header (AppHdr).",
+                                    f"Add a <{tag}> element inside <AppHdr>. {label} is required by the ISO 20022 BAH (head.001) schema.",
+                                    line=h_line_offset))
+
+                        if hdr_missing_issues:
+                            # The clear per-field "missing" issues supersede libxml2's
+                            # confusing single "X is not expected / is expected" error,
+                            # so drop those structural complaints but keep genuine
+                            # value/format errors on header fields that ARE present.
+                            def _is_structural(it):
+                                m = (it.message or "").lower()
+                                return any(s in m for s in (
+                                    "is not expected", "not expected here",
+                                    "not expected at this position",
+                                    "is expected", "is not complete",
+                                    "content is incomplete", "not complete",
+                                ))
+                            issues.extend(hdr_missing_issues)
+                            issues.extend(it for it in hdr_libxml_issues if not _is_structural(it))
+                        else:
+                            issues.extend(hdr_libxml_issues)
                     except Exception as eh:
                          issues.append(ValidationIssue("WARNING", 2, "HEADER_ERR", "/", f"AppHdr Warning: {str(eh)}"))
 

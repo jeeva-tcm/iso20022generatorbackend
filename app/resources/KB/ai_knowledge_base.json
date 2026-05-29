@@ -1,8 +1,8 @@
 {
     "_meta": {
         "purpose": "Consolidated knowledge base the AI fix suggester consults BEFORE inventing values. Combines: field constraints (regex/length), tag templates (exact XML structures per message type), dependency rules (cross-field invariants), error-code catalogue with fix recipes, date-fix rules, tag insertion-order maps, and high-quality dummy data. Always prefer this file's data over hallucinated values.",
-        "version": "2.0",
-        "last_updated": "2026-05-28"
+        "version": "2.1",
+        "last_updated": "2026-05-29"
     },
 
     "field_constraints": {
@@ -156,6 +156,24 @@
         "APPHDR_TO_NEQ_INSTDAGT": {
             "root_cause": "AppHdr/To BICFI does not match the InstdAgt BICFI in the transaction.",
             "fix": "Read InstdAgt/FinInstnId/BICFI from the transaction block and update AppHdr/To/FIId/FinInstnId/BICFI to match."
+        },
+        "APPHDR_FR_MISSING": {
+            "root_cause": "AppHdr/Fr is completely absent. Fr is mandatory in the BAH (head.001) AppHdr. This is NOT a value mismatch — the whole element was deleted, so there is nothing to update; the AI must INSERT it.",
+            "aliases": ["MISSING_FR", "APPHDR_FR_ABSENT", "FR_NOT_FOUND"],
+            "fix": "Insert a full Fr element as the FIRST child of AppHdr using tag_templates.Fr. Resolve $INSTG_BICFI by harvesting InstgAgt/FinInstnId/BICFI from the transaction block (CdtTrfTxInf/InstgAgt for pacs.008/009, GrpHdr/InstgAgt for pacs.002/004). If no InstgAgt BICFI exists anywhere in the message, fall back to dummy_data.parties.instructing_agent.bicfi (BARCGB22XXX).",
+            "insert_template": "<Fr><FIId><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></FIId></Fr>",
+            "insert_position": "First child of AppHdr, before To (see tag_insertion_order.AppHdr).",
+            "must_equal": "The inserted Fr BICFI MUST equal InstgAgt/FinInstnId/BICFI (see dependencies.equals.APPHDR_FR_EQ_INSTGAGT). Always harvest, never invent, when InstgAgt is present.",
+            "do_not": "Do NOT add Nm or PstlAdr inside Fr/FIId/FinInstnId when BICFI is present (BICFI_EXCLUSIVE)."
+        },
+        "APPHDR_TO_MISSING": {
+            "root_cause": "AppHdr/To is completely absent. To is mandatory in the BAH (head.001) AppHdr. This is NOT a value mismatch — the whole element was deleted, so there is nothing to update; the AI must INSERT it.",
+            "aliases": ["MISSING_TO", "APPHDR_TO_ABSENT", "TO_NOT_FOUND"],
+            "fix": "Insert a full To element into AppHdr immediately AFTER Fr using tag_templates.To. Resolve $INSTD_BICFI by harvesting InstdAgt/FinInstnId/BICFI from the transaction block (CdtTrfTxInf/InstdAgt for pacs.008/009, GrpHdr/InstdAgt for pacs.002/004). If no InstdAgt BICFI exists anywhere in the message, fall back to dummy_data.parties.instructed_agent.bicfi (CHASUS33XXX).",
+            "insert_template": "<To><FIId><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></FIId></To>",
+            "insert_position": "Second child of AppHdr, immediately after Fr and before BizMsgIdr (see tag_insertion_order.AppHdr).",
+            "must_equal": "The inserted To BICFI MUST equal InstdAgt/FinInstnId/BICFI (see dependencies.equals.APPHDR_TO_EQ_INSTDAGT). Always harvest, never invent, when InstdAgt is present.",
+            "do_not": "Do NOT add Nm or PstlAdr inside To/FIId/FinInstnId when BICFI is present (BICFI_EXCLUSIVE)."
         },
         "NBOFTXS_MISMATCH": {
             "root_cause": "GrpHdr/NbOfTxs does not equal the actual number of transaction blocks.",
@@ -509,6 +527,22 @@
                 "id": "STTLMTMINDCTN_REQUIRES_DTLS",
                 "if": "exists(SttlmTmIndctn)",
                 "then_required_one_of": ["SttlmTmIndctn.CdtDtTm","SttlmTmIndctn.DbtDtTm"]
+            },
+            {
+                "id": "APPHDR_REQUIRES_FR",
+                "if": "exists(AppHdr)",
+                "then_required": ["AppHdr.Fr"],
+                "description": "AppHdr/Fr (the sender) is mandatory in the Business Application Header. If absent, insert it as the first child of AppHdr.",
+                "error_code": "APPHDR_FR_MISSING",
+                "fix_action": "Insert tag_templates.Fr with $INSTG_BICFI harvested from InstgAgt//BICFI; fall back to dummy_data.parties.instructing_agent.bicfi."
+            },
+            {
+                "id": "APPHDR_REQUIRES_TO",
+                "if": "exists(AppHdr)",
+                "then_required": ["AppHdr.To"],
+                "description": "AppHdr/To (the receiver) is mandatory in the Business Application Header. If absent, insert it after Fr.",
+                "error_code": "APPHDR_TO_MISSING",
+                "fix_action": "Insert tag_templates.To with $INSTD_BICFI harvested from InstdAgt//BICFI; fall back to dummy_data.parties.instructed_agent.bicfi."
             }
         ],
 

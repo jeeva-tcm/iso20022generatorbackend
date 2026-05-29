@@ -926,7 +926,8 @@ class FixSuggester:
             parent = cur.getparent()
             local = etree.QName(cur.tag).localname
             if parent is not None:
-                sibs = [c for c in parent if etree.QName(c.tag).localname == local]
+                sibs = [c for c in parent
+                        if isinstance(c.tag, str) and etree.QName(c.tag).localname == local]
                 idx = sibs.index(cur) + 1
                 parts.append(f"{local}[{idx}]" if len(sibs) > 1 else local)
             else:
@@ -948,7 +949,7 @@ class FixSuggester:
         for part in parts[start:]:
             found = None
             for child in cur:
-                if etree.QName(child.tag).localname == part:
+                if isinstance(child.tag, str) and etree.QName(child.tag).localname == part:
                     found = child
                     break
             if found is None:
@@ -958,7 +959,7 @@ class FixSuggester:
 
     def _child_exists(self, parent: etree._Element, local_name: str) -> Optional[etree._Element]:
         for child in parent:
-            if etree.QName(child.tag).localname == local_name:
+            if isinstance(child.tag, str) and etree.QName(child.tag).localname == local_name:
                 return child
         return None
 
@@ -1063,10 +1064,12 @@ class FixSuggester:
             leaf_candidates = []
             for cont in mentioned_containers:
                 for cont_el in root.iter():
+                    if not isinstance(cont_el.tag, str):
+                        continue  # skip comment / processing-instruction nodes
                     if etree.QName(cont_el.tag).localname != cont:
                         continue
                     for desc in cont_el.iter():
-                        if etree.QName(desc.tag).localname == leaf:
+                        if isinstance(desc.tag, str) and etree.QName(desc.tag).localname == leaf:
                             leaf_candidates.append(desc)
             picked = _pick(leaf_candidates)
             if picked is not None:
@@ -1077,11 +1080,278 @@ class FixSuggester:
         # Default: pick the line-nearest element matching any mentioned tag.
         for tag in tags:
             matches = [el for el in root.iter()
-                       if etree.QName(el.tag).localname == tag]
+                       if isinstance(el.tag, str) and etree.QName(el.tag).localname == tag]
             picked = _pick(matches)
             if picked is not None:
                 return picked
         return None
+
+    # ── Insert deleted mandatory sibling(s) (XSD "not expected" → missing) ────
+
+    def _try_insert_missing_sibling(self, root: etree._Element, xml: str,
+                                    code: str, msg: str, fix_hint: str,
+                                    explicit_parent: Optional[etree._Element] = None,
+                                    explicit_missing: str = "") -> Optional["FixSuggestion"]:
+        """
+        Insert a mandatory element that was deleted entirely (classic case:
+        AppHdr/Fr or AppHdr/To removed) back into its correct schema slot,
+        namespaced to the parent and indented to match the document.
+
+        Two entry points:
+          • Implicit — the XSD raised "The element 'X' is not expected here …
+            another mandatory element is missing before this one. One of the
+            following elements is expected : 'A, B'". We parse X and the
+            expected list, and (because the validator surfaces only ONE ordering
+            error per pass) reinsert EVERY missing mandatory sibling at once so
+            both Fr and To come back in a single fix.
+          • Explicit — the caller already knows the parent element and the exact
+            missing tag (used for the validator's per-field "mandatory header
+            element is missing" issues); we insert just that one.
+
+        Returns None (caller declines) when no buildable missing element can be
+        identified.
+        """
+        text = f"{msg} {fix_hint}"
+        line_hint = getattr(self, "_line_hint", None)
+
+        if explicit_missing:
+            # Explicit mode: parent + missing tag are already known.
+            parent = explicit_parent
+            if parent is None:
+                return None
+            found_elem = ""
+            exp_candidates = [explicit_missing]
+        else:
+            # 1. The element the validator stumbled on ("not expected").
+            m_found = re.search(r"element '([\w:{}.\-]+)' is not expected", text, re.I)
+            if not m_found:
+                return None
+            found_elem = m_found.group(1).split('}')[-1].split(':')[-1]
+            if not found_elem:
+                return None
+
+            # 2. The candidate elements the schema expected at that slot. They are
+            #    quoted after "expected", e.g. expected : 'CharSet, Fr'  →  the
+            #    quoted blob may itself be a comma-separated list.
+            exp_candidates = []
+            m_exp = re.search(r"expected\s*:?\s*(.+)$", text, re.I | re.S)
+            if m_exp:
+                for blob in re.findall(r"'([^']+)'", m_exp.group(1)):
+                    for tok in re.split(r"[,\s|]+", blob):
+                        tok = tok.strip().split('}')[-1].split(':')[-1]
+                        if tok and tok not in exp_candidates:
+                            exp_candidates.append(tok)
+
+            # 3. Locate the offending element in the live document (line-nearest).
+            matches = [el for el in root.iter()
+                       if isinstance(el.tag, str)
+                       and etree.QName(el.tag).localname == found_elem]
+            if not matches:
+                return None
+            if line_hint is None:
+                found_el = matches[0]
+            else:
+                found_el = min(matches, key=lambda e: abs((e.sourceline or 0) - line_hint))
+
+            parent = found_el.getparent()
+            if parent is None:
+                return None
+
+        parent_local = etree.QName(parent.tag).localname
+
+        present = {etree.QName(c.tag).localname for c in parent
+                   if isinstance(c.tag, str)}
+        # Prefer the BUSINESS message type (Document body, e.g. pacs.008) over
+        # the BAH type (head.001). _detect_msg_type returns whichever appears
+        # first in the file, which is the AppHdr's head.001 namespace — but
+        # mandatory_fields and templates are keyed by the business type.
+        msg_type = _detect_msg_type(xml)
+        _all_types = re.findall(r"([a-z]+\.\d{2,3}\.\d{3}\.\d{2})", xml)
+        _biz = next((t for t in _all_types if not t.startswith("head.")), "")
+        if _biz:
+            msg_type = _biz
+        order = _kb_get(f"tag_insertion_order.{parent_local}")
+        order = order if isinstance(order, list) else None
+
+        def _buildable(tag: str) -> bool:
+            return bool(_kb_tag_template(tag, msg_type)) or tag in _TEMPLATES
+
+        # 4. Everything we should (re)insert, restricted to those MISSING from
+        #    the parent and buildable (so we never inject optional noise like
+        #    CharSet, which has no template), ordered by the KB's
+        #    tag_insertion_order so they go back in schema sequence.
+        #    Implicit mode reinserts the error's expected list UNION the KB's
+        #    mandatory children (fix-all from a single error); explicit mode
+        #    inserts only the one named field (the validator already enumerated
+        #    each missing field as its own issue).
+        if explicit_missing:
+            candidate_tags = list(exp_candidates)
+        else:
+            candidate_tags = list(exp_candidates) + self._kb_mandatory_children(parent_local, msg_type)
+        wanted: list[str] = []
+        for tag in candidate_tags:
+            if tag not in wanted and tag not in present and _buildable(tag):
+                wanted.append(tag)
+        if not wanted:
+            return None
+        if order:
+            wanted.sort(key=lambda t: order.index(t) if t in order else 999)
+
+        # 5. Build each missing element, namespaced to the PARENT (AppHdr lives
+        #    in the head.001 namespace, not the Document body namespace).
+        parent_ns = etree.QName(parent.tag).namespace or ""
+        xsd_path  = self._get_xsd_path(xml)
+        tmap      = _XsdTypeMap.get(xsd_path) if xsd_path else None
+        rules_idx = _RulesIndex.get(msg_type) if msg_type else None
+
+        parent_copy = self._copy(parent)
+        base_cols, unit, close_cols = self._derive_child_indent(parent_copy)
+
+        inserted_any = False
+        for tag in wanted:
+            child_el = self._build_child(
+                tag, fix_hint, parent_ns, tmap,
+                existing_parent=parent_copy, rules_idx=rules_idx,
+                path_parts=[tag], rule_id=code, root=root, msg_type=msg_type,
+            )
+            if child_el is None:
+                continue
+            # Indent the inserted subtree to match the document layout.
+            if base_cols is not None:
+                self._indent_el(child_el, base_cols, unit)
+            insert_idx = self._sibling_insert_index(
+                parent_copy, tag, order, found_elem
+            )
+            if insert_idx is None:
+                parent_copy.append(child_el)
+            else:
+                parent_copy.insert(insert_idx, child_el)
+            inserted_any = True
+
+        if not inserted_any:
+            return None
+
+        # 6. Normalise the spacing between all direct children so the inserted
+        #    elements sit on their own lines, aligned with their siblings.
+        if base_cols is not None:
+            self._normalize_child_tails(parent_copy, base_cols, close_cols)
+
+        return FixSuggestion(
+            xpath=self._xpath_of(parent),
+            original_fragment=self._serialize(parent),
+            fragment_xml=self._serialize(parent_copy),
+            issue_code=code,
+            issue_message=msg,
+            confidence="high",
+        )
+
+    def _kb_mandatory_children(self, parent_local: str, msg_type: str) -> list[str]:
+        """
+        Return the DIRECT mandatory child tags of `parent_local` declared in the
+        KB's cbpr_plus_rules.mandatory_fields for this message family.
+
+        mandatory_fields lists dotted paths like "AppHdr.Fr" and
+        "CdtTrfTxInf.PmtId.UETR"; we keep only the 2-segment paths whose first
+        segment is the parent (i.e. the parent's own immediate children).
+        """
+        fam = _kb_msg_family(msg_type)
+        # NB: index the family key directly — _kb_get can't walk it because the
+        # key itself contains a dot ("pacs.008") and it splits on every dot.
+        mf = _kb_get("cbpr_plus_rules.mandatory_fields", {}) or {}
+        entries = mf.get(fam, []) if isinstance(mf, dict) else []
+        out: list[str] = []
+        for p in entries:
+            if not isinstance(p, str):
+                continue
+            parts = [s for s in p.split(".") if s]
+            if len(parts) == 2 and parts[0] == parent_local and parts[1] not in out:
+                out.append(parts[1])
+        return out
+
+    def _sibling_insert_index(self, parent_copy: etree._Element, tag: str,
+                              order: Optional[list], found_elem: str) -> Optional[int]:
+        """
+        Index at which to insert `tag` among parent_copy's children: the slot
+        before the first existing child that follows it in the KB order; failing
+        that, immediately before the element that tripped the error; else append.
+        """
+        if order and tag in order:
+            new_pos = order.index(tag)
+            for idx, c in enumerate(parent_copy):
+                cl = etree.QName(c.tag).localname
+                if cl in order and order.index(cl) > new_pos:
+                    return idx
+        for idx, c in enumerate(parent_copy):
+            if etree.QName(c.tag).localname == found_elem:
+                return idx
+        return None
+
+    # ── Whitespace / indentation helpers ──────────────────────────────────────
+
+    def _derive_child_indent(self, parent: etree._Element):
+        """
+        Inspect an existing pretty-printed parent and return
+        (child_indent, unit, close_indent) as whitespace strings:
+          child_indent — spaces before each direct child (e.g. 8 spaces)
+          unit         — one indentation step (e.g. 4 spaces)
+          close_indent — spaces before the parent's closing tag (e.g. 4 spaces)
+        Returns (None, None, None) when the parent isn't pretty-printed (single
+        line), so the caller leaves the compact layout untouched.
+        """
+        kids = [k for k in parent if isinstance(k.tag, str)]
+        if not kids:
+            return (None, None, None)
+        base = None
+        if parent.text and "\n" in parent.text:
+            base = parent.text.split("\n")[-1]
+        if base is None:
+            for k in kids[:-1]:
+                if k.tail and "\n" in k.tail:
+                    base = k.tail.split("\n")[-1]
+                    break
+        if base is None:
+            return (None, None, None)
+        close = None
+        if kids[-1].tail and "\n" in kids[-1].tail:
+            close = kids[-1].tail.split("\n")[-1]
+        if close is None:
+            close = base[:-4] if len(base) >= 4 else ""
+        unit = base[len(close):] if (base.startswith(close) and len(base) > len(close)) else "    "
+        return (base, unit, close)
+
+    def _indent_el(self, el: etree._Element, indent_cols: str, unit: str) -> None:
+        """
+        Recursively pretty-print a freshly built (whitespace-free) element so its
+        children sit at indent_cols + unit, one per line. `indent_cols` is the
+        column at which `el` itself sits.
+        """
+        kids = [k for k in el if isinstance(k.tag, str)]
+        if not kids:
+            return
+        child_cols = indent_cols + unit
+        el.text = "\n" + child_cols
+        for i, k in enumerate(kids):
+            self._indent_el(k, child_cols, unit)
+            k.tail = "\n" + (child_cols if i < len(kids) - 1 else indent_cols)
+
+    def _normalize_child_tails(self, parent: etree._Element,
+                               base_cols: str, close_cols: str) -> None:
+        """
+        Make every direct child of `parent` sit on its own line: non-last
+        children get `base_cols` of indentation after them, the last child
+        dedents to `close_cols` before the parent's closing tag. Only the
+        inter-child whitespace is touched; each child's inner content is left
+        as-is.
+        """
+        kids = [k for k in parent if isinstance(k.tag, str)]
+        if not kids:
+            return
+        # Always overwrite the leading whitespace so blank lines left behind by a
+        # manual deletion (e.g. the user removed Fr/To, leaving empty lines) are
+        # collapsed to a single newline + indent — no extra space above the tags.
+        parent.text = "\n" + base_cols
+        for i, k in enumerate(kids):
+            k.tail = "\n" + (base_cols if i < len(kids) - 1 else close_cols)
 
     # ── XSD loading ───────────────────────────────────────────────────────────
 
@@ -1511,9 +1781,12 @@ class FixSuggester:
         """
         existing_local_names = {
             etree.QName(c.tag).localname for c in existing_parent
+            if isinstance(c.tag, str)
         }
         # Prune sub-children of new_el that already sit at parent level
         for child in list(new_el):
+            if not isinstance(child.tag, str):
+                continue
             child_local = etree.QName(child.tag).localname
             if child_local in existing_local_names:
                 new_el.remove(child)
@@ -1581,6 +1854,33 @@ class FixSuggester:
             # Invalid XML — only the LLM can help
             return self._llm_fallback("/", xml[:500], code, msg, fix_hint)
 
+        # ── Route: missing mandatory AppHdr field (validator completeness scan) ─
+        # The header completeness scan emits one clean "/AppHdr/<Tag>" issue per
+        # missing mandatory BAH field. The normal missing-child flow can't place
+        # these correctly (it would stamp the envelope/Document namespace and,
+        # lacking the head.001 XSD order, append at the end). Route them to the
+        # namespace-aware, KB-ordered, indented inserter instead.
+        _mh = re.search(r"(?:^|/)AppHdr/(\w+)$", path)
+        if code == "HEADER_VAL" and _mh:
+            _apphdr = root.find(".//{*}AppHdr")
+            if _apphdr is None and etree.QName(root.tag).localname == "AppHdr":
+                _apphdr = root
+            if _apphdr is not None and self._child_exists(_apphdr, _mh.group(1)) is None:
+                _res = self._try_insert_missing_sibling(
+                    root, xml, code, msg, fix_hint,
+                    explicit_parent=_apphdr, explicit_missing=_mh.group(1),
+                )
+                if _res is not None:
+                    return _res
+
+        # ── Guard: element-ordering / structural-position errors ─────────────
+        # "X is not expected at this position" / "not allowed here" means the
+        # element exists but sits in the wrong XSD sequence slot. A safe fix
+        # requires reordering siblings into the schema's declared order — risky
+        # to guess element-by-element, and a wrong guess CREATES new errors
+        # (the exact "it changes tags and makes new errors" complaint). Without
+        # an LLM we deliberately decline rather than corrupt the document:
+        # return low confidence so the UI shows guidance, not a bad auto-fix.
         # ── Element-ordering / structural-position errors ────────────────────
         # "X is not expected here ... One of the following elements is expected:
         # A, B." means a mandatory element is missing before X (or siblings are
@@ -1598,6 +1898,15 @@ class FixSuggester:
             "following element",
             "missing before",
         )):
+            # A mandatory sibling that must precede this element may have been
+            # deleted entirely (e.g. AppHdr/Fr removed → <To> trips this error).
+            # That is a safe INSERT, not a risky reorder — try it before
+            # declining. Falls through to the low-confidence no-op when no
+            # missing mandatory element can be confidently identified/built.
+            inserted = self._try_insert_missing_sibling(root, xml, code, msg, fix_hint)
+            if inserted is not None:
+                return inserted
+
             seq_fix = self._try_sequence_fix(
                 root, xml, code, msg, "", _detect_msg_type(xml), None
             )
@@ -1785,7 +2094,7 @@ class FixSuggester:
         for i, part in enumerate(parts[start:], start=start):
             found = None
             for child in cur:
-                if etree.QName(child.tag).localname == part:
+                if isinstance(child.tag, str) and etree.QName(child.tag).localname == part:
                     found = child
                     break
             if found is None:
@@ -1935,6 +2244,8 @@ class FixSuggester:
         new_pos = order.index(new_tag)
         # Find the first existing child whose order position is > new_pos
         for idx, child in enumerate(parent_copy):
+            if not isinstance(child.tag, str):
+                continue
             child_local = etree.QName(child.tag).localname
             if child_local in order and order.index(child_local) > new_pos:
                 return idx
@@ -2106,6 +2417,19 @@ class FixSuggester:
 
         # Compute this element's full path for matching dependencies
         my_xpath = self._xpath_of(el)
+
+        # 0. Length overflow only → truncate the EXISTING value to the KB/schema
+        #    max_length. This preserves the user's actual data (just shortened to
+        #    the limit) instead of replacing it with a generic example, and is the
+        #    correct fix for "Field X has an invalid length" per the KB rules.
+        cur_txt = (el.text or "").strip()
+        max_len = constraint.get("max_length") if isinstance(constraint, dict) else None
+        if cur_txt and isinstance(max_len, int) and len(cur_txt) > max_len:
+            truncated = cur_txt[:max_len].rstrip()
+            # Only accept the truncation if it actually resolves the violation
+            # (i.e. length was the SOLE problem — not illegal chars / wrong type).
+            if truncated and not self._violates_constraint(truncated, constraint):
+                return truncated
 
         # 1. Cross-field harvesting via KB equals dependencies
         if root is not None:
@@ -2600,6 +2924,22 @@ class FixSuggester:
         msg_l             = msg.lower()
         el_local          = etree.QName(el.tag).localname
 
+        # ── Length overflow → shorten the value to the KB/schema max_length ───
+        # Highest-priority, deterministic fix for "Field X has an invalid length"
+        # errors (e.g. <Nm> with 162 chars when Max140Text allows 140). We keep
+        # the user's own text and simply trim it to the allowed length so they
+        # can accept or further edit it — exactly what the rule expects.
+        if ("length" in msg_l) and (not list(el)) and el.text:
+            con = _kb_field_constraint(el_local)
+            max_len = con.get("max_length") if isinstance(con, dict) else None
+            cur = el.text.strip()
+            if isinstance(max_len, int) and len(cur) > max_len:
+                trimmed = cur[:max_len].rstrip() or cur[:max_len]
+                el_copy = self._copy(el)
+                el_copy.text = trimmed
+                return FixSuggestion(xpath, original_fragment,
+                                     self._serialize(el_copy), code, msg, "high")
+
         # ── Count / sum aggregates (NbOfTxs, CtrlSum) ─────────────────────────
         # These are derived from the document, so there's a single correct
         # value — compute it rather than guessing. Without this they fell
@@ -2723,6 +3063,25 @@ class FixSuggester:
                         return FixSuggestion(xpath, original_fragment,
                                               self._serialize(el_copy), code, msg, "high")
 
+            # 3. Already valid → nothing to fix (no-op).
+            # If this leaf's value already satisfies its FORMAT constraint
+            # (UUID/BIC/IBAN/date/length/regex), the format/value defect is
+            # stale or was resolved by an earlier fix in the batch. Returning a
+            # no-op stops the value-guessing branches below from "repairing" a
+            # valid value with the INVALID value quoted in the error message —
+            # e.g. extracting 'UETR' from "...required format for 'UETR'" and
+            # writing it back into <UETR>, which corrupts an already-fixed UUID.
+            con = _kb_field_constraint(el_local)
+            is_format_con = (
+                isinstance(con, dict)
+                and con.get("type") != "codelist"
+                and (con.get("type") in self._CONSTRAINT_REGEX
+                     or con.get("max_length") or con.get("min_length"))
+            )
+            if is_format_con and not self._violates_constraint(current_text, con):
+                return FixSuggestion(xpath, original_fragment, original_fragment,
+                                     code, msg, "low")
+
         # ── Disallowed / duplicate → remove the offending child ──────────────
         if code == "DUPLICATE_TAG" or "duplicate" in msg_l:
             m = re.search(r"<(\w+)>", msg)
@@ -2730,7 +3089,7 @@ class FixSuggester:
                 el_copy = self._copy(el)
                 seen = False
                 for child in list(el_copy):
-                    if etree.QName(child.tag).localname == m.group(1):
+                    if isinstance(child.tag, str) and etree.QName(child.tag).localname == m.group(1):
                         if seen:
                             el_copy.remove(child)
                         else:
@@ -2743,7 +3102,7 @@ class FixSuggester:
             if m:
                 el_copy = self._copy(el)
                 for child in list(el_copy):
-                    if etree.QName(child.tag).localname == m.group(1):
+                    if isinstance(child.tag, str) and etree.QName(child.tag).localname == m.group(1):
                         el_copy.remove(child)
                 return FixSuggestion(xpath, original_fragment, self._serialize(el_copy), code, msg, "high")
 
@@ -2850,10 +3209,19 @@ class FixSuggester:
             el_copy.text = "GB29NWBK60161331926819"
             return FixSuggestion(xpath, original_fragment, self._serialize(el_copy), code, msg, "high")
 
+        # A candidate value extracted from free-text is only acceptable if it
+        # isn't just the tag name echoed back and doesn't itself violate the
+        # element's constraint (guards against e.g. writing 'UETR' into <UETR>).
+        def _usable_candidate(val: str) -> bool:
+            if not val or val == el_local:
+                return False
+            con = _kb_field_constraint(el_local)
+            return not (isinstance(con, dict) and con and self._violates_constraint(val, con))
+
         # ── Hint contains a direct value (short, no XML) ──────────────────────
         if fix_hint.strip() and "<" not in fix_hint and len(fix_hint.strip()) <= 50:
             val_m = re.search(r"['\"]([A-Z0-9]{2,11})['\"]", fix_hint)
-            if val_m and not list(el):
+            if val_m and not list(el) and _usable_candidate(val_m.group(1)):
                 el_copy = self._copy(el)
                 el_copy.text = val_m.group(1)
                 return FixSuggestion(xpath, original_fragment, self._serialize(el_copy), code, msg, "high")
@@ -2862,7 +3230,7 @@ class FixSuggester:
         smart_val = self._extract_value_from_hint(
             etree.QName(el.tag).localname, fix_hint + " " + msg
         )
-        if smart_val and not list(el):
+        if smart_val and not list(el) and _usable_candidate(smart_val):
             el_copy = self._copy(el)
             el_copy.text = smart_val
             return FixSuggestion(xpath, original_fragment, self._serialize(el_copy), code, msg, "high")
@@ -3080,6 +3448,12 @@ class FixSuggester:
                 decl = m.group(1) + "\n"
             return decl + body
 
+        # Preserve the replaced element's tail (the whitespace/newline that
+        # follows its closing tag) so the element after it keeps its place on
+        # its own line — otherwise the next sibling jams onto the same line.
+        if new_el.tail is None:
+            new_el.tail = target.tail
+
         idx = list(parent).index(target)
         parent.remove(target)
         parent.insert(idx, new_el)
@@ -3118,6 +3492,8 @@ class FixSuggester:
             tag_idx  = int(idx_m.group(2)) if idx_m.group(2) else 1
             count = 0
             for el in root.iter():
+                if not isinstance(el.tag, str):
+                    continue  # skip comment / processing-instruction nodes
                 if etree.QName(el.tag).localname == tag_name:
                     count += 1
                     if count == tag_idx:
@@ -3145,6 +3521,8 @@ class FixSuggester:
             count = 0
             found = None
             for child in cur:
+                if not isinstance(child.tag, str):
+                    continue  # skip comment / processing-instruction nodes
                 if etree.QName(child.tag).localname == tag_name:
                     count += 1
                     if count == want_idx:
