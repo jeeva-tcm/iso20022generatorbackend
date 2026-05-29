@@ -922,6 +922,273 @@ class FixSuggester:
                 return picked
         return None
 
+    # ── Insert deleted mandatory sibling(s) (XSD "not expected" → missing) ────
+
+    def _try_insert_missing_sibling(self, root: etree._Element, xml: str,
+                                    code: str, msg: str, fix_hint: str,
+                                    explicit_parent: Optional[etree._Element] = None,
+                                    explicit_missing: str = "") -> Optional["FixSuggestion"]:
+        """
+        Insert a mandatory element that was deleted entirely (classic case:
+        AppHdr/Fr or AppHdr/To removed) back into its correct schema slot,
+        namespaced to the parent and indented to match the document.
+
+        Two entry points:
+          • Implicit — the XSD raised "The element 'X' is not expected here …
+            another mandatory element is missing before this one. One of the
+            following elements is expected : 'A, B'". We parse X and the
+            expected list, and (because the validator surfaces only ONE ordering
+            error per pass) reinsert EVERY missing mandatory sibling at once so
+            both Fr and To come back in a single fix.
+          • Explicit — the caller already knows the parent element and the exact
+            missing tag (used for the validator's per-field "mandatory header
+            element is missing" issues); we insert just that one.
+
+        Returns None (caller declines) when no buildable missing element can be
+        identified.
+        """
+        text = f"{msg} {fix_hint}"
+        line_hint = getattr(self, "_line_hint", None)
+
+        if explicit_missing:
+            # Explicit mode: parent + missing tag are already known.
+            parent = explicit_parent
+            if parent is None:
+                return None
+            found_elem = ""
+            exp_candidates = [explicit_missing]
+        else:
+            # 1. The element the validator stumbled on ("not expected").
+            m_found = re.search(r"element '([\w:{}.\-]+)' is not expected", text, re.I)
+            if not m_found:
+                return None
+            found_elem = m_found.group(1).split('}')[-1].split(':')[-1]
+            if not found_elem:
+                return None
+
+            # 2. The candidate elements the schema expected at that slot. They are
+            #    quoted after "expected", e.g. expected : 'CharSet, Fr'  →  the
+            #    quoted blob may itself be a comma-separated list.
+            exp_candidates = []
+            m_exp = re.search(r"expected\s*:?\s*(.+)$", text, re.I | re.S)
+            if m_exp:
+                for blob in re.findall(r"'([^']+)'", m_exp.group(1)):
+                    for tok in re.split(r"[,\s|]+", blob):
+                        tok = tok.strip().split('}')[-1].split(':')[-1]
+                        if tok and tok not in exp_candidates:
+                            exp_candidates.append(tok)
+
+            # 3. Locate the offending element in the live document (line-nearest).
+            matches = [el for el in root.iter()
+                       if isinstance(el.tag, str)
+                       and etree.QName(el.tag).localname == found_elem]
+            if not matches:
+                return None
+            if line_hint is None:
+                found_el = matches[0]
+            else:
+                found_el = min(matches, key=lambda e: abs((e.sourceline or 0) - line_hint))
+
+            parent = found_el.getparent()
+            if parent is None:
+                return None
+
+        parent_local = etree.QName(parent.tag).localname
+
+        present = {etree.QName(c.tag).localname for c in parent
+                   if isinstance(c.tag, str)}
+        # Prefer the BUSINESS message type (Document body, e.g. pacs.008) over
+        # the BAH type (head.001). _detect_msg_type returns whichever appears
+        # first in the file, which is the AppHdr's head.001 namespace — but
+        # mandatory_fields and templates are keyed by the business type.
+        msg_type = _detect_msg_type(xml)
+        _all_types = re.findall(r"([a-z]+\.\d{2,3}\.\d{3}\.\d{2})", xml)
+        _biz = next((t for t in _all_types if not t.startswith("head.")), "")
+        if _biz:
+            msg_type = _biz
+        order = _kb_get(f"tag_insertion_order.{parent_local}")
+        order = order if isinstance(order, list) else None
+
+        def _buildable(tag: str) -> bool:
+            return bool(_kb_tag_template(tag, msg_type)) or tag in _TEMPLATES
+
+        # 4. Everything we should (re)insert, restricted to those MISSING from
+        #    the parent and buildable (so we never inject optional noise like
+        #    CharSet, which has no template), ordered by the KB's
+        #    tag_insertion_order so they go back in schema sequence.
+        #    Implicit mode reinserts the error's expected list UNION the KB's
+        #    mandatory children (fix-all from a single error); explicit mode
+        #    inserts only the one named field (the validator already enumerated
+        #    each missing field as its own issue).
+        if explicit_missing:
+            candidate_tags = list(exp_candidates)
+        else:
+            candidate_tags = list(exp_candidates) + self._kb_mandatory_children(parent_local, msg_type)
+        wanted: list[str] = []
+        for tag in candidate_tags:
+            if tag not in wanted and tag not in present and _buildable(tag):
+                wanted.append(tag)
+        if not wanted:
+            return None
+        if order:
+            wanted.sort(key=lambda t: order.index(t) if t in order else 999)
+
+        # 5. Build each missing element, namespaced to the PARENT (AppHdr lives
+        #    in the head.001 namespace, not the Document body namespace).
+        parent_ns = etree.QName(parent.tag).namespace or ""
+        xsd_path  = self._get_xsd_path(xml)
+        tmap      = _XsdTypeMap.get(xsd_path) if xsd_path else None
+        rules_idx = _RulesIndex.get(msg_type) if msg_type else None
+
+        parent_copy = self._copy(parent)
+        base_cols, unit, close_cols = self._derive_child_indent(parent_copy)
+
+        inserted_any = False
+        for tag in wanted:
+            child_el = self._build_child(
+                tag, fix_hint, parent_ns, tmap,
+                existing_parent=parent_copy, rules_idx=rules_idx,
+                path_parts=[tag], rule_id=code, root=root, msg_type=msg_type,
+            )
+            if child_el is None:
+                continue
+            # Indent the inserted subtree to match the document layout.
+            if base_cols is not None:
+                self._indent_el(child_el, base_cols, unit)
+            insert_idx = self._sibling_insert_index(
+                parent_copy, tag, order, found_elem
+            )
+            if insert_idx is None:
+                parent_copy.append(child_el)
+            else:
+                parent_copy.insert(insert_idx, child_el)
+            inserted_any = True
+
+        if not inserted_any:
+            return None
+
+        # 6. Normalise the spacing between all direct children so the inserted
+        #    elements sit on their own lines, aligned with their siblings.
+        if base_cols is not None:
+            self._normalize_child_tails(parent_copy, base_cols, close_cols)
+
+        return FixSuggestion(
+            xpath=self._xpath_of(parent),
+            original_fragment=self._serialize(parent),
+            fragment_xml=self._serialize(parent_copy),
+            issue_code=code,
+            issue_message=msg,
+            confidence="high",
+        )
+
+    def _kb_mandatory_children(self, parent_local: str, msg_type: str) -> list[str]:
+        """
+        Return the DIRECT mandatory child tags of `parent_local` declared in the
+        KB's cbpr_plus_rules.mandatory_fields for this message family.
+
+        mandatory_fields lists dotted paths like "AppHdr.Fr" and
+        "CdtTrfTxInf.PmtId.UETR"; we keep only the 2-segment paths whose first
+        segment is the parent (i.e. the parent's own immediate children).
+        """
+        fam = _kb_msg_family(msg_type)
+        # NB: index the family key directly — _kb_get can't walk it because the
+        # key itself contains a dot ("pacs.008") and it splits on every dot.
+        mf = _kb_get("cbpr_plus_rules.mandatory_fields", {}) or {}
+        entries = mf.get(fam, []) if isinstance(mf, dict) else []
+        out: list[str] = []
+        for p in entries:
+            if not isinstance(p, str):
+                continue
+            parts = [s for s in p.split(".") if s]
+            if len(parts) == 2 and parts[0] == parent_local and parts[1] not in out:
+                out.append(parts[1])
+        return out
+
+    def _sibling_insert_index(self, parent_copy: etree._Element, tag: str,
+                              order: Optional[list], found_elem: str) -> Optional[int]:
+        """
+        Index at which to insert `tag` among parent_copy's children: the slot
+        before the first existing child that follows it in the KB order; failing
+        that, immediately before the element that tripped the error; else append.
+        """
+        if order and tag in order:
+            new_pos = order.index(tag)
+            for idx, c in enumerate(parent_copy):
+                cl = etree.QName(c.tag).localname
+                if cl in order and order.index(cl) > new_pos:
+                    return idx
+        for idx, c in enumerate(parent_copy):
+            if etree.QName(c.tag).localname == found_elem:
+                return idx
+        return None
+
+    # ── Whitespace / indentation helpers ──────────────────────────────────────
+
+    def _derive_child_indent(self, parent: etree._Element):
+        """
+        Inspect an existing pretty-printed parent and return
+        (child_indent, unit, close_indent) as whitespace strings:
+          child_indent — spaces before each direct child (e.g. 8 spaces)
+          unit         — one indentation step (e.g. 4 spaces)
+          close_indent — spaces before the parent's closing tag (e.g. 4 spaces)
+        Returns (None, None, None) when the parent isn't pretty-printed (single
+        line), so the caller leaves the compact layout untouched.
+        """
+        kids = [k for k in parent if isinstance(k.tag, str)]
+        if not kids:
+            return (None, None, None)
+        base = None
+        if parent.text and "\n" in parent.text:
+            base = parent.text.split("\n")[-1]
+        if base is None:
+            for k in kids[:-1]:
+                if k.tail and "\n" in k.tail:
+                    base = k.tail.split("\n")[-1]
+                    break
+        if base is None:
+            return (None, None, None)
+        close = None
+        if kids[-1].tail and "\n" in kids[-1].tail:
+            close = kids[-1].tail.split("\n")[-1]
+        if close is None:
+            close = base[:-4] if len(base) >= 4 else ""
+        unit = base[len(close):] if (base.startswith(close) and len(base) > len(close)) else "    "
+        return (base, unit, close)
+
+    def _indent_el(self, el: etree._Element, indent_cols: str, unit: str) -> None:
+        """
+        Recursively pretty-print a freshly built (whitespace-free) element so its
+        children sit at indent_cols + unit, one per line. `indent_cols` is the
+        column at which `el` itself sits.
+        """
+        kids = [k for k in el if isinstance(k.tag, str)]
+        if not kids:
+            return
+        child_cols = indent_cols + unit
+        el.text = "\n" + child_cols
+        for i, k in enumerate(kids):
+            self._indent_el(k, child_cols, unit)
+            k.tail = "\n" + (child_cols if i < len(kids) - 1 else indent_cols)
+
+    def _normalize_child_tails(self, parent: etree._Element,
+                               base_cols: str, close_cols: str) -> None:
+        """
+        Make every direct child of `parent` sit on its own line: non-last
+        children get `base_cols` of indentation after them, the last child
+        dedents to `close_cols` before the parent's closing tag. Only the
+        inter-child whitespace is touched; each child's inner content is left
+        as-is.
+        """
+        kids = [k for k in parent if isinstance(k.tag, str)]
+        if not kids:
+            return
+        # Always overwrite the leading whitespace so blank lines left behind by a
+        # manual deletion (e.g. the user removed Fr/To, leaving empty lines) are
+        # collapsed to a single newline + indent — no extra space above the tags.
+        parent.text = "\n" + base_cols
+        for i, k in enumerate(kids):
+            k.tail = "\n" + (base_cols if i < len(kids) - 1 else close_cols)
+
     # ── XSD loading ───────────────────────────────────────────────────────────
 
     def _get_xsd_path(self, xml: str) -> Optional[str]:
@@ -1375,6 +1642,25 @@ class FixSuggester:
             # Invalid XML — only the LLM can help
             return self._llm_fallback("/", xml[:500], code, msg, fix_hint)
 
+        # ── Route: missing mandatory AppHdr field (validator completeness scan) ─
+        # The header completeness scan emits one clean "/AppHdr/<Tag>" issue per
+        # missing mandatory BAH field. The normal missing-child flow can't place
+        # these correctly (it would stamp the envelope/Document namespace and,
+        # lacking the head.001 XSD order, append at the end). Route them to the
+        # namespace-aware, KB-ordered, indented inserter instead.
+        _mh = re.search(r"(?:^|/)AppHdr/(\w+)$", path)
+        if code == "HEADER_VAL" and _mh:
+            _apphdr = root.find(".//{*}AppHdr")
+            if _apphdr is None and etree.QName(root.tag).localname == "AppHdr":
+                _apphdr = root
+            if _apphdr is not None and self._child_exists(_apphdr, _mh.group(1)) is None:
+                _res = self._try_insert_missing_sibling(
+                    root, xml, code, msg, fix_hint,
+                    explicit_parent=_apphdr, explicit_missing=_mh.group(1),
+                )
+                if _res is not None:
+                    return _res
+
         # ── Guard: element-ordering / structural-position errors ─────────────
         # "X is not expected at this position" / "not allowed here" means the
         # element exists but sits in the wrong XSD sequence slot. A safe fix
@@ -1390,6 +1676,15 @@ class FixSuggester:
             "is not allowed here",
             "not allowed in this context",
         )):
+            # A mandatory sibling that must precede this element may have been
+            # deleted entirely (e.g. AppHdr/Fr removed → <To> trips this error).
+            # That is a safe INSERT, not a risky reorder — try it before
+            # declining. Falls through to the low-confidence no-op when no
+            # missing mandatory element can be confidently identified/built.
+            inserted = self._try_insert_missing_sibling(root, xml, code, msg, fix_hint)
+            if inserted is not None:
+                return inserted
+
             _target_xpath = path if (path and path != "/") else self._xpath_of(root)
             _frag = ""
             try:
@@ -2488,6 +2783,12 @@ class FixSuggester:
             if m:
                 decl = m.group(1) + "\n"
             return decl + body
+
+        # Preserve the replaced element's tail (the whitespace/newline that
+        # follows its closing tag) so the element after it keeps its place on
+        # its own line — otherwise the next sibling jams onto the same line.
+        if new_el.tail is None:
+            new_el.tail = target.tail
 
         idx = list(parent).index(target)
         parent.remove(target)
