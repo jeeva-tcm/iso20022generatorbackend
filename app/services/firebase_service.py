@@ -36,8 +36,12 @@ def _sanitize_firestore_doc(obj: Any) -> Any:
 class FirebaseHistoryService:
     # Per-call timeout for any Firestore RPC. The default of 300s caused
     # the whole site to feel frozen when credentials were bad — every endpoint
-    # waited 5 minutes per call. 10s is plenty for healthy Firestore.
-    FIRESTORE_CALL_TIMEOUT_S = 10.0
+    # waited 5 minutes per call. Hot-path calls (get_next_sequence,
+    # check_duplicate_msg_uetr) run on EVERY validation, so this needs to fail
+    # fast: 4s is comfortably above a healthy round-trip yet short enough that a
+    # brief startup window (before the boot health check trips the breaker)
+    # doesn't make validation feel like it hangs.
+    FIRESTORE_CALL_TIMEOUT_S = 4.0
 
     # Circuit breaker — after this many consecutive auth failures we disable
     # Firestore at runtime and fall back to local JSON. Prevents the same
@@ -667,9 +671,16 @@ class FirebaseHistoryService:
         #     closure quirks the SDK retry decorator sometimes trips on).
         #   - We use transaction.set() in both branches; if the field is missing
         #     for any reason we default to 0 so we never crash on None + 1.
+        #   - A per-RPC timeout is mandatory here. This call runs on EVERY
+        #     validation; without it, a reachable-but-slow (or briefly
+        #     unreachable, e.g. before the boot health check trips the breaker)
+        #     Firestore makes the read block on gRPC's multi-minute default,
+        #     which is exactly what makes local validation appear to "hang".
+        timeout_s = self.FIRESTORE_CALL_TIMEOUT_S
+
         @firestore.transactional
         def update_in_transaction(transaction, ref):
-            snapshot = ref.get(transaction=transaction)
+            snapshot = ref.get(transaction=transaction, timeout=timeout_s)
             current = 0
             if snapshot.exists:
                 val = snapshot.get("seq")
@@ -696,8 +707,8 @@ class FirebaseHistoryService:
         # we only need uniqueness, not strict ordering, and the caller already has
         # its own in-memory fallback if this returns None.
         try:
-            doc_ref.set({"seq": firestore.Increment(1)}, merge=True)
-            snap = doc_ref.get()
+            doc_ref.set({"seq": firestore.Increment(1)}, merge=True, timeout=timeout_s)
+            snap = doc_ref.get(timeout=timeout_s)
             if snap.exists:
                 val = snap.get("seq")
                 if isinstance(val, int):
@@ -727,7 +738,15 @@ class FirebaseHistoryService:
             return False
             
         try:
-            query = self.db.collection("validation_history").where("deleted", "==", False).where("report_json.metadata.MsgId", "==", msg_id).stream()
+            # Per-RPC timeout: this runs inside Layer 3, i.e. on the validation
+            # hot path. Without a bound, a slow/unreachable Firestore stalls the
+            # whole validation instead of degrading to "no duplicate found".
+            query = (
+                self.db.collection("validation_history")
+                .where("deleted", "==", False)
+                .where("report_json.metadata.MsgId", "==", msg_id)
+                .stream(timeout=self.FIRESTORE_CALL_TIMEOUT_S)
+            )
             for doc in query:
                 data = doc.to_dict()
                 report = data.get("report_json", {})

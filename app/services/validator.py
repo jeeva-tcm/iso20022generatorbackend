@@ -58,6 +58,13 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
         self._message_type_cache = []
         self._last_cache_update = 0
         self._cache_duration = 3600 # 1 hour
+
+        # Memoized XSD path lookups. _get_xsd_path() does an os.listdir() fallback
+        # scan on every call (the XSD filenames are versioned, so the exact-match
+        # almost always misses and the directory scan fires). The result is
+        # deterministic per message_type, so cache it — this was ~57ms of
+        # nt.listdir per validation batch.
+        self._xsd_path_cache: Dict[str, Optional[str]] = {}
         
         # Load Reference Data
         self._ensure_xsds_extracted()
@@ -480,9 +487,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             if l1_l2_errors > 0:
                 report.layer_status['3'] = {"status": "SKIPPED", "time": 0}
                 return self._finalize_report(report, start_time)
-            
-            print(f"DEBUG: Entering Layer 3 normalization...")
-            
+
             # STEP 5: Canonical Normalization for Rule Execution
             try:
                 canonical_data, line_map = self._normalize_message(xml_content)
@@ -775,7 +780,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                 ))
 
     def _validate_cbpr_datetime(self, xml_content: str, report: ValidationReport) -> None:
-        """
+        r"""
         Step 4.21 — CBPR+ DateTime Format Validation
         Enforces:
           1. Timezone offset is mandatory (e.g., +00:00, +05:30)
@@ -2001,7 +2006,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                     seen[val] = line_num
 
     def _validate_swift_charset(self, xml_content: str, report: ValidationReport) -> None:
-        """
+        r"""
         Step 4.10 — SWIFT Character Set Validation
         Checks <Ustrd> (unstructured remittance) content for characters
         outside the permitted ISO 20022 MX character set.
@@ -2768,10 +2773,24 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
         1. Exact Match (e.g. pacs.008.001.08.xsd)
         2. Family Fallback (e.g. pacs.008.xsd)
         3. Version Fallback (Look for highest available version e.g. .13)
+
+        Memoized: the filesystem layout is fixed for a process lifetime, so the
+        path for a given message_type is computed once and cached. The fallback
+        branch does an os.listdir() scan which is comparatively expensive to
+        repeat on every validation.
         """
         if not message_type or message_type == "Unknown":
             return None
 
+        cached = self._xsd_path_cache.get(message_type)
+        if cached is not None or message_type in self._xsd_path_cache:
+            return cached
+
+        result = self._resolve_xsd_path(message_type)
+        self._xsd_path_cache[message_type] = result
+        return result
+
+    def _resolve_xsd_path(self, message_type: str) -> Optional[str]:
         # Special handling for internal refined types
         if message_type == "pacs.009.cov":
             message_type = "pacs.009.001.08" # Use standard version for XSD
@@ -2788,7 +2807,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
         parts = message_type.split('.')
         family_prefix = ".".join(parts[:3]) if len(parts) >= 3 else message_type
         family_short = parts[0] + "." + parts[1] if len(parts) >= 2 else message_type
-        
+
         family_xsd = f"{family_short}.xsd"
         family_path = os.path.join(self.xsd_path, family_xsd)
         if os.path.exists(family_path):
@@ -2800,7 +2819,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             for f in os.listdir(self.xsd_path):
                 if f.startswith(family_prefix) and f.endswith(".xsd"):
                     candidates.append(f)
-            
+
             if candidates:
                 best_match = sorted(candidates, reverse=True)[0]
                 fallback_path = os.path.join(self.xsd_path, best_match)

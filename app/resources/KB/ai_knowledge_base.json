@@ -58,7 +58,7 @@
         "PAST_DATE_ERROR": {
             "error_code": "PAST_DATE_ERROR",
             "description": "A date or datetime field contains a value in the past.",
-            "affects_tags": ["IntrBkSttlmDt", "SttlmDt", "ReqdExctnDt", "ValDt", "DueDt", "ExctnDt", "IntrBkSttlmTm", "CreDtTm"],
+            "affects_tags": ["CreDt", "IntrBkSttlmDt", "SttlmDt", "ReqdExctnDt", "ValDt", "DueDt", "ExctnDt", "IntrBkSttlmTm", "CreDtTm"],
             "fix_action": "Replace the past date/datetime with today's date (for Date fields) or now with timezone offset (for DateTime fields).",
             "fix_format_date": "YYYY-MM-DD using today's actual calendar date",
             "fix_format_datetime": "YYYY-MM-DDTHH:MM:SS+00:00 using current UTC time with +00:00 offset",

@@ -31,6 +31,7 @@
         "error_code": "PAST_DATE_ERROR",
         "description": "A date or datetime field contains a value in the past.",
         "affects_tags": [
+          "CreDt",
           "IntrBkSttlmDt",
           "SttlmDt",
           "ReqdExctnDt",

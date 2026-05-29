@@ -91,14 +91,27 @@ def _load_knowledge_base() -> Dict[str, Any]:
     global _KB_CACHE
     if _KB_CACHE is not None:
         return _KB_CACHE
-    kb_path = os.path.normpath(
-        os.path.join(os.path.dirname(__file__), "..", "resources", "ai_knowledge_base.json")
-    )
-    try:
-        with open(kb_path, "r", encoding="utf-8-sig") as f:
-            _KB_CACHE = json.load(f)
-    except Exception as e:
-        logger.warning(f"[FixSuggester] ai_knowledge_base.json load failed: {e}")
+    base = os.path.join(os.path.dirname(__file__), "..", "resources")
+    # Resources were reorganised into a `KB/` subfolder; keep both paths so
+    # the loader works regardless of layout.
+    candidates = [
+        os.path.normpath(os.path.join(base, "KB", "ai_knowledge_base.json")),
+        os.path.normpath(os.path.join(base, "ai_knowledge_base.json")),
+    ]
+    last_err: Optional[Exception] = None
+    for kb_path in candidates:
+        try:
+            with open(kb_path, "r", encoding="utf-8-sig") as f:
+                _KB_CACHE = json.load(f)
+            break
+        except FileNotFoundError as e:
+            last_err = e
+            continue
+        except Exception as e:
+            last_err = e
+            break
+    if _KB_CACHE is None:
+        logger.warning(f"[FixSuggester] ai_knowledge_base.json load failed: {last_err}")
         _KB_CACHE = {}
     return _KB_CACHE
 
@@ -126,18 +139,31 @@ def _load_enterprise_kb() -> Dict[str, Any]:
     global _ENTERPRISE_KB_CACHE, _ENTERPRISE_MODULE_INDEX
     if _ENTERPRISE_KB_CACHE is not None:
         return _ENTERPRISE_KB_CACHE
-    kb_path = os.path.normpath(
-        os.path.join(os.path.dirname(__file__), "..", "resources", "swift_mx_enterprise_llm_kb.json")
-    )
-    try:
-        with open(kb_path, "r", encoding="utf-8-sig") as f:
-            _ENTERPRISE_KB_CACHE = json.load(f)
-        for mod in _ENTERPRISE_KB_CACHE.get("modules", []):
-            name = mod.get("module_name")
-            if name:
-                _ENTERPRISE_MODULE_INDEX[name] = mod
-    except Exception as e:
-        logger.warning(f"[FixSuggester] swift_mx_enterprise_llm_kb.json load failed: {e}")
+    base = os.path.join(os.path.dirname(__file__), "..", "resources")
+    # Resources may live under `KB/` or directly under `resources/` depending
+    # on layout; check both.
+    candidates = [
+        os.path.normpath(os.path.join(base, "KB", "swift_mx_enterprise_llm_kb.json")),
+        os.path.normpath(os.path.join(base, "swift_mx_enterprise_llm_kb.json")),
+    ]
+    last_err: Optional[Exception] = None
+    for kb_path in candidates:
+        try:
+            with open(kb_path, "r", encoding="utf-8-sig") as f:
+                _ENTERPRISE_KB_CACHE = json.load(f)
+            for mod in _ENTERPRISE_KB_CACHE.get("modules", []):
+                name = mod.get("module_name")
+                if name:
+                    _ENTERPRISE_MODULE_INDEX[name] = mod
+            break
+        except FileNotFoundError as e:
+            last_err = e
+            continue
+        except Exception as e:
+            last_err = e
+            break
+    if _ENTERPRISE_KB_CACHE is None:
+        logger.warning(f"[FixSuggester] swift_mx_enterprise_llm_kb.json load failed: {last_err}")
         _ENTERPRISE_KB_CACHE = {}
     return _ENTERPRISE_KB_CACHE
 
@@ -702,11 +728,21 @@ class FixSuggester:
     # ── XML helpers ───────────────────────────────────────────────────────────
 
     def _parse_xml(self, xml: str) -> etree._Element:
-        clean = re.sub(r"<\?xml[^?]*\?>", "", xml.strip(), count=1).strip()
+        # Preserve the original byte layout (including the XML declaration and
+        # any leading blank lines) so that lxml's element.sourceline values
+        # match the line numbers the validator reports to the user. Stripping
+        # the prolog shifted every sourceline by 1+ and made line-hint-based
+        # element resolution pick the wrong sibling.
         try:
-            return etree.fromstring(clean.encode("utf-8"))
+            return etree.fromstring(xml.encode("utf-8"))
         except etree.XMLSyntaxError as e:
-            raise FixApplyError(f"XML parse error: {e}")
+            # If the declaration is malformed, fall back to a cleaned version
+            # so callers don't get a hard failure.
+            try:
+                cleaned = re.sub(r"<\?xml[^?]*\?>", "", xml, count=1).lstrip()
+                return etree.fromstring(cleaned.encode("utf-8"))
+            except etree.XMLSyntaxError:
+                raise FixApplyError(f"XML parse error: {e}")
 
     def _build_nsmap(self, root: etree._Element) -> dict:
         nsmap: dict[str, str] = {}
@@ -823,6 +859,27 @@ class FixSuggester:
                 if re.search(r'\b' + re.escape(leaf) + r's?\b', text):
                     mentioned_leaves.append(leaf)
                     break
+
+        # ── Canonical fix direction for AppHdr ↔ doc-body BIC mismatches ──
+        # The CdtTrfTxInf/InstgAgt and InstdAgt BICFIs are the source of truth
+        # for the transaction; AppHdr/Fr and AppHdr/To must mirror them. When
+        # the message mentions BOTH an AppHdr-side container (Fr/To) AND a
+        # doc-body container (InstgAgt/InstdAgt/IntrmyAgt*/etc.), put the
+        # AppHdr side FIRST so the fixer lands there — the harvester will then
+        # read the doc-body value across.
+        APPHDR_CONTAINERS  = {"Fr", "To"}
+        DOC_BODY_CONTAINERS = {
+            "InstgAgt", "InstdAgt", "FwdgAgt", "DbtrAgt", "CdtrAgt",
+            "IntrmyAgt1", "IntrmyAgt2", "IntrmyAgt3",
+            "PrvsInstgAgt1", "PrvsInstgAgt2", "PrvsInstgAgt3",
+        }
+        has_apphdr = any(c in APPHDR_CONTAINERS for c in mentioned_containers)
+        has_doc    = any(c in DOC_BODY_CONTAINERS for c in mentioned_containers)
+        if has_apphdr and has_doc:
+            mentioned_containers = (
+                [c for c in mentioned_containers if c in APPHDR_CONTAINERS]
+                + [c for c in mentioned_containers if c not in APPHDR_CONTAINERS]
+            )
 
         line_hint = getattr(self, "_line_hint", None)
 
@@ -1318,6 +1375,32 @@ class FixSuggester:
             # Invalid XML — only the LLM can help
             return self._llm_fallback("/", xml[:500], code, msg, fix_hint)
 
+        # ── Guard: element-ordering / structural-position errors ─────────────
+        # "X is not expected at this position" / "not allowed here" means the
+        # element exists but sits in the wrong XSD sequence slot. A safe fix
+        # requires reordering siblings into the schema's declared order — risky
+        # to guess element-by-element, and a wrong guess CREATES new errors
+        # (the exact "it changes tags and makes new errors" complaint). Without
+        # an LLM we deliberately decline rather than corrupt the document:
+        # return low confidence so the UI shows guidance, not a bad auto-fix.
+        _msg_lc_early = (msg + " " + fix_hint).lower()
+        if any(s in _msg_lc_early for s in (
+            "not expected at this position",
+            "not expected here",
+            "is not allowed here",
+            "not allowed in this context",
+        )):
+            _target_xpath = path if (path and path != "/") else self._xpath_of(root)
+            _frag = ""
+            try:
+                _tgt = self._find_target(root, _target_xpath, self._build_nsmap(root))
+                if _tgt is not None:
+                    _frag = self._serialize(_tgt)
+                    _target_xpath = self._xpath_of(_tgt)
+            except Exception:
+                pass
+            return FixSuggestion(_target_xpath, _frag, _frag, code, msg, "low")
+
         ns = etree.QName(root.tag).namespace or ""
 
         # Load XSD and rules index once per XML (cached)
@@ -1716,9 +1799,18 @@ class FixSuggester:
                     if cand_xpath_lc == my_xpath_lc:
                         continue  # never match the element being fixed
 
-                    # Candidate MUST contain at least one of the partner's
-                    # discriminators (so we don't match the wrong side)
-                    if other_only_tokens and not any(
+                    # Candidate MUST contain ALL of the partner's discriminators
+                    # (the tokens unique to the partner field). Requiring *all*
+                    # — not *any* — is essential when two partner candidates
+                    # share their container path and differ only by one segment.
+                    #
+                    # Example: fixing AppHdr/To/...BICFI, the partner field is
+                    # Document.*.CdtTrfTxInf.InstdAgt...BICFI. Its unique tokens
+                    # are {document, cdttrftxinf, instdagt}. The sibling
+                    # InstgAgt candidate ALSO sits under document/cdttrftxinf,
+                    # so an "any" test wrongly accepts it; only the "all" test
+                    # (which requires `instdagt`) excludes it correctly.
+                    if other_only_tokens and not all(
                         "/" + t in cand_xpath_lc for t in other_only_tokens
                     ):
                         continue
@@ -1917,6 +2009,49 @@ class FixSuggester:
         msg_l             = msg.lower()
         el_local          = etree.QName(el.tag).localname
 
+        # ── Count / sum aggregates (NbOfTxs, CtrlSum) ─────────────────────────
+        # These are derived from the document, so there's a single correct
+        # value — compute it rather than guessing. Without this they fell
+        # through to a low-confidence no-op and silently dropped out of batches.
+        if el_local in ("NbOfTxs", "CtrlSum"):
+            try:
+                root = el.getroottree().getroot() if el.getroottree() is not None else None
+            except Exception:
+                root = None
+            if root is not None:
+                TX_TAGS = {"CdtTrfTxInf", "DrctDbtTxInf", "TxInfAndSts", "PmtInf"}
+                if el_local == "NbOfTxs":
+                    count = sum(
+                        1 for n in root.iter()
+                        if isinstance(n.tag, str)
+                        and etree.QName(n.tag).localname in TX_TAGS
+                    )
+                    if count > 0 and str(count) != (el.text or "").strip():
+                        el_copy = self._copy(el)
+                        el_copy.text = str(count)
+                        return FixSuggestion(xpath, original_fragment,
+                                             self._serialize(el_copy), code, msg, "high")
+                else:  # CtrlSum — sum the interbank settlement (or instructed) amounts
+                    total = 0.0
+                    found = False
+                    for n in root.iter():
+                        if not isinstance(n.tag, str):
+                            continue
+                        ln = etree.QName(n.tag).localname
+                        if ln in ("IntrBkSttlmAmt", "InstdAmt") and n.text:
+                            try:
+                                total += float(n.text.strip())
+                                found = True
+                            except ValueError:
+                                pass
+                    if found:
+                        formatted = f"{total:.2f}"
+                        if formatted != (el.text or "").strip():
+                            el_copy = self._copy(el)
+                            el_copy.text = formatted
+                            return FixSuggestion(xpath, original_fragment,
+                                                 self._serialize(el_copy), code, msg, "high")
+
         # --- Dynamic Date Rule Integration ---
         # Merge: enterprise KB global_rules.date_fix_rules + legacy ai_knowledge_base
         date_rules = {**(_enterprise_date_fix_rules() or {}), **(_kb_get("date_fix_rules", {}) or {})}
@@ -1926,7 +2061,23 @@ class FixSuggester:
                 import datetime
                 now = datetime.datetime.now(datetime.timezone.utc)
                 if code == "PAST_DATE_ERROR":
-                    is_datetime = "Tm" in el_local or "Time" in el_local
+                    # Determine date-only vs dateTime from BOTH the tag name and
+                    # the EXISTING value. CreDt in the AppHdr (head.001) is a
+                    # dateTime even though its tag has no "Tm" — relying on the
+                    # tag name alone stripped the time component and produced an
+                    # invalid date-only value, creating a fresh schema error.
+                    cur = (el.text or "").strip()
+                    DATE_ONLY_TAGS = {
+                        "IntrBkSttlmDt", "SttlmDt", "ReqdExctnDt", "ValDt",
+                        "DueDt", "ExctnDt", "BirthDt", "Dt", "ReqdColltnDt",
+                    }
+                    has_time_in_value = "T" in cur
+                    is_datetime = (
+                        has_time_in_value
+                        or "Tm" in el_local
+                        or "Time" in el_local
+                        or (el_local not in DATE_ONLY_TAGS and el_local.startswith("CreDt"))
+                    )
                     new_val = now.strftime("%Y-%m-%dT%H:%M:%S+00:00") if is_datetime else now.strftime("%Y-%m-%d")
                 elif code == "FUTURE_DATE_BIRTH_ERROR":
                     new_val = rule.get("dummy_value", "1990-01-15")
@@ -2246,9 +2397,60 @@ class FixSuggester:
                              issue_code=code, issue_message=msg, confidence="unavailable")
 
     def suggest_batch(self, xml: str, issues: list[dict]) -> list[FixSuggestion]:
+        """
+        Produce one suggestion per issue. To guarantee that N independent
+        issues all land in the final document (and don't overwrite each other
+        when two issues target the same element), each suggestion is computed
+        against the XML *after* every preceding actionable fix has been
+        applied. The returned `original_fragment` / `fragment_xml` therefore
+        reflect a coherent sequence that `apply_batch` can replay.
+
+        Overlapping-defect handling: one underlying defect frequently raises
+        several rule codes on the SAME element — e.g. a past datetime with no
+        offset trips both PAST_DATE_ERROR and CBPR_DATETIME_NO_TIMEZONE on the
+        same <CreDtTm>. The first fix corrects the element; later fixes that
+        target the same element then come back as no-ops. Those are NOT
+        failures — the defect is already resolved — so we tag them with
+        confidence "resolved" instead of leaving them looking unfixed.
+        """
         if len(issues) > 20:
             raise ValueError("suggest_batch accepts at most 20 issues per call")
-        return [self.suggest(xml, issue) for issue in issues]
+
+        suggestions: list[FixSuggestion] = []
+        current_xml = xml
+        changed_xpaths: set[str] = set()
+        for issue in issues:
+            sug = self.suggest(current_xml, issue)
+
+            is_actionable = (
+                sug.confidence in ("high", "low")
+                and sug.xpath
+                and sug.fragment_xml
+                and sug.fragment_xml != sug.original_fragment
+            )
+
+            if is_actionable:
+                try:
+                    current_xml = self.apply(current_xml, sug.xpath, sug.fragment_xml)
+                    changed_xpaths.add(sug.xpath)
+                except FixApplyError as e:
+                    logger.warning(
+                        f"[FixSuggester] suggest_batch: skipping rollforward for "
+                        f"{sug.xpath} ({sug.issue_code}): {e}"
+                    )
+            else:
+                # No change produced. If this issue's target element was ALREADY
+                # corrected by an earlier fix in this batch, the defect is
+                # resolved — surface that distinctly so the UI doesn't show it
+                # as an unfixed item.
+                if sug.xpath and sug.xpath in changed_xpaths:
+                    sug = FixSuggestion(
+                        sug.xpath, sug.original_fragment, sug.fragment_xml,
+                        sug.issue_code, sug.issue_message, "resolved",
+                    )
+
+            suggestions.append(sug)
+        return suggestions
 
     # ── apply ─────────────────────────────────────────────────────────────────
 
@@ -2363,15 +2565,19 @@ class FixSuggester:
         return cur
 
     def apply_batch(self, xml: str, fixes: list[dict]) -> str:
-        # Sort by xpath depth descending so deeper elements are patched first
-        # (prevents parent replacements from invalidating child xpaths).
-        ordered = sorted(
-            fixes,
-            key=lambda f: len(f.get("xpath", "").split("/")),
-            reverse=True
-        )
+        """
+        Apply fixes in the order they were produced by `suggest_batch`. The
+        suggester already rolled the document forward between issues, so the
+        fragments form a coherent sequence — re-ordering them here would
+        reintroduce the same overwrite/stale-target bugs we fixed in the
+        suggester.
+
+        If `apply_batch` is called with an externally curated list (the user
+        selected only a subset in the UI), it still replays the chosen subset
+        in input order, which matches the order they were shown.
+        """
         cur = xml
-        for fix in ordered:
+        for fix in fixes:
             xp, frag = fix.get("xpath", ""), fix.get("fragment_xml", "")
             if not xp or not frag:
                 continue

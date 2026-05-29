@@ -5481,5 +5481,1062 @@
     "original_message": "<?xml version='1.0' encoding='utf-8'?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n        <Fr>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>BBBBUS33XXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </Fr>\n        <To>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>CCCCGB2LXXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </To>\n        <BizMsgIdr>REF103STP001</BizMsgIdr>\n        <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-05-27T11:20:32+00:00</CreDt>\n    </AppHdr>\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>REF103STP001</MsgId>\n                <CreDtTm>2026-05-27T11:20:32+00:00</CreDtTm>\n                <NbOfTxs>1</NbOfTxs>\n                <SttlmInf>\n                    <SttlmMtd>INDA</SttlmMtd>\n                </SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>REF103STP001</InstrId>\n                    <EndToEndId>REF103STP001</EndToEndId>\n                    <UETR>550e8400-e29b-41d4-a716-446655447777</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <LclInstrm>\n                        <Cd>CRED</Cd>\n                    </LclInstrm>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"USD\">2500.00</IntrBkSttlmAmt>\n                <IntrBkSttlmDt>2026-12-31</IntrBkSttlmDt>\n                <ChrgBr>SHAR</ChrgBr>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>BBBBUS33XXX</BICFI>\n                    </FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>CCCCGB2LXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <Dbtr>\n                    <Nm>NOTPROVIDED</Nm>\n                    <Id>\n                        <OrgId>\n                            <AnyBIC>BBBBUS33XXX</AnyBIC>\n                        </OrgId>\n                    </Id>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <Othr>\n                            <Id>US8899001122</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>BBBBUS33XXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>CCCCGB2LXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <Cdtr>\n                    <Nm>NOTPROVIDED</Nm>\n                    <Id>\n                        <OrgId>\n                            <AnyBIC>CCCCGB2LXXX</AnyBIC>\n                        </OrgId>\n                    </Id>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <Othr>\n                            <Id>GB1122334455</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAcct>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>",
     "origin": "Pasted",
     "deleted": false
+  },
+  {
+    "validation_id": "VAL29052600001",
+    "batch_id": "VAL29052600001",
+    "file_id": "FILE0001",
+    "timestamp": "2026-05-29T05:55:46.826290+00:00",
+    "message_type": "pacs.008.001.08",
+    "status": "PASS",
+    "total_errors": 0,
+    "total_warnings": 13,
+    "execution_time_ms": 137.41,
+    "report_json": {
+      "validation_id": "VAL29052600001",
+      "timestamp": "2026-05-29T05:55:46.826290+00:00",
+      "status": "PASS",
+      "schema": "Unknown",
+      "message": "pacs.008.001.08",
+      "errors": 0,
+      "warnings": 13,
+      "total_time_ms": 137.41,
+      "layer_status": {
+        "1": {
+          "status": "✅",
+          "time": 4.48
+        },
+        "2": {
+          "status": "✅",
+          "time": 20.01
+        },
+        "3": {
+          "status": "✅",
+          "time": 112.92
+        }
+      },
+      "details": [
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "AppHdr.Fr.FIId.FinInstnId.BICFI",
+          "message": "BIC 'HSBCCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 7
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "AppHdr.To.FIId.FinInstnId.BICFI",
+          "message": "BIC 'BARCCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 15
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf.Agt.FinInstnId.BICFI",
+          "message": "BIC 'BNPPCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 57
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt1.FinInstnId.BICFI",
+          "message": "BIC 'CITICHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 63
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt2.FinInstnId.BICFI",
+          "message": "BIC 'CACRCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 68
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt3.FinInstnId.BICFI",
+          "message": "BIC 'SOGECHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 73
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstgAgt.FinInstnId.BICFI",
+          "message": "BIC 'HSBCCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 78
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstdAgt.FinInstnId.BICFI",
+          "message": "BIC 'BARCCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 83
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt1.FinInstnId.BICFI",
+          "message": "BIC 'RBOSCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 88
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt2.FinInstnId.BICFI",
+          "message": "BIC 'UBSWCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 100
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt3.FinInstnId.BICFI",
+          "message": "BIC 'CACRCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 112
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.DbtrAgt.FinInstnId.BICFI",
+          "message": "BIC 'CREDCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 148
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.CdtrAgt.FinInstnId.BICFI",
+          "message": "BIC 'ABNACHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 160
+        }
+      ],
+      "metadata": {
+        "MsgId": "MSGSTSJQ4BPTBJWGG2O",
+        "UETR": "69157448-5fe9-4c46-9b24-dcfc2d59333f",
+        "Namespace": "urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08"
+      },
+      "file_id": "FILE0001",
+      "batch_id": "VAL29052600001"
+    },
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n        <Fr>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>HSBCCHZZXXX</BICFI>\n                   \n                </FinInstnId>\n            </FIId>\n        </Fr>\n        <To>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>BARCCHZZXXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </To>\n        <BizMsgIdr>MSGSTSJQ4BPTBJWGG2O</BizMsgIdr>\n        <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-05-29T00:00:00+00:00</CreDt>\n    </AppHdr>\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGSTSJQ4BPTBJWGG2O</MsgId>\n                <CreDtTm>2026-05-29T05:43:52+00:00</CreDtTm>\n                <NbOfTxs>1</NbOfTxs>\n                <SttlmInf>\n                    <SttlmMtd>INDA</SttlmMtd>\n                </SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTR9R9K1ANTOD8</InstrId>\n                    <EndToEndId>E2EGK4IHZ0SY6ZX68Q8</EndToEndId>\n                    <TxId>TX42TE152ADVH8UNTD</TxId>\n                    <UETR>69157448-5fe9-4c46-9b24-dcfc2d59333f</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>G001</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"CHF\">208571.99</IntrBkSttlmAmt>\n                <IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"CHF\">489757.91</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"CHF\">213650.21</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>BNPPCHZZXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>CITICHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>SOGECHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>HSBCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BARCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>RBOSCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTV812T2KMDT</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTX2J7YH6X74</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTVRP9R84596</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Premier Financial Services Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Williams Street</StrtNm>\n                        <BldgNb>20</BldgNb>\n                        <PstCd>15438</PstCd>\n                        <TwnNm>Smith City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Premier Financial Services</Nm>\n                    <PstlAdr>\n                        <StrtNm>Jones Street</StrtNm>\n                        <BldgNb>85</BldgNb>\n                        <TwnNm>Miller City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>CH5093500289167378178</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CREDCHZZXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTMWEHELBNLY</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>ABNACHZZXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTNHDP65MS8C</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Benjamin Jackson</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>688</BldgNb>\n                        <PstCd>46208</PstCd>\n                        <TwnNm>Harris City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>CH4429142713212001837</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Benjamin Jackson Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>882</BldgNb>\n                        <PstCd>48986</PstCd>\n                        <TwnNm>Walker City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REF0P1DC8E0T16AIOP7</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>",
+    "origin": "Uploaded",
+    "deleted": false
+  },
+  {
+    "validation_id": "VAL29052600002",
+    "batch_id": "VAL29052600002",
+    "file_id": "FILE0001",
+    "timestamp": "2026-05-29T05:56:19.203686+00:00",
+    "message_type": "pacs.008.001.08",
+    "status": "FAIL",
+    "total_errors": 7,
+    "total_warnings": 0,
+    "execution_time_ms": 11.3,
+    "report_json": {
+      "validation_id": "VAL29052600002",
+      "timestamp": "2026-05-29T05:56:19.203686+00:00",
+      "status": "FAIL",
+      "schema": "Unknown",
+      "message": "pacs.008.001.08",
+      "errors": 7,
+      "warnings": 0,
+      "total_time_ms": 11.3,
+      "layer_status": {
+        "1": {
+          "status": "✅",
+          "time": 1.88
+        },
+        "2": {
+          "status": "❌",
+          "time": 9.42
+        },
+        "3": {
+          "status": "SKIPPED",
+          "time": 0
+        }
+      },
+      "details": [
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <CreDt> contains '2026-05-22T00:00:00+00:00', which is before today (2026-05-29).",
+          "fix_suggestion": "Update <CreDt> to today (2026-05-29) or a future date. (Line: 22)",
+          "related_test": "",
+          "line": 22
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <CreDtTm> contains '2026-05-22T05:43:52+00:00', which is before today (2026-05-29).",
+          "fix_suggestion": "Update <CreDtTm> to today (2026-05-29) or a future date. (Line: 28)",
+          "related_test": "",
+          "line": 28
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "EMPTY_PARTY_CONTAINER",
+          "path": "/",
+          "message": "<Fr> contains no identifying information.",
+          "fix_suggestion": "Provide at least a BIC, name, or identifier inside <Fr>. An empty party/agent container is not routable.",
+          "related_test": "",
+          "line": 4
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "SCHEMA_VAL",
+          "path": "/BusMsgEnvlp/Document/FIToFICstmrCdtTrf/GrpHdr/NbOfTxs",
+          "message": "Empty elements found in 'NbOfTxs'",
+          "fix_suggestion": "The field 'NbOfTxs' cannot be left blank. Please enter a valid value before submitting.",
+          "related_test": "",
+          "line": 29
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "SCHEMA_VAL",
+          "path": "/BusMsgEnvlp/Document/FIToFICstmrCdtTrf/GrpHdr/SttlmInf/SttlmMtd",
+          "message": "Empty elements found in 'SttlmMtd'",
+          "fix_suggestion": "The field 'SttlmMtd' cannot be left blank. Please enter a valid value before submitting.",
+          "related_test": "",
+          "line": 31
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "SCHEMA_VAL",
+          "path": "/BusMsgEnvlp/Document/FIToFICstmrCdtTrf/CdtTrfTxInf/IntrBkSttlmAmt",
+          "message": "Invalid currency code 'CH'.",
+          "fix_suggestion": "'CH' is not a recognised ISO 4217 currency code. Use a standard 3-letter code such as 'USD', 'EUR', 'GBP', 'JPY', 'INR', 'AED', etc.",
+          "related_test": "",
+          "line": 46
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "HEADER_VAL",
+          "path": "/BusMsgEnvlp/AppHdr/Fr/FIId/FinInstnId/BICFI",
+          "message": " Empty elements found in 'BICFI'",
+          "fix_suggestion": "The field 'BICFI' cannot be left blank. Please enter a valid value before submitting.",
+          "related_test": "",
+          "line": 7
+        }
+      ],
+      "metadata": {
+        "MsgId": "MSGSTSJQ4BPTBJWGG2O",
+        "UETR": "69157448-5fe9-4c46-9b24-dcfc2d59333f",
+        "Namespace": "urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08"
+      },
+      "fixed_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n        <Fr>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>HSBCCHZZXXX</BICFI></FinInstnId>\n            </FIId>\n        </Fr><To>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>BARCCHZZXXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </To>\n        <BizMsgIdr>MSGSTSJQ4BPTBJWGG2O</BizMsgIdr>\n        <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-05-29</CreDt></AppHdr>\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGSTSJQ4BPTBJWGG2O</MsgId>\n                <CreDtTm>2026-05-29T05:56:19+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd></SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTR9R9K1ANTOD8</InstrId>\n                    <EndToEndId>E2EGK4IHZ0SY6ZX68Q8</EndToEndId>\n                    <TxId>TX42TE152ADVH8UNTD</TxId>\n                    <UETR>69157448-5fe9-4c46-9b24-dcfc2d59333f</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>G001</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"CHF\">208571.99</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"CHF\">489757.91</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"CHF\">213650.21</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>BNPPCHZZXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>CITICHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>SOGECHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>HSBCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BARCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>RBOSCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTV812T2KMDT</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTX2J7YH6X74</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTVRP9R84596</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Premier Financial Services Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Williams Street</StrtNm>\n                        <BldgNb>20</BldgNb>\n                        <PstCd>15438</PstCd>\n                        <TwnNm>Smith City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Premier Financial Services</Nm>\n                    <PstlAdr>\n                        <StrtNm>Jones Street</StrtNm>\n                        <BldgNb>85</BldgNb>\n                        <TwnNm>Miller City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>CH5093500289167378178</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CREDCHZZXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTMWEHELBNLY</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>ABNACHZZXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTNHDP65MS8C</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Benjamin Jackson</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>688</BldgNb>\n                        <PstCd>46208</PstCd>\n                        <TwnNm>Harris City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>CH4429142713212001837</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Benjamin Jackson Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>882</BldgNb>\n                        <PstCd>48986</PstCd>\n                        <TwnNm>Walker City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REF0P1DC8E0T16AIOP7</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+      "file_id": "FILE0001",
+      "batch_id": "VAL29052600002"
+    },
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n        <Fr>\n            <FIId>\n                <FinInstnId>\n                    <BICFI></BICFI>\n                   \n                </FinInstnId>\n            </FIId>\n        </Fr>\n        <To>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>BARCCHZZXXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </To>\n        <BizMsgIdr>MSGSTSJQ4BPTBJWGG2O</BizMsgIdr>\n        <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-05-22T00:00:00+00:00</CreDt>\n    </AppHdr>\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGSTSJQ4BPTBJWGG2O</MsgId>\n                <CreDtTm>2026-05-22T05:43:52+00:00</CreDtTm>\n                <NbOfTxs></NbOfTxs>\n                <SttlmInf>\n                    <SttlmMtd></SttlmMtd>\n                </SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTR9R9K1ANTOD8</InstrId>\n                    <EndToEndId>E2EGK4IHZ0SY6ZX68Q8</EndToEndId>\n                    <TxId>TX42TE152ADVH8UNTD</TxId>\n                    <UETR>69157448-5fe9-4c46-9b24-dcfc2d59333f</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>G001</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"CH\">208571.99</IntrBkSttlmAmt>\n                <IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"CHF\">489757.91</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"CHF\">213650.21</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>BNPPCHZZXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>CITICHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>SOGECHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>HSBCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BARCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>RBOSCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTV812T2KMDT</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTX2J7YH6X74</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTVRP9R84596</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Premier Financial Services Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Williams Street</StrtNm>\n                        <BldgNb>20</BldgNb>\n                        <PstCd>15438</PstCd>\n                        <TwnNm>Smith City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Premier Financial Services</Nm>\n                    <PstlAdr>\n                        <StrtNm>Jones Street</StrtNm>\n                        <BldgNb>85</BldgNb>\n                        <TwnNm>Miller City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>CH5093500289167378178</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CREDCHZZXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTMWEHELBNLY</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>ABNACHZZXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTNHDP65MS8C</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Benjamin Jackson</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>688</BldgNb>\n                        <PstCd>46208</PstCd>\n                        <TwnNm>Harris City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>CH4429142713212001837</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Benjamin Jackson Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>882</BldgNb>\n                        <PstCd>48986</PstCd>\n                        <TwnNm>Walker City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REF0P1DC8E0T16AIOP7</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>",
+    "origin": "Uploaded",
+    "deleted": false
+  },
+  {
+    "validation_id": "VAL29052600003",
+    "batch_id": "VAL29052600003",
+    "file_id": "FILE0001",
+    "timestamp": "2026-05-29T05:56:30.405103+00:00",
+    "message_type": "pacs.008.001.08",
+    "status": "FAIL",
+    "total_errors": 2,
+    "total_warnings": 0,
+    "execution_time_ms": 7.1,
+    "report_json": {
+      "validation_id": "VAL29052600003",
+      "timestamp": "2026-05-29T05:56:30.405103+00:00",
+      "status": "FAIL",
+      "schema": "Unknown",
+      "message": "pacs.008.001.08",
+      "errors": 2,
+      "warnings": 0,
+      "total_time_ms": 7.1,
+      "layer_status": {
+        "1": {
+          "status": "✅",
+          "time": 2.08
+        },
+        "2": {
+          "status": "❌",
+          "time": 5.02
+        },
+        "3": {
+          "status": "SKIPPED",
+          "time": 0
+        }
+      },
+      "details": [
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "CBPR_DATETIME_NO_TIMEZONE",
+          "path": "/",
+          "message": "Element <CreDt> is missing a mandatory timezone offset.",
+          "fix_suggestion": "Ensure the format is YYYY-MM-DDThh:mm:ss(+/-)HH:MM (e.g., +00:00).",
+          "related_test": "",
+          "line": 19
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "HEADER_VAL",
+          "path": "/BusMsgEnvlp/AppHdr/CreDt",
+          "message": "Invalid date/time value: '2026-05-29'.",
+          "fix_suggestion": "Date-time fields must use the format YYYY-MM-DDThh:mm:ss (e.g. 2026-11-20T14:30:00). Ensure there is no trailing space and the 'T' separator is present.",
+          "related_test": "",
+          "line": 19
+        }
+      ],
+      "metadata": {
+        "MsgId": "MSGSTSJQ4BPTBJWGG2O",
+        "UETR": "69157448-5fe9-4c46-9b24-dcfc2d59333f",
+        "Namespace": "urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08"
+      },
+      "fixed_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n        <Fr>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>HSBCCHZZXXX</BICFI></FinInstnId>\n            </FIId>\n        </Fr><To>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>BARCCHZZXXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </To>\n        <BizMsgIdr>MSGSTSJQ4BPTBJWGG2O</BizMsgIdr>\n        <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-05-29T00:00:00</CreDt></AppHdr>\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGSTSJQ4BPTBJWGG2O</MsgId>\n                <CreDtTm>2026-05-29T05:56:25+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd></SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTR9R9K1ANTOD8</InstrId>\n                    <EndToEndId>E2EGK4IHZ0SY6ZX68Q8</EndToEndId>\n                    <TxId>TX42TE152ADVH8UNTD</TxId>\n                    <UETR>69157448-5fe9-4c46-9b24-dcfc2d59333f</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>G001</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"CHF\">208571.99</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"CHF\">489757.91</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"CHF\">213650.21</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>BNPPCHZZXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>CITICHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>SOGECHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>HSBCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BARCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>RBOSCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTV812T2KMDT</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTX2J7YH6X74</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTVRP9R84596</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Premier Financial Services Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Williams Street</StrtNm>\n                        <BldgNb>20</BldgNb>\n                        <PstCd>15438</PstCd>\n                        <TwnNm>Smith City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Premier Financial Services</Nm>\n                    <PstlAdr>\n                        <StrtNm>Jones Street</StrtNm>\n                        <BldgNb>85</BldgNb>\n                        <TwnNm>Miller City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>CH5093500289167378178</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CREDCHZZXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTMWEHELBNLY</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>ABNACHZZXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTNHDP65MS8C</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Benjamin Jackson</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>688</BldgNb>\n                        <PstCd>46208</PstCd>\n                        <TwnNm>Harris City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>CH4429142713212001837</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Benjamin Jackson Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>882</BldgNb>\n                        <PstCd>48986</PstCd>\n                        <TwnNm>Walker City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REF0P1DC8E0T16AIOP7</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+      "file_id": "FILE0001",
+      "batch_id": "VAL29052600003"
+    },
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n        <Fr>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>HSBCCHZZXXX</BICFI></FinInstnId>\n            </FIId>\n        </Fr><To>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>BARCCHZZXXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </To>\n        <BizMsgIdr>MSGSTSJQ4BPTBJWGG2O</BizMsgIdr>\n        <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-05-29</CreDt></AppHdr>\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGSTSJQ4BPTBJWGG2O</MsgId>\n                <CreDtTm>2026-05-29T05:56:25+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd></SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTR9R9K1ANTOD8</InstrId>\n                    <EndToEndId>E2EGK4IHZ0SY6ZX68Q8</EndToEndId>\n                    <TxId>TX42TE152ADVH8UNTD</TxId>\n                    <UETR>69157448-5fe9-4c46-9b24-dcfc2d59333f</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>G001</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"CHF\">208571.99</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"CHF\">489757.91</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"CHF\">213650.21</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>BNPPCHZZXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>CITICHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>SOGECHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>HSBCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BARCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>RBOSCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTV812T2KMDT</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTX2J7YH6X74</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTVRP9R84596</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Premier Financial Services Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Williams Street</StrtNm>\n                        <BldgNb>20</BldgNb>\n                        <PstCd>15438</PstCd>\n                        <TwnNm>Smith City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Premier Financial Services</Nm>\n                    <PstlAdr>\n                        <StrtNm>Jones Street</StrtNm>\n                        <BldgNb>85</BldgNb>\n                        <TwnNm>Miller City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>CH5093500289167378178</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CREDCHZZXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTMWEHELBNLY</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>ABNACHZZXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTNHDP65MS8C</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Benjamin Jackson</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>688</BldgNb>\n                        <PstCd>46208</PstCd>\n                        <TwnNm>Harris City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>CH4429142713212001837</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Benjamin Jackson Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>882</BldgNb>\n                        <PstCd>48986</PstCd>\n                        <TwnNm>Walker City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REF0P1DC8E0T16AIOP7</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+    "origin": "Uploaded",
+    "deleted": false
+  },
+  {
+    "validation_id": "VAL29052600004",
+    "batch_id": "VAL29052600004",
+    "file_id": "FILE0001",
+    "timestamp": "2026-05-29T05:58:59.607075+00:00",
+    "message_type": "pacs.008.001.08",
+    "status": "FAIL",
+    "total_errors": 1,
+    "total_warnings": 0,
+    "execution_time_ms": 4.88,
+    "report_json": {
+      "validation_id": "VAL29052600004",
+      "timestamp": "2026-05-29T05:58:59.607075+00:00",
+      "status": "FAIL",
+      "schema": "Unknown",
+      "message": "pacs.008.001.08",
+      "errors": 1,
+      "warnings": 0,
+      "total_time_ms": 4.88,
+      "layer_status": {
+        "1": {
+          "status": "✅",
+          "time": 1.82
+        },
+        "2": {
+          "status": "❌",
+          "time": 3.06
+        },
+        "3": {
+          "status": "SKIPPED",
+          "time": 0
+        }
+      },
+      "details": [
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "CBPR_DATETIME_NO_TIMEZONE",
+          "path": "/",
+          "message": "Element <CreDt> is missing a mandatory timezone offset.",
+          "fix_suggestion": "Ensure the format is YYYY-MM-DDThh:mm:ss(+/-)HH:MM (e.g., +00:00).",
+          "related_test": "",
+          "line": 19
+        }
+      ],
+      "metadata": {
+        "MsgId": "MSGSTSJQ4BPTBJWGG2O",
+        "UETR": "69157448-5fe9-4c46-9b24-dcfc2d59333f",
+        "Namespace": "urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08"
+      },
+      "fixed_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n        <Fr>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>HSBCCHZZXXX</BICFI></FinInstnId>\n            </FIId>\n        </Fr><To>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>BARCCHZZXXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </To>\n        <BizMsgIdr>MSGSTSJQ4BPTBJWGG2O</BizMsgIdr>\n        <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-05-29T00:00:00+00:00</CreDt></AppHdr>\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGSTSJQ4BPTBJWGG2O</MsgId>\n                <CreDtTm>2026-05-29T05:56:25+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd></SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTR9R9K1ANTOD8</InstrId>\n                    <EndToEndId>E2EGK4IHZ0SY6ZX68Q8</EndToEndId>\n                    <TxId>TX42TE152ADVH8UNTD</TxId>\n                    <UETR>69157448-5fe9-4c46-9b24-dcfc2d59333f</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>G001</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"CHF\">208571.99</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"CHF\">489757.91</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"CHF\">213650.21</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>BNPPCHZZXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>CITICHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>SOGECHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>HSBCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BARCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>RBOSCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTV812T2KMDT</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTX2J7YH6X74</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTVRP9R84596</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Premier Financial Services Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Williams Street</StrtNm>\n                        <BldgNb>20</BldgNb>\n                        <PstCd>15438</PstCd>\n                        <TwnNm>Smith City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Premier Financial Services</Nm>\n                    <PstlAdr>\n                        <StrtNm>Jones Street</StrtNm>\n                        <BldgNb>85</BldgNb>\n                        <TwnNm>Miller City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>CH5093500289167378178</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CREDCHZZXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTMWEHELBNLY</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>ABNACHZZXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTNHDP65MS8C</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Benjamin Jackson</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>688</BldgNb>\n                        <PstCd>46208</PstCd>\n                        <TwnNm>Harris City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>CH4429142713212001837</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Benjamin Jackson Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>882</BldgNb>\n                        <PstCd>48986</PstCd>\n                        <TwnNm>Walker City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REF0P1DC8E0T16AIOP7</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+      "file_id": "FILE0001",
+      "batch_id": "VAL29052600004"
+    },
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n        <Fr>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>HSBCCHZZXXX</BICFI></FinInstnId>\n            </FIId>\n        </Fr><To>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>BARCCHZZXXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </To>\n        <BizMsgIdr>MSGSTSJQ4BPTBJWGG2O</BizMsgIdr>\n        <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-05-29T00:00:00</CreDt></AppHdr>\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGSTSJQ4BPTBJWGG2O</MsgId>\n                <CreDtTm>2026-05-29T05:56:25+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd></SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTR9R9K1ANTOD8</InstrId>\n                    <EndToEndId>E2EGK4IHZ0SY6ZX68Q8</EndToEndId>\n                    <TxId>TX42TE152ADVH8UNTD</TxId>\n                    <UETR>69157448-5fe9-4c46-9b24-dcfc2d59333f</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>G001</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"CHF\">208571.99</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"CHF\">489757.91</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"CHF\">213650.21</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>BNPPCHZZXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>CITICHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>SOGECHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>HSBCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BARCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>RBOSCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTV812T2KMDT</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTX2J7YH6X74</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTVRP9R84596</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Premier Financial Services Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Williams Street</StrtNm>\n                        <BldgNb>20</BldgNb>\n                        <PstCd>15438</PstCd>\n                        <TwnNm>Smith City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Premier Financial Services</Nm>\n                    <PstlAdr>\n                        <StrtNm>Jones Street</StrtNm>\n                        <BldgNb>85</BldgNb>\n                        <TwnNm>Miller City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>CH5093500289167378178</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CREDCHZZXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTMWEHELBNLY</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>ABNACHZZXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTNHDP65MS8C</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Benjamin Jackson</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>688</BldgNb>\n                        <PstCd>46208</PstCd>\n                        <TwnNm>Harris City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>CH4429142713212001837</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Benjamin Jackson Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>882</BldgNb>\n                        <PstCd>48986</PstCd>\n                        <TwnNm>Walker City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REF0P1DC8E0T16AIOP7</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+    "origin": "Uploaded",
+    "deleted": false
+  },
+  {
+    "validation_id": "VAL29052600005",
+    "batch_id": "VAL29052600005",
+    "file_id": "FILE0001",
+    "timestamp": "2026-05-29T05:59:06.189181+00:00",
+    "message_type": "pacs.008.001.08",
+    "status": "PASS",
+    "total_errors": 0,
+    "total_warnings": 13,
+    "execution_time_ms": 68.97,
+    "report_json": {
+      "validation_id": "VAL29052600005",
+      "timestamp": "2026-05-29T05:59:06.189181+00:00",
+      "status": "PASS",
+      "schema": "Unknown",
+      "message": "pacs.008.001.08",
+      "errors": 0,
+      "warnings": 13,
+      "total_time_ms": 68.97,
+      "layer_status": {
+        "1": {
+          "status": "✅",
+          "time": 1.24
+        },
+        "2": {
+          "status": "✅",
+          "time": 4.57
+        },
+        "3": {
+          "status": "✅",
+          "time": 63.16
+        }
+      },
+      "details": [
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "AppHdr.Fr.FIId.FinInstnId.BICFI",
+          "message": "BIC 'HSBCCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 7
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "AppHdr.To.FIId.FinInstnId.BICFI",
+          "message": "BIC 'BARCCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 12
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf.Agt.FinInstnId.BICFI",
+          "message": "BIC 'BNPPCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 49
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt1.FinInstnId.BICFI",
+          "message": "BIC 'CITICHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 55
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt2.FinInstnId.BICFI",
+          "message": "BIC 'CACRCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 60
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt3.FinInstnId.BICFI",
+          "message": "BIC 'SOGECHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 65
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstgAgt.FinInstnId.BICFI",
+          "message": "BIC 'HSBCCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 70
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstdAgt.FinInstnId.BICFI",
+          "message": "BIC 'BARCCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 75
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt1.FinInstnId.BICFI",
+          "message": "BIC 'RBOSCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 80
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt2.FinInstnId.BICFI",
+          "message": "BIC 'UBSWCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 92
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt3.FinInstnId.BICFI",
+          "message": "BIC 'CACRCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 104
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.DbtrAgt.FinInstnId.BICFI",
+          "message": "BIC 'CREDCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 140
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.CdtrAgt.FinInstnId.BICFI",
+          "message": "BIC 'ABNACHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 152
+        }
+      ],
+      "metadata": {
+        "MsgId": "MSGSTSJQ4BPTBJWGG2O",
+        "UETR": "69157448-5fe9-4c46-9b24-dcfc2d59333f",
+        "Namespace": "urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08"
+      },
+      "file_id": "FILE0001",
+      "batch_id": "VAL29052600005"
+    },
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n        <Fr>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>HSBCCHZZXXX</BICFI></FinInstnId>\n            </FIId>\n        </Fr><To>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>BARCCHZZXXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </To>\n        <BizMsgIdr>MSGSTSJQ4BPTBJWGG2O</BizMsgIdr>\n        <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-05-29T00:00:00+00:00</CreDt></AppHdr>\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGSTSJQ4BPTBJWGG2O</MsgId>\n                <CreDtTm>2026-05-29T05:56:25+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd></SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTR9R9K1ANTOD8</InstrId>\n                    <EndToEndId>E2EGK4IHZ0SY6ZX68Q8</EndToEndId>\n                    <TxId>TX42TE152ADVH8UNTD</TxId>\n                    <UETR>69157448-5fe9-4c46-9b24-dcfc2d59333f</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>G001</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"CHF\">208571.99</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"CHF\">489757.91</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"CHF\">213650.21</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>BNPPCHZZXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>CITICHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>SOGECHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>HSBCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BARCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>RBOSCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTV812T2KMDT</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTX2J7YH6X74</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTVRP9R84596</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Premier Financial Services Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Williams Street</StrtNm>\n                        <BldgNb>20</BldgNb>\n                        <PstCd>15438</PstCd>\n                        <TwnNm>Smith City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Premier Financial Services</Nm>\n                    <PstlAdr>\n                        <StrtNm>Jones Street</StrtNm>\n                        <BldgNb>85</BldgNb>\n                        <TwnNm>Miller City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>CH5093500289167378178</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CREDCHZZXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTMWEHELBNLY</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>ABNACHZZXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTNHDP65MS8C</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Benjamin Jackson</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>688</BldgNb>\n                        <PstCd>46208</PstCd>\n                        <TwnNm>Harris City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>CH4429142713212001837</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Benjamin Jackson Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>882</BldgNb>\n                        <PstCd>48986</PstCd>\n                        <TwnNm>Walker City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REF0P1DC8E0T16AIOP7</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+    "origin": "Uploaded",
+    "deleted": false
+  },
+  {
+    "validation_id": "VAL29052600006",
+    "batch_id": "VAL29052600006",
+    "file_id": "FILE0001",
+    "timestamp": "2026-05-29T06:05:07.802942+00:00",
+    "message_type": "pacs.008.001.08",
+    "status": "FAIL",
+    "total_errors": 5,
+    "total_warnings": 0,
+    "execution_time_ms": 26.16,
+    "report_json": {
+      "validation_id": "VAL29052600006",
+      "timestamp": "2026-05-29T06:05:07.802942+00:00",
+      "status": "FAIL",
+      "schema": "Unknown",
+      "message": "pacs.008.001.08",
+      "errors": 5,
+      "warnings": 0,
+      "total_time_ms": 26.16,
+      "layer_status": {
+        "1": {
+          "status": "✅",
+          "time": 8.37
+        },
+        "2": {
+          "status": "❌",
+          "time": 17.79
+        },
+        "3": {
+          "status": "SKIPPED",
+          "time": 0
+        }
+      },
+      "details": [
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <CreDt> contains '2026-05-23T00:00:00+00:00', which is before today (2026-05-29).",
+          "fix_suggestion": "Update <CreDt> to today (2026-05-29) or a future date. (Line: 19)",
+          "related_test": "",
+          "line": 19
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <CreDtTm> contains '2026-05-23T05:56:25+00:00', which is before today (2026-05-29).",
+          "fix_suggestion": "Update <CreDtTm> to today (2026-05-29) or a future date. (Line: 24)",
+          "related_test": "",
+          "line": 24
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "EMPTY_PARTY_CONTAINER",
+          "path": "/",
+          "message": "<Fr> contains no identifying information.",
+          "fix_suggestion": "Provide at least a BIC, name, or identifier inside <Fr>. An empty party/agent container is not routable.",
+          "related_test": "",
+          "line": 4
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "SCHEMA_VAL",
+          "path": "/BusMsgEnvlp/Document/FIToFICstmrCdtTrf/CdtTrfTxInf/InstdAmt",
+          "message": "Invalid currency code 'CH'.",
+          "fix_suggestion": "'CH' is not a recognised ISO 4217 currency code. Use a standard 3-letter code such as 'USD', 'EUR', 'GBP', 'JPY', 'INR', 'AED', etc.",
+          "related_test": "",
+          "line": 43
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "HEADER_VAL",
+          "path": "/BusMsgEnvlp/AppHdr/Fr/FIId/FinInstnId/BICFI",
+          "message": " Empty elements found in 'BICFI'",
+          "fix_suggestion": "The field 'BICFI' cannot be left blank. Please enter a valid value before submitting.",
+          "related_test": "",
+          "line": 7
+        }
+      ],
+      "metadata": {
+        "MsgId": "MSGSTSJQ4BPTBJWGG2O",
+        "UETR": "69157448-5fe9-4c46-9b24-dcfc2d59333f",
+        "Namespace": "urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08"
+      },
+      "fixed_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n        <Fr>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>HSBCCHZZXXX</BICFI></FinInstnId>\n            </FIId>\n        </Fr><To>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>BARCCHZZXXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </To>\n        <BizMsgIdr>MSGSTSJQ4BPTBJWGG2O</BizMsgIdr>\n        <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-05-29</CreDt></AppHdr>\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGSTSJQ4BPTBJWGG2O</MsgId>\n                <CreDtTm>2026-05-29T06:05:07+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd></SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTR9R9K1ANTOD8</InstrId>\n                    <EndToEndId>E2EGK4IHZ0SY6ZX68Q8</EndToEndId>\n                    <TxId>TX42TE152ADVH8UNTD</TxId>\n                    <UETR>69157448-5fe9-4c46-9b24-dcfc2d59333f</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>G001</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"CHF\">208571.99</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"CHF\">489757.91</InstdAmt><ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"CHF\">213650.21</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>BNPPCHZZXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>CITICHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>SOGECHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>HSBCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BARCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>RBOSCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTV812T2KMDT</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTX2J7YH6X74</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTVRP9R84596</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Premier Financial Services Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Williams Street</StrtNm>\n                        <BldgNb>20</BldgNb>\n                        <PstCd>15438</PstCd>\n                        <TwnNm>Smith City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Premier Financial Services</Nm>\n                    <PstlAdr>\n                        <StrtNm>Jones Street</StrtNm>\n                        <BldgNb>85</BldgNb>\n                        <TwnNm>Miller City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>CH5093500289167378178</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CREDCHZZXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTMWEHELBNLY</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>ABNACHZZXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTNHDP65MS8C</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Benjamin Jackson</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>688</BldgNb>\n                        <PstCd>46208</PstCd>\n                        <TwnNm>Harris City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>CH4429142713212001837</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Benjamin Jackson Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>882</BldgNb>\n                        <PstCd>48986</PstCd>\n                        <TwnNm>Walker City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REF0P1DC8E0T16AIOP7</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+      "file_id": "FILE0001",
+      "batch_id": "VAL29052600006"
+    },
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n        <Fr>\n            <FIId>\n                <FinInstnId>\n                    <BICFI></BICFI></FinInstnId>\n            </FIId>\n        </Fr><To>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>BARCCHZZXXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </To>\n        <BizMsgIdr>MSGSTSJQ4BPTBJWGG2O</BizMsgIdr>\n        <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-05-23T00:00:00+00:00</CreDt></AppHdr>\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGSTSJQ4BPTBJWGG2O</MsgId>\n                <CreDtTm>2026-05-23T05:56:25+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd></SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTR9R9K1ANTOD8</InstrId>\n                    <EndToEndId>E2EGK4IHZ0SY6ZX68Q8</EndToEndId>\n                    <TxId>TX42TE152ADVH8UNTD</TxId>\n                    <UETR>69157448-5fe9-4c46-9b24-dcfc2d59333f</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>G001</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"CHF\">208571.99</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"CH\">489757.91</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"CHF\">213650.21</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>BNPPCHZZXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>CITICHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>SOGECHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>HSBCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BARCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>RBOSCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTV812T2KMDT</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTX2J7YH6X74</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTVRP9R84596</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Premier Financial Services Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Williams Street</StrtNm>\n                        <BldgNb>20</BldgNb>\n                        <PstCd>15438</PstCd>\n                        <TwnNm>Smith City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Premier Financial Services</Nm>\n                    <PstlAdr>\n                        <StrtNm>Jones Street</StrtNm>\n                        <BldgNb>85</BldgNb>\n                        <TwnNm>Miller City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>CH5093500289167378178</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CREDCHZZXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTMWEHELBNLY</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>ABNACHZZXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTNHDP65MS8C</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Benjamin Jackson</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>688</BldgNb>\n                        <PstCd>46208</PstCd>\n                        <TwnNm>Harris City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>CH4429142713212001837</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Benjamin Jackson Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>882</BldgNb>\n                        <PstCd>48986</PstCd>\n                        <TwnNm>Walker City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REF0P1DC8E0T16AIOP7</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+    "origin": "Uploaded",
+    "deleted": false
+  },
+  {
+    "validation_id": "VAL29052600007",
+    "batch_id": "VAL29052600007",
+    "file_id": "FILE0001",
+    "timestamp": "2026-05-29T06:05:28.263570+00:00",
+    "message_type": "pacs.008.001.08",
+    "status": "FAIL",
+    "total_errors": 2,
+    "total_warnings": 0,
+    "execution_time_ms": 6.23,
+    "report_json": {
+      "validation_id": "VAL29052600007",
+      "timestamp": "2026-05-29T06:05:28.263570+00:00",
+      "status": "FAIL",
+      "schema": "Unknown",
+      "message": "pacs.008.001.08",
+      "errors": 2,
+      "warnings": 0,
+      "total_time_ms": 6.23,
+      "layer_status": {
+        "1": {
+          "status": "✅",
+          "time": 2.69
+        },
+        "2": {
+          "status": "❌",
+          "time": 3.54
+        },
+        "3": {
+          "status": "SKIPPED",
+          "time": 0
+        }
+      },
+      "details": [
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "CBPR_DATETIME_NO_TIMEZONE",
+          "path": "/",
+          "message": "Element <CreDt> is missing a mandatory timezone offset.",
+          "fix_suggestion": "Ensure the format is YYYY-MM-DDThh:mm:ss(+/-)HH:MM (e.g., +00:00).",
+          "related_test": "",
+          "line": 19
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "HEADER_VAL",
+          "path": "/BusMsgEnvlp/AppHdr/CreDt",
+          "message": "Invalid date/time value: '2026-05-29'.",
+          "fix_suggestion": "Date-time fields must use the format YYYY-MM-DDThh:mm:ss (e.g. 2026-11-20T14:30:00). Ensure there is no trailing space and the 'T' separator is present.",
+          "related_test": "",
+          "line": 19
+        }
+      ],
+      "metadata": {
+        "MsgId": "MSGSTSJQ4BPTBJWGG2O",
+        "UETR": "69157448-5fe9-4c46-9b24-dcfc2d59333f",
+        "Namespace": "urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08"
+      },
+      "fixed_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n        <Fr>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>HSBCCHZZXXX</BICFI></FinInstnId>\n            </FIId>\n        </Fr><To>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>BARCCHZZXXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </To>\n        <BizMsgIdr>MSGSTSJQ4BPTBJWGG2O</BizMsgIdr>\n        <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-05-29T00:00:00</CreDt></AppHdr>\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGSTSJQ4BPTBJWGG2O</MsgId>\n                <CreDtTm>2026-05-29T06:05:24+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd></SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTR9R9K1ANTOD8</InstrId>\n                    <EndToEndId>E2EGK4IHZ0SY6ZX68Q8</EndToEndId>\n                    <TxId>TX42TE152ADVH8UNTD</TxId>\n                    <UETR>69157448-5fe9-4c46-9b24-dcfc2d59333f</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>G001</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"CHF\">208571.99</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"CHF\">489757.91</InstdAmt><ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"CHF\">213650.21</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>BNPPCHZZXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>CITICHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>SOGECHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>HSBCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BARCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>RBOSCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTV812T2KMDT</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTX2J7YH6X74</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTVRP9R84596</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Premier Financial Services Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Williams Street</StrtNm>\n                        <BldgNb>20</BldgNb>\n                        <PstCd>15438</PstCd>\n                        <TwnNm>Smith City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Premier Financial Services</Nm>\n                    <PstlAdr>\n                        <StrtNm>Jones Street</StrtNm>\n                        <BldgNb>85</BldgNb>\n                        <TwnNm>Miller City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>CH5093500289167378178</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CREDCHZZXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTMWEHELBNLY</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>ABNACHZZXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTNHDP65MS8C</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Benjamin Jackson</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>688</BldgNb>\n                        <PstCd>46208</PstCd>\n                        <TwnNm>Harris City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>CH4429142713212001837</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Benjamin Jackson Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>882</BldgNb>\n                        <PstCd>48986</PstCd>\n                        <TwnNm>Walker City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REF0P1DC8E0T16AIOP7</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+      "file_id": "FILE0001",
+      "batch_id": "VAL29052600007"
+    },
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n        <Fr>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>HSBCCHZZXXX</BICFI></FinInstnId>\n            </FIId>\n        </Fr><To>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>BARCCHZZXXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </To>\n        <BizMsgIdr>MSGSTSJQ4BPTBJWGG2O</BizMsgIdr>\n        <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-05-29</CreDt></AppHdr>\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGSTSJQ4BPTBJWGG2O</MsgId>\n                <CreDtTm>2026-05-29T06:05:24+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd></SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTR9R9K1ANTOD8</InstrId>\n                    <EndToEndId>E2EGK4IHZ0SY6ZX68Q8</EndToEndId>\n                    <TxId>TX42TE152ADVH8UNTD</TxId>\n                    <UETR>69157448-5fe9-4c46-9b24-dcfc2d59333f</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>G001</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"CHF\">208571.99</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"CHF\">489757.91</InstdAmt><ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"CHF\">213650.21</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>BNPPCHZZXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>CITICHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>SOGECHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>HSBCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BARCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>RBOSCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTV812T2KMDT</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTX2J7YH6X74</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTVRP9R84596</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Premier Financial Services Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Williams Street</StrtNm>\n                        <BldgNb>20</BldgNb>\n                        <PstCd>15438</PstCd>\n                        <TwnNm>Smith City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Premier Financial Services</Nm>\n                    <PstlAdr>\n                        <StrtNm>Jones Street</StrtNm>\n                        <BldgNb>85</BldgNb>\n                        <TwnNm>Miller City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>CH5093500289167378178</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CREDCHZZXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTMWEHELBNLY</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>ABNACHZZXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTNHDP65MS8C</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Benjamin Jackson</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>688</BldgNb>\n                        <PstCd>46208</PstCd>\n                        <TwnNm>Harris City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>CH4429142713212001837</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Benjamin Jackson Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>882</BldgNb>\n                        <PstCd>48986</PstCd>\n                        <TwnNm>Walker City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REF0P1DC8E0T16AIOP7</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+    "origin": "Uploaded",
+    "deleted": false
+  },
+  {
+    "validation_id": "VAL29052600008",
+    "batch_id": "VAL29052600008",
+    "file_id": "FILE0001",
+    "timestamp": "2026-05-29T06:05:34.188674+00:00",
+    "message_type": "pacs.008.001.08",
+    "status": "FAIL",
+    "total_errors": 1,
+    "total_warnings": 0,
+    "execution_time_ms": 5.63,
+    "report_json": {
+      "validation_id": "VAL29052600008",
+      "timestamp": "2026-05-29T06:05:34.188674+00:00",
+      "status": "FAIL",
+      "schema": "Unknown",
+      "message": "pacs.008.001.08",
+      "errors": 1,
+      "warnings": 0,
+      "total_time_ms": 5.63,
+      "layer_status": {
+        "1": {
+          "status": "✅",
+          "time": 2.22
+        },
+        "2": {
+          "status": "❌",
+          "time": 3.41
+        },
+        "3": {
+          "status": "SKIPPED",
+          "time": 0
+        }
+      },
+      "details": [
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "CBPR_DATETIME_NO_TIMEZONE",
+          "path": "/",
+          "message": "Element <CreDt> is missing a mandatory timezone offset.",
+          "fix_suggestion": "Ensure the format is YYYY-MM-DDThh:mm:ss(+/-)HH:MM (e.g., +00:00).",
+          "related_test": "",
+          "line": 19
+        }
+      ],
+      "metadata": {
+        "MsgId": "MSGSTSJQ4BPTBJWGG2O",
+        "UETR": "69157448-5fe9-4c46-9b24-dcfc2d59333f",
+        "Namespace": "urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08"
+      },
+      "fixed_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n        <Fr>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>HSBCCHZZXXX</BICFI></FinInstnId>\n            </FIId>\n        </Fr><To>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>BARCCHZZXXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </To>\n        <BizMsgIdr>MSGSTSJQ4BPTBJWGG2O</BizMsgIdr>\n        <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-05-29T00:00:00+00:00</CreDt></AppHdr>\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGSTSJQ4BPTBJWGG2O</MsgId>\n                <CreDtTm>2026-05-29T06:05:24+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd></SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTR9R9K1ANTOD8</InstrId>\n                    <EndToEndId>E2EGK4IHZ0SY6ZX68Q8</EndToEndId>\n                    <TxId>TX42TE152ADVH8UNTD</TxId>\n                    <UETR>69157448-5fe9-4c46-9b24-dcfc2d59333f</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>G001</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"CHF\">208571.99</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"CHF\">489757.91</InstdAmt><ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"CHF\">213650.21</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>BNPPCHZZXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>CITICHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>SOGECHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>HSBCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BARCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>RBOSCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTV812T2KMDT</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTX2J7YH6X74</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTVRP9R84596</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Premier Financial Services Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Williams Street</StrtNm>\n                        <BldgNb>20</BldgNb>\n                        <PstCd>15438</PstCd>\n                        <TwnNm>Smith City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Premier Financial Services</Nm>\n                    <PstlAdr>\n                        <StrtNm>Jones Street</StrtNm>\n                        <BldgNb>85</BldgNb>\n                        <TwnNm>Miller City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>CH5093500289167378178</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CREDCHZZXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTMWEHELBNLY</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>ABNACHZZXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTNHDP65MS8C</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Benjamin Jackson</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>688</BldgNb>\n                        <PstCd>46208</PstCd>\n                        <TwnNm>Harris City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>CH4429142713212001837</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Benjamin Jackson Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>882</BldgNb>\n                        <PstCd>48986</PstCd>\n                        <TwnNm>Walker City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REF0P1DC8E0T16AIOP7</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+      "file_id": "FILE0001",
+      "batch_id": "VAL29052600008"
+    },
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n        <Fr>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>HSBCCHZZXXX</BICFI></FinInstnId>\n            </FIId>\n        </Fr><To>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>BARCCHZZXXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </To>\n        <BizMsgIdr>MSGSTSJQ4BPTBJWGG2O</BizMsgIdr>\n        <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-05-29T00:00:00</CreDt></AppHdr>\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGSTSJQ4BPTBJWGG2O</MsgId>\n                <CreDtTm>2026-05-29T06:05:24+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd></SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTR9R9K1ANTOD8</InstrId>\n                    <EndToEndId>E2EGK4IHZ0SY6ZX68Q8</EndToEndId>\n                    <TxId>TX42TE152ADVH8UNTD</TxId>\n                    <UETR>69157448-5fe9-4c46-9b24-dcfc2d59333f</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>G001</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"CHF\">208571.99</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"CHF\">489757.91</InstdAmt><ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"CHF\">213650.21</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>BNPPCHZZXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>CITICHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>SOGECHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>HSBCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BARCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>RBOSCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTV812T2KMDT</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTX2J7YH6X74</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTVRP9R84596</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Premier Financial Services Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Williams Street</StrtNm>\n                        <BldgNb>20</BldgNb>\n                        <PstCd>15438</PstCd>\n                        <TwnNm>Smith City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Premier Financial Services</Nm>\n                    <PstlAdr>\n                        <StrtNm>Jones Street</StrtNm>\n                        <BldgNb>85</BldgNb>\n                        <TwnNm>Miller City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>CH5093500289167378178</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CREDCHZZXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTMWEHELBNLY</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>ABNACHZZXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTNHDP65MS8C</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Benjamin Jackson</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>688</BldgNb>\n                        <PstCd>46208</PstCd>\n                        <TwnNm>Harris City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>CH4429142713212001837</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Benjamin Jackson Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>882</BldgNb>\n                        <PstCd>48986</PstCd>\n                        <TwnNm>Walker City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REF0P1DC8E0T16AIOP7</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+    "origin": "Uploaded",
+    "deleted": false
+  },
+  {
+    "validation_id": "VAL29052600009",
+    "batch_id": "VAL29052600009",
+    "file_id": "FILE0001",
+    "timestamp": "2026-05-29T06:05:36.532348+00:00",
+    "message_type": "pacs.008.001.08",
+    "status": "PASS",
+    "total_errors": 0,
+    "total_warnings": 13,
+    "execution_time_ms": 101.5,
+    "report_json": {
+      "validation_id": "VAL29052600009",
+      "timestamp": "2026-05-29T06:05:36.532348+00:00",
+      "status": "PASS",
+      "schema": "Unknown",
+      "message": "pacs.008.001.08",
+      "errors": 0,
+      "warnings": 13,
+      "total_time_ms": 101.5,
+      "layer_status": {
+        "1": {
+          "status": "✅",
+          "time": 3.19
+        },
+        "2": {
+          "status": "✅",
+          "time": 4.91
+        },
+        "3": {
+          "status": "✅",
+          "time": 93.4
+        }
+      },
+      "details": [
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "AppHdr.Fr.FIId.FinInstnId.BICFI",
+          "message": "BIC 'HSBCCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 7
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "AppHdr.To.FIId.FinInstnId.BICFI",
+          "message": "BIC 'BARCCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 12
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf.Agt.FinInstnId.BICFI",
+          "message": "BIC 'BNPPCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 48
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt1.FinInstnId.BICFI",
+          "message": "BIC 'CITICHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 54
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt2.FinInstnId.BICFI",
+          "message": "BIC 'CACRCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 59
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt3.FinInstnId.BICFI",
+          "message": "BIC 'SOGECHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 64
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstgAgt.FinInstnId.BICFI",
+          "message": "BIC 'HSBCCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 69
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstdAgt.FinInstnId.BICFI",
+          "message": "BIC 'BARCCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 74
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt1.FinInstnId.BICFI",
+          "message": "BIC 'RBOSCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 79
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt2.FinInstnId.BICFI",
+          "message": "BIC 'UBSWCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 91
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt3.FinInstnId.BICFI",
+          "message": "BIC 'CACRCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 103
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.DbtrAgt.FinInstnId.BICFI",
+          "message": "BIC 'CREDCHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 139
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.CdtrAgt.FinInstnId.BICFI",
+          "message": "BIC 'ABNACHZZXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 151
+        }
+      ],
+      "metadata": {
+        "MsgId": "MSGSTSJQ4BPTBJWGG2O",
+        "UETR": "69157448-5fe9-4c46-9b24-dcfc2d59333f",
+        "Namespace": "urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08"
+      },
+      "file_id": "FILE0001",
+      "batch_id": "VAL29052600009"
+    },
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n        <Fr>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>HSBCCHZZXXX</BICFI></FinInstnId>\n            </FIId>\n        </Fr><To>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>BARCCHZZXXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </To>\n        <BizMsgIdr>MSGSTSJQ4BPTBJWGG2O</BizMsgIdr>\n        <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-05-29T00:00:00+00:00</CreDt></AppHdr>\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGSTSJQ4BPTBJWGG2O</MsgId>\n                <CreDtTm>2026-05-29T06:05:24+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd></SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTR9R9K1ANTOD8</InstrId>\n                    <EndToEndId>E2EGK4IHZ0SY6ZX68Q8</EndToEndId>\n                    <TxId>TX42TE152ADVH8UNTD</TxId>\n                    <UETR>69157448-5fe9-4c46-9b24-dcfc2d59333f</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>G001</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"CHF\">208571.99</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"CHF\">489757.91</InstdAmt><ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"CHF\">213650.21</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>BNPPCHZZXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>CITICHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>SOGECHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>HSBCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BARCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>RBOSCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTV812T2KMDT</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTX2J7YH6X74</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTVRP9R84596</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Premier Financial Services Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Williams Street</StrtNm>\n                        <BldgNb>20</BldgNb>\n                        <PstCd>15438</PstCd>\n                        <TwnNm>Smith City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Premier Financial Services</Nm>\n                    <PstlAdr>\n                        <StrtNm>Jones Street</StrtNm>\n                        <BldgNb>85</BldgNb>\n                        <TwnNm>Miller City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>CH5093500289167378178</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CREDCHZZXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTMWEHELBNLY</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>ABNACHZZXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTNHDP65MS8C</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Benjamin Jackson</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>688</BldgNb>\n                        <PstCd>46208</PstCd>\n                        <TwnNm>Harris City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>CH4429142713212001837</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Benjamin Jackson Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>882</BldgNb>\n                        <PstCd>48986</PstCd>\n                        <TwnNm>Walker City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REF0P1DC8E0T16AIOP7</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+    "origin": "Uploaded",
+    "deleted": false
+  },
+  {
+    "validation_id": "VAL29052600010",
+    "batch_id": "VAL29052600010",
+    "file_id": "FILE0001",
+    "timestamp": "2026-05-29T06:06:11.038448+00:00",
+    "message_type": "pacs.008.001.08",
+    "status": "FAIL",
+    "total_errors": 1,
+    "total_warnings": 0,
+    "execution_time_ms": 10.35,
+    "report_json": {
+      "validation_id": "VAL29052600010",
+      "timestamp": "2026-05-29T06:06:11.038448+00:00",
+      "status": "FAIL",
+      "schema": "Unknown",
+      "message": "pacs.008.001.08",
+      "errors": 1,
+      "warnings": 0,
+      "total_time_ms": 10.35,
+      "layer_status": {
+        "1": {
+          "status": "✅",
+          "time": 1.38
+        },
+        "2": {
+          "status": "❌",
+          "time": 8.97
+        },
+        "3": {
+          "status": "SKIPPED",
+          "time": 0
+        }
+      },
+      "details": [
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "HEADER_VAL",
+          "path": "/BusMsgEnvlp/AppHdr/To",
+          "message": "The element 'To' is not expected here. Either it is not allowed in this specification, or another mandatory element is missing before this one. One of the following elements is expected : 'CharSet, Fr'",
+          "fix_suggestion": "To fix this, ensure that one of the following elements is present before 'To': 'CharSet, Fr'. Review the ISO 20022 schema sequence requirements for this message type.",
+          "related_test": "",
+          "line": 4
+        }
+      ],
+      "metadata": {
+        "MsgId": "MSGSTSJQ4BPTBJWGG2O",
+        "UETR": "69157448-5fe9-4c46-9b24-dcfc2d59333f",
+        "Namespace": "urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08"
+      },
+      "fixed_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n       <To>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>BARCCHZZXXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </To><BizMsgIdr>MSGSTSJQ4BPTBJWGG2O</BizMsgIdr>\n        <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-05-29T00:00:00+00:00</CreDt></AppHdr>\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGSTSJQ4BPTBJWGG2O</MsgId>\n                <CreDtTm>2026-05-29T06:05:24+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd></SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTR9R9K1ANTOD8</InstrId>\n                    <EndToEndId>E2EGK4IHZ0SY6ZX68Q8</EndToEndId>\n                    <TxId>TX42TE152ADVH8UNTD</TxId>\n                    <UETR>69157448-5fe9-4c46-9b24-dcfc2d59333f</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>G001</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"CHF\">208571.99</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"CHF\">489757.91</InstdAmt><ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"CHF\">213650.21</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>BNPPCHZZXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>CITICHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>SOGECHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>HSBCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BARCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>RBOSCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTV812T2KMDT</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTX2J7YH6X74</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTVRP9R84596</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Premier Financial Services Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Williams Street</StrtNm>\n                        <BldgNb>20</BldgNb>\n                        <PstCd>15438</PstCd>\n                        <TwnNm>Smith City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Premier Financial Services</Nm>\n                    <PstlAdr>\n                        <StrtNm>Jones Street</StrtNm>\n                        <BldgNb>85</BldgNb>\n                        <TwnNm>Miller City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>CH5093500289167378178</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CREDCHZZXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTMWEHELBNLY</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>ABNACHZZXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTNHDP65MS8C</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Benjamin Jackson</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>688</BldgNb>\n                        <PstCd>46208</PstCd>\n                        <TwnNm>Harris City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>CH4429142713212001837</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Benjamin Jackson Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>882</BldgNb>\n                        <PstCd>48986</PstCd>\n                        <TwnNm>Walker City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REF0P1DC8E0T16AIOP7</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+      "file_id": "FILE0001",
+      "batch_id": "VAL29052600010"
+    },
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n       <To>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>BARCCHZZXXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </To>\n        <BizMsgIdr>MSGSTSJQ4BPTBJWGG2O</BizMsgIdr>\n        <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-05-29T00:00:00+00:00</CreDt></AppHdr>\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGSTSJQ4BPTBJWGG2O</MsgId>\n                <CreDtTm>2026-05-29T06:05:24+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd></SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTR9R9K1ANTOD8</InstrId>\n                    <EndToEndId>E2EGK4IHZ0SY6ZX68Q8</EndToEndId>\n                    <TxId>TX42TE152ADVH8UNTD</TxId>\n                    <UETR>69157448-5fe9-4c46-9b24-dcfc2d59333f</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>G001</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"CHF\">208571.99</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"CHF\">489757.91</InstdAmt><ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"CHF\">213650.21</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>BNPPCHZZXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>CITICHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>SOGECHZZXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>HSBCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BARCCHZZXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>RBOSCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTV812T2KMDT</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTX2J7YH6X74</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>CACRCHZZXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTVRP9R84596</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Premier Financial Services Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Williams Street</StrtNm>\n                        <BldgNb>20</BldgNb>\n                        <PstCd>15438</PstCd>\n                        <TwnNm>Smith City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Premier Financial Services</Nm>\n                    <PstlAdr>\n                        <StrtNm>Jones Street</StrtNm>\n                        <BldgNb>85</BldgNb>\n                        <TwnNm>Miller City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>CH5093500289167378178</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CREDCHZZXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTMWEHELBNLY</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>ABNACHZZXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTNHDP65MS8C</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Benjamin Jackson</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>688</BldgNb>\n                        <PstCd>46208</PstCd>\n                        <TwnNm>Harris City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>CH4429142713212001837</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Benjamin Jackson Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>882</BldgNb>\n                        <PstCd>48986</PstCd>\n                        <TwnNm>Walker City</TwnNm>\n                        <Ctry>CH</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REF0P1DC8E0T16AIOP7</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+    "origin": "Uploaded",
+    "deleted": false
   }
 ]
