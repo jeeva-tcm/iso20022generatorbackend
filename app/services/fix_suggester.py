@@ -1876,6 +1876,19 @@ class FixSuggester:
         # Compute this element's full path for matching dependencies
         my_xpath = self._xpath_of(el)
 
+        # 0. Length overflow only → truncate the EXISTING value to the KB/schema
+        #    max_length. This preserves the user's actual data (just shortened to
+        #    the limit) instead of replacing it with a generic example, and is the
+        #    correct fix for "Field X has an invalid length" per the KB rules.
+        cur_txt = (el.text or "").strip()
+        max_len = constraint.get("max_length") if isinstance(constraint, dict) else None
+        if cur_txt and isinstance(max_len, int) and len(cur_txt) > max_len:
+            truncated = cur_txt[:max_len].rstrip()
+            # Only accept the truncation if it actually resolves the violation
+            # (i.e. length was the SOLE problem — not illegal chars / wrong type).
+            if truncated and not self._violates_constraint(truncated, constraint):
+                return truncated
+
         # 1. Cross-field harvesting via KB equals dependencies
         if root is not None:
             cross_val = self._harvest_dependency_partner(root, my_xpath, tag_name, constraint)
@@ -2016,6 +2029,22 @@ class FixSuggester:
         xpath             = self._xpath_of(el)
         msg_l             = msg.lower()
         el_local          = etree.QName(el.tag).localname
+
+        # ── Length overflow → shorten the value to the KB/schema max_length ───
+        # Highest-priority, deterministic fix for "Field X has an invalid length"
+        # errors (e.g. <Nm> with 162 chars when Max140Text allows 140). We keep
+        # the user's own text and simply trim it to the allowed length so they
+        # can accept or further edit it — exactly what the rule expects.
+        if ("length" in msg_l) and (not list(el)) and el.text:
+            con = _kb_field_constraint(el_local)
+            max_len = con.get("max_length") if isinstance(con, dict) else None
+            cur = el.text.strip()
+            if isinstance(max_len, int) and len(cur) > max_len:
+                trimmed = cur[:max_len].rstrip() or cur[:max_len]
+                el_copy = self._copy(el)
+                el_copy.text = trimmed
+                return FixSuggestion(xpath, original_fragment,
+                                     self._serialize(el_copy), code, msg, "high")
 
         # ── Count / sum aggregates (NbOfTxs, CtrlSum) ─────────────────────────
         # These are derived from the document, so there's a single correct
