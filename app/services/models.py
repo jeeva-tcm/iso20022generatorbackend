@@ -53,8 +53,19 @@ class ValidationReport:
         self.layer_status = {}
         self.issues = []
         self.metadata = {}
+        # Tracks issues already recorded so identical ones aren't reported twice.
+        self._seen_keys = set()
 
     def add_issue(self, issue: ValidationIssue):
+        # Suppress duplicate issues: the same defect can be raised by more than
+        # one validation path (e.g. payload + header passes, or repeated XSD
+        # error-log entries), which clutters the report. Key on the fields that
+        # define a distinct finding.
+        key = (issue.severity, issue.code, issue.path, issue.message, issue.line)
+        if key in self._seen_keys:
+            return
+        self._seen_keys.add(key)
+
         self.issues.append(issue.to_dict())
         if issue.severity in ["ERROR", "CRITICAL"]:
             self.errors += 1
