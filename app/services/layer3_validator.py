@@ -369,6 +369,18 @@ class Layer3Mixin:
                                 msg = f"Invalid Purpose Code '{value}'."
                                 fix = (f"'{value}' is not a valid ISO 20022 Purpose Code. "
                                        f"Use a standard code such as SALA, RENT, SUPP, CORT, PENS, BONU, TRAD, LOAN, TAXS, etc.")
+                            elif list_name == "clearing_system":
+                                msg = f"Invalid clearing system code '{value}' in <{field_name}>."
+                                fix = (f"'{value}' is not a valid ExternalCashClearingSystem1Code. "
+                                       f"Use a recognised code such as 'TGT' (TARGET2), 'EBA', 'RTP', 'STG', or 'CHP'.")
+                            elif list_name == "account_type":
+                                msg = f"Invalid cash account type code '{value}' in <{field_name}>."
+                                fix = (f"'{value}' is not a valid ExternalCashAccountType1Code. "
+                                       f"Use a code such as 'CACC' (Current), 'CASH', 'LOAN', or 'COMM'.")
+                            elif list_name == "local_instrument":
+                                msg = f"Invalid local instrument code '{value}' in <{field_name}>."
+                                fix = (f"'{value}' is not a valid local instrument code. "
+                                       f"Use a code such as 'CORE', 'INST', 'B2B', or 'COR1'.")
                             else:
                                 msg = f"Field '{field_name}' contains invalid code '{value}'."
                                 fix = f"Value '{value}' is not a valid code for this field. Please check the ISO 20022 standard for permitted values."

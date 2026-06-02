@@ -123,8 +123,8 @@
     {
         "rule_id": "L3_STTLM_CLRG_001",
         "description": "If Settlement Method is CLRG (Clearing System), Clearing System (ClrSys) identity must be present.",
-        "condition": "any(k.endswith('.GrpHdr.SttlmInf.SttlmMtd') and DATA[k] == 'CLRG' for k in DATA.keys())",
-        "expression": "any(k.endswith('.GrpHdr.SttlmInf.ClrSys') for k in DATA.keys()) or any(k.endswith('.CdtTrfTxInf.SttlmInf.ClrSys') for k in DATA.keys())",
+        "condition": "any(k.endswith('.SttlmInf.SttlmMtd') and DATA[k] == 'CLRG' for k in DATA.keys())",
+        "expression": "any('.SttlmInf.ClrSys.' in k or k.endswith('.SttlmInf.ClrSys') for k in DATA.keys())",
         "severity": "ERROR",
         "layer": 3
     },

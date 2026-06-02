@@ -55,3 +55,16 @@ class ApplyBatchRequest(BaseModel):
 
 class ApplyResponse(BaseModel):
     new_xml: str
+
+
+class AutoFixRequest(BaseModel):
+    xml: str
+    message_type: str = "Auto-detect"
+
+
+class AutoFixResponse(BaseModel):
+    new_xml: str
+    rounds: int                 # validate→fix iterations performed
+    fixes_applied: int          # total fixes applied across all rounds
+    remaining_errors: int       # ERROR-severity issues still present after fixing
+    remaining_details: List[dict] = []  # the residual issues (for the UI)

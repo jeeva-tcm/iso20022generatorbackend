@@ -4,61 +4,267 @@
         "version": "2.1",
         "last_updated": "2026-05-29"
     },
-
     "field_constraints": {
         "_doc": "Per-field validation rules. type=regex algorithm name. min/max are character limits unless noted.",
-
-        "BICFI":         { "type": "BICFI",       "max_length": 11, "min_length": 8,  "example": "DEUTDEFFXXX", "notes": "8 chars or 11 with branch. Banks-only ISO 9362." },
-        "AnyBIC":        { "type": "AnyBIC",      "max_length": 11, "min_length": 8,  "example": "DEUTDEFFXXX" },
-        "IBAN":          { "type": "IBAN",        "max_length": 34, "min_length": 15, "example": "DE89370400440532013000", "notes": "ISO 13616, country-specific length." },
-        "LEI":           { "type": "LEI",         "max_length": 20, "min_length": 20, "example": "529900T8BM49AURSDO55" },
-        "Ccy":           { "type": "Currency",    "max_length": 3,  "min_length": 3,  "example": "USD" },
-        "Ctry":          { "type": "Country",     "max_length": 2,  "min_length": 2,  "example": "US" },
-        "UETR":          { "type": "UUID",        "max_length": 36, "min_length": 36, "example": "4a1a0945-5772-409a-83ba-240e666e0267", "notes": "UUID v4 — mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}" },
-
-        "MsgId":         { "type": "Max35Text",   "max_length": 35, "example": "MSG-DEMO-20260528-001", "notes": "Must equal AppHdr/BizMsgIdr. No spaces." },
-        "BizMsgIdr":     { "type": "Max35Text",   "max_length": 35, "example": "MSG-DEMO-20260528-001", "notes": "Must equal GrpHdr/MsgId. No spaces." },
-        "InstrId":       { "type": "Max35Text",   "max_length": 35, "example": "INSTR-20260528-001" },
-        "EndToEndId":    { "type": "Max35Text",   "max_length": 35, "example": "E2E-20260528-001" },
-        "TxId":          { "type": "Max35Text",   "max_length": 35, "example": "TXN-20260528-001" },
-        "ClrSysRef":     { "type": "Max35Text",   "max_length": 35, "example": "CLR-REF-001" },
-        "BizSvc":        { "type": "Max35Text",   "max_length": 35, "example": "swift.cbprplus.02", "notes": "CBPR+ uses swift.cbprplus.02." },
-        "MsgDefIdr":     { "type": "Max35Text",   "max_length": 35, "example": "pacs.008.001.08", "notes": "Must match the document namespace exactly." },
-
-        "Nm":            { "type": "Max140Text",  "max_length": 140, "example": "ACME Corporation Ltd", "notes": "SWIFT chars only: A-Z a-z 0-9 / - ? : ( ) . , ' + space" },
-        "AdrLine":       { "type": "Max70Text",   "max_length": 70,  "example": "123 Main Street", "notes": "Max 2 lines allowed; each max 70 chars." },
-        "TwnNm":         { "type": "Max35Text",   "max_length": 35,  "example": "New York" },
-        "PstCd":         { "type": "Max16Text",   "max_length": 16,  "example": "10001" },
-        "StrtNm":        { "type": "Max70Text",   "max_length": 70,  "example": "Main Street" },
-        "BldgNb":        { "type": "Max16Text",   "max_length": 16,  "example": "123" },
-        "Ustrd":         { "type": "Max140Text",  "max_length": 140, "example": "Invoice 2026-001 payment" },
-
-        "NbOfTxs":       { "type": "Numeric15",   "max_length": 15,  "example": "1", "notes": "Must equal the count of CdtTrfTxInf / TxInfAndSts blocks." },
-        "CtrlSum":       { "type": "Amount",      "example": "1000.00" },
-        "XchgRate":      { "type": "Amount",      "example": "1.0", "notes": "Required only when InstdAmt.Ccy != IntrBkSttlmAmt.Ccy." },
-
-        "IntrBkSttlmDt": { "type": "Date",        "example": "USE_TODAY", "notes": "ISO 8601 YYYY-MM-DD. Must be today or future. Fix: replace with today's date." },
-        "SttlmDt":       { "type": "Date",        "example": "USE_TODAY", "notes": "Must be today or future." },
-        "ReqdExctnDt":   { "type": "Date",        "example": "USE_TODAY", "notes": "Must be today or future." },
-        "CreDtTm":       { "type": "DateTime",    "example": "USE_NOW_OFFSET", "notes": "CBPR+ format: YYYY-MM-DDTHH:MM:SS+HH:MM. No Z. No milliseconds." },
-        "IntrBkSttlmTm": { "type": "DateTime",    "example": "USE_NOW_OFFSET", "notes": "CBPR+ format: YYYY-MM-DDTHH:MM:SS+HH:MM. No Z." },
-        "BirthDt":       { "type": "Date",        "example": "1990-01-01", "notes": "Must be in the past (before today)." },
-
-        "ChrgBr":        { "type": "codelist",    "codelist": "charge_bearer",   "preferred": "SLEV", "valid": ["SLEV", "SHAR", "CRED", "DEBT"], "notes": "CBPR+ default = SLEV." },
-        "SttlmMtd":      { "type": "codelist",    "codelist": "sttlm_mthd",      "preferred": "INGA", "valid": ["INDA", "INGA", "COVE", "CLRG"], "notes": "INGA = settled on books of instructed agent." },
-        "InstrPrty":     { "type": "codelist",    "preferred": "NORM",           "valid": ["NORM", "HIGH"] },
-        "SttlmPrty":     { "type": "codelist",    "preferred": "NORM",           "valid": ["URGT", "HIGH", "NORM"] },
-        "TxSts":         { "type": "codelist",    "valid": ["ACCP", "ACSC", "ACSP", "ACWC", "ACWP", "PART", "PDNG", "RJCT"] },
-        "GrpSts":        { "type": "codelist",    "valid": ["ACCP", "ACSC", "ACSP", "ACWC", "ACWP", "PART", "PDNG", "RJCT"] }
+        "BICFI": {
+            "type": "BICFI",
+            "max_length": 11,
+            "min_length": 8,
+            "example": "DEUTDEFFXXX",
+            "notes": "8 chars or 11 with branch. Banks-only ISO 9362."
+        },
+        "AnyBIC": {
+            "type": "AnyBIC",
+            "max_length": 11,
+            "min_length": 8,
+            "example": "DEUTDEFFXXX"
+        },
+        "IBAN": {
+            "type": "IBAN",
+            "max_length": 34,
+            "min_length": 15,
+            "example": "DE89370400440532013000",
+            "notes": "ISO 13616, country-specific length."
+        },
+        "LEI": {
+            "type": "LEI",
+            "max_length": 20,
+            "min_length": 20,
+            "example": "529900T8BM49AURSDO55"
+        },
+        "Ccy": {
+            "type": "Currency",
+            "max_length": 3,
+            "min_length": 3,
+            "example": "USD"
+        },
+        "Ctry": {
+            "type": "Country",
+            "max_length": 2,
+            "min_length": 2,
+            "example": "US"
+        },
+        "UETR": {
+            "type": "UUID",
+            "max_length": 36,
+            "min_length": 36,
+            "example": "4a1a0945-5772-409a-83ba-240e666e0267",
+            "notes": "UUID v4 — mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+        },
+        "MsgId": {
+            "type": "Max35Text",
+            "max_length": 35,
+            "example": "MSG-DEMO-20260528-001",
+            "notes": "Must equal AppHdr/BizMsgIdr. No spaces."
+        },
+        "BizMsgIdr": {
+            "type": "Max35Text",
+            "max_length": 35,
+            "example": "MSG-DEMO-20260528-001",
+            "notes": "Must equal GrpHdr/MsgId. No spaces."
+        },
+        "InstrId": {
+            "type": "Max16Text",
+            "max_length": 16,
+            "example": "INSTR-260528-001"
+        },
+        "EndToEndId": {
+            "type": "Max35Text",
+            "max_length": 35,
+            "example": "E2E-20260528-001"
+        },
+        "TxId": {
+            "type": "Max35Text",
+            "max_length": 35,
+            "example": "TXN-20260528-001"
+        },
+        "ClrSysRef": {
+            "type": "Max35Text",
+            "max_length": 35,
+            "example": "CLR-REF-001"
+        },
+        "BizSvc": {
+            "type": "Max35Text",
+            "max_length": 35,
+            "example": "swift.cbprplus.02",
+            "notes": "CBPR+ uses swift.cbprplus.02."
+        },
+        "MsgDefIdr": {
+            "type": "Max35Text",
+            "max_length": 35,
+            "example": "pacs.008.001.08",
+            "notes": "Must match the document namespace exactly."
+        },
+        "Nm": {
+            "type": "Max140Text",
+            "max_length": 140,
+            "example": "ACME Corporation Ltd",
+            "notes": "SWIFT chars only: A-Z a-z 0-9 / - ? : ( ) . , ' + space"
+        },
+        "AdrLine": {
+            "type": "Max70Text",
+            "max_length": 70,
+            "example": "123 Main Street",
+            "notes": "Max 2 lines allowed; each max 70 chars."
+        },
+        "TwnNm": {
+            "type": "Max35Text",
+            "max_length": 35,
+            "example": "New York"
+        },
+        "PstCd": {
+            "type": "Max16Text",
+            "max_length": 16,
+            "example": "10001"
+        },
+        "StrtNm": {
+            "type": "Max70Text",
+            "max_length": 70,
+            "example": "Main Street"
+        },
+        "BldgNb": {
+            "type": "Max16Text",
+            "max_length": 16,
+            "example": "123"
+        },
+        "Ustrd": {
+            "type": "Max140Text",
+            "max_length": 140,
+            "example": "Invoice 2026-001 payment"
+        },
+        "NbOfTxs": {
+            "type": "Numeric15",
+            "max_length": 15,
+            "example": "1",
+            "notes": "Must equal the count of CdtTrfTxInf / TxInfAndSts blocks."
+        },
+        "CtrlSum": {
+            "type": "Amount",
+            "example": "1000.00"
+        },
+        "XchgRate": {
+            "type": "Amount",
+            "example": "1.0",
+            "notes": "Required only when InstdAmt.Ccy != IntrBkSttlmAmt.Ccy."
+        },
+        "IntrBkSttlmDt": {
+            "type": "Date",
+            "example": "USE_TODAY",
+            "notes": "ISO 8601 YYYY-MM-DD. Must be today or future. Fix: replace with today's date."
+        },
+        "SttlmDt": {
+            "type": "Date",
+            "example": "USE_TODAY",
+            "notes": "Must be today or future."
+        },
+        "ReqdExctnDt": {
+            "type": "Date",
+            "example": "USE_TODAY",
+            "notes": "Must be today or future."
+        },
+        "CreDtTm": {
+            "type": "DateTime",
+            "example": "USE_NOW_OFFSET",
+            "notes": "CBPR+ format: YYYY-MM-DDTHH:MM:SS+HH:MM. No Z. No milliseconds."
+        },
+        "IntrBkSttlmTm": {
+            "type": "DateTime",
+            "example": "USE_NOW_OFFSET",
+            "notes": "CBPR+ format: YYYY-MM-DDTHH:MM:SS+HH:MM. No Z."
+        },
+        "BirthDt": {
+            "type": "Date",
+            "example": "1990-01-01",
+            "notes": "Must be in the past (before today)."
+        },
+        "ChrgBr": {
+            "type": "codelist",
+            "codelist": "charge_bearer",
+            "preferred": "SLEV",
+            "valid": [
+                "SLEV",
+                "SHAR",
+                "CRED",
+                "DEBT"
+            ],
+            "notes": "CBPR+ default = SLEV."
+        },
+        "SttlmMtd": {
+            "type": "codelist",
+            "codelist": "sttlm_mthd",
+            "preferred": "INGA",
+            "valid": [
+                "INDA",
+                "INGA",
+                "COVE",
+                "CLRG"
+            ],
+            "notes": "INGA = settled on books of instructed agent."
+        },
+        "InstrPrty": {
+            "type": "codelist",
+            "preferred": "NORM",
+            "valid": [
+                "NORM",
+                "HIGH"
+            ]
+        },
+        "SttlmPrty": {
+            "type": "codelist",
+            "preferred": "NORM",
+            "valid": [
+                "URGT",
+                "HIGH",
+                "NORM"
+            ]
+        },
+        "TxSts": {
+            "type": "codelist",
+            "valid": [
+                "ACCP",
+                "ACSC",
+                "ACSP",
+                "ACWC",
+                "ACWP",
+                "PART",
+                "PDNG",
+                "RJCT"
+            ]
+        },
+        "GrpSts": {
+            "type": "codelist",
+            "valid": [
+                "ACCP",
+                "ACSC",
+                "ACSP",
+                "ACWC",
+                "ACWP",
+                "PART",
+                "PDNG",
+                "RJCT"
+            ]
+        }
     },
-
     "date_fix_rules": {
         "_doc": "Rules specifically for fixing date and datetime errors. The AI MUST follow these when encountering any date-related error code.",
-
         "PAST_DATE_ERROR": {
             "error_code": "PAST_DATE_ERROR",
             "description": "A date or datetime field contains a value in the past.",
-            "affects_tags": ["CreDt", "IntrBkSttlmDt", "SttlmDt", "ReqdExctnDt", "ValDt", "DueDt", "ExctnDt", "IntrBkSttlmTm", "CreDtTm"],
+            "affects_tags": [
+                "CreDt",
+                "IntrBkSttlmDt",
+                "SttlmDt",
+                "ReqdExctnDt",
+                "ReqdColltnDt",
+                "ValDt",
+                "DueDt",
+                "ExctnDt",
+                "IntrBkSttlmTm",
+                "CreDtTm",
+                "FrDt",
+                "ToDt",
+                "IntrBkSttlmDt"
+            ],
             "fix_action": "Replace the past date/datetime with today's date (for Date fields) or now with timezone offset (for DateTime fields).",
             "fix_format_date": "YYYY-MM-DD using today's actual calendar date",
             "fix_format_datetime": "YYYY-MM-DDTHH:MM:SS+00:00 using current UTC time with +00:00 offset",
@@ -70,47 +276,73 @@
                 "IntrBkSttlmDt is typically today or T+1; use today's date as minimum"
             ]
         },
-
         "FUTURE_DATE_BIRTH_ERROR": {
             "error_code": "FUTURE_DATE_BIRTH_ERROR",
             "description": "BirthDt is in the future, which is impossible.",
-            "affects_tags": ["BirthDt"],
+            "affects_tags": [
+                "BirthDt"
+            ],
             "fix_action": "Replace BirthDt with a valid past date.",
             "fix_format_date": "YYYY-MM-DD — use a plausible birth date like 1990-01-15",
             "dummy_value": "1990-01-15"
         },
-
         "CBPR_DATETIME_Z_FORBIDDEN": {
             "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
             "description": "CBPR+ forbids the 'Z' UTC suffix. An explicit offset like +00:00 must be used.",
-            "affects_tags": ["CreDt", "CreDtTm", "IntrBkSttlmTm", "PmtStpTm", "SttlmTmReq", "CLSTm", "FrTm", "TillTm", "RjctTm"],
+            "affects_tags": [
+                "CreDt",
+                "CreDtTm",
+                "IntrBkSttlmTm",
+                "PmtStpTm",
+                "SttlmTmReq",
+                "CLSTm",
+                "FrTm",
+                "TillTm",
+                "RjctTm"
+            ],
             "fix_action": "Replace the trailing 'Z' with '+00:00'. Do NOT change the date or time part.",
             "example_before": "2026-05-28T10:00:00Z",
             "example_after": "2026-05-28T10:00:00+00:00"
         },
-
         "CBPR_DATETIME_MILLISECONDS": {
             "error_code": "CBPR_DATETIME_MILLISECONDS",
             "description": "CBPR+ forbids milliseconds in datetime fields.",
-            "affects_tags": ["CreDt", "CreDtTm", "IntrBkSttlmTm", "PmtStpTm", "SttlmTmReq", "CLSTm", "FrTm", "TillTm", "RjctTm"],
+            "affects_tags": [
+                "CreDt",
+                "CreDtTm",
+                "IntrBkSttlmTm",
+                "PmtStpTm",
+                "SttlmTmReq",
+                "CLSTm",
+                "FrTm",
+                "TillTm",
+                "RjctTm"
+            ],
             "fix_action": "Remove the .sss fractional seconds part. Keep the rest unchanged.",
             "example_before": "2026-05-28T10:00:00.123+00:00",
             "example_after": "2026-05-28T10:00:00+00:00"
         },
-
         "CBPR_DATETIME_NO_TIMEZONE": {
             "error_code": "CBPR_DATETIME_NO_TIMEZONE",
             "description": "CBPR+ requires a timezone offset on all datetime fields.",
-            "affects_tags": ["CreDt", "CreDtTm", "IntrBkSttlmTm", "PmtStpTm", "SttlmTmReq", "CLSTm", "FrTm", "TillTm", "RjctTm"],
+            "affects_tags": [
+                "CreDt",
+                "CreDtTm",
+                "IntrBkSttlmTm",
+                "PmtStpTm",
+                "SttlmTmReq",
+                "CLSTm",
+                "FrTm",
+                "TillTm",
+                "RjctTm"
+            ],
             "fix_action": "Append '+00:00' to a datetime that has no timezone suffix.",
             "example_before": "2026-05-28T10:00:00",
             "example_after": "2026-05-28T10:00:00+00:00"
         }
     },
-
     "error_code_catalogue": {
         "_doc": "Maps every known validator error code to: root cause, affected tags, and the exact fix recipe. AI must check this FIRST when selecting a fix strategy.",
-
         "PAST_DATE_ERROR": {
             "root_cause": "Date/datetime field contains a date before today.",
             "fix": "Replace value with today's date (YYYY-MM-DD) or now with offset (YYYY-MM-DDTHH:MM:SS+00:00).",
@@ -159,7 +391,11 @@
         },
         "APPHDR_FR_MISSING": {
             "root_cause": "AppHdr/Fr is completely absent. Fr is mandatory in the BAH (head.001) AppHdr. This is NOT a value mismatch — the whole element was deleted, so there is nothing to update; the AI must INSERT it.",
-            "aliases": ["MISSING_FR", "APPHDR_FR_ABSENT", "FR_NOT_FOUND"],
+            "aliases": [
+                "MISSING_FR",
+                "APPHDR_FR_ABSENT",
+                "FR_NOT_FOUND"
+            ],
             "fix": "Insert a full Fr element as the FIRST child of AppHdr using tag_templates.Fr. Resolve $INSTG_BICFI by harvesting InstgAgt/FinInstnId/BICFI from the transaction block (CdtTrfTxInf/InstgAgt for pacs.008/009, GrpHdr/InstgAgt for pacs.002/004). If no InstgAgt BICFI exists anywhere in the message, fall back to dummy_data.parties.instructing_agent.bicfi (BARCGB22XXX).",
             "insert_template": "<Fr><FIId><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></FIId></Fr>",
             "insert_position": "First child of AppHdr, before To (see tag_insertion_order.AppHdr).",
@@ -168,7 +404,11 @@
         },
         "APPHDR_TO_MISSING": {
             "root_cause": "AppHdr/To is completely absent. To is mandatory in the BAH (head.001) AppHdr. This is NOT a value mismatch — the whole element was deleted, so there is nothing to update; the AI must INSERT it.",
-            "aliases": ["MISSING_TO", "APPHDR_TO_ABSENT", "TO_NOT_FOUND"],
+            "aliases": [
+                "MISSING_TO",
+                "APPHDR_TO_ABSENT",
+                "TO_NOT_FOUND"
+            ],
             "fix": "Insert a full To element into AppHdr immediately AFTER Fr using tag_templates.To. Resolve $INSTD_BICFI by harvesting InstdAgt/FinInstnId/BICFI from the transaction block (CdtTrfTxInf/InstdAgt for pacs.008/009, GrpHdr/InstdAgt for pacs.002/004). If no InstdAgt BICFI exists anywhere in the message, fall back to dummy_data.parties.instructed_agent.bicfi (CHASUS33XXX).",
             "insert_template": "<To><FIId><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></FIId></To>",
             "insert_position": "Second child of AppHdr, immediately after Fr and before BizMsgIdr (see tag_insertion_order.AppHdr).",
@@ -252,286 +492,879 @@
             "fix": "Extract the missing tag name from the error message and insert it into the parent element using the tag_templates section. Always insert in XSD element order (see tag_insertion_order)."
         }
     },
-
     "tag_templates": {
         "_doc": "Exact XML structure for each tag, by message type. The AI MUST use the message-specific variant when available; fall back to 'default' only when no message match. Placeholders ($VAR) get resolved by either harvesting from the live XML or pulling from dummy_data.",
-
-        "UETR": { "default": "<UETR>$UETR</UETR>" },
-        "MsgId": { "default": "<MsgId>$MSG_ID</MsgId>" },
-        "BizMsgIdr": { "default": "<BizMsgIdr>$MSG_ID</BizMsgIdr>", "_note": "Must equal GrpHdr/MsgId — always harvest from the live message." },
+        "UETR": {
+            "default": "<UETR>$UETR</UETR>"
+        },
+        "MsgId": {
+            "default": "<MsgId>$MSG_ID</MsgId>"
+        },
+        "BizMsgIdr": {
+            "default": "<BizMsgIdr>$MSG_ID</BizMsgIdr>",
+            "_note": "Must equal GrpHdr/MsgId — always harvest from the live message."
+        },
         "MsgDefIdr": {
-            "pacs.008":  "<MsgDefIdr>pacs.008.001.08</MsgDefIdr>",
-            "pacs.009":  "<MsgDefIdr>pacs.009.001.08</MsgDefIdr>",
-            "pacs.002":  "<MsgDefIdr>pacs.002.001.10</MsgDefIdr>",
-            "pacs.003":  "<MsgDefIdr>pacs.003.001.08</MsgDefIdr>",
-            "pacs.004":  "<MsgDefIdr>pacs.004.001.09</MsgDefIdr>",
-            "pacs.007":  "<MsgDefIdr>pacs.007.001.10</MsgDefIdr>",
-            "pacs.028":  "<MsgDefIdr>pacs.028.001.04</MsgDefIdr>",
-            "pain.001":  "<MsgDefIdr>pain.001.001.09</MsgDefIdr>",
-            "pain.002":  "<MsgDefIdr>pain.002.001.10</MsgDefIdr>",
-            "pain.008":  "<MsgDefIdr>pain.008.001.08</MsgDefIdr>",
-            "camt.052":  "<MsgDefIdr>camt.052.001.08</MsgDefIdr>",
-            "camt.053":  "<MsgDefIdr>camt.053.001.08</MsgDefIdr>",
-            "camt.054":  "<MsgDefIdr>camt.054.001.08</MsgDefIdr>",
-            "camt.055":  "<MsgDefIdr>camt.055.001.08</MsgDefIdr>",
-            "camt.056":  "<MsgDefIdr>camt.056.001.09</MsgDefIdr>",
-            "camt.057":  "<MsgDefIdr>camt.057.001.06</MsgDefIdr>",
-            "camt.058":  "<MsgDefIdr>camt.058.001.08</MsgDefIdr>"
+            "pacs.008": "<MsgDefIdr>pacs.008.001.08</MsgDefIdr>",
+            "pacs.009": "<MsgDefIdr>pacs.009.001.08</MsgDefIdr>",
+            "pacs.002": "<MsgDefIdr>pacs.002.001.10</MsgDefIdr>",
+            "pacs.003": "<MsgDefIdr>pacs.003.001.08</MsgDefIdr>",
+            "pacs.004": "<MsgDefIdr>pacs.004.001.09</MsgDefIdr>",
+            "pacs.007": "<MsgDefIdr>pacs.007.001.10</MsgDefIdr>",
+            "pacs.028": "<MsgDefIdr>pacs.028.001.04</MsgDefIdr>",
+            "pain.001": "<MsgDefIdr>pain.001.001.09</MsgDefIdr>",
+            "pain.002": "<MsgDefIdr>pain.002.001.10</MsgDefIdr>",
+            "pain.008": "<MsgDefIdr>pain.008.001.08</MsgDefIdr>",
+            "camt.052": "<MsgDefIdr>camt.052.001.08</MsgDefIdr>",
+            "camt.053": "<MsgDefIdr>camt.053.001.08</MsgDefIdr>",
+            "camt.054": "<MsgDefIdr>camt.054.001.08</MsgDefIdr>",
+            "camt.055": "<MsgDefIdr>camt.055.001.08</MsgDefIdr>",
+            "camt.056": "<MsgDefIdr>camt.056.001.09</MsgDefIdr>",
+            "camt.057": "<MsgDefIdr>camt.057.001.08</MsgDefIdr>",
+            "camt.058": "<MsgDefIdr>camt.058.001.08</MsgDefIdr>"
         },
-        "BizSvc": { "default": "<BizSvc>swift.cbprplus.02</BizSvc>" },
-        "Prty":   { "default": "<Prty>NORM</Prty>" },
-        "Fr":     { "default": "<Fr><FIId><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></FIId></Fr>" },
-        "To":     { "default": "<To><FIId><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></FIId></To>" },
-        "FIId":   { "default": "<FIId><FinInstnId><BICFI>$BICFI</BICFI></FinInstnId></FIId>" },
-        "CreDt":  { "default": "<CreDt>$CRE_DT_TM</CreDt>" },
-
+        "BizSvc": {
+            "default": "<BizSvc>swift.cbprplus.02</BizSvc>"
+        },
+        "Prty": {
+            "default": "<Prty>NORM</Prty>"
+        },
+        "Fr": {
+            "default": "<Fr><FIId><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></FIId></Fr>"
+        },
+        "To": {
+            "default": "<To><FIId><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></FIId></To>"
+        },
+        "FIId": {
+            "default": "<FIId><FinInstnId><BICFI>$BICFI</BICFI></FinInstnId></FIId>"
+        },
+        "CreDt": {
+            "default": "<CreDt>$CRE_DT_TM</CreDt>"
+        },
         "PmtId": {
-            "pacs.008":  "<PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId>",
-            "pacs.009":  "<PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId>",
-            "pacs.003":  "<PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><MndtId>MNDT-001</MndtId><UETR>$UETR</UETR></PmtId>",
-            "default":   "<PmtId><EndToEndId>$E2E_ID</EndToEndId><UETR>$UETR</UETR></PmtId>"
+            "pacs.008": "<PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId>",
+            "pacs.009": "<PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId>",
+            "pacs.003": "<PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><MndtId>MNDT-001</MndtId><UETR>$UETR</UETR></PmtId>",
+            "default": "<PmtId><EndToEndId>$E2E_ID</EndToEndId><UETR>$UETR</UETR></PmtId>",
+            "pain.001": "<PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId>",
+            "pain.008": "<PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId>"
         },
-
         "FinInstnId": {
-            "default":   "<FinInstnId><BICFI>$BICFI</BICFI></FinInstnId>",
-            "_note":     "Under CBPR+, if BICFI is present, Nm and PstlAdr are NOT allowed at the same level."
+            "default": "<FinInstnId><BICFI>$BICFI</BICFI></FinInstnId>",
+            "_note": "Under CBPR+, if BICFI is present, Nm and PstlAdr are NOT allowed at the same level."
         },
-        "DbtrAgt":    { "default": "<DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt>" },
-        "CdtrAgt":    { "default": "<CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt>" },
-        "InstgAgt":   { "default": "<InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt>", "_note": "AppHdr/Fr BICFI must match." },
-        "InstdAgt":   { "default": "<InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt>", "_note": "AppHdr/To BICFI must match." },
-        "IntrmyAgt1": { "default": "<IntrmyAgt1><FinInstnId><BICFI>$INTRMY_BICFI</BICFI></FinInstnId></IntrmyAgt1>" },
-        "IntrmyAgt2": { "default": "<IntrmyAgt2><FinInstnId><BICFI>$INTRMY2_BICFI</BICFI></FinInstnId></IntrmyAgt2>" },
-        "FwdgAgt":    { "default": "<FwdgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></FwdgAgt>" },
-
+        "DbtrAgt": {
+            "default": "<DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt>"
+        },
+        "CdtrAgt": {
+            "default": "<CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt>"
+        },
+        "InstgAgt": {
+            "default": "<InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt>",
+            "_note": "AppHdr/Fr BICFI must match."
+        },
+        "InstdAgt": {
+            "default": "<InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt>",
+            "_note": "AppHdr/To BICFI must match."
+        },
+        "IntrmyAgt1": {
+            "default": "<IntrmyAgt1><FinInstnId><BICFI>$INTRMY_BICFI</BICFI></FinInstnId></IntrmyAgt1>"
+        },
+        "IntrmyAgt2": {
+            "default": "<IntrmyAgt2><FinInstnId><BICFI>$INTRMY2_BICFI</BICFI></FinInstnId></IntrmyAgt2>"
+        },
+        "FwdgAgt": {
+            "default": "<FwdgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></FwdgAgt>"
+        },
         "Dbtr": {
-            "pacs.008":  "<Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr>",
-            "pacs.009":  "<Dbtr><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></Dbtr>",
-            "pain.001":  "<Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr><Id><OrgId><AnyBIC>$DBTR_BICFI</AnyBIC></OrgId></Id></Dbtr>",
-            "default":   "<Dbtr><Nm>$DBTR_NM</Nm></Dbtr>"
+            "pacs.008": "<Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr>",
+            "pacs.009": "<Dbtr><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></Dbtr>",
+            "pain.001": "<Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr><Id><OrgId><AnyBIC>$DBTR_BICFI</AnyBIC></OrgId></Id></Dbtr>",
+            "default": "<Dbtr><Nm>$DBTR_NM</Nm></Dbtr>",
+            "pain.008": "<Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr>",
+            "pain.002": "<Dbtr><Nm>$DBTR_NM</Nm></Dbtr>"
         },
         "Cdtr": {
-            "pacs.008":  "<Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr>",
-            "pacs.009":  "<Cdtr><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></Cdtr>",
-            "pain.001":  "<Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr>",
-            "default":   "<Cdtr><Nm>$CDTR_NM</Nm></Cdtr>"
+            "pacs.008": "<Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr>",
+            "pacs.009": "<Cdtr><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></Cdtr>",
+            "pain.001": "<Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr>",
+            "default": "<Cdtr><Nm>$CDTR_NM</Nm></Cdtr>",
+            "pain.008": "<Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr>",
+            "pain.002": "<Cdtr><Nm>$CDTR_NM</Nm></Cdtr>"
         },
-        "UltmtDbtr":  { "default": "<UltmtDbtr><Nm>$DBTR_NM</Nm></UltmtDbtr>", "_note": "NOT allowed in pacs.009." },
-        "UltmtCdtr":  { "default": "<UltmtCdtr><Nm>$CDTR_NM</Nm></UltmtCdtr>", "_note": "NOT allowed in pacs.009." },
-
-        "DbtrAcct":   { "default": "<DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct>" },
-        "CdtrAcct":   { "default": "<CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct>" },
-        "DbtrAgtAcct":{ "default": "<DbtrAgtAcct><Id><Othr><Id>$ACCOUNT_ID</Id></Othr></Id></DbtrAgtAcct>" },
-        "CdtrAgtAcct":{ "default": "<CdtrAgtAcct><Id><Othr><Id>$ACCOUNT_ID</Id></Othr></Id></CdtrAgtAcct>" },
-
-        "PstlAdr":    { "default": "<PstlAdr><AdrLine>$ADDR</AdrLine><Ctry>$CTRY</Ctry></PstlAdr>" },
-        "Ctry":       { "default": "<Ctry>$CTRY</Ctry>" },
-        "AdrLine":    { "default": "<AdrLine>$ADDR</AdrLine>" },
-        "TwnNm":      { "default": "<TwnNm>$CITY</TwnNm>" },
-        "PstCd":      { "default": "<PstCd>$POSTCODE</PstCd>" },
-
-        "Amt":              { "default": "<Amt Ccy=\"$CCY\">$AMOUNT</Amt>" },
-        "IntrBkSttlmAmt":   { "default": "<IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt>" },
-        "InstdAmt":         { "default": "<InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt>" },
-        "EqvtAmt":          { "default": "<EqvtAmt><Amt Ccy=\"$CCY\">$AMOUNT</Amt><CcyOfTrf>$CCY</CcyOfTrf></EqvtAmt>" },
-        "XchgRate":         { "default": "<XchgRate>1.0</XchgRate>" },
-
-        "ChrgBr":     { "default": "<ChrgBr>SLEV</ChrgBr>" },
-        "ChrgsInf":   { "default": "<ChrgsInf><Amt Ccy=\"$CCY\">0.00</Amt><Agt><FinInstnId><BICFI>$CHRG_BICFI</BICFI></FinInstnId></Agt></ChrgsInf>" },
-
-        "PmtTpInf":   {
+        "UltmtDbtr": {
+            "default": "<UltmtDbtr><Nm>$DBTR_NM</Nm></UltmtDbtr>",
+            "_note": "NOT allowed in pacs.009."
+        },
+        "UltmtCdtr": {
+            "default": "<UltmtCdtr><Nm>$CDTR_NM</Nm></UltmtCdtr>",
+            "_note": "NOT allowed in pacs.009."
+        },
+        "DbtrAcct": {
+            "default": "<DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct>"
+        },
+        "CdtrAcct": {
+            "default": "<CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct>"
+        },
+        "DbtrAgtAcct": {
+            "default": "<DbtrAgtAcct><Id><Othr><Id>$ACCOUNT_ID</Id></Othr></Id></DbtrAgtAcct>"
+        },
+        "CdtrAgtAcct": {
+            "default": "<CdtrAgtAcct><Id><Othr><Id>$ACCOUNT_ID</Id></Othr></Id></CdtrAgtAcct>"
+        },
+        "PstlAdr": {
+            "default": "<PstlAdr><AdrLine>$ADDR</AdrLine><Ctry>$CTRY</Ctry></PstlAdr>"
+        },
+        "Ctry": {
+            "default": "<Ctry>$CTRY</Ctry>"
+        },
+        "AdrLine": {
+            "default": "<AdrLine>$ADDR</AdrLine>"
+        },
+        "TwnNm": {
+            "default": "<TwnNm>$CITY</TwnNm>"
+        },
+        "PstCd": {
+            "default": "<PstCd>$POSTCODE</PstCd>"
+        },
+        "Amt": {
+            "default": "<Amt Ccy=\"$CCY\">$AMOUNT</Amt>"
+        },
+        "IntrBkSttlmAmt": {
+            "default": "<IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt>"
+        },
+        "InstdAmt": {
+            "default": "<InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt>"
+        },
+        "EqvtAmt": {
+            "default": "<EqvtAmt><Amt Ccy=\"$CCY\">$AMOUNT</Amt><CcyOfTrf>$CCY</CcyOfTrf></EqvtAmt>"
+        },
+        "XchgRate": {
+            "default": "<XchgRate>1.0</XchgRate>"
+        },
+        "ChrgBr": {
+            "default": "<ChrgBr>SLEV</ChrgBr>"
+        },
+        "ChrgsInf": {
+            "default": "<ChrgsInf><Amt Ccy=\"$CCY\">0.00</Amt><Agt><FinInstnId><BICFI>$CHRG_BICFI</BICFI></FinInstnId></Agt></ChrgsInf>"
+        },
+        "PmtTpInf": {
             "pacs.008": "<PmtTpInf><SvcLvl><Cd>SEPA</Cd></SvcLvl><InstrPrty>NORM</InstrPrty></PmtTpInf>",
             "pacs.009": "<PmtTpInf><SvcLvl><Cd>G002</Cd></SvcLvl><InstrPrty>NORM</InstrPrty></PmtTpInf>",
-            "default":  "<PmtTpInf><SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl></PmtTpInf>"
+            "default": "<PmtTpInf><SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl></PmtTpInf>"
         },
-        "SvcLvl":     { "default": "<SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl>" },
-        "LclInstrm":  { "default": "<LclInstrm><Cd>CORE</Cd></LclInstrm>" },
-        "CtgyPurp":   { "default": "<CtgyPurp><Cd>SUPP</Cd></CtgyPurp>" },
-        "Purp":       { "default": "<Purp><Cd>GDDS</Cd></Purp>" },
-        "InstrPrty":  { "default": "<InstrPrty>NORM</InstrPrty>" },
-
+        "SvcLvl": {
+            "default": "<SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl>"
+        },
+        "LclInstrm": {
+            "default": "<LclInstrm><Cd>CORE</Cd></LclInstrm>"
+        },
+        "CtgyPurp": {
+            "default": "<CtgyPurp><Cd>SUPP</Cd></CtgyPurp>"
+        },
+        "Purp": {
+            "default": "<Purp><Cd>GDDS</Cd></Purp>"
+        },
+        "InstrPrty": {
+            "default": "<InstrPrty>NORM</InstrPrty>"
+        },
         "GrpHdr": {
-            "pacs.008":  "<GrpHdr><MsgId>$MSG_ID</MsgId><CreDtTm>$CRE_DT_TM</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf><SttlmMtd>INGA</SttlmMtd></SttlmInf></GrpHdr>",
-            "pacs.009":  "<GrpHdr><MsgId>$MSG_ID</MsgId><CreDtTm>$CRE_DT_TM</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf><SttlmMtd>INGA</SttlmMtd></SttlmInf></GrpHdr>",
-            "pacs.002":  "<GrpHdr><MsgId>$MSG_ID</MsgId><CreDtTm>$CRE_DT_TM</CreDtTm><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt></GrpHdr>",
-            "pacs.004":  "<GrpHdr><MsgId>$MSG_ID</MsgId><CreDtTm>$CRE_DT_TM</CreDtTm><NbOfTxs>1</NbOfTxs><TtlRtrdIntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</TtlRtrdIntrBkSttlmAmt><IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt><SttlmInf><SttlmMtd>INGA</SttlmMtd></SttlmInf><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt></GrpHdr>",
-            "pain.001":  "<GrpHdr><MsgId>$MSG_ID</MsgId><CreDtTm>$CRE_DT_TM</CreDtTm><NbOfTxs>1</NbOfTxs><CtrlSum>$AMOUNT</CtrlSum><InitgPty><Nm>$DBTR_NM</Nm></InitgPty></GrpHdr>"
+            "pacs.008": "<GrpHdr><MsgId>$MSG_ID</MsgId><CreDtTm>$CRE_DT_TM</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf><SttlmMtd>INGA</SttlmMtd></SttlmInf></GrpHdr>",
+            "pacs.009": "<GrpHdr><MsgId>$MSG_ID</MsgId><CreDtTm>$CRE_DT_TM</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf><SttlmMtd>INGA</SttlmMtd></SttlmInf></GrpHdr>",
+            "pacs.002": "<GrpHdr><MsgId>$MSG_ID</MsgId><CreDtTm>$CRE_DT_TM</CreDtTm><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt></GrpHdr>",
+            "pacs.004": "<GrpHdr><MsgId>$MSG_ID</MsgId><CreDtTm>$CRE_DT_TM</CreDtTm><NbOfTxs>1</NbOfTxs><TtlRtrdIntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</TtlRtrdIntrBkSttlmAmt><IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt><SttlmInf><SttlmMtd>INGA</SttlmMtd></SttlmInf><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt></GrpHdr>",
+            "pain.001": "<GrpHdr><MsgId>$MSG_ID</MsgId><CreDtTm>$CRE_DT_TM</CreDtTm><NbOfTxs>1</NbOfTxs><CtrlSum>$AMOUNT</CtrlSum><InitgPty><Nm>$DBTR_NM</Nm></InitgPty></GrpHdr>",
+            "pain.008": "<GrpHdr><MsgId>$MSG_ID</MsgId><CreDtTm>$CRE_DT_TM</CreDtTm><NbOfTxs>1</NbOfTxs><InitgPty><Nm>$DBTR_NM</Nm></InitgPty><FwdgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></FwdgAgt></GrpHdr>",
+            "camt.057": "<GrpHdr><MsgId>$MSG_ID</MsgId><CreDtTm>$CRE_DT_TM</CreDtTm></GrpHdr>",
+            "pain.002": "<GrpHdr><MsgId>$MSG_ID</MsgId><CreDtTm>$CRE_DT_TM</CreDtTm></GrpHdr>",
+            "pacs.010": "<GrpHdr><MsgId>$MSG_ID</MsgId><CreDtTm>$CRE_DT_TM</CreDtTm><NbOfTxs>1</NbOfTxs></GrpHdr>",
+            "camt.056": "<GrpHdr><MsgId>$MSG_ID</MsgId><CreDtTm>$CRE_DT_TM</CreDtTm></GrpHdr>"
         },
-        "SttlmInf":   { "default": "<SttlmInf><SttlmMtd>INGA</SttlmMtd></SttlmInf>" },
-        "RmtInf":     { "default": "<RmtInf><Ustrd>Invoice payment reference</Ustrd></RmtInf>" },
-
-        "CreDtTm":       { "default": "<CreDtTm>$CRE_DT_TM</CreDtTm>" },
-        "IntrBkSttlmDt": { "default": "<IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt>" },
-        "NbOfTxs":       { "default": "<NbOfTxs>1</NbOfTxs>" },
-        "CtrlSum":       { "default": "<CtrlSum>$AMOUNT</CtrlSum>" },
-
+        "SttlmInf": {
+            "default": "<SttlmInf><SttlmMtd>INGA</SttlmMtd></SttlmInf>"
+        },
+        "RmtInf": {
+            "default": "<RmtInf><Ustrd>Invoice payment reference</Ustrd></RmtInf>"
+        },
+        "CreDtTm": {
+            "default": "<CreDtTm>$CRE_DT_TM</CreDtTm>"
+        },
+        "IntrBkSttlmDt": {
+            "default": "<IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt>"
+        },
+        "NbOfTxs": {
+            "default": "<NbOfTxs>1</NbOfTxs>"
+        },
+        "CtrlSum": {
+            "default": "<CtrlSum>$AMOUNT</CtrlSum>"
+        },
         "StsRsnInf": {
             "pacs.002": "<StsRsnInf><Rsn><Cd>AC01</Cd></Rsn><AddtlInf>Account closed</AddtlInf></StsRsnInf>",
-            "default":  "<StsRsnInf><Rsn><Cd>NARR</Cd></Rsn><AddtlInf>See additional information</AddtlInf></StsRsnInf>"
+            "default": "<StsRsnInf><Rsn><Cd>NARR</Cd></Rsn><AddtlInf>See additional information</AddtlInf></StsRsnInf>",
+            "pain.002": "<StsRsnInf><Rsn><Cd>NARR</Cd></Rsn><AddtlInf>See additional information</AddtlInf></StsRsnInf>"
         },
         "OrgnlGrpInfAndSts": {
-            "pacs.002": "<OrgnlGrpInfAndSts><OrgnlMsgId>$ORIG_MSG_ID</OrgnlMsgId><OrgnlMsgNmId>pacs.008.001.08</OrgnlMsgNmId><GrpSts>RJCT</GrpSts></OrgnlGrpInfAndSts>"
+            "pacs.002": "<OrgnlGrpInfAndSts><OrgnlMsgId>$ORIG_MSG_ID</OrgnlMsgId><OrgnlMsgNmId>pacs.008.001.08</OrgnlMsgNmId><GrpSts>RJCT</GrpSts></OrgnlGrpInfAndSts>",
+            "pain.002": "<OrgnlGrpInfAndSts><OrgnlMsgId>$ORIG_MSG_ID</OrgnlMsgId><OrgnlMsgNmId>pain.001.001.09</OrgnlMsgNmId></OrgnlGrpInfAndSts>"
         },
         "TxInfAndSts": {
-            "pacs.002": "<TxInfAndSts><StsId>STSID-001</StsId><OrgnlInstrId>$INSTR_ID</OrgnlInstrId><OrgnlEndToEndId>$E2E_ID</OrgnlEndToEndId><OrgnlTxId>$TX_ID</OrgnlTxId><OrgnlUETR>$UETR</OrgnlUETR><TxSts>ACCP</TxSts></TxInfAndSts>"
+            "pacs.002": "<TxInfAndSts><StsId>STSID-001</StsId><OrgnlInstrId>$INSTR_ID</OrgnlInstrId><OrgnlEndToEndId>$E2E_ID</OrgnlEndToEndId><OrgnlTxId>$TX_ID</OrgnlTxId><OrgnlUETR>$UETR</OrgnlUETR><TxSts>ACCP</TxSts></TxInfAndSts>",
+            "pain.002": "<TxInfAndSts><OrgnlEndToEndId>$E2E_ID</OrgnlEndToEndId><TxSts>ACCP</TxSts></TxInfAndSts>"
         },
-
         "CdtTrfTxInf": {
-            "pacs.008":  "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId><IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt><IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt><ChrgBr>SLEV</ChrgBr><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf>",
-            "pacs.009":  "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId><IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt><IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt><ChrgBr>SLEV</ChrgBr><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt><Dbtr><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></Dbtr><Cdtr><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></Cdtr></CdtTrfTxInf>"
+            "pacs.008": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId><IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt><IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt><ChrgBr>SLEV</ChrgBr><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf>",
+            "pacs.009": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId><IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt><IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt><ChrgBr>SLEV</ChrgBr><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt><Dbtr><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></Dbtr><Cdtr><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></Cdtr></CdtTrfTxInf>",
+            "pain.001": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><Amt><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt></Amt><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf>"
+        },
+        "InitgPty": {
+            "default": "<InitgPty><Nm>$DBTR_NM</Nm></InitgPty>"
+        },
+        "PmtInf": {
+            "pain.001": "<PmtInf><PmtInfId>PMT-INF-001</PmtInfId><PmtMtd>TRF</PmtMtd><ReqdExctnDt><Dt>$STTLM_DT</Dt></ReqdExctnDt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><ChrgBr>SLEV</ChrgBr><CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><Amt><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt></Amt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf></PmtInf>",
+            "pain.008": "<PmtInf><PmtInfId>PMT-INF-001</PmtInfId><PmtMtd>DD</PmtMtd><ReqdColltnDt>$STTLM_DT</ReqdColltnDt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><ChrgBr>SLEV</ChrgBr><DrctDbtTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct></DrctDbtTxInf></PmtInf>"
+        },
+        "DrctDbtTxInf": {
+            "pain.008": "<DrctDbtTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct></DrctDbtTxInf>",
+            "pacs.010": "<DrctDbtTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><UETR>$UETR</UETR></PmtId><IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt><Dbtr><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></Dbtr><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt></DrctDbtTxInf>"
+        },
+        "CdtInstr": {
+            "pacs.010": "<CdtInstr><CdtId>CDT-001</CdtId><SttlmInf><SttlmMtd>INGA</SttlmMtd></SttlmInf><Cdtr><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></Cdtr><DrctDbtTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><UETR>$UETR</UETR></PmtId><IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt><Dbtr><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></Dbtr><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt></DrctDbtTxInf></CdtInstr>"
+        },
+        "Ntfctn": {
+            "camt.057": "<Ntfctn><Id>NTFCTN-001</Id><Itm><Id>ITM-001</Id><Amt Ccy=\"$CCY\">$AMOUNT</Amt></Itm></Ntfctn>"
+        },
+        "Itm": {
+            "camt.057": "<Itm><Id>ITM-001</Id><Amt Ccy=\"$CCY\">$AMOUNT</Amt></Itm>",
+            "default": "<Itm><Id>ITM-001</Id><Amt Ccy=\"$CCY\">$AMOUNT</Amt></Itm>"
+        },
+        "NtfctnToRcv": {
+            "camt.057": "<NtfctnToRcv><GrpHdr><MsgId>$MSG_ID</MsgId><CreDtTm>$CRE_DT_TM</CreDtTm></GrpHdr><Ntfctn><Id>NTFCTN-001</Id><Itm><Id>ITM-001</Id><Amt Ccy=\"$CCY\">$AMOUNT</Amt></Itm></Ntfctn></NtfctnToRcv>"
+        },
+        "MsgSndr": {
+            "camt.057": "<MsgSndr><Agt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></Agt></MsgSndr>"
+        },
+        "Assgnmt": {
+            "camt.056": "<Assgnmt><Id>ASSGNMT-001</Id><Assgnr><Agt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></Agt></Assgnr><Assgne><Agt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></Agt></Assgne><CreDtTm>$CRE_DT_TM</CreDtTm></Assgnmt>"
+        },
+        "CxlRsnInf": {
+            "default": "<CxlRsnInf><Rsn><Cd>DUPL</Cd></Rsn></CxlRsnInf>"
+        },
+        "Undrlyg": {
+            "camt.056": "<Undrlyg><TxInf><OrgnlUETR>$UETR</OrgnlUETR><CxlRsnInf><Rsn><Cd>DUPL</Cd></Rsn></CxlRsnInf></TxInf></Undrlyg>"
+        },
+        "TxInf": {
+            "camt.056": "<TxInf><OrgnlUETR>$UETR</OrgnlUETR><CxlRsnInf><Rsn><Cd>DUPL</Cd></Rsn></CxlRsnInf></TxInf>"
+        },
+        "Case": {
+            "camt.056": "<Case><Id>CASE-001</Id></Case>",
+            "default": "<Case><Id>CASE-001</Id></Case>"
+        },
+        "ReqdColltnDt": {
+            "default": "<ReqdColltnDt>$STTLM_DT</ReqdColltnDt>"
+        },
+        "OrgnlPmtInfAndSts": {
+            "pain.002": "<OrgnlPmtInfAndSts><OrgnlPmtInfId>$ORIG_MSG_ID</OrgnlPmtInfId><TxInfAndSts><OrgnlEndToEndId>$E2E_ID</OrgnlEndToEndId><TxSts>ACCP</TxSts></TxInfAndSts></OrgnlPmtInfAndSts>"
         }
     },
-
     "tag_insertion_order": {
         "_doc": "XSD-mandated element order inside each parent. When inserting a missing tag, place it AFTER the last existing sibling that appears before it in this list. AI must respect this order to produce schema-valid XML.",
-
-        "GrpHdr_pacs008": ["MsgId","CreDtTm","BtchBookg","NbOfTxs","CtrlSum","TtlIntrBkSttlmAmt","IntrBkSttlmDt","SttlmInf","PmtTpInf","InstgAgt","InstdAgt","FwdgAgt"],
-        "GrpHdr_pacs009": ["MsgId","CreDtTm","NbOfTxs","CtrlSum","TtlIntrBkSttlmAmt","IntrBkSttlmDt","SttlmInf","PmtTpInf","InstgAgt","InstdAgt"],
-        "GrpHdr_pacs002": ["MsgId","CreDtTm","InstgAgt","InstdAgt"],
-        "GrpHdr_pain001": ["MsgId","CreDtTm","AuthstnInd","InitnSrc","NbOfTxs","CtrlSum","InitgPty","FwdgAgt"],
-
+        "GrpHdr_pacs008": [
+            "MsgId",
+            "CreDtTm",
+            "BtchBookg",
+            "NbOfTxs",
+            "CtrlSum",
+            "TtlIntrBkSttlmAmt",
+            "IntrBkSttlmDt",
+            "SttlmInf",
+            "PmtTpInf",
+            "InstgAgt",
+            "InstdAgt",
+            "FwdgAgt"
+        ],
+        "GrpHdr_pacs009": [
+            "MsgId",
+            "CreDtTm",
+            "NbOfTxs",
+            "CtrlSum",
+            "TtlIntrBkSttlmAmt",
+            "IntrBkSttlmDt",
+            "SttlmInf",
+            "PmtTpInf",
+            "InstgAgt",
+            "InstdAgt"
+        ],
+        "GrpHdr_pacs002": [
+            "MsgId",
+            "CreDtTm",
+            "InstgAgt",
+            "InstdAgt"
+        ],
+        "GrpHdr_pain001": [
+            "MsgId",
+            "CreDtTm",
+            "AuthstnInd",
+            "InitnSrc",
+            "NbOfTxs",
+            "CtrlSum",
+            "InitgPty",
+            "FwdgAgt"
+        ],
         "CdtTrfTxInf_pacs008": [
-            "PmtId","PmtTpInf","IntrBkSttlmAmt","IntrBkSttlmDt","SttlmPrty","SttlmTmIndctn","SttlmTmReq",
-            "AccptncDtTm","PoolgAdjstmntDt","InstdAmt","XchgRate","ChrgBr","ChrgsInf","MndtRltdInf",
-            "PrvsInstgAgt1","PrvsInstgAgt2","PrvsInstgAgt3","InstgAgt","InstdAgt",
-            "IntrmyAgt1","IntrmyAgt1Acct","IntrmyAgt2","IntrmyAgt2Acct","IntrmyAgt3","IntrmyAgt3Acct",
-            "UltmtDbtr","InitgPty","Dbtr","DbtrAcct","DbtrAgt","DbtrAgtAcct",
-            "CdtrAgt","CdtrAgtAcct","Cdtr","CdtrAcct","UltmtCdtr",
-            "InstrForCdtrAgt","InstrForNxtAgt","Purp","RgltryRptg","Tax","RltdRmtInf","RmtInf"
+            "PmtId",
+            "PmtTpInf",
+            "IntrBkSttlmAmt",
+            "IntrBkSttlmDt",
+            "SttlmPrty",
+            "SttlmTmIndctn",
+            "SttlmTmReq",
+            "AccptncDtTm",
+            "PoolgAdjstmntDt",
+            "InstdAmt",
+            "XchgRate",
+            "ChrgBr",
+            "ChrgsInf",
+            "MndtRltdInf",
+            "PrvsInstgAgt1",
+            "PrvsInstgAgt2",
+            "PrvsInstgAgt3",
+            "InstgAgt",
+            "InstdAgt",
+            "IntrmyAgt1",
+            "IntrmyAgt1Acct",
+            "IntrmyAgt2",
+            "IntrmyAgt2Acct",
+            "IntrmyAgt3",
+            "IntrmyAgt3Acct",
+            "UltmtDbtr",
+            "InitgPty",
+            "Dbtr",
+            "DbtrAcct",
+            "DbtrAgt",
+            "DbtrAgtAcct",
+            "CdtrAgt",
+            "CdtrAgtAcct",
+            "Cdtr",
+            "CdtrAcct",
+            "UltmtCdtr",
+            "InstrForCdtrAgt",
+            "InstrForNxtAgt",
+            "Purp",
+            "RgltryRptg",
+            "Tax",
+            "RltdRmtInf",
+            "RmtInf"
         ],
         "CdtTrfTxInf_pacs009": [
-            "PmtId","PmtTpInf","IntrBkSttlmAmt","IntrBkSttlmDt","SttlmPrty","SttlmTmIndctn","SttlmTmReq",
-            "InstdAmt","XchgRate","ChrgBr","ChrgsInf","PrvsInstgAgt1","PrvsInstgAgt2","PrvsInstgAgt3",
-            "InstgAgt","InstdAgt","IntrmyAgt1","IntrmyAgt1Acct","IntrmyAgt2","IntrmyAgt2Acct",
-            "IntrmyAgt3","IntrmyAgt3Acct","Dbtr","DbtrAcct","DbtrAgt","DbtrAgtAcct",
-            "CdtrAgt","CdtrAgtAcct","Cdtr","CdtrAcct","InstrForCdtrAgt","InstrForNxtAgt","Purp","RmtInf"
+            "PmtId",
+            "PmtTpInf",
+            "IntrBkSttlmAmt",
+            "IntrBkSttlmDt",
+            "SttlmPrty",
+            "SttlmTmIndctn",
+            "SttlmTmReq",
+            "InstdAmt",
+            "XchgRate",
+            "ChrgBr",
+            "ChrgsInf",
+            "PrvsInstgAgt1",
+            "PrvsInstgAgt2",
+            "PrvsInstgAgt3",
+            "InstgAgt",
+            "InstdAgt",
+            "IntrmyAgt1",
+            "IntrmyAgt1Acct",
+            "IntrmyAgt2",
+            "IntrmyAgt2Acct",
+            "IntrmyAgt3",
+            "IntrmyAgt3Acct",
+            "Dbtr",
+            "DbtrAcct",
+            "DbtrAgt",
+            "DbtrAgtAcct",
+            "CdtrAgt",
+            "CdtrAgtAcct",
+            "Cdtr",
+            "CdtrAcct",
+            "InstrForCdtrAgt",
+            "InstrForNxtAgt",
+            "Purp",
+            "RmtInf"
         ],
-
-        "PmtId": ["InstrId","EndToEndId","TxId","ClrSysRef","UETR"],
-        "FinInstnId": ["BICFI","ClrSysMmbId","LEI","Nm","PstlAdr","Othr"],
-        "PstlAdr": ["AdrTp","Dept","SubDept","StrtNm","BldgNb","BldgNm","Flr","PstBx","Room","PstCd","TwnNm","TwnLctnNm","DstrctNm","CtrySubDvsn","Ctry","AdrLine"],
-        "SttlmInf": ["SttlmMtd","SttlmAcct","ClrSys","InstgRmbrsmntAgt","InstgRmbrsmntAgtAcct","InstdRmbrsmntAgt","InstdRmbrsmntAgtAcct","ThrdRmbrsmntAgt","ThrdRmbrsmntAgtAcct"],
-        "PmtTpInf": ["InstrPrty","ClrChanl","SvcLvl","LclInstrm","CtgyPurp"],
-        "Dbtr_pacs008": ["Nm","PstlAdr","Id","CtryOfRes","CtctDtls"],
-        "Cdtr_pacs008": ["Nm","PstlAdr","Id","CtryOfRes","CtctDtls"],
-        "AppHdr": ["Fr","To","BizMsgIdr","MsgDefIdr","BizSvc","CreDt","CpyDplct","PssblDplct","Prty","Sgntr","Rltd"]
+        "PmtId": [
+            "InstrId",
+            "EndToEndId",
+            "TxId",
+            "ClrSysRef",
+            "UETR"
+        ],
+        "FinInstnId": [
+            "BICFI",
+            "ClrSysMmbId",
+            "LEI",
+            "Nm",
+            "PstlAdr",
+            "Othr"
+        ],
+        "PstlAdr": [
+            "AdrTp",
+            "Dept",
+            "SubDept",
+            "StrtNm",
+            "BldgNb",
+            "BldgNm",
+            "Flr",
+            "PstBx",
+            "Room",
+            "PstCd",
+            "TwnNm",
+            "TwnLctnNm",
+            "DstrctNm",
+            "CtrySubDvsn",
+            "Ctry",
+            "AdrLine"
+        ],
+        "SttlmInf": [
+            "SttlmMtd",
+            "SttlmAcct",
+            "ClrSys",
+            "InstgRmbrsmntAgt",
+            "InstgRmbrsmntAgtAcct",
+            "InstdRmbrsmntAgt",
+            "InstdRmbrsmntAgtAcct",
+            "ThrdRmbrsmntAgt",
+            "ThrdRmbrsmntAgtAcct"
+        ],
+        "PmtTpInf": [
+            "InstrPrty",
+            "ClrChanl",
+            "SvcLvl",
+            "LclInstrm",
+            "CtgyPurp"
+        ],
+        "Dbtr_pacs008": [
+            "Nm",
+            "PstlAdr",
+            "Id",
+            "CtryOfRes",
+            "CtctDtls"
+        ],
+        "Cdtr_pacs008": [
+            "Nm",
+            "PstlAdr",
+            "Id",
+            "CtryOfRes",
+            "CtctDtls"
+        ],
+        "AppHdr": [
+            "Fr",
+            "To",
+            "BizMsgIdr",
+            "MsgDefIdr",
+            "BizSvc",
+            "CreDt",
+            "CpyDplct",
+            "PssblDplct",
+            "Prty",
+            "Sgntr",
+            "Rltd"
+        ],
+        "GrpHdr_pain008": [
+            "MsgId",
+            "CreDtTm",
+            "BtchBookg",
+            "NbOfTxs",
+            "CtrlSum",
+            "InitgPty",
+            "FwdgAgt"
+        ],
+        "GrpHdr_camt057": [
+            "MsgId",
+            "CreDtTm",
+            "MsgSndr"
+        ],
+        "GrpHdr_pain002": [
+            "MsgId",
+            "CreDtTm"
+        ],
+        "GrpHdr_pacs010": [
+            "MsgId",
+            "CreDtTm",
+            "NbOfTxs",
+            "CtrlSum",
+            "InitgPty"
+        ],
+        "GrpHdr_camt056": [
+            "MsgId",
+            "CreDtTm"
+        ],
+        "NtfctnToRcv_camt057": [
+            "GrpHdr",
+            "Ntfctn",
+            "SplmtryData"
+        ],
+        "Ntfctn_camt057": [
+            "Id",
+            "Acct",
+            "AcctOwnr",
+            "AcctSvcr",
+            "RltdAcct",
+            "TtlAmt",
+            "XpctdValDt",
+            "Dbtr",
+            "DbtrAgt",
+            "IntrmyAgt",
+            "Itm",
+            "SplmtryData"
+        ],
+        "Itm_camt057": [
+            "Id",
+            "EndToEndId",
+            "UETR",
+            "Acct",
+            "AcctOwnr",
+            "AcctSvcr",
+            "RltdAcct",
+            "Amt",
+            "XpctdValDt",
+            "Dbtr",
+            "DbtrAgt",
+            "IntrmyAgt",
+            "Purp",
+            "RltdRmtInf",
+            "RmtInf",
+            "UndrlygAllcn"
+        ],
+        "FIToFIPmtCxlReq_camt056": [
+            "Assgnmt",
+            "Case",
+            "CtrlData",
+            "Undrlyg",
+            "SplmtryData"
+        ],
+        "Assgnmt_camt056": [
+            "Id",
+            "Assgnr",
+            "Assgne",
+            "CreDtTm"
+        ],
+        "TxInf_camt056": [
+            "CxlId",
+            "Case",
+            "OrgnlGrpInf",
+            "OrgnlInstrId",
+            "OrgnlEndToEndId",
+            "OrgnlTxId",
+            "OrgnlUETR",
+            "OrgnlIntrBkSttlmAmt",
+            "OrgnlIntrBkSttlmDt",
+            "CxlRsnInf",
+            "SplmtryData"
+        ],
+        "PmtInf_pain001": [
+            "PmtInfId",
+            "PmtMtd",
+            "BtchBookg",
+            "NbOfTxs",
+            "CtrlSum",
+            "PmtTpInf",
+            "ReqdExctnDt",
+            "Dbtr",
+            "DbtrAcct",
+            "DbtrAgt",
+            "ChrgsInf",
+            "ChrgBr",
+            "CdtTrfTxInf"
+        ],
+        "CdtTrfTxInf_pain001": [
+            "PmtId",
+            "PmtTpInf",
+            "Amt",
+            "UltmtDbtr",
+            "InitgPty",
+            "CdtrAgt",
+            "CdtrAgtAcct",
+            "Cdtr",
+            "CdtrAcct",
+            "UltmtCdtr",
+            "InstrForCdtrAgt",
+            "Purp",
+            "RgltryRptg",
+            "Tax",
+            "RltdRmtInf",
+            "RmtInf"
+        ],
+        "PmtInf_pain008": [
+            "PmtInfId",
+            "PmtMtd",
+            "BtchBookg",
+            "NbOfTxs",
+            "CtrlSum",
+            "PmtTpInf",
+            "ReqdColltnDt",
+            "Cdtr",
+            "CdtrAcct",
+            "CdtrAgt",
+            "CdtrSchmeId",
+            "ChrgBr",
+            "DrctDbtTxInf"
+        ],
+        "DrctDbtTxInf_pain008": [
+            "PmtId",
+            "PmtTpInf",
+            "InstdAmt",
+            "DrctDbtTx",
+            "UltmtCdtr",
+            "DbtrAgt",
+            "DbtrAgtAcct",
+            "Dbtr",
+            "DbtrAcct",
+            "UltmtDbtr",
+            "InstrForCdtrAgt",
+            "Purp",
+            "RgltryRptg",
+            "Tax",
+            "RltdRmtInf",
+            "RmtInf"
+        ],
+        "FIDrctDbt_pacs010": [
+            "GrpHdr",
+            "CdtInstr",
+            "SplmtryData"
+        ],
+        "CdtInstr_pacs010": [
+            "CdtId",
+            "BtchBookg",
+            "NbOfTxs",
+            "CtrlSum",
+            "TtlIntrBkSttlmAmt",
+            "IntrBkSttlmDt",
+            "SttlmInf",
+            "Cdtr",
+            "CdtrAcct",
+            "CdtrAgt",
+            "DrctDbtTxInf"
+        ],
+        "DrctDbtTxInf_pacs010": [
+            "PmtId",
+            "PmtTpInf",
+            "IntrBkSttlmAmt",
+            "IntrBkSttlmDt",
+            "Dbtr",
+            "DbtrAcct",
+            "DbtrAgt",
+            "Purp",
+            "RmtInf"
+        ],
+        "CstmrPmtStsRpt_pain002": [
+            "GrpHdr",
+            "OrgnlGrpInfAndSts",
+            "OrgnlPmtInfAndSts",
+            "SplmtryData"
+        ],
+        "OrgnlPmtInfAndSts_pain002": [
+            "OrgnlPmtInfId",
+            "OrgnlPmtMtd",
+            "PmtInfSts",
+            "StsRsnInf",
+            "NbOfTxsPerSts",
+            "TxInfAndSts"
+        ],
+        "TxInfAndSts_pain002": [
+            "StsId",
+            "OrgnlInstrId",
+            "OrgnlEndToEndId",
+            "OrgnlTxId",
+            "OrgnlUETR",
+            "TxSts",
+            "StsRsnInf",
+            "ChrgsInf",
+            "AccptncDtTm",
+            "AcctSvcrRef",
+            "ClrSysRef",
+            "OrgnlTxRef"
+        ]
     },
-
     "dependencies": {
         "_doc": "Cross-field invariants the AI must preserve when generating fixes.",
-
         "equals": [
             {
                 "id": "BIZMSGIDR_EQ_GRPHDR_MSGID",
-                "fields": ["AppHdr.BizMsgIdr", "*.GrpHdr.MsgId"],
+                "fields": [
+                    "AppHdr.BizMsgIdr",
+                    "*.GrpHdr.MsgId"
+                ],
                 "description": "AppHdr/BizMsgIdr must equal the underlying message's GrpHdr/MsgId.",
-                "applies_to": ["pacs.008","pacs.009","pacs.002","pacs.004","pain.001","camt.053","camt.054","camt.056"],
+                "applies_to": [
+                    "pacs.008",
+                    "pacs.009",
+                    "pacs.002",
+                    "pacs.004",
+                    "pain.001",
+                    "camt.053",
+                    "camt.054",
+                    "camt.056"
+                ],
                 "fix_action": "When generating either field, harvest the other; never invent a new value."
             },
             {
                 "id": "MSGDEFIDR_EQ_NAMESPACE",
-                "fields": ["AppHdr.MsgDefIdr"],
+                "fields": [
+                    "AppHdr.MsgDefIdr"
+                ],
                 "must_equal": "namespace_of(Document)",
                 "description": "AppHdr/MsgDefIdr must exactly equal the message ID in the Document's xmlns.",
                 "fix_action": "Read the xmlns of the Document root and copy the message id (e.g. pacs.008.001.08)."
             },
             {
                 "id": "APPHDR_FR_EQ_INSTGAGT",
-                "fields": ["AppHdr.Fr.FIId.FinInstnId.BICFI","Document.*.CdtTrfTxInf.InstgAgt.FinInstnId.BICFI"],
+                "fields": [
+                    "AppHdr.Fr.FIId.FinInstnId.BICFI",
+                    "Document.*.CdtTrfTxInf.InstgAgt.FinInstnId.BICFI"
+                ],
                 "description": "AppHdr/Fr BICFI must equal CdtTrfTxInf/InstgAgt BICFI (when CpyDplct not COPY/CODU).",
-                "applies_to": ["pacs.008","pacs.009"],
+                "applies_to": [
+                    "pacs.008",
+                    "pacs.009"
+                ],
                 "fix_action": "Harvest the InstgAgt BICFI from the transaction block and set AppHdr/Fr to match."
             },
             {
                 "id": "APPHDR_TO_EQ_INSTDAGT",
-                "fields": ["AppHdr.To.FIId.FinInstnId.BICFI","Document.*.CdtTrfTxInf.InstdAgt.FinInstnId.BICFI"],
+                "fields": [
+                    "AppHdr.To.FIId.FinInstnId.BICFI",
+                    "Document.*.CdtTrfTxInf.InstdAgt.FinInstnId.BICFI"
+                ],
                 "description": "AppHdr/To BICFI must equal CdtTrfTxInf/InstdAgt BICFI.",
-                "applies_to": ["pacs.008","pacs.009"],
+                "applies_to": [
+                    "pacs.008",
+                    "pacs.009"
+                ],
                 "fix_action": "Harvest the InstdAgt BICFI from the transaction block and set AppHdr/To to match."
             },
             {
                 "id": "NBOFTXS_EQ_TX_COUNT",
-                "fields": ["*.GrpHdr.NbOfTxs"],
+                "fields": [
+                    "*.GrpHdr.NbOfTxs"
+                ],
                 "must_equal": "count(CdtTrfTxInf | DrctDbtTxInf | TxInfAndSts)",
                 "description": "GrpHdr/NbOfTxs must equal the actual count of transaction blocks.",
                 "fix_action": "Count transaction blocks in the document and set NbOfTxs accordingly."
             },
             {
                 "id": "APPHDR_PRTY_EQ_INSTRPRTY",
-                "fields": ["AppHdr.Prty","Document.*.CdtTrfTxInf.PmtTpInf.InstrPrty"],
+                "fields": [
+                    "AppHdr.Prty",
+                    "Document.*.CdtTrfTxInf.PmtTpInf.InstrPrty"
+                ],
                 "description": "AppHdr/Prty must equal CdtTrfTxInf/PmtTpInf/InstrPrty when both present.",
-                "applies_to": ["pacs.008"]
+                "applies_to": [
+                    "pacs.008"
+                ]
             },
             {
                 "id": "CTRL_SUM_EQ_AMOUNT_SUM",
-                "fields": ["*.GrpHdr.CtrlSum"],
+                "fields": [
+                    "*.GrpHdr.CtrlSum"
+                ],
                 "must_equal": "sum(IntrBkSttlmAmt) or sum(InstdAmt)",
                 "description": "CtrlSum must equal the sum of all transaction amounts in the message.",
                 "fix_action": "Sum all IntrBkSttlmAmt values and set CtrlSum to the result."
             }
         ],
-
         "not_equal": [
             {
                 "id": "DBTRAGT_NEQ_CDTRAGT",
-                "fields": ["Document.*.CdtTrfTxInf.DbtrAgt.FinInstnId.BICFI","Document.*.CdtTrfTxInf.CdtrAgt.FinInstnId.BICFI"],
+                "fields": [
+                    "Document.*.CdtTrfTxInf.DbtrAgt.FinInstnId.BICFI",
+                    "Document.*.CdtTrfTxInf.CdtrAgt.FinInstnId.BICFI"
+                ],
                 "severity": "WARNING",
                 "description": "Debtor Agent BIC and Creditor Agent BIC should not be identical (loopback warning).",
-                "applies_to": ["pacs.008"],
+                "applies_to": [
+                    "pacs.008"
+                ],
                 "fix_action": "When generating either, harvest the other and choose a different bank from dummy_data.banks."
             }
         ],
-
         "conditional_required": [
             {
                 "id": "INSTDAMT_DIFF_CCY_REQUIRES_XCHGRATE",
                 "if": "InstdAmt.Ccy != IntrBkSttlmAmt.Ccy",
-                "then_required": ["Document.*.CdtTrfTxInf.XchgRate"],
-                "applies_to": ["pacs.008"]
+                "then_required": [
+                    "Document.*.CdtTrfTxInf.XchgRate"
+                ],
+                "applies_to": [
+                    "pacs.008"
+                ]
             },
             {
                 "id": "INSTDAMT_SAME_CCY_FORBIDS_XCHGRATE",
                 "if": "InstdAmt.Ccy == IntrBkSttlmAmt.Ccy",
-                "then_forbidden": ["Document.*.CdtTrfTxInf.XchgRate"],
-                "applies_to": ["pacs.008"]
+                "then_forbidden": [
+                    "Document.*.CdtTrfTxInf.XchgRate"
+                ],
+                "applies_to": [
+                    "pacs.008"
+                ]
             },
             {
                 "id": "CHRGBR_CRED_REQUIRES_CHRGSINF",
                 "if": "ChrgBr == 'CRED'",
-                "then_required": ["Document.*.CdtTrfTxInf.ChrgsInf"],
-                "applies_to": ["pacs.008"]
+                "then_required": [
+                    "Document.*.CdtTrfTxInf.ChrgsInf"
+                ],
+                "applies_to": [
+                    "pacs.008"
+                ]
             },
             {
                 "id": "CHRGSINF_REQUIRES_AGT",
                 "if": "exists(ChrgsInf)",
-                "then_required": ["ChrgsInf.Agt"]
+                "then_required": [
+                    "ChrgsInf.Agt"
+                ]
             },
             {
                 "id": "TXSTS_RJCT_REQUIRES_STSRSNINF",
                 "if": "TxSts == 'RJCT'",
-                "then_required": ["StsRsnInf"],
-                "applies_to": ["pacs.002"]
+                "then_required": [
+                    "StsRsnInf"
+                ],
+                "applies_to": [
+                    "pacs.002"
+                ]
             },
             {
                 "id": "PSTLADR_REQUIRES_CTRY",
                 "if": "exists(PstlAdr)",
-                "then_required": ["PstlAdr.Ctry"],
+                "then_required": [
+                    "PstlAdr.Ctry"
+                ],
                 "description": "Every PstlAdr block must have at least a Ctry element."
             },
             {
                 "id": "PSTLADR_NO_ADRLINE_REQUIRES_TWN_CTRY",
                 "if": "exists(PstlAdr) and not exists(PstlAdr.AdrLine)",
-                "then_required": ["PstlAdr.TwnNm","PstlAdr.Ctry"]
+                "then_required": [
+                    "PstlAdr.TwnNm",
+                    "PstlAdr.Ctry"
+                ]
             },
             {
                 "id": "STTLMTMINDCTN_REQUIRES_DTLS",
                 "if": "exists(SttlmTmIndctn)",
-                "then_required_one_of": ["SttlmTmIndctn.CdtDtTm","SttlmTmIndctn.DbtDtTm"]
+                "then_required_one_of": [
+                    "SttlmTmIndctn.CdtDtTm",
+                    "SttlmTmIndctn.DbtDtTm"
+                ]
             },
             {
                 "id": "APPHDR_REQUIRES_FR",
                 "if": "exists(AppHdr)",
-                "then_required": ["AppHdr.Fr"],
+                "then_required": [
+                    "AppHdr.Fr"
+                ],
                 "description": "AppHdr/Fr (the sender) is mandatory in the Business Application Header. If absent, insert it as the first child of AppHdr.",
                 "error_code": "APPHDR_FR_MISSING",
                 "fix_action": "Insert tag_templates.Fr with $INSTG_BICFI harvested from InstgAgt//BICFI; fall back to dummy_data.parties.instructing_agent.bicfi."
@@ -539,53 +1372,77 @@
             {
                 "id": "APPHDR_REQUIRES_TO",
                 "if": "exists(AppHdr)",
-                "then_required": ["AppHdr.To"],
+                "then_required": [
+                    "AppHdr.To"
+                ],
                 "description": "AppHdr/To (the receiver) is mandatory in the Business Application Header. If absent, insert it after Fr.",
                 "error_code": "APPHDR_TO_MISSING",
                 "fix_action": "Insert tag_templates.To with $INSTD_BICFI harvested from InstdAgt//BICFI; fall back to dummy_data.parties.instructed_agent.bicfi."
             }
         ],
-
         "exclusive": [
             {
                 "id": "BICFI_EXCLUSIVE",
                 "if": "exists(FinInstnId.BICFI)",
-                "forbidden": ["FinInstnId.Nm","FinInstnId.PstlAdr"],
+                "forbidden": [
+                    "FinInstnId.Nm",
+                    "FinInstnId.PstlAdr"
+                ],
                 "description": "Under CBPR+, if BICFI is present, Nm and PstlAdr are NOT allowed inside the same FinInstnId.",
                 "fix_action": "When adding a BICFI, remove any sibling Nm and PstlAdr inside the same FinInstnId."
             },
             {
                 "id": "ANYBIC_EXCLUSIVE",
                 "if": "exists(OrgId.AnyBIC)",
-                "forbidden": ["OrgId.Othr","OrgId.LEI"]
+                "forbidden": [
+                    "OrgId.Othr",
+                    "OrgId.LEI"
+                ]
             },
             {
                 "id": "PACS009_FI_NO_CUSTOMER_FIELDS",
                 "if": "message == 'pacs.009'",
-                "forbidden": ["Dbtr.Nm","Dbtr.Id.OrgId","Dbtr.Id.PrvtId","Cdtr.Nm","Cdtr.Id.OrgId","Cdtr.Id.PrvtId"],
-                "applies_to": ["pacs.009"]
+                "forbidden": [
+                    "Dbtr.Nm",
+                    "Dbtr.Id.OrgId",
+                    "Dbtr.Id.PrvtId",
+                    "Cdtr.Nm",
+                    "Cdtr.Id.OrgId",
+                    "Cdtr.Id.PrvtId"
+                ],
+                "applies_to": [
+                    "pacs.009"
+                ]
             },
             {
                 "id": "PACS009_NO_ULTIMATES",
                 "if": "message == 'pacs.009'",
-                "forbidden": ["UltmtDbtr","UltmtCdtr"],
-                "applies_to": ["pacs.009"]
+                "forbidden": [
+                    "UltmtDbtr",
+                    "UltmtCdtr"
+                ],
+                "applies_to": [
+                    "pacs.009"
+                ]
             },
             {
                 "id": "IBAN_XOR_OTHR",
                 "if": "exists(DbtrAcct/Id/IBAN)",
-                "forbidden": ["DbtrAcct/Id/Othr"],
+                "forbidden": [
+                    "DbtrAcct/Id/Othr"
+                ],
                 "description": "Account identifier must use either IBAN or Othr, not both."
             }
         ]
     },
-
     "auto_fix_rules": {
         "_doc": "Declarative repair rules the AI Fix engine reads to auto-fix structural/business validation issues across ALL ISO 20022 message types. Matched by error code OR message regex; the engine applies the named fix_action and revalidates. Add new rules here — no code change required.",
         "predecessor": [
             {
                 "id": "INTRMY_ORDER_1",
-                "codes": ["L3_INTRMY_ORDER_1"],
+                "codes": [
+                    "L3_INTRMY_ORDER_1"
+                ],
                 "message_pattern": "IntrmyAgt2 cannot exist without IntrmyAgt1",
                 "element": "IntrmyAgt2",
                 "requires": "IntrmyAgt1",
@@ -594,7 +1451,9 @@
             },
             {
                 "id": "INTRMY_ORDER_2",
-                "codes": ["L3_INTRMY_ORDER_2"],
+                "codes": [
+                    "L3_INTRMY_ORDER_2"
+                ],
                 "message_pattern": "IntrmyAgt3 cannot exist without IntrmyAgt2",
                 "element": "IntrmyAgt3",
                 "requires": "IntrmyAgt2",
@@ -621,21 +1480,39 @@
         "exclusive": [
             {
                 "id": "BICFI_EXCLUSIVE",
-                "codes": ["CBPR_COM_R9", "CBPR_AGENT_BICFI_EXCLUSIVE", "DEP_013"],
+                "codes": [
+                    "CBPR_COM_R9",
+                    "CBPR_AGENT_BICFI_EXCLUSIVE",
+                    "DEP_013"
+                ],
                 "message_pattern": "BICFI is present.*not allowed",
-                "containers": ["FinInstnId"],
+                "containers": [
+                    "FinInstnId"
+                ],
                 "if_present": "BICFI",
-                "remove": ["Nm", "PstlAdr"],
+                "remove": [
+                    "Nm",
+                    "PstlAdr"
+                ],
                 "fix_action": "remove_disallowed",
                 "description": "If BICFI is present in FinInstnId, Nm and PstlAdr are not allowed → remove them."
             },
             {
                 "id": "ANYBIC_EXCLUSIVE",
-                "codes": ["CBPR_COM_R11"],
+                "codes": [
+                    "CBPR_COM_R11"
+                ],
                 "message_pattern": "AnyBIC is present.*not allowed",
-                "containers": ["OrgId", "PrvtId", "Id"],
+                "containers": [
+                    "OrgId",
+                    "PrvtId",
+                    "Id"
+                ],
                 "if_present": "AnyBIC",
-                "remove": ["Nm", "PstlAdr"],
+                "remove": [
+                    "Nm",
+                    "PstlAdr"
+                ],
                 "fix_action": "remove_disallowed",
                 "description": "If AnyBIC is present, Nm and PstlAdr are not allowed → remove them."
             }
@@ -643,69 +1520,190 @@
         "coexistence": [
             {
                 "id": "NAME_ADDRESS_COEXISTENCE",
-                "codes": ["NAME_ADDRESS_COEXISTENCE", "DEP_014"],
+                "codes": [
+                    "NAME_ADDRESS_COEXISTENCE",
+                    "DEP_014"
+                ],
                 "message_pattern": "present together",
-                "elements": ["Nm", "PstlAdr"],
+                "elements": [
+                    "Nm",
+                    "PstlAdr"
+                ],
                 "exclusive_with": "BICFI",
                 "fix_action": "coexist_or_remove",
                 "description": "Nm and PstlAdr must both be present; if the block also has BICFI, remove the lone one (exclusivity wins), else add the missing counterpart."
             }
         ]
     },
-
     "dummy_data": {
         "_doc": "High-quality reusable sample values. AI should harvest from the live document first and only fall back to this dictionary when the document has no matching value.",
-
         "ids": {
-            "MsgId":           "MSG-20260528-001",
-            "BizMsgIdr":       "MSG-20260528-001",
-            "InstrId":         "INSTR-20260528-001",
-            "EndToEndId":      "E2E-20260528-001",
-            "TxId":            "TXN-20260528-001",
-            "ClrSysRef":       "CLR-REF-20260528-001",
-            "UETR":            "4a1a0945-5772-409a-83ba-240e666e0267",
-            "UETR_alt1":       "b7f1c2d3-4e5a-4678-9012-abcdef123456",
-            "UETR_alt2":       "c3d4e5f6-7890-4abc-bdef-012345678901",
-            "OrgnlMsgId":      "ORIG-MSG-20260527-001",
+            "MsgId": "MSG-20260528-001",
+            "BizMsgIdr": "MSG-20260528-001",
+            "InstrId": "INSTR-260528-001",
+            "EndToEndId": "E2E-20260528-001",
+            "TxId": "TXN-20260528-001",
+            "ClrSysRef": "CLR-REF-20260528-001",
+            "UETR": "4a1a0945-5772-409a-83ba-240e666e0267",
+            "UETR_alt1": "b7f1c2d3-4e5a-4678-9012-abcdef123456",
+            "UETR_alt2": "c3d4e5f6-7890-4abc-bdef-012345678901",
+            "OrgnlMsgId": "ORIG-MSG-20260527-001",
             "OrgnlEndToEndId": "ORIG-E2E-20260527-001",
-            "OrgnlTxId":       "ORIG-TXN-20260527-001"
+            "OrgnlTxId": "ORIG-TXN-20260527-001"
         },
-
         "dates": {
             "_note": "USE_TODAY and USE_NOW_OFFSET are sentinel values — the AI must substitute the actual current date/datetime at fix time.",
-            "today":           "USE_TODAY",
-            "today_comment":   "Replace USE_TODAY with the actual current date in YYYY-MM-DD format",
-            "settlement":      "USE_TODAY",
+            "today": "USE_TODAY",
+            "today_comment": "Replace USE_TODAY with the actual current date in YYYY-MM-DD format",
+            "settlement": "USE_TODAY",
             "settlement_comment": "Settlement date is typically today or T+1; use today's date as minimum",
-            "now_offset":      "USE_NOW_OFFSET",
+            "now_offset": "USE_NOW_OFFSET",
             "now_offset_comment": "Replace USE_NOW_OFFSET with YYYY-MM-DDTHH:MM:SS+00:00 using current UTC",
-            "birth_date":      "1990-01-15",
+            "birth_date": "1990-01-15",
             "future_value_date": "USE_TODAY"
         },
-
         "banks": [
-            { "bicfi": "DEUTDEFFXXX", "name": "Deutsche Bank AG",           "country": "DE", "city": "Frankfurt",  "lei": "7LTWFZYICNSX8D621K86" },
-            { "bicfi": "CHASUS33XXX", "name": "JPMorgan Chase Bank N.A.",   "country": "US", "city": "New York",   "lei": "7H6GLXDRUGQFU57RNE97" },
-            { "bicfi": "BARCGB22XXX", "name": "Barclays Bank PLC",          "country": "GB", "city": "London",     "lei": "G5GSEF7VJP5I7OUK5573" },
-            { "bicfi": "BNPAFRPPXXX", "name": "BNP Paribas",                "country": "FR", "city": "Paris",      "lei": "R0MUWSFPU8MPRO8K5P83" },
-            { "bicfi": "MIDLGB22XXX", "name": "HSBC Bank PLC",              "country": "GB", "city": "London",     "lei": "MP6I5ZYZBEU3UXPYFY54" },
-            { "bicfi": "BOFAUS3NXXX", "name": "Bank of America N.A.",       "country": "US", "city": "Charlotte",  "lei": "B4TYDEB6GKMZO031MB27" },
-            { "bicfi": "CITIUS33XXX", "name": "Citibank N.A.",              "country": "US", "city": "New York",   "lei": "E57ODZWZ7FF32TWEFA76" },
-            { "bicfi": "UBSWCHZH80A", "name": "UBS AG",                     "country": "CH", "city": "Zurich",     "lei": "BFM8T61CT2L1QCEMIK50" },
-            { "bicfi": "SBININBBXXX", "name": "State Bank of India",        "country": "IN", "city": "Mumbai",     "lei": "549300QF7BX84RA0YS31" },
-            { "bicfi": "HSBCSGSGXXX", "name": "HSBC Singapore",             "country": "SG", "city": "Singapore",  "lei": "MP6I5ZYZBEU3UXPYFY54" },
-            { "bicfi": "CHASAU2XXXX", "name": "JPMorgan Chase Bank AU",     "country": "AU", "city": "Sydney",     "lei": "7H6GLXDRUGQFU57RNE97" },
-            { "bicfi": "ROYCCAT2XXX", "name": "Royal Bank of Canada",       "country": "CA", "city": "Toronto",    "lei": "ES7IP3U3RHIGC98AAM22" },
-            { "bicfi": "MHBKJPJTXXX", "name": "Mizuho Bank Ltd",            "country": "JP", "city": "Tokyo",      "lei": "R7ZD9Y3MOUPWJ61EAT68" },
-            { "bicfi": "ICBKCNBJXXX", "name": "Industrial Commercial Bank", "country": "CN", "city": "Beijing",    "lei": "54930034GZGFIL3RG336" },
-            { "bicfi": "SWBKDEFFXXX", "name": "Commerzbank AG",             "country": "DE", "city": "Frankfurt",  "lei": "851WYGNLUQLFZBSYGB56" },
-            { "bicfi": "ABNANL2AXXX", "name": "ABN AMRO Bank N.V.",         "country": "NL", "city": "Amsterdam",  "lei": "BFXS5XCH7N0Y05NIXW11" },
-            { "bicfi": "INGBNL2AXXX", "name": "ING Bank N.V.",              "country": "NL", "city": "Amsterdam",  "lei": "3TK20IVIUJ8J3ZU0QE75" },
-            { "bicfi": "ICICINBBXXX", "name": "ICICI Bank Ltd",             "country": "IN", "city": "Mumbai",     "lei": "ZELS3BDWYPFK9V7TF393" },
-            { "bicfi": "WIBAATWWXXX", "name": "Erste Group Bank AG",        "country": "AT", "city": "Vienna",     "lei": "PQOH26KWDF7CG10L6792" },
-            { "bicfi": "BBVAESMMXXX", "name": "BBVA",                       "country": "ES", "city": "Madrid",     "lei": "7CUNS533WID6X7ESOA23" }
+            {
+                "bicfi": "DEUTDEFFXXX",
+                "name": "Deutsche Bank AG",
+                "country": "DE",
+                "city": "Frankfurt",
+                "lei": "7LTWFZYICNSX8D621K86"
+            },
+            {
+                "bicfi": "CHASUS33XXX",
+                "name": "JPMorgan Chase Bank N.A.",
+                "country": "US",
+                "city": "New York",
+                "lei": "7H6GLXDRUGQFU57RNE97"
+            },
+            {
+                "bicfi": "BARCGB22XXX",
+                "name": "Barclays Bank PLC",
+                "country": "GB",
+                "city": "London",
+                "lei": "G5GSEF7VJP5I7OUK5573"
+            },
+            {
+                "bicfi": "BNPAFRPPXXX",
+                "name": "BNP Paribas",
+                "country": "FR",
+                "city": "Paris",
+                "lei": "R0MUWSFPU8MPRO8K5P83"
+            },
+            {
+                "bicfi": "MIDLGB22XXX",
+                "name": "HSBC Bank PLC",
+                "country": "GB",
+                "city": "London",
+                "lei": "MP6I5ZYZBEU3UXPYFY54"
+            },
+            {
+                "bicfi": "BOFAUS3NXXX",
+                "name": "Bank of America N.A.",
+                "country": "US",
+                "city": "Charlotte",
+                "lei": "B4TYDEB6GKMZO031MB27"
+            },
+            {
+                "bicfi": "CITIUS33XXX",
+                "name": "Citibank N.A.",
+                "country": "US",
+                "city": "New York",
+                "lei": "E57ODZWZ7FF32TWEFA76"
+            },
+            {
+                "bicfi": "UBSWCHZH80A",
+                "name": "UBS AG",
+                "country": "CH",
+                "city": "Zurich",
+                "lei": "BFM8T61CT2L1QCEMIK50"
+            },
+            {
+                "bicfi": "SBININBBXXX",
+                "name": "State Bank of India",
+                "country": "IN",
+                "city": "Mumbai",
+                "lei": "549300QF7BX84RA0YS31"
+            },
+            {
+                "bicfi": "HSBCSGSGXXX",
+                "name": "HSBC Singapore",
+                "country": "SG",
+                "city": "Singapore",
+                "lei": "MP6I5ZYZBEU3UXPYFY54"
+            },
+            {
+                "bicfi": "CHASAU2XXXX",
+                "name": "JPMorgan Chase Bank AU",
+                "country": "AU",
+                "city": "Sydney",
+                "lei": "7H6GLXDRUGQFU57RNE97"
+            },
+            {
+                "bicfi": "ROYCCAT2XXX",
+                "name": "Royal Bank of Canada",
+                "country": "CA",
+                "city": "Toronto",
+                "lei": "ES7IP3U3RHIGC98AAM22"
+            },
+            {
+                "bicfi": "MHBKJPJTXXX",
+                "name": "Mizuho Bank Ltd",
+                "country": "JP",
+                "city": "Tokyo",
+                "lei": "R7ZD9Y3MOUPWJ61EAT68"
+            },
+            {
+                "bicfi": "ICBKCNBJXXX",
+                "name": "Industrial Commercial Bank",
+                "country": "CN",
+                "city": "Beijing",
+                "lei": "54930034GZGFIL3RG336"
+            },
+            {
+                "bicfi": "SWBKDEFFXXX",
+                "name": "Commerzbank AG",
+                "country": "DE",
+                "city": "Frankfurt",
+                "lei": "851WYGNLUQLFZBSYGB56"
+            },
+            {
+                "bicfi": "ABNANL2AXXX",
+                "name": "ABN AMRO Bank N.V.",
+                "country": "NL",
+                "city": "Amsterdam",
+                "lei": "BFXS5XCH7N0Y05NIXW11"
+            },
+            {
+                "bicfi": "INGBNL2AXXX",
+                "name": "ING Bank N.V.",
+                "country": "NL",
+                "city": "Amsterdam",
+                "lei": "3TK20IVIUJ8J3ZU0QE75"
+            },
+            {
+                "bicfi": "ICICINBBXXX",
+                "name": "ICICI Bank Ltd",
+                "country": "IN",
+                "city": "Mumbai",
+                "lei": "ZELS3BDWYPFK9V7TF393"
+            },
+            {
+                "bicfi": "WIBAATWWXXX",
+                "name": "Erste Group Bank AG",
+                "country": "AT",
+                "city": "Vienna",
+                "lei": "PQOH26KWDF7CG10L6792"
+            },
+            {
+                "bicfi": "BBVAESMMXXX",
+                "name": "BBVA",
+                "country": "ES",
+                "city": "Madrid",
+                "lei": "7CUNS533WID6X7ESOA23"
+            }
         ],
-
         "ibans": {
             "DE": "DE89370400440532013000",
             "GB": "GB29NWBK60161331926819",
@@ -728,150 +1726,519 @@
             "PL": "PL61109010140000071219812874",
             "default": "GB29NWBK60161331926819"
         },
-
         "amounts": {
-            "small":        "100.00",
-            "medium":       "1000.00",
-            "large":        "10000.00",
-            "default":      "1000.00",
+            "small": "100.00",
+            "medium": "1000.00",
+            "large": "10000.00",
+            "default": "1000.00",
             "zero_charges": "0.00",
             "exchange_rate": "1.0"
         },
-
         "currencies_by_country": {
-            "US": "USD", "GB": "GBP", "DE": "EUR", "FR": "EUR", "IT": "EUR",
-            "ES": "EUR", "NL": "EUR", "BE": "EUR", "AT": "EUR", "FI": "EUR",
-            "IE": "EUR", "PT": "EUR", "GR": "EUR", "SK": "EUR", "SI": "EUR",
-            "CH": "CHF", "JP": "JPY", "IN": "INR", "SG": "SGD", "AU": "AUD",
-            "CA": "CAD", "CN": "CNY", "DK": "DKK", "SE": "SEK", "NO": "NOK",
-            "PL": "PLN", "HU": "HUF", "CZ": "CZK", "RO": "RON", "ZA": "ZAR",
-            "BR": "BRL", "MX": "MXN", "KR": "KRW", "TH": "THB", "MY": "MYR",
-            "HK": "HKD", "NZ": "NZD", "AE": "AED", "SA": "SAR", "QA": "QAR"
+            "US": "USD",
+            "GB": "GBP",
+            "DE": "EUR",
+            "FR": "EUR",
+            "IT": "EUR",
+            "ES": "EUR",
+            "NL": "EUR",
+            "BE": "EUR",
+            "AT": "EUR",
+            "FI": "EUR",
+            "IE": "EUR",
+            "PT": "EUR",
+            "GR": "EUR",
+            "SK": "EUR",
+            "SI": "EUR",
+            "CH": "CHF",
+            "JP": "JPY",
+            "IN": "INR",
+            "SG": "SGD",
+            "AU": "AUD",
+            "CA": "CAD",
+            "CN": "CNY",
+            "DK": "DKK",
+            "SE": "SEK",
+            "NO": "NOK",
+            "PL": "PLN",
+            "HU": "HUF",
+            "CZ": "CZK",
+            "RO": "RON",
+            "ZA": "ZAR",
+            "BR": "BRL",
+            "MX": "MXN",
+            "KR": "KRW",
+            "TH": "THB",
+            "MY": "MYR",
+            "HK": "HKD",
+            "NZ": "NZD",
+            "AE": "AED",
+            "SA": "SAR",
+            "QA": "QAR"
         },
-
         "parties": {
             "debtor": {
-                "name":    "Sample Debtor Ltd",
+                "name": "Sample Debtor Ltd",
                 "address": "100 Debtor Street",
-                "city":    "London",
-                "postal":  "EC1A 1BB",
+                "city": "London",
+                "postal": "EC1A 1BB",
                 "country": "GB",
-                "iban":    "GB29NWBK60161331926819",
-                "bicfi":   "BARCGB22XXX"
+                "iban": "GB29NWBK60161331926819",
+                "bicfi": "BARCGB22XXX"
             },
             "creditor": {
-                "name":    "Sample Creditor Inc",
+                "name": "Sample Creditor Inc",
                 "address": "200 Creditor Avenue",
-                "city":    "New York",
-                "postal":  "10005",
+                "city": "New York",
+                "postal": "10005",
                 "country": "US",
-                "iban":    "US64SVBKUS6S3300958879",
-                "bicfi":   "CHASUS33XXX"
+                "iban": "US64SVBKUS6S3300958879",
+                "bicfi": "CHASUS33XXX"
             },
             "instructing_agent": {
-                "bicfi":   "BARCGB22XXX",
-                "name":    "Barclays Bank PLC",
+                "bicfi": "BARCGB22XXX",
+                "name": "Barclays Bank PLC",
                 "country": "GB"
             },
             "instructed_agent": {
-                "bicfi":   "CHASUS33XXX",
-                "name":    "JPMorgan Chase Bank N.A.",
+                "bicfi": "CHASUS33XXX",
+                "name": "JPMorgan Chase Bank N.A.",
                 "country": "US"
             },
             "intermediary_agent": {
-                "bicfi":   "MIDLGB22XXX",
-                "name":    "HSBC Bank PLC",
+                "bicfi": "MIDLGB22XXX",
+                "name": "HSBC Bank PLC",
                 "country": "GB"
             },
             "fi_debtor": {
-                "bicfi":   "DEUTDEFFXXX",
-                "name":    "Deutsche Bank AG",
+                "bicfi": "DEUTDEFFXXX",
+                "name": "Deutsche Bank AG",
                 "country": "DE"
             },
             "fi_creditor": {
-                "bicfi":   "BNPAFRPPXXX",
-                "name":    "BNP Paribas",
+                "bicfi": "BNPAFRPPXXX",
+                "name": "BNP Paribas",
                 "country": "FR"
             }
         },
-
         "codes": {
-            "ChrgBr":              "SLEV",
-            "SttlmMtd":            "INGA",
-            "InstrPrty":           "NORM",
-            "SttlmPrty":           "NORM",
-            "SvcLvl_sepa":         "SEPA",
-            "SvcLvl_cbpr":         "G002",
-            "LclInstrm":           "CORE",
-            "CtgyPurp":            "SUPP",
-            "Purp":                "GDDS",
-            "TxSts":               "ACCP",
-            "GrpSts":              "ACCP",
-            "ReturnReason":        "AC01",
-            "CancellationReason":  "DUPL",
-            "SchemeName_OrgId":    "CUST",
-            "SchemeName_PrvtId":   "NIDN",
-            "ClearingSystem":      "USABA"
+            "ChrgBr": "SLEV",
+            "SttlmMtd": "INGA",
+            "InstrPrty": "NORM",
+            "SttlmPrty": "NORM",
+            "SvcLvl_sepa": "SEPA",
+            "SvcLvl_cbpr": "G002",
+            "LclInstrm": "CORE",
+            "CtgyPurp": "SUPP",
+            "Purp": "GDDS",
+            "TxSts": "ACCP",
+            "GrpSts": "ACCP",
+            "ReturnReason": "AC01",
+            "CancellationReason": "DUPL",
+            "SchemeName_OrgId": "CUST",
+            "SchemeName_PrvtId": "NIDN",
+            "ClearingSystem": "USABA"
         },
-
-        "valid_svc_lvl_codes": ["G001","G002","G003","G004","G005","NUGP","SEPA","SDVA","PRPT","NURG"],
-        "valid_lcl_instrm_codes": ["CORE","COR1","CORL","INST","B2B"],
-        "valid_ctgy_purp_codes": ["BONU","CASH","CBLK","CCRD","CORT","DCRD","DIVI","DVPM","EPAY","FCOL","FCPM","FDUP","GOVT","HEDG","ICCP","IDCP","INTC","INTE","LANI","LOAN","LOAR","MCRD","MDIV","MGLN","MOMA","OTHR","PENS","SALA","SECU","SSBE","SUPP","TAXS","TRAD","TREA","VATX","WHLD"],
-        "valid_purp_codes": ["CORT","CPKC","GDDS","GDSV","GOVI","HLRP","INPC","INSM","INVE","IPCA","IPCO","IHRP","IVPT","LIMA","LOAR","LOAN","MDIV","MGLN","MSVC","OBRA","OTHR","PADD","PDEP","PHON","PTXP","RCKE","REBT","RENT","RIMB","RINP","RRCT","RVPM","SALA","SECU","SLRY","SSBE","SUPP","SWEP","TAXS","TOPG","TRAD","TREA","UNIT","VATX","WHLD","ZABA"]
+        "valid_svc_lvl_codes": [
+            "G001",
+            "G002",
+            "G003",
+            "G004",
+            "G005",
+            "NUGP",
+            "SEPA",
+            "SDVA",
+            "PRPT",
+            "NURG"
+        ],
+        "valid_lcl_instrm_codes": [
+            "CORE",
+            "COR1",
+            "CORL",
+            "INST",
+            "B2B"
+        ],
+        "valid_ctgy_purp_codes": [
+            "BONU",
+            "CASH",
+            "CBLK",
+            "CCRD",
+            "CORT",
+            "DCRD",
+            "DIVI",
+            "DVPM",
+            "EPAY",
+            "FCOL",
+            "FCPM",
+            "FDUP",
+            "GOVT",
+            "HEDG",
+            "ICCP",
+            "IDCP",
+            "INTC",
+            "INTE",
+            "LANI",
+            "LOAN",
+            "LOAR",
+            "MCRD",
+            "MDIV",
+            "MGLN",
+            "MOMA",
+            "OTHR",
+            "PENS",
+            "SALA",
+            "SECU",
+            "SSBE",
+            "SUPP",
+            "TAXS",
+            "TRAD",
+            "TREA",
+            "VATX",
+            "WHLD"
+        ],
+        "valid_purp_codes": [
+            "CORT",
+            "CPKC",
+            "GDDS",
+            "GDSV",
+            "GOVI",
+            "HLRP",
+            "INPC",
+            "INSM",
+            "INVE",
+            "IPCA",
+            "IPCO",
+            "IHRP",
+            "IVPT",
+            "LIMA",
+            "LOAR",
+            "LOAN",
+            "MDIV",
+            "MGLN",
+            "MSVC",
+            "OBRA",
+            "OTHR",
+            "PADD",
+            "PDEP",
+            "PHON",
+            "PTXP",
+            "RCKE",
+            "REBT",
+            "RENT",
+            "RIMB",
+            "RINP",
+            "RRCT",
+            "RVPM",
+            "SALA",
+            "SECU",
+            "SLRY",
+            "SSBE",
+            "SUPP",
+            "SWEP",
+            "TAXS",
+            "TOPG",
+            "TRAD",
+            "TREA",
+            "UNIT",
+            "VATX",
+            "WHLD",
+            "ZABA"
+        ]
     },
-
     "placeholder_resolution": {
         "_doc": "Maps tag_templates $VARIABLES to harvest/default actions. Applied in order: 1) harvest_from_xml, 2) dummy_data path, 3) constant default.",
-
-        "$UETR":          { "harvest_from_xml": "UETR",              "dummy": "ids.UETR" },
-        "$MSG_ID":        { "harvest_from_xml": "MsgId",             "dummy": "ids.MsgId" },
-        "$INSTR_ID":      { "harvest_from_xml": "InstrId",           "dummy": "ids.InstrId" },
-        "$E2E_ID":        { "harvest_from_xml": "EndToEndId",        "dummy": "ids.EndToEndId" },
-        "$TX_ID":         { "harvest_from_xml": "TxId",              "dummy": "ids.TxId" },
-        "$ORIG_MSG_ID":   { "harvest_from_xml": "OrgnlMsgId",        "dummy": "ids.OrgnlMsgId" },
-        "$BICFI":         { "harvest_from_xml": "BICFI",             "dummy": "parties.instructing_agent.bicfi" },
-        "$DBTR_BICFI":    { "harvest_from_xml": "DbtrAgt//BICFI",    "dummy": "parties.debtor.bicfi" },
-        "$CDTR_BICFI":    { "harvest_from_xml": "CdtrAgt//BICFI",    "dummy": "parties.creditor.bicfi" },
-        "$INSTG_BICFI":   { "harvest_from_xml": "InstgAgt//BICFI",   "dummy": "parties.instructing_agent.bicfi" },
-        "$INSTD_BICFI":   { "harvest_from_xml": "InstdAgt//BICFI",   "dummy": "parties.instructed_agent.bicfi" },
-        "$INTRMY_BICFI":  { "harvest_from_xml": "IntrmyAgt1//BICFI", "dummy": "parties.intermediary_agent.bicfi" },
-        "$INTRMY2_BICFI": { "harvest_from_xml": "IntrmyAgt2//BICFI", "dummy": "parties.intermediary_agent.bicfi" },
-        "$CHRG_BICFI":    { "harvest_from_xml": "InstgAgt//BICFI",   "dummy": "parties.instructing_agent.bicfi" },
-        "$DBTR_IBAN":     { "harvest_from_xml": "DbtrAcct//IBAN",    "dummy": "parties.debtor.iban" },
-        "$CDTR_IBAN":     { "harvest_from_xml": "CdtrAcct//IBAN",    "dummy": "parties.creditor.iban" },
-        "$DBTR_NM":       { "harvest_from_xml": "Dbtr/Nm",           "dummy": "parties.debtor.name" },
-        "$CDTR_NM":       { "harvest_from_xml": "Cdtr/Nm",           "dummy": "parties.creditor.name" },
-        "$DBTR_ADDR":     { "harvest_from_xml": "Dbtr//AdrLine",     "dummy": "parties.debtor.address" },
-        "$CDTR_ADDR":     { "harvest_from_xml": "Cdtr//AdrLine",     "dummy": "parties.creditor.address" },
-        "$DBTR_CTRY":     { "harvest_from_xml": "Dbtr//Ctry",        "dummy": "parties.debtor.country" },
-        "$CDTR_CTRY":     { "harvest_from_xml": "Cdtr//Ctry",        "dummy": "parties.creditor.country" },
-        "$ADDR":          { "dummy": "parties.debtor.address" },
-        "$CTRY":          { "dummy": "parties.debtor.country" },
-        "$CITY":          { "dummy": "parties.debtor.city" },
-        "$POSTCODE":      { "dummy": "parties.debtor.postal" },
-        "$ACCOUNT_ID":    { "dummy_constant": "ACC-001" },
-        "$CCY":           { "harvest_from_xml": "@Ccy", "dummy_constant": "USD" },
-        "$AMOUNT":        { "dummy": "amounts.default" },
-        "$CRE_DT_TM":     { "harvest_from_xml": "CreDtTm", "dummy": "dates.now_offset", "_note": "MUST be current date/time with +HH:MM offset, NO 'Z', NO milliseconds." },
-        "$STTLM_DT":      { "harvest_from_xml": "IntrBkSttlmDt", "dummy": "dates.today", "_note": "Must be today or future, YYYY-MM-DD format only." },
-        "$SVC_LVL":       { "dummy_constant": "SEPA" }
+        "$UETR": {
+            "harvest_from_xml": "UETR",
+            "dummy": "ids.UETR"
+        },
+        "$MSG_ID": {
+            "harvest_from_xml": "MsgId",
+            "dummy": "ids.MsgId"
+        },
+        "$INSTR_ID": {
+            "harvest_from_xml": "InstrId",
+            "dummy": "ids.InstrId"
+        },
+        "$E2E_ID": {
+            "harvest_from_xml": "EndToEndId",
+            "dummy": "ids.EndToEndId"
+        },
+        "$TX_ID": {
+            "harvest_from_xml": "TxId",
+            "dummy": "ids.TxId"
+        },
+        "$ORIG_MSG_ID": {
+            "harvest_from_xml": "OrgnlMsgId",
+            "dummy": "ids.OrgnlMsgId"
+        },
+        "$BICFI": {
+            "harvest_from_xml": "BICFI",
+            "dummy": "parties.instructing_agent.bicfi"
+        },
+        "$DBTR_BICFI": {
+            "harvest_from_xml": "DbtrAgt//BICFI",
+            "dummy": "parties.debtor.bicfi"
+        },
+        "$CDTR_BICFI": {
+            "harvest_from_xml": "CdtrAgt//BICFI",
+            "dummy": "parties.creditor.bicfi"
+        },
+        "$INSTG_BICFI": {
+            "harvest_from_xml": "InstgAgt//BICFI",
+            "dummy": "parties.instructing_agent.bicfi"
+        },
+        "$INSTD_BICFI": {
+            "harvest_from_xml": "InstdAgt//BICFI",
+            "dummy": "parties.instructed_agent.bicfi"
+        },
+        "$INTRMY_BICFI": {
+            "harvest_from_xml": "IntrmyAgt1//BICFI",
+            "dummy": "parties.intermediary_agent.bicfi"
+        },
+        "$INTRMY2_BICFI": {
+            "harvest_from_xml": "IntrmyAgt2//BICFI",
+            "dummy": "parties.intermediary_agent.bicfi"
+        },
+        "$CHRG_BICFI": {
+            "harvest_from_xml": "InstgAgt//BICFI",
+            "dummy": "parties.instructing_agent.bicfi"
+        },
+        "$DBTR_IBAN": {
+            "harvest_from_xml": "DbtrAcct//IBAN",
+            "dummy": "parties.debtor.iban"
+        },
+        "$CDTR_IBAN": {
+            "harvest_from_xml": "CdtrAcct//IBAN",
+            "dummy": "parties.creditor.iban"
+        },
+        "$DBTR_NM": {
+            "harvest_from_xml": "Dbtr/Nm",
+            "dummy": "parties.debtor.name"
+        },
+        "$CDTR_NM": {
+            "harvest_from_xml": "Cdtr/Nm",
+            "dummy": "parties.creditor.name"
+        },
+        "$DBTR_ADDR": {
+            "harvest_from_xml": "Dbtr//AdrLine",
+            "dummy": "parties.debtor.address"
+        },
+        "$CDTR_ADDR": {
+            "harvest_from_xml": "Cdtr//AdrLine",
+            "dummy": "parties.creditor.address"
+        },
+        "$DBTR_CTRY": {
+            "harvest_from_xml": "Dbtr//Ctry",
+            "dummy": "parties.debtor.country"
+        },
+        "$CDTR_CTRY": {
+            "harvest_from_xml": "Cdtr//Ctry",
+            "dummy": "parties.creditor.country"
+        },
+        "$ADDR": {
+            "dummy": "parties.debtor.address"
+        },
+        "$CTRY": {
+            "dummy": "parties.debtor.country"
+        },
+        "$CITY": {
+            "dummy": "parties.debtor.city"
+        },
+        "$POSTCODE": {
+            "dummy": "parties.debtor.postal"
+        },
+        "$ACCOUNT_ID": {
+            "dummy_constant": "ACC-001"
+        },
+        "$CCY": {
+            "harvest_from_xml": "@Ccy",
+            "dummy_constant": "USD"
+        },
+        "$AMOUNT": {
+            "dummy": "amounts.default"
+        },
+        "$CRE_DT_TM": {
+            "harvest_from_xml": "CreDtTm",
+            "dummy": "dates.now_offset",
+            "_note": "MUST be current date/time with +HH:MM offset, NO 'Z', NO milliseconds."
+        },
+        "$STTLM_DT": {
+            "harvest_from_xml": "IntrBkSttlmDt",
+            "dummy": "dates.today",
+            "_note": "Must be today or future, YYYY-MM-DD format only."
+        },
+        "$SVC_LVL": {
+            "dummy_constant": "SEPA"
+        }
     },
-
     "cbpr_plus_rules": {
         "_doc": "SWIFT CBPR+ specific rules that go beyond XSD schema validation. The AI must apply all of these when the BizSvc is swift.cbprplus.02.",
-
         "mandatory_fields": {
-            "pacs.008": ["AppHdr","AppHdr.Fr","AppHdr.To","AppHdr.BizMsgIdr","AppHdr.MsgDefIdr","AppHdr.BizSvc","AppHdr.CreDt","GrpHdr.MsgId","GrpHdr.CreDtTm","GrpHdr.NbOfTxs","GrpHdr.SttlmInf","CdtTrfTxInf.PmtId.InstrId","CdtTrfTxInf.PmtId.EndToEndId","CdtTrfTxInf.PmtId.UETR","CdtTrfTxInf.IntrBkSttlmAmt","CdtTrfTxInf.IntrBkSttlmDt","CdtTrfTxInf.ChrgBr","CdtTrfTxInf.InstgAgt","CdtTrfTxInf.InstdAgt","CdtTrfTxInf.Dbtr","CdtTrfTxInf.Cdtr"],
-            "pacs.009": ["AppHdr","AppHdr.BizMsgIdr","AppHdr.MsgDefIdr","AppHdr.BizSvc","GrpHdr.MsgId","GrpHdr.CreDtTm","GrpHdr.NbOfTxs","GrpHdr.SttlmInf","CdtTrfTxInf.PmtId.UETR","CdtTrfTxInf.IntrBkSttlmAmt","CdtTrfTxInf.IntrBkSttlmDt","CdtTrfTxInf.ChrgBr","CdtTrfTxInf.InstgAgt","CdtTrfTxInf.InstdAgt"]
+            "pacs.008": [
+                "AppHdr",
+                "AppHdr.Fr",
+                "AppHdr.To",
+                "AppHdr.BizMsgIdr",
+                "AppHdr.MsgDefIdr",
+                "AppHdr.BizSvc",
+                "AppHdr.CreDt",
+                "GrpHdr.MsgId",
+                "GrpHdr.CreDtTm",
+                "GrpHdr.NbOfTxs",
+                "GrpHdr.SttlmInf",
+                "CdtTrfTxInf.PmtId.InstrId",
+                "CdtTrfTxInf.PmtId.EndToEndId",
+                "CdtTrfTxInf.PmtId.UETR",
+                "CdtTrfTxInf.IntrBkSttlmAmt",
+                "CdtTrfTxInf.IntrBkSttlmDt",
+                "CdtTrfTxInf.ChrgBr",
+                "CdtTrfTxInf.InstgAgt",
+                "CdtTrfTxInf.InstdAgt",
+                "CdtTrfTxInf.Dbtr",
+                "CdtTrfTxInf.Cdtr"
+            ],
+            "pacs.009": [
+                "AppHdr",
+                "AppHdr.BizMsgIdr",
+                "AppHdr.MsgDefIdr",
+                "AppHdr.BizSvc",
+                "GrpHdr.MsgId",
+                "GrpHdr.CreDtTm",
+                "GrpHdr.NbOfTxs",
+                "GrpHdr.SttlmInf",
+                "CdtTrfTxInf.PmtId.UETR",
+                "CdtTrfTxInf.IntrBkSttlmAmt",
+                "CdtTrfTxInf.IntrBkSttlmDt",
+                "CdtTrfTxInf.ChrgBr",
+                "CdtTrfTxInf.InstgAgt",
+                "CdtTrfTxInf.InstdAgt"
+            ],
+            "pain.001": [
+                "AppHdr",
+                "AppHdr.Fr",
+                "AppHdr.To",
+                "AppHdr.BizMsgIdr",
+                "AppHdr.MsgDefIdr",
+                "AppHdr.BizSvc",
+                "AppHdr.CreDt",
+                "GrpHdr.MsgId",
+                "GrpHdr.CreDtTm",
+                "GrpHdr.NbOfTxs",
+                "GrpHdr.InitgPty",
+                "PmtInf",
+                "PmtInf.PmtInfId",
+                "PmtInf.PmtMtd",
+                "PmtInf.ReqdExctnDt",
+                "PmtInf.Dbtr",
+                "PmtInf.DbtrAcct",
+                "PmtInf.DbtrAgt",
+                "PmtInf.CdtTrfTxInf",
+                "PmtInf.CdtTrfTxInf.PmtId",
+                "PmtInf.CdtTrfTxInf.PmtId.EndToEndId",
+                "PmtInf.CdtTrfTxInf.Cdtr"
+            ],
+            "pain.002": [
+                "AppHdr",
+                "AppHdr.Fr",
+                "AppHdr.To",
+                "AppHdr.BizMsgIdr",
+                "AppHdr.MsgDefIdr",
+                "AppHdr.CreDt",
+                "GrpHdr.MsgId",
+                "GrpHdr.CreDtTm",
+                "OrgnlGrpInfAndSts",
+                "OrgnlGrpInfAndSts.OrgnlMsgId",
+                "OrgnlGrpInfAndSts.OrgnlMsgNmId"
+            ],
+            "pain.008": [
+                "AppHdr",
+                "AppHdr.Fr",
+                "AppHdr.To",
+                "AppHdr.BizMsgIdr",
+                "AppHdr.MsgDefIdr",
+                "AppHdr.BizSvc",
+                "AppHdr.CreDt",
+                "GrpHdr.MsgId",
+                "GrpHdr.CreDtTm",
+                "GrpHdr.NbOfTxs",
+                "GrpHdr.InitgPty",
+                "GrpHdr.FwdgAgt",
+                "PmtInf",
+                "PmtInf.PmtInfId",
+                "PmtInf.PmtMtd",
+                "PmtInf.ReqdColltnDt",
+                "PmtInf.Cdtr",
+                "PmtInf.CdtrAcct",
+                "PmtInf.CdtrAgt",
+                "PmtInf.DrctDbtTxInf",
+                "PmtInf.DrctDbtTxInf.PmtId",
+                "PmtInf.DrctDbtTxInf.PmtId.EndToEndId",
+                "PmtInf.DrctDbtTxInf.InstdAmt",
+                "PmtInf.DrctDbtTxInf.Dbtr",
+                "PmtInf.DrctDbtTxInf.DbtrAcct",
+                "PmtInf.DrctDbtTxInf.DbtrAgt"
+            ],
+            "camt.056": [
+                "AppHdr",
+                "AppHdr.Fr",
+                "AppHdr.To",
+                "AppHdr.BizMsgIdr",
+                "AppHdr.MsgDefIdr",
+                "AppHdr.BizSvc",
+                "AppHdr.CreDt",
+                "Assgnmt",
+                "Assgnmt.Id",
+                "Assgnmt.Assgnr",
+                "Assgnmt.Assgne",
+                "Assgnmt.CreDtTm",
+                "Undrlyg",
+                "Undrlyg.TxInf"
+            ],
+            "camt.057": [
+                "AppHdr",
+                "AppHdr.Fr",
+                "AppHdr.To",
+                "AppHdr.BizMsgIdr",
+                "AppHdr.MsgDefIdr",
+                "AppHdr.BizSvc",
+                "AppHdr.CreDt",
+                "GrpHdr.MsgId",
+                "GrpHdr.CreDtTm",
+                "Ntfctn",
+                "Ntfctn.Id",
+                "Ntfctn.Itm",
+                "Ntfctn.Itm.Id",
+                "Ntfctn.Itm.Amt"
+            ],
+            "pacs.010": [
+                "AppHdr",
+                "AppHdr.Fr",
+                "AppHdr.To",
+                "AppHdr.BizMsgIdr",
+                "AppHdr.MsgDefIdr",
+                "AppHdr.BizSvc",
+                "AppHdr.CreDt",
+                "GrpHdr.MsgId",
+                "GrpHdr.CreDtTm",
+                "GrpHdr.NbOfTxs",
+                "CdtInstr",
+                "CdtInstr.CdtId",
+                "CdtInstr.Cdtr",
+                "CdtInstr.DrctDbtTxInf",
+                "CdtInstr.DrctDbtTxInf.PmtId",
+                "CdtInstr.DrctDbtTxInf.PmtId.EndToEndId",
+                "CdtInstr.DrctDbtTxInf.PmtId.UETR",
+                "CdtInstr.DrctDbtTxInf.IntrBkSttlmAmt",
+                "CdtInstr.DrctDbtTxInf.Dbtr",
+                "CdtInstr.DrctDbtTxInf.DbtrAgt"
+            ]
         },
-
         "datetime_rules": [
             "CreDtTm must use format YYYY-MM-DDTHH:MM:SS+HH:MM (e.g. 2026-05-28T10:00:00+00:00)",
             "The 'Z' suffix is strictly forbidden — use +00:00 for UTC",
             "Milliseconds (.sss) must not be present",
             "The timezone offset must be a valid UTC offset between -14:00 and +14:00"
         ],
-
         "address_rules": [
             "When BICFI is present in FinInstnId, Nm and PstlAdr MUST NOT be present at the same FinInstnId level",
             "PstlAdr must contain either: (a) up to 2 AdrLine elements + Ctry, or (b) structured fields (StrtNm, BldgNb, TwnNm, PstCd, Ctry)",
@@ -879,7 +2246,6 @@
             "AdrLine maximum: 2 occurrences, each max 70 characters",
             "Nm maximum: 140 characters, SWIFT character set only"
         ],
-
         "name_address_coexistence": [
             "If Nm is present, a PstlAdr must also be present in the same party block",
             "If PstlAdr is present, Nm must also be present in the same party block (for customer parties)"

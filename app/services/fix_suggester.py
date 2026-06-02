@@ -76,6 +76,28 @@ def _codelist_codes(name: str) -> list:
     return []
 
 
+def _parse_allowed_values(text: str) -> list:
+    """Extract the allowed code values an error message enumerates, e.g.
+    "The value 'CLRG' is not valid. It must be one of the following values :
+    INDA, INGA." or "Expected is one of ( INDA, INGA )". Returns code-like
+    tokens (2–11 uppercase alphanumerics) AFTER the 'one of' clause, so the
+    offending value quoted earlier in the sentence is never mistaken for an
+    allowed one. Empty when the message doesn't enumerate a closed set."""
+    if not text:
+        return []
+    m = re.search(
+        r"(?:must be one of|one of the following(?:\s+\w+)?\s*:?|expected is one of)\s*[:\(]?\s*(.+)$",
+        text, re.I | re.S,
+    )
+    if not m:
+        return []
+    vals: list = []
+    for tok in re.findall(r"'?([A-Z][A-Z0-9]{1,10})'?", m.group(1)):
+        if tok not in vals:
+            vals.append(tok)
+    return vals
+
+
 # ── AI Knowledge Base loader (cached, app-wide) ───────────────────────────────
 # Loads ai_knowledge_base.json once. Provides:
 #   - field_constraints  : per-field type, length, examples
@@ -145,6 +167,25 @@ def _kb_folder_name(msg_type: str, xml: str = "") -> Optional[str]:
                 else "pacs009_cbprplus_sr2025_validation_kb.json")
     if msg_type.startswith("pacs.003"):
         return "pacs003_cbprplus_sr2025_validation_kb.json"
+    # pacs.008 ships its KB under the plain "pacs.008.json" name (same schema:
+    # a top-level "tags" array). It was previously unmapped, so the fixer never
+    # consulted it for the most common message type — add it explicitly.
+    if msg_type.startswith("pacs.008"):
+        return "pacs.008.json"
+    # Per-message auto-fix KBs (one file per message family). The family prefix
+    # is enough — a single file covers all variants of that message.
+    if msg_type.startswith("pacs.010"):
+        return "pacs010_cbprplus_sr2025_validation_kb.json"
+    if msg_type.startswith("camt.056"):
+        return "camt056_cbprplus_sr2025_validation_kb.json"
+    if msg_type.startswith("camt.057"):
+        return "camt057_cbprplus_sr2025_validation_kb.json"
+    if msg_type.startswith("pain.001"):
+        return "pain001_cbprplus_sr2025_validation_kb.json"
+    if msg_type.startswith("pain.002"):
+        return "pain002_cbprplus_sr2025_validation_kb.json"
+    if msg_type.startswith("pain.008"):
+        return "pain008_cbprplus_sr2025_validation_kb.json"
     return None
 
 
@@ -198,9 +239,84 @@ def _kb_folder_leaf_value(tag_name: str, msg_type: str, xml: str = "") -> Option
             return str(vv[0])
         dt = entry.get("datatype")
         if dt:
-            return _value_for_datatype(dt)
+            val = _value_for_datatype(dt)
+            if val is not None:
+                return val
+            # Text types (Max35Text, Max140Text, etc.) have no datatype-only
+            # recipe — fall through to the ai_knowledge_base field_constraints
+            # example for this specific tag name (e.g. EndToEndId → "E2E-…").
+            con = _kb_field_constraint(tag_name)
+            ex = (con.get("example") or con.get("preferred")) if isinstance(con, dict) else None
+            if ex:
+                return str(ex)
         return None
     return None
+
+
+def _cbpr_bizsvc_value(msg_type: str, xml: str = "") -> Optional[str]:
+    """The correct CBPR+ SR2025 AppHdr/BizSvc value for this message + variant.
+
+    pacs.009 splits into three business services that the generic
+    ai_knowledge_base template ('swift.cbprplus.02') does NOT cover:
+      • CORE → swift.cbprplus.03
+      • ADV  → swift.cbprplus.adv.03   (carries <Prtry>ADV</Prtry>)
+      • COV  → swift.cbprplus.cov.03   (carries UndrlygCstmrCdtTrf)
+    For every other family the per-message KB 'expected_value' is authoritative
+    (pacs.008/pacs.003 → .03; pain.*/camt.*/pacs.010 → .02).
+    """
+    low = f"{msg_type} {xml}".lower()
+    fam = (msg_type or "").lower()
+    if fam.startswith("pacs.009") or "financialinstitutioncredittransfer" in low:
+        if "cov" in fam or "undrlygcstmrcdttrf" in low or "swift.cbprplus.cov" in low:
+            return "swift.cbprplus.cov.03"
+        if "adv" in fam or "<prtry>adv</prtry>" in low or "swift.cbprplus.adv" in low:
+            return "swift.cbprplus.adv.03"
+        return "swift.cbprplus.03"
+    # All other message types: trust the per-message KB's expected_value.
+    return _kb_folder_leaf_value("BizSvc", msg_type, xml)
+
+
+def _kb_folder_structural_hints(tag_names: list[str], code: str,
+                                msg_type: str, xml: str = "") -> list[str]:
+    """Pull authoritative STRUCTURE context for the given elements from the
+    per-message KB JSON in resources/KB (e.g. pacs.008.json): each element's
+    canonical xpath (so the LLM sees correct nesting/parentage), cardinality,
+    whether it's mandatory, and any matching error's documented possible_fixes.
+
+    This is what lets the AI "check the KB before fixing" — it hands the model
+    the exact shape the element must take per the knowledge base rather than
+    leaving it to guess. Returns a list of short context lines (possibly empty).
+    """
+    kb = _load_kb_folder(msg_type, xml)
+    entries = kb.get("tags", []) if isinstance(kb, dict) else []
+    if not entries:
+        return []
+    wanted = {t for t in tag_names if t}
+    lines: list[str] = []
+    seen: set = set()
+    for entry in entries:
+        xml_el = entry.get("xml_element") or entry.get("tag", "").split("/")[-1]
+        if xml_el not in wanted or xml_el in seen:
+            continue
+        seen.add(xml_el)
+        bits = [f"<{xml_el}>"]
+        if entry.get("xpath"):
+            bits.append(f"path={entry['xpath']}")
+        if entry.get("occurrence"):
+            bits.append(f"occurrence={entry['occurrence']}")
+        if entry.get("mandatory") is not None:
+            bits.append(f"mandatory={entry['mandatory']}")
+        if entry.get("datatype"):
+            bits.append(f"datatype={entry['datatype']}")
+        lines.append("  " + " | ".join(bits))
+        # Surface the documented fix for the matching error code, if any.
+        for err in entry.get("errors", []) or []:
+            if code and err.get("error_code") not in (code, "") and err.get("error_id") != code:
+                continue
+            for pf in (err.get("possible_fixes") or [])[:2]:
+                lines.append(f"    fix: {pf}")
+            break
+    return lines
 
 
 # ── Enterprise KB (swift_mx_enterprise_llm_kb.json) — cached, app-wide ───────
@@ -527,6 +643,14 @@ def _detect_msg_type(xml: str) -> str:
     Format: <family>.<message_no>.<variant>.<version>
             letters . digits . digits . digits
     """
+    # MsgDefIdr is the explicit declaration — check it first so a wrong Document
+    # namespace (e.g. pacs.008 on a camt.056 message) never overrides intent.
+    mdi = re.search(r"<MsgDefIdr>([^<]+)</MsgDefIdr>", xml)
+    if mdi:
+        val = mdi.group(1).strip()
+        if val and not val.startswith("head."):
+            return val
+
     # A header-wrapped message contains BOTH the BAH type (head.001.001.0x,
     # which appears first) and the actual Document message type. Always prefer
     # the business message type — otherwise every message-specific lookup (KB
@@ -676,6 +800,94 @@ _TEMPLATES: dict[str, str] = {
     ),
     "SttlmInf":  "<SttlmInf><SttlmMtd>INGA</SttlmMtd></SttlmInf>",
     "AcctId":    "<AcctId><IBAN>GB29NWBK60161331926819</IBAN></AcctId>",
+
+    # ── pain.001 / pain.008 ────────────────────────────────────────────────
+    "InitgPty": "<InitgPty><Nm>Initiating Party</Nm></InitgPty>",
+    "ReqdColltnDt": "<ReqdColltnDt>2026-01-15</ReqdColltnDt>",
+    "ReqdExctnDt":  "<ReqdExctnDt><Dt>2026-01-15</Dt></ReqdExctnDt>",
+    "DrctDbtTx": (
+        "<DrctDbtTx>"
+        "<MndtRltdInf><MndtId>MNDT-001</MndtId><DtOfSgntr>2024-01-01</DtOfSgntr></MndtRltdInf>"
+        "</DrctDbtTx>"
+    ),
+    "MndtRltdInf": "<MndtRltdInf><MndtId>MNDT-001</MndtId><DtOfSgntr>2024-01-01</DtOfSgntr></MndtRltdInf>",
+
+    # ── camt.056 ───────────────────────────────────────────────────────────
+    "Assgnmt": (
+        "<Assgnmt>"
+        "<Id>ASSGNMT-001</Id>"
+        "<Assgnr><Agt><FinInstnId><BICFI>DEUTDEFFXXX</BICFI></FinInstnId></Agt></Assgnr>"
+        "<Assgne><Agt><FinInstnId><BICFI>CHASUS33XXX</BICFI></FinInstnId></Agt></Assgne>"
+        "<CreDtTm>2026-01-15T10:00:00+00:00</CreDtTm>"
+        "</Assgnmt>"
+    ),
+    "Assgnr": "<Assgnr><Agt><FinInstnId><BICFI>DEUTDEFFXXX</BICFI></FinInstnId></Agt></Assgnr>",
+    "Assgne": "<Assgne><Agt><FinInstnId><BICFI>CHASUS33XXX</BICFI></FinInstnId></Agt></Assgne>",
+    "CxlRsnInf": "<CxlRsnInf><Rsn><Cd>DUPL</Cd></Rsn></CxlRsnInf>",
+    "Undrlyg": (
+        "<Undrlyg>"
+        "<TxInf>"
+        "<OrgnlUETR>4a1a0945-5772-409a-83ba-240e666e0267</OrgnlUETR>"
+        "<CxlRsnInf><Rsn><Cd>DUPL</Cd></Rsn></CxlRsnInf>"
+        "</TxInf>"
+        "</Undrlyg>"
+    ),
+    "TxInf": (
+        "<TxInf>"
+        "<OrgnlUETR>4a1a0945-5772-409a-83ba-240e666e0267</OrgnlUETR>"
+        "<CxlRsnInf><Rsn><Cd>DUPL</Cd></Rsn></CxlRsnInf>"
+        "</TxInf>"
+    ),
+    "Case": "<Case><Id>CASE-001</Id></Case>",
+    "OrgnlGrpInf": (
+        "<OrgnlGrpInf>"
+        "<OrgnlMsgId>ORIG-MSG-001</OrgnlMsgId>"
+        "<OrgnlMsgNmId>pacs.008.001.08</OrgnlMsgNmId>"
+        "</OrgnlGrpInf>"
+    ),
+
+    # ── camt.057 ───────────────────────────────────────────────────────────
+    "Ntfctn": (
+        "<Ntfctn>"
+        "<Id>NTFCTN-001</Id>"
+        '<Itm><Id>ITM-001</Id><Amt Ccy="EUR">0.00</Amt></Itm>'
+        "</Ntfctn>"
+    ),
+    "Itm": '<Itm><Id>ITM-001</Id><Amt Ccy="EUR">0.00</Amt></Itm>',
+    "MsgSndr": "<MsgSndr><Agt><FinInstnId><BICFI>DEUTDEFFXXX</BICFI></FinInstnId></Agt></MsgSndr>",
+    "AcctOwnr": "<AcctOwnr><Pty><Nm>Account Owner</Nm></Pty></AcctOwnr>",
+    "AcctSvcr": "<AcctSvcr><FinInstnId><BICFI>DEUTDEFFXXX</BICFI></FinInstnId></AcctSvcr>",
+    "XpctdValDt": "<XpctdValDt>2026-01-15</XpctdValDt>",
+
+    # ── pacs.010 ───────────────────────────────────────────────────────────
+    "CdtInstr": (
+        "<CdtInstr>"
+        "<CdtId>CDT-001</CdtId>"
+        "<SttlmInf><SttlmMtd>INGA</SttlmMtd></SttlmInf>"
+        "<Cdtr><FinInstnId><BICFI>CHASUS33XXX</BICFI></FinInstnId></Cdtr>"
+        "<DrctDbtTxInf>"
+        "<PmtId><InstrId>INSTR-001</InstrId><EndToEndId>E2E-001</EndToEndId>"
+        "<UETR>4a1a0945-5772-409a-83ba-240e666e0267</UETR></PmtId>"
+        '<IntrBkSttlmAmt Ccy="USD">0.00</IntrBkSttlmAmt>'
+        "<Dbtr><FinInstnId><BICFI>DEUTDEFFXXX</BICFI></FinInstnId></Dbtr>"
+        "<DbtrAgt><FinInstnId><BICFI>DEUTDEFFXXX</BICFI></FinInstnId></DbtrAgt>"
+        "</DrctDbtTxInf>"
+        "</CdtInstr>"
+    ),
+
+    # ── pain.002 ───────────────────────────────────────────────────────────
+    "OrgnlGrpInfAndSts": (
+        "<OrgnlGrpInfAndSts>"
+        "<OrgnlMsgId>ORIG-MSG-001</OrgnlMsgId>"
+        "<OrgnlMsgNmId>pain.001.001.09</OrgnlMsgNmId>"
+        "</OrgnlGrpInfAndSts>"
+    ),
+    "OrgnlPmtInfAndSts": (
+        "<OrgnlPmtInfAndSts>"
+        "<OrgnlPmtInfId>ORIG-PMT-INF-001</OrgnlPmtInfId>"
+        "<TxInfAndSts><OrgnlEndToEndId>E2E-001</OrgnlEndToEndId><TxSts>ACCP</TxSts></TxInfAndSts>"
+        "</OrgnlPmtInfAndSts>"
+    ),
 }
 
 
@@ -882,6 +1094,24 @@ class FixApplyError(Exception):
     pass
 
 
+# Legal XML element local-name (NCName, minus ':'). Used to reject path segments
+# that are actually line numbers / free text (e.g. validators that report
+# path="7"). Treating those as tag names makes the missing-element builder try
+# to create <7/> and crash with lxml "Invalid tag name".
+_VALID_XML_NAME = re.compile(r'^[A-Za-z_][\w.\-]*$')
+
+
+# CBPR+ structural exclusions: child elements that are NOT permitted inside a
+# given parent under CBPR+, even though the base ISO 20022 XSD allows them.
+# Keyed by parent local-name → set of forbidden child local-names. Example:
+# <ClrSys> inside <SttlmInf> — CBPR+ settles pacs.008/009 via INDA/INGA, so a
+# clearing-system identification has no place there (SettlementInstruction in the
+# CBPR+ schema has no ClrSys property). The fixer's own type map is the lenient
+# base schema and can't tell, so these exclusions are encoded explicitly and the
+# offending element is removed when the validator flags it "not expected here".
+_CBPR_FORBIDDEN_CHILDREN = {"SttlmInf": {"ClrSys"}}
+
+
 # ── FixSuggester ──────────────────────────────────────────────────────────────
 
 class FixSuggester:
@@ -1084,6 +1314,22 @@ class FixSuggester:
             picked = _pick(matches)
             if picked is not None:
                 return picked
+
+        # ── Value-based recovery ──────────────────────────────────────────────
+        # Enum/codelist errors quote the offending VALUE, not the element name,
+        # e.g. "The value 'CLRG' is not valid. It must be one of the following
+        # values : INDA, INGA." Locate the leaf element whose text IS that value
+        # (line-nearest) so the caller can correct it.
+        bad_m = re.search(r"(?:value|code)\s+'([^']+)'|'([^']+)'\s+is\s+not\s+(?:a\s+)?valid",
+                          text, re.I)
+        bad_val = next((g for g in (bad_m.groups() if bad_m else ()) if g), None)
+        if bad_val:
+            val_matches = [el for el in root.iter()
+                           if isinstance(el.tag, str) and len(el) == 0
+                           and (el.text or "").strip() == bad_val]
+            picked = _pick(val_matches)
+            if picked is not None:
+                return picked
         return None
 
     # ── Insert deleted mandatory sibling(s) (XSD "not expected" → missing) ────
@@ -1192,6 +1438,14 @@ class FixSuggester:
         for tag in candidate_tags:
             if tag not in wanted and tag not in present and _buildable(tag):
                 wanted.append(tag)
+        # If the offending element is itself a near-miss of something we'd insert
+        # (e.g. <BIC> vs <BICFI>), it's a MISNAMED element, not a missing one.
+        # Inserting here would leave the stray misspelling AND a fresh duplicate;
+        # decline that target so the sequence-fix renames it in place instead.
+        if found_elem and wanted:
+            _misnamed_target = self._closest_expected(found_elem, wanted)
+            if _misnamed_target:
+                wanted = [t for t in wanted if t != _misnamed_target]
         if not wanted:
             return None
         if order:
@@ -1251,8 +1505,11 @@ class FixSuggester:
         KB's cbpr_plus_rules.mandatory_fields for this message family.
 
         mandatory_fields lists dotted paths like "AppHdr.Fr" and
-        "CdtTrfTxInf.PmtId.UETR"; we keep only the 2-segment paths whose first
-        segment is the parent (i.e. the parent's own immediate children).
+        "CdtTrfTxInf.PmtId.UETR"; we keep every path whose IMMEDIATE parent
+        segment is `parent_local` (i.e. the parent's own direct children),
+        regardless of how deep the path is. Matching only 2-segment paths missed
+        nested parents like PmtId (whose entries are "CdtTrfTxInf.PmtId.X"), so a
+        deleted <EndToEndId> could never be identified for re-insertion.
         """
         fam = _kb_msg_family(msg_type)
         # NB: index the family key directly — _kb_get can't walk it because the
@@ -1264,8 +1521,8 @@ class FixSuggester:
             if not isinstance(p, str):
                 continue
             parts = [s for s in p.split(".") if s]
-            if len(parts) == 2 and parts[0] == parent_local and parts[1] not in out:
-                out.append(parts[1])
+            if len(parts) >= 2 and parts[-2] == parent_local and parts[-1] not in out:
+                out.append(parts[-1])
         return out
 
     def _sibling_insert_index(self, parent_copy: etree._Element, tag: str,
@@ -1512,6 +1769,21 @@ class FixSuggester:
         existing_parent: parent into which the new child will be inserted; used
                      to avoid creating duplicate children that already exist there.
         """
+        # ── 0. BizSvc — variant-aware CBPR+ value. The generic KB template is
+        #    'swift.cbprplus.02', which is wrong for pacs.009 (needs .03 / .adv.03
+        #    / .cov.03) and would fail the CBPR_P9_R6 enum rule. Resolve the exact
+        #    value from the message family + variant before anything else. ───────
+        if tag_name == "BizSvc":
+            _bv = _cbpr_bizsvc_value(
+                msg_type or (_detect_msg_type(self._serialize(root)) if root is not None else ""),
+                self._serialize(root) if root is not None else "",
+            )
+            if _bv:
+                tag = f"{{{ns}}}{tag_name}" if ns else tag_name
+                _el = etree.Element(tag)
+                _el.text = _bv
+                return _el
+
         # ── 1. AI Knowledge Base tag template (message-specific) ──────────────
         kb_tmpl = _kb_tag_template(tag_name, msg_type)
         if kb_tmpl:
@@ -1610,11 +1882,57 @@ class FixSuggester:
         # 4. Minimal leaf — prefer the KB-folder authoritative value
         #    (datatype / expected_value / valid_values) so typed leaves like
         #    DtOfSgntr (ISODate) get a real value instead of 'SMPL-...'.
+        #
+        # GUARD: never assign text content to an element-only (complex) type.
+        # Doing so emits e.g. <CdtrAcct>SMPL-...</CdtrAcct>, which the schema
+        # rejects ("Character content ... not allowed because the content type
+        # is element-only") — i.e. the fix would CREATE a new error. If we got
+        # this far without a structural template/XSD build for a complex type,
+        # decline (return None) so the caller skips it rather than corrupting
+        # the document.
+        if self._is_element_only(tag_name, path_parts, tmap):
+            return None
         tag = f"{{{ns}}}{tag_name}" if ns else tag_name
         leaf = etree.Element(tag)
         kb_val = _kb_folder_leaf_value(tag_name, msg_type)
         leaf.text = kb_val if kb_val is not None else self._placeholder(tag_name)
         return leaf
+
+    def _is_element_only(self, tag_name: str,
+                         path_parts: Optional[list[str]],
+                         tmap: Optional["_XsdTypeMap"]) -> bool:
+        """
+        True when `tag_name` is a complex (element-only) type that must NOT carry
+        text content. Resolved from the XSD type map when available, with a
+        conservative name-based fallback for well-known ISO 20022 containers.
+        """
+        if tmap:
+            type_name = None
+            if path_parts:
+                try:
+                    type_name = tmap.type_of_path(path_parts)
+                except Exception:
+                    type_name = None
+            if not type_name:
+                type_name = tmap.element_type.get(tag_name)
+            info = tmap.type_info.get(type_name, {}) if type_name else {}
+            kind = info.get("kind")
+            if kind in ("sequence", "choice"):
+                return True
+            if kind in ("simple", "simpleContent"):
+                return False
+        # Fallback when the type can't be resolved: flag the clearest complex
+        # containers by name (account / agent blocks and known structures).
+        if tag_name.endswith("Acct") or tag_name.endswith("Agt"):
+            return True
+        # Only unambiguously element-only containers here. Tags like Id/Othr are
+        # context-dependent (often simple leaves), so we rely on the XSD check
+        # above for those and never name-flag them.
+        return tag_name in {
+            "PstlAdr", "FinInstnId", "FIId", "PmtId", "SttlmInf", "GrpHdr",
+            "CdtTrfTxInf", "Dbtr", "Cdtr", "UltmtDbtr", "UltmtCdtr", "InitgPty",
+            "RmtInf", "PmtTpInf", "ClrSysMmbId",
+        }
 
     def _harvest_value(self, root: Optional[etree._Element], tag_name: str) -> Optional[str]:
         """
@@ -1848,10 +2166,26 @@ class FixSuggester:
             line_hint = None
         self._line_hint = line_hint  # consumed by _recover_target_from_message
 
+        # ── XML Syntax / reserved-character issues ────────────────────────────
+        # Layer 1 emits code "XML Syntax Error" (with space), Layer 2 emits
+        # "XML_SYNTAX". Both mean the document can't be parsed. Route to
+        # recovery BEFORE attempting to parse so that even a code-only signal
+        # (e.g. the validator caught the error but lxml happens to be lenient
+        # enough to parse it anyway) gets the dedicated repair path.
+        _is_syntax_code = code in ("XML_SYNTAX", "XML Syntax Error",
+                                   "XML Markup Error", "Invalid Characters")
+        if _is_syntax_code or "&" in xml or "reserved" in msg.lower() or "unclosed" in msg.lower():
+            recovered = self._try_xml_recovery(xml, code, msg)
+            if recovered is not None:
+                return recovered
+            # Fall through to normal parse + suggest for anything the recovery
+            # couldn't handle — it may still be partially actionable.
+
         try:
             root = self._parse_xml(xml)
         except FixApplyError:
-            # Invalid XML — only the LLM can help
+            # Structural parse failure that recovery also couldn't fix —
+            # last resort is the LLM.
             return self._llm_fallback("/", xml[:500], code, msg, fix_hint)
 
         # ── Route: missing mandatory AppHdr field (validator completeness scan) ─
@@ -1861,7 +2195,7 @@ class FixSuggester:
         # lacking the head.001 XSD order, append at the end). Route them to the
         # namespace-aware, KB-ordered, indented inserter instead.
         _mh = re.search(r"(?:^|/)AppHdr/(\w+)$", path)
-        if code == "HEADER_VAL" and _mh:
+        if code in ("HEADER_VAL", "HEAD001_BIZSVC_MISSING") and _mh:
             _apphdr = root.find(".//{*}AppHdr")
             if _apphdr is None and etree.QName(root.tag).localname == "AppHdr":
                 _apphdr = root
@@ -1872,6 +2206,58 @@ class FixSuggester:
                 )
                 if _res is not None:
                     return _res
+
+        # ── Route: "content of element 'X' is not complete. One of the following
+        #    elements is expected: 'Y'." (e.g. PAIN008_FWDGAGT_MANDATORY — GrpHdr
+        #    missing FwdgAgt). The element X EXISTS but is missing a mandatory
+        #    CHILD Y. These often arrive with path="/" (the rule reports a line
+        #    number), so the normal flow recovers X and tries to fix ITS value —
+        #    a no-op. Instead, locate X and INSERT the missing child Y into it.
+        _mc = re.search(r"content of element '([\w:.\-]+)' is not complete", msg, re.I)
+        if _mc:
+            _parent_name = _mc.group(1).split('}')[-1].split(':')[-1]
+            _exp = re.search(r"expected\s*:?\s*(.+)$", msg, re.I | re.S)
+            _children: list[str] = []
+            if _exp:
+                for blob in re.findall(r"'([^']+)'", _exp.group(1)):
+                    for tok in re.split(r"[,\s|]+", blob):
+                        tok = tok.strip().split('}')[-1].split(':')[-1]
+                        if tok and tok not in _children:
+                            _children.append(tok)
+            _matches = [el for el in root.iter()
+                        if isinstance(el.tag, str)
+                        and etree.QName(el.tag).localname == _parent_name]
+            if _matches and _children:
+                _lh = getattr(self, "_line_hint", None)
+                _parent_el = (min(_matches, key=lambda e: abs((e.sourceline or 0) - _lh))
+                              if _lh is not None else _matches[0])
+                # Insert the first expected child that is genuinely missing.
+                for _child in _children:
+                    if self._child_exists(_parent_el, _child) is None:
+                        _res = self._try_insert_missing_sibling(
+                            root, xml, code, msg, fix_hint,
+                            explicit_parent=_parent_el, explicit_missing=_child,
+                        )
+                        if _res is not None:
+                            return _res
+
+        # ── Route: ADDR_CTRY_MISSING — Country missing from PstlAdr ─────────
+        # Emitted with path=line_number (→ "/"), so normal path-walking fails.
+        # We extract the party name from the message, locate the right PstlAdr,
+        # and either insert <Ctry> into it OR insert a full dummy PstlAdr block
+        # if the address element doesn't exist at all.
+        if code == "ADDR_CTRY_MISSING":
+            _ns_early = etree.QName(root.tag).namespace or ""
+            _xsd_path_early = self._get_xsd_path(xml)
+            _tmap_early = _XsdTypeMap.get(_xsd_path_early) if _xsd_path_early else None
+            _mt_early = _detect_msg_type(xml)
+            _ridx_early = _RulesIndex.get(_mt_early) if _mt_early else None
+            _addr_fix = self._fix_addr_ctry_missing(
+                root, xml, code, msg, fix_hint,
+                _ns_early, _tmap_early, _ridx_early, _mt_early,
+            )
+            if _addr_fix is not None:
+                return _addr_fix
 
         # ── Guard: element-ordering / structural-position errors ─────────────
         # "X is not expected at this position" / "not allowed here" means the
@@ -1898,6 +2284,33 @@ class FixSuggester:
             "following element",
             "missing before",
         )):
+            # ── CBPR+ forbidden element → remove it outright ──────────────────
+            # When the flagged element is one CBPR+ doesn't permit in its parent
+            # (e.g. <ClrSys> in <SttlmInf>), it can't be reordered or completed
+            # into validity — it must go. Take precedence over the insert/reorder
+            # attempts below, which (using the lenient base XSD) would otherwise
+            # wrongly try to keep it.
+            _m_off = re.search(r"element '([\w:{}.\-]+)' is not expected", msg, re.I)
+            _off_local = _m_off.group(1).split('}')[-1].split(':')[-1] if _m_off else ""
+            if _off_local:
+                _cands = []
+                for _el in root.iter():
+                    if not isinstance(_el.tag, str) or etree.QName(_el.tag).localname != _off_local:
+                        continue
+                    _p = _el.getparent()
+                    _pl = (etree.QName(_p.tag).localname
+                           if (_p is not None and isinstance(_p.tag, str)) else "")
+                    if _pl in _CBPR_FORBIDDEN_CHILDREN and _off_local in _CBPR_FORBIDDEN_CHILDREN[_pl]:
+                        _cands.append((_el, _p))
+                if _cands:
+                    _lh = getattr(self, "_line_hint", None)
+                    _el, _p = (min(_cands, key=lambda t: abs((t[0].sourceline or 0) - _lh))
+                               if _lh is not None else _cands[0])
+                    _pcopy = self._copy(_p)
+                    _pcopy.remove(list(_pcopy)[list(_p).index(_el)])
+                    return FixSuggestion(self._xpath_of(_p), self._serialize(_p),
+                                         self._serialize(_pcopy), code, msg, "high")
+
             # A mandatory sibling that must precede this element may have been
             # deleted entirely (e.g. AppHdr/Fr removed → <To> trips this error).
             # That is a safe INSERT, not a risky reorder — try it before
@@ -1971,6 +2384,13 @@ class FixSuggester:
         parts = [re.sub(r'@\w+$', '', p) for p in parts]
         parts = [p for p in parts if p]
 
+        # Drop segments that aren't legal XML element names — most commonly a
+        # validator reported path="7" (a line number) or "Line: 7". Keeping such
+        # a segment would make the missing-element builder try to create <7/> and
+        # crash with "Invalid tag name". When this empties the path we fall through
+        # to message-based target recovery below (which reads "<InstrId>" etc.).
+        parts = [p for p in parts if _VALID_XML_NAME.match(p)]
+
         # ── Attribute fix: locate the element and fix the attribute value ─────
         if attr_target and parts:
             target_el = self._walk_dot_path(root, parts)
@@ -2023,6 +2443,33 @@ class FixSuggester:
             if target_el is not None:
                 return self._fix_value(target_el, code, msg, fix_hint, ns)
 
+            # Bare leaf-tag path (e.g. the validator emitted "//PstCd" because it
+            # couldn't pin the exact node). _walk_dot_path only checks DIRECT
+            # children of the root, so a deeply-nested element looks "missing" and
+            # we'd wrongly insert a DUPLICATE. The element almost always already
+            # EXISTS — this is a value error. Locate it and fix its value instead.
+            # Prefer the instance whose text matches the offending value quoted in
+            # the message, else the line-nearest one.
+            if not parent_parts:
+                existing_matches = [
+                    el for el in root.iter()
+                    if isinstance(el.tag, str)
+                    and etree.QName(el.tag).localname == missing_tag
+                ]
+                if existing_matches:
+                    bad_m = re.search(r"value '([^']*)'", f"{msg} {fix_hint}", re.I)
+                    bad_val = bad_m.group(1) if bad_m else None
+                    pick = None
+                    if bad_val:
+                        pick = next((e for e in existing_matches
+                                     if (e.text or "").strip() == bad_val), None)
+                    if pick is None:
+                        lh = getattr(self, "_line_hint", None)
+                        pick = (min(existing_matches,
+                                    key=lambda e: abs((e.sourceline or 0) - lh))
+                                if lh is not None else existing_matches[0])
+                    return self._fix_value(pick, code, msg, fix_hint, ns)
+
             # Walk up from parent_parts until we find an existing ancestor
             anchor_el, missing_chain = self._find_deepest_ancestor(root, parent_parts)
             if anchor_el is None:
@@ -2037,10 +2484,15 @@ class FixSuggester:
                 )
 
             # missing_chain = [PstlAdr, ...], missing_tag = Ctry
-            # Build the whole missing subtree bottom-up then nest it
+            # Build the whole missing subtree bottom-up then nest it.
+            # Namespace MUST come from the anchor element, not the document root:
+            # in an enveloped message the root is BusMsgEnvlp (envelope ns) but
+            # body elements live in the message (pacs.008) ns — using the root ns
+            # produced invalid <ns0:Tag xmlns:ns0="...envelope"> inserts.
+            anchor_ns = etree.QName(anchor_el.tag).namespace or ns
             return self._suggest_missing_subtree(
                 anchor_el, missing_chain, missing_tag,
-                fix_hint, ns, tmap, code, msg,
+                fix_hint, anchor_ns, tmap, code, msg,
                 rules_idx=rules_idx, path_parts=parts, root=root,
                 msg_type=msg_type
             )
@@ -2055,7 +2507,11 @@ class FixSuggester:
         original_fragment = self._serialize(parent_el)
         xpath             = self._xpath_of(parent_el)
 
-        child_el = self._build_child(missing_tag, fix_hint, ns, tmap,
+        # Build in the PARENT's namespace, not the document root's — see note
+        # above: enveloped messages have a different root (envelope) ns than the
+        # body (pacs.008/etc.), and stamping the wrong ns corrupts the insert.
+        child_ns = etree.QName(parent_el.tag).namespace or ns
+        child_el = self._build_child(missing_tag, fix_hint, child_ns, tmap,
                                      existing_parent=parent_el,
                                      rules_idx=rules_idx, path_parts=parts,
                                      rule_id=code, root=root, msg_type=msg_type)
@@ -2076,6 +2532,246 @@ class FixSuggester:
             xpath=xpath,
             original_fragment=original_fragment,
             fragment_xml=self._serialize(parent_copy),
+            issue_code=code,
+            issue_message=msg,
+            confidence="high",
+        )
+
+    # ── Address / country fix ─────────────────────────────────────────────────
+
+    _PARTY_NAMES = {
+        "Dbtr", "Cdtr", "UltmtDbtr", "UltmtCdtr", "InitgPty", "FwdgAgt",
+        "InstgAgt", "InstdAgt", "DbtrAgt", "CdtrAgt", "IntrmyAgt1",
+        "IntrmyAgt2", "IntrmyAgt3", "Pty",
+    }
+
+    def _infer_country_from_party(self, root: etree._Element,
+                                   party_name: Optional[str]) -> Optional[str]:
+        """
+        Best-effort country inference for a party.
+        Priority: BICFI chars 4-6, IBAN prefix chars 0-2.
+        Search order:
+          1. Elements INSIDE the named party element (e.g. Dbtr/PstlAdr or Dbtr IBAN).
+          2. Elements inside the RELATED AGENT (DbtrAgt for Dbtr, CdtrAgt for Cdtr)
+             — these are siblings, not children.
+          3. Any BICFI/IBAN anywhere in the document as last resort.
+        Returns a 2-letter ISO country code or None.
+        """
+        _RELATED_AGENT = {
+            "Dbtr": "DbtrAgt",  "Cdtr": "CdtrAgt",
+            "UltmtDbtr": "DbtrAgt", "UltmtCdtr": "CdtrAgt",
+        }
+
+        def _country_from_el(el: etree._Element) -> Optional[str]:
+            if not isinstance(el.tag, str):
+                return None
+            local = etree.QName(el.tag).localname
+            txt = (el.text or "").strip()
+            if local == "BICFI" and len(txt) >= 6:
+                return txt[4:6]
+            if local == "IBAN" and len(txt) >= 2:
+                return txt[:2]
+            return None
+
+        def _under(el: etree._Element, parent_name: str) -> bool:
+            cur = el.getparent()
+            while cur is not None:
+                if isinstance(cur.tag, str) and etree.QName(cur.tag).localname == parent_name:
+                    return True
+                cur = cur.getparent()
+            return False
+
+        # 1. Inside the named party
+        if party_name:
+            for el in root.iter():
+                if _under(el, party_name):
+                    c = _country_from_el(el)
+                    if c:
+                        return c
+
+        # 2. Inside the related agent (sibling element in the same tx block)
+        related_agent = _RELATED_AGENT.get(party_name or "") if party_name else None
+        if related_agent:
+            for el in root.iter():
+                if _under(el, related_agent):
+                    c = _country_from_el(el)
+                    if c:
+                        return c
+
+        # 3. Any BICFI / IBAN in the document
+        for el in root.iter():
+            c = _country_from_el(el)
+            if c:
+                return c
+
+        return None
+
+    def _fix_addr_ctry_missing(
+        self,
+        root: etree._Element,
+        xml: str,
+        code: str,
+        msg: str,
+        fix_hint: str,
+        ns: str,
+        tmap: Optional["_XsdTypeMap"],
+        rules_idx: Optional["_RulesIndex"],
+        msg_type: str,
+    ) -> Optional[FixSuggestion]:
+        """
+        Fix ADDR_CTRY_MISSING in two branches:
+
+        Branch A — PstlAdr EXISTS but has no <Ctry>:
+            Insert <Ctry>XX</Ctry> at the correct position inside the existing
+            PstlAdr.  Country code is inferred from the party's BICFI/IBAN where
+            possible; otherwise defaults to 'US'.
+
+        Branch B — PstlAdr does NOT EXIST (address block entirely absent):
+            Insert a complete dummy <PstlAdr> (with AdrLine + Ctry) into the
+            party element so the message is immediately schema-valid.
+
+        The party name is extracted from the message text (e.g. "Dbtr address").
+        Both branches use line-nearest matching so the right element is targeted
+        when the same party tag appears multiple times (e.g. Dbtr vs CdtTrfTxInf
+        in different transaction blocks).
+        """
+        lh = getattr(self, "_line_hint", None)
+
+        # Extract party name from the message ("missing in Dbtr address" → "Dbtr")
+        party_m = re.search(
+            r'\b(Dbtr|Cdtr|UltmtDbtr|UltmtCdtr|InitgPty|FwdgAgt|'
+            r'InstgAgt|InstdAgt|DbtrAgt|CdtrAgt|IntrmyAgt\d?|Pty)\b',
+            msg, re.I,
+        )
+        party_name = party_m.group(1) if party_m else None
+
+        def _pick_nearest(elements):
+            if not elements:
+                return None
+            if lh is None:
+                return elements[0]
+            return min(elements, key=lambda e: abs((e.sourceline or 0) - lh))
+
+        def _under_party(el: etree._Element, pname: str) -> bool:
+            cur = el.getparent()
+            while cur is not None:
+                if isinstance(cur.tag, str) and etree.QName(cur.tag).localname == pname:
+                    return True
+                cur = cur.getparent()
+            return False
+
+        # ── Branch A: PstlAdr exists, Ctry is absent ──────────────────────────
+        all_pstladr = [
+            el for el in root.iter()
+            if isinstance(el.tag, str)
+            and etree.QName(el.tag).localname == "PstlAdr"
+        ]
+        if party_name:
+            candidates = [p for p in all_pstladr if _under_party(p, party_name)]
+        else:
+            candidates = all_pstladr
+
+        pstl_adr = _pick_nearest(candidates)
+        if pstl_adr is not None:
+            already_has_ctry = self._child_exists(pstl_adr, "Ctry") is not None
+            if not already_has_ctry:
+                ctry_val = (
+                    self._infer_country_from_party(root, party_name)
+                    or "US"
+                )
+                pstl_ns = etree.QName(pstl_adr.tag).namespace or ns
+                ctry_tag = f"{{{pstl_ns}}}Ctry" if pstl_ns else "Ctry"
+                ctry_el = etree.Element(ctry_tag)
+                ctry_el.text = ctry_val
+
+                pstl_copy = self._copy(pstl_adr)
+                ins = self._find_insert_index(
+                    pstl_copy, "Ctry", tmap,
+                    parent_path=self._local_name_path(pstl_adr),
+                )
+                if ins is None:
+                    pstl_copy.append(ctry_el)
+                else:
+                    pstl_copy.insert(ins, ctry_el)
+
+                # Normalise whitespace so Ctry appears on its own line
+                base, unit, close = self._derive_child_indent(pstl_copy)
+                if base is not None:
+                    self._normalize_child_tails(pstl_copy, base, close)
+
+                return FixSuggestion(
+                    xpath=self._xpath_of(pstl_adr),
+                    original_fragment=self._serialize(pstl_adr),
+                    fragment_xml=self._serialize(pstl_copy),
+                    issue_code=code,
+                    issue_message=msg,
+                    confidence="high",
+                )
+
+        # ── Branch B: PstlAdr is completely absent — insert a dummy one ───────
+        if party_name:
+            party_els = [
+                el for el in root.iter()
+                if isinstance(el.tag, str)
+                and etree.QName(el.tag).localname == party_name
+            ]
+        else:
+            # Fall back to any party-like element near the reported line
+            party_els = [
+                el for el in root.iter()
+                if isinstance(el.tag, str)
+                and etree.QName(el.tag).localname in self._PARTY_NAMES
+            ]
+
+        party_el = _pick_nearest(party_els)
+        if party_el is None:
+            return None
+
+        party_ns = etree.QName(party_el.tag).namespace or ns
+        pstl_el = self._build_child(
+            "PstlAdr", fix_hint, party_ns, tmap,
+            existing_parent=party_el,
+            rules_idx=rules_idx,
+            path_parts=[party_name or "Dbtr", "PstlAdr"],
+            root=root,
+            msg_type=msg_type,
+        )
+        if pstl_el is None:
+            return None
+
+        # Ensure the built PstlAdr contains a Ctry element with a sane value
+        ctry_in_new = self._child_exists(pstl_el, "Ctry")
+        if ctry_in_new is not None:
+            if not (ctry_in_new.text or "").strip():
+                ctry_in_new.text = (
+                    self._infer_country_from_party(root, party_name) or "US"
+                )
+        else:
+            ctry_val = self._infer_country_from_party(root, party_name) or "US"
+            ctry_tag = f"{{{party_ns}}}Ctry" if party_ns else "Ctry"
+            ctry_child = etree.Element(ctry_tag)
+            ctry_child.text = ctry_val
+            pstl_el.append(ctry_child)
+
+        party_copy = self._copy(party_el)
+        ins = self._find_insert_index(
+            party_copy, "PstlAdr", tmap,
+            parent_path=self._local_name_path(party_el),
+        )
+        if ins is None:
+            party_copy.append(pstl_el)
+        else:
+            party_copy.insert(ins, pstl_el)
+
+        base, unit, close = self._derive_child_indent(party_copy)
+        if base is not None:
+            self._indent_el(pstl_el, base, unit)
+            self._normalize_child_tails(party_copy, base, close)
+
+        return FixSuggestion(
+            xpath=self._xpath_of(party_el),
+            original_fragment=self._serialize(party_el),
+            fragment_xml=self._serialize(party_copy),
             issue_code=code,
             issue_message=msg,
             confidence="high",
@@ -2124,6 +2820,14 @@ class FixSuggester:
         """
         original_fragment = self._serialize(anchor_el)
         xpath             = self._xpath_of(anchor_el)
+
+        # Guard: never try to build an element whose tag isn't a legal XML name
+        # (e.g. a line number that slipped through as the target). Building it
+        # would raise lxml "Invalid tag name" and, inside suggest_batch, abort
+        # the whole batch. Defer to the LLM / decline instead of crashing.
+        if not leaf_tag or not _VALID_XML_NAME.match(leaf_tag) or \
+           any(not _VALID_XML_NAME.match(t) for t in (missing_chain or [])):
+            return self._llm_fallback(xpath, original_fragment, code, msg, fix_hint)
 
         # Build the leaf element (with KB templates + rules + document harvesting)
         leaf_el = self._build_child(leaf_tag, fix_hint, ns, tmap,
@@ -2418,6 +3122,16 @@ class FixSuggester:
         # Compute this element's full path for matching dependencies
         my_xpath = self._xpath_of(el)
 
+        # 0a. BizSvc — variant-aware CBPR+ business service. A wrong value (e.g.
+        #     'swift.cbprplus.02' on a pacs.009) trips the CBPR_P9_R6 enum rule;
+        #     replace it with the value mandated for this message family + variant
+        #     (.03 / .adv.03 / .cov.03) rather than a generic constraint example.
+        if tag_name == "BizSvc" and root is not None:
+            _xml = self._serialize(root)
+            _bv = _cbpr_bizsvc_value(_detect_msg_type(_xml), _xml)
+            if _bv and _bv != (el.text or "").strip():
+                return _bv
+
         # 0. Length overflow only → truncate the EXISTING value to the KB/schema
         #    max_length. This preserves the user's actual data (just shortened to
         #    the limit) instead of replacing it with a generic example, and is the
@@ -2543,17 +3257,21 @@ class FixSuggester:
         if not re.search(r"is not expected here|following element|missing before", msg, re.I):
             return None
         m_off = re.search(r"element '([^']+)' is not expected here", msg, re.I)
-        # Tolerate "expected:", "expected :" and surrounding quotes/spaces.
-        m_exp = re.search(r"following elements?\s*(?:is|are)?\s*expected\s*:?\s*'?([^'\n]+?)'?\.?\s*$",
-                          msg, re.I)
-        if not m_off or not m_exp:
+        if not m_off:
             return None
         offending = m_off.group(1).strip().strip("':\" ")
-        expected = [e.strip().strip("':\" ")
-                    for e in re.split(r"[,/]| or ", m_exp.group(1))
-                    if e.strip().strip("':\" ")]
-        if not expected:
-            return None
+        # The expected-element list only appears in lxml's VERBOSE variant
+        # ("One of the following elements is expected: 'A, B'"). The TERSE variant
+        # ("... or another element was expected before it.") names nothing — there
+        # we leave `expected` empty and derive the missing mandatory predecessor(s)
+        # from the XSD sequence below (Case 2).
+        m_exp = re.search(r"following elements?\s*(?:is|are)?\s*expected\s*:?\s*'?([^'\n]+?)'?\.?\s*$",
+                          msg, re.I)
+        expected: list[str] = []
+        if m_exp:
+            expected = [e.strip().strip("':\" ")
+                        for e in re.split(r"[,/]| or ", m_exp.group(1))
+                        if e.strip().strip("':\" ")]
 
         off_el = next((el for el in root.iter()
                        if isinstance(el.tag, str)
@@ -2583,8 +3301,10 @@ class FixSuggester:
         # ── Case 1: misnamed element. The offending tag is not a valid child but
         #    is a near-match of one (e.g. <BIC> where <BICFI> is expected) — a
         #    common ISO 20022 mistake. Rename it, preserving its value, then
-        #    reorder to the XSD sequence. ──────────────────────────────────────
-        if offending not in expected:
+        #    reorder to the XSD sequence. Skip when the offending tag IS a valid
+        #    child (it's merely out of order — handled by the reorder path below),
+        #    so we never rename a legitimate element. ──────────────────────────
+        if expected and offending not in expected and offending not in order:
             cand = self._closest_expected(offending, expected)
             if cand:
                 off_idx = list(parent).index(off_el)
@@ -2595,6 +3315,37 @@ class FixSuggester:
                     self._reorder_children(parent_copy, order)
                 return FixSuggestion(xpath, original_fragment,
                                      self._serialize(parent_copy), code, msg, "high")
+
+        # ── Case 1b: element NOT permitted here at all. When the parent's XSD type
+        #    is known and the offending tag is NOT among its legal children (and
+        #    wasn't a renameable misname above), it cannot stay — remove it. This
+        #    is the correct fix for a stray element the profile forbids, e.g.
+        #    <ClrSys> inside a pacs.008 SettlementInstruction (CBPR+ permits
+        #    SttlmAcct / reimbursement agents there, never ClrSys). Removal is
+        #    schema-backed (we only delete when the XSD confirms it's not a legal
+        #    child), so we never drop a genuinely-valid element.
+        if tmap and parent_type:
+            valid_children = [c.get("name") for c in
+                              tmap.type_info.get(parent_type, {}).get("children", [])]
+            if valid_children and offending not in valid_children:
+                # SIZE GUARD: only auto-delete a SMALL stray (e.g. a misplaced
+                # <BICFI>). A large subtree flagged "not expected here" is almost
+                # always MISPLACED data the user wants moved/wrapped, not deleted —
+                # silently dropping it looks like "the fix removed most of my
+                # code". Decline (fall through) so we never offer a destructive
+                # delete of a big block.
+                subtree_size = sum(1 for _ in off_el.iter())
+                if subtree_size > 6:
+                    return None
+                try:
+                    off_idx = list(parent).index(off_el)
+                except ValueError:
+                    off_idx = None
+                if off_idx is not None:
+                    parent_copy = self._copy(parent)
+                    parent_copy.remove(list(parent_copy)[off_idx])
+                    return FixSuggestion(xpath, original_fragment,
+                                         self._serialize(parent_copy), code, msg, "high")
 
         # ── Case 2: a mandatory element is missing before the offending one.
         #    Insert the missing mandatory expected element(s) and reorder. We add
@@ -2610,8 +3361,35 @@ class FixSuggester:
                     return c.get("min", "1") != "0"
             return False
 
+        # Terse-variant fallback: lxml named no expected element, so derive the
+        # missing mandatory predecessor(s) from the XSD sequence — every mandatory
+        # child that must appear BEFORE the offending element but is absent from
+        # the parent. Classic case: <EndToEndId> deleted from <PmtId> →
+        # "The element 'TxId' is not expected here." with no expected list.
+        if not expected and order:
+            try:
+                off_pos = order.index(offending)
+            except ValueError:
+                off_pos = len(order)
+            expected = [c for c in order[:off_pos]
+                        if c not in existing and is_mandatory(c)]
+
         to_add = [e for e in expected if e not in existing and is_mandatory(e)]
         if not to_add:
+            # ── Case 3: pure ORDERING violation. Nothing is missing or misnamed —
+            #    every required element is present but the sequence is wrong (e.g.
+            #    a manual edit put <CreDt> before <BizSvc> in the AppHdr). When the
+            #    offending element is a valid child of the parent, reorder ALL the
+            #    parent's children into the XSD sequence. This is deterministic and
+            #    schema-correct, and is the case the fixer previously declined
+            #    (returning a low-confidence no-op), so reordering never happened.
+            if order and offending in order:
+                parent_copy = self._copy(parent)
+                self._reorder_children(parent_copy, order)
+                reordered = self._serialize(parent_copy)
+                if reordered != original_fragment:
+                    return FixSuggestion(xpath, original_fragment,
+                                         reordered, code, msg, "high")
             return None
 
         parent_copy = self._copy(parent)
@@ -2924,6 +3702,72 @@ class FixSuggester:
         msg_l             = msg.lower()
         el_local          = etree.QName(el.tag).localname
 
+        # ── BizSvc → variant-aware CBPR+ business service value ───────────────
+        # A wrong value like 'swift.cbprplus.02' on a pacs.009 is a perfectly
+        # valid Max35Text, so the generic constraint check below never flags it —
+        # only the CBPR_P9_R6 enum rule does. Handle it explicitly: replace with
+        # the value mandated for this message family + variant (.03 / .adv.03 /
+        # .cov.03 for pacs.009; the per-message KB expected_value otherwise).
+        if el_local == "BizSvc" and not list(el):
+            try:
+                _root = el.getroottree().getroot() if el.getroottree() is not None else None
+            except Exception:
+                _root = None
+            if _root is not None:
+                _xml = self._serialize(_root)
+                _bv = _cbpr_bizsvc_value(_detect_msg_type(_xml), _xml)
+                if _bv and _bv != (el.text or "").strip():
+                    el_copy = self._copy(el)
+                    el_copy.text = _bv
+                    return FixSuggestion(xpath, original_fragment,
+                                         self._serialize(el_copy), code, msg, "high")
+
+        # ── External-code-list <Cd> by parent context ────────────────────────
+        # <Cd> is polymorphic, so the generic constraint check can't tell which
+        # code list applies. Map the parent (and, for Acct/Tp/Cd, grandparent) to
+        # the right list and, when the value isn't valid, replace it with a real
+        # code (preferring a widely-recognised one, else the first valid code).
+        if el_local == "Cd" and not list(el):
+            _par = el.getparent()
+            _parname = (etree.QName(_par.tag).localname
+                        if (_par is not None and isinstance(_par.tag, str)) else "")
+            _gp = _par.getparent() if _par is not None else None
+            _gpname = (etree.QName(_gp.tag).localname
+                       if (_gp is not None and isinstance(_gp.tag, str)) else "")
+            _cl = None
+            _prefs: tuple = ()
+            if _parname in ("ClrSys", "ClrSysId"):
+                _cl, _prefs = "clearing_system", ("TGT", "RTP", "EBA", "STG", "CHP")
+            elif _parname == "Tp" and _gpname.endswith("Acct"):
+                _cl, _prefs = "account_type", ("CACC", "CASH", "LOAN")
+            elif _parname == "LclInstrm":
+                _cl, _prefs = "local_instrument", ("CORE", "INST", "B2B")
+            if _cl:
+                _codes = _codelist_codes(_cl)
+                _cur = (el.text or "").strip()
+                if _codes and _cur not in _codes:
+                    _pick = next((c for c in _prefs if c in _codes), _codes[0])
+                    el_copy = self._copy(el)
+                    el_copy.text = _pick
+                    return FixSuggestion(xpath, original_fragment,
+                                         self._serialize(el_copy), code, msg, "high")
+
+        # ── Closed-enum violation: message lists the allowed values ───────────
+        # e.g. SttlmMtd 'CLRG' on a pacs.008 → "must be one of the following
+        # values : INDA, INGA". Set the element to a listed valid value (prefer a
+        # sensible settlement default, else the first allowed value). Only fires
+        # when the value genuinely isn't in the enumerated set.
+        if not list(el):
+            _allowed = _parse_allowed_values(f"{msg} {fix_hint}")
+            _cur = (el.text or "").strip()
+            if _allowed and _cur not in _allowed:
+                _pick = next((v for v in ("INGA", "INDA", "COVE") if v in _allowed),
+                             _allowed[0])
+                el_copy = self._copy(el)
+                el_copy.text = _pick
+                return FixSuggestion(xpath, original_fragment,
+                                     self._serialize(el_copy), code, msg, "high")
+
         # ── Length overflow → shorten the value to the KB/schema max_length ───
         # Highest-priority, deterministic fix for "Field X has an invalid length"
         # errors (e.g. <Nm> with 162 chars when Max140Text allows 140). We keep
@@ -2988,7 +3832,20 @@ class FixSuggester:
         date_rules = {**(_enterprise_date_fix_rules() or {}), **(_kb_get("date_fix_rules", {}) or {})}
         if code in date_rules:
             rule = date_rules[code]
-            if el_local in rule.get("affects_tags", []):
+            # The affects_tags whitelist is a hint, not an exhaustive list — there
+            # are dozens of ISO 20022 date tags (ReqdColltnDt, IntrBkSttlmDt, …).
+            # For PAST_DATE_ERROR, also fire on ANY date-typed element (tag ends
+            # in Dt/DtTm/Tm or the value is an ISO date/datetime) so a brand-new
+            # date tag isn't a silent no-op just because it's missing from the KB.
+            cur_txt = (el.text or "").strip()
+            is_date_field = (
+                el_local in rule.get("affects_tags", [])
+                or (code == "PAST_DATE_ERROR" and (
+                    el_local.endswith(("Dt", "DtTm", "Tm"))
+                    or bool(re.match(r"\d{4}-\d{2}-\d{2}", cur_txt))
+                ))
+            )
+            if is_date_field:
                 import datetime
                 now = datetime.datetime.now(datetime.timezone.utc)
                 if code == "PAST_DATE_ERROR":
@@ -3268,6 +4125,29 @@ class FixSuggester:
             if m:
                 target_tag = m.group(1)
 
+        # ── Per-message KB STRUCTURE (resources/KB/<msg>.json) ────────────────
+        # "Check the KB before fixing": hand the model the authoritative shape of
+        # every element named in the error — its canonical xpath (correct
+        # nesting/parentage), cardinality, and documented fix — so structural
+        # repairs (missing wrapper, misplaced element) follow the KB, not a guess.
+        try:
+            kb_tags = set()
+            if target_tag:
+                kb_tags.add(target_tag)
+            for tok in re.findall(r"'([A-Za-z][\w]*)'|element '([A-Za-z][\w]*)'|<([A-Za-z][\w]*)>",
+                                  f"{msg} {fix_hint}"):
+                for g in tok:
+                    if g:
+                        kb_tags.add(g)
+            # The serialized fragment carries the message namespace, so message
+            # type can be detected from it to pick the right per-message KB file.
+            kb_msg_type = _detect_msg_type(original_fragment) or ""
+            hints = _kb_folder_structural_hints(list(kb_tags), code, kb_msg_type, original_fragment)
+            if hints:
+                context_lines.append("Knowledge-base structure (authoritative):\n" + "\n".join(hints))
+        except Exception as e:
+            logger.debug(f"[FixSuggester] KB structural hints failed: {e}")
+
         # ── KB field constraints: include length/type/example for the target ──
         if target_tag:
             constraint = _kb_field_constraint(target_tag)
@@ -3379,7 +4259,23 @@ class FixSuggester:
         current_xml = xml
         changed_xpaths: set[str] = set()
         for issue in issues:
-            sug = self.suggest(current_xml, issue)
+            # Isolate failures per issue: a single issue that trips an unexpected
+            # error inside suggest() must NOT abort the whole batch (which would
+            # leave the caller — e.g. the iterative auto-fixer — applying ZERO
+            # fixes across the entire document). Degrade that one issue to an
+            # unavailable suggestion and carry on with the rest.
+            try:
+                sug = self.suggest(current_xml, issue)
+            except Exception as e:
+                logger.warning(
+                    f"[FixSuggester] suggest() failed for "
+                    f"{issue.get('code','?')} @ {issue.get('path','?')}: {e}"
+                )
+                sug = self._unavail(
+                    str(issue.get("path", "")),
+                    str(issue.get("code", "")),
+                    str(issue.get("message", "")),
+                )
 
             is_actionable = (
                 sug.confidence in ("high", "low")
@@ -3411,9 +4307,148 @@ class FixSuggester:
             suggestions.append(sug)
         return suggestions
 
+    # ── XML syntax recovery ───────────────────────────────────────────────────
+
+    def _escape_reserved_xml_chars(self, xml: str) -> Optional[str]:
+        """
+        Escape unescaped XML reserved characters in text content and attribute
+        values. Targets the most common causes of "values contain no reserved
+        XML characters" errors — principally the unescaped ampersand `&`.
+
+        Uses a negative-lookahead regex so that already-valid entity references
+        (&amp; &lt; &gt; &apos; &quot; &#NNN; &#xHHH;) are left untouched.
+        ISO 20022 field values containing '&' (e.g. "Smith & Jones") should be
+        written as '&amp;' — this fix applies that escaping with zero data loss,
+        unlike lxml's recover mode which can silently strip content.
+        """
+        # Match & NOT already followed by a valid XML entity reference ending in ;
+        pattern = r'&(?!(?:amp|lt|gt|apos|quot|#[0-9]+|#x[0-9a-fA-F]+);)'
+        fixed = re.sub(pattern, '&amp;', xml)
+        return fixed if fixed != xml else None
+
+    def _try_xml_recovery(self, xml: str, code: str, msg: str) -> Optional["FixSuggestion"]:
+        """
+        Repair malformed XML in two stages — char escaping first, then
+        structural recovery — returning the first approach that produces
+        a well-formed document.
+
+        STAGE 1 — Character escaping (zero data loss):
+          Unescaped `&` in field values (e.g. "Smith & Jones") is the most
+          frequent cause of "reserved XML characters" errors.  Replacing `&`
+          with `&amp;` always preserves the original text.  lxml's recovery
+          mode would silently strip the content after the `&` — unacceptable
+          for financial data — so we always try escaping FIRST.
+
+        STAGE 2 — Structural recovery (lxml recover=True):
+          Closes unclosed tags, removes extra closing tags, and repairs other
+          structural problems that char escaping cannot address.
+
+        Returns a whole-document replacement FixSuggestion (xpath="/") with
+        high confidence, or None when both stages fail or produce no change.
+        """
+        def _make_suggestion(fixed: str) -> "FixSuggestion":
+            return FixSuggestion(
+                xpath="/",
+                original_fragment=xml,
+                fragment_xml=fixed,
+                issue_code=code,
+                issue_message=msg,
+                confidence="high",
+            )
+
+        # ── Stage 1: escape unescaped reserved characters ────────────────────
+        escaped = None  # initialise so Stage 2 can safely reference it
+        try:
+            escaped = self._escape_reserved_xml_chars(xml)
+            if escaped:
+                try:
+                    etree.fromstring(escaped.encode("utf-8"))
+                    return _make_suggestion(escaped)
+                except etree.XMLSyntaxError:
+                    # Escaping alone didn't fix everything (e.g. there are also
+                    # unclosed tags); fall through to structural recovery.
+                    pass
+        except Exception as e:
+            logger.debug(f"[FixSuggester] char-escape stage failed: {e}")
+
+        # ── Stage 2: lxml structural recovery ────────────────────────────────
+        try:
+            # Preserve the XML declaration so the re-serialised output looks
+            # identical to the original apart from the structural repair.
+            decl = ""
+            decl_m = re.match(r"(<\?xml[^?]*\?>)\s*", xml)
+            if decl_m:
+                decl = decl_m.group(1) + "\n"
+
+            # If Stage 1 produced a partially-fixed string, recover from that
+            # rather than the original (combines both fixes in one pass).
+            source = escaped if escaped else xml
+
+            parser = etree.XMLParser(
+                recover=True,
+                remove_blank_text=False,
+                no_network=True,
+            )
+            root = etree.fromstring(source.encode("utf-8"), parser)
+            if root is None:
+                return None
+
+            recovered = decl + etree.tostring(
+                root, encoding="unicode", pretty_print=True
+            )
+
+            # Only return a suggestion when the recovery actually changed
+            # something — if the output is identical to the input the XML was
+            # already valid enough and no fix is needed here.
+            if recovered.strip() == xml.strip():
+                return None
+
+            # Validate that the recovered XML is now well-formed.
+            try:
+                etree.fromstring(recovered.encode("utf-8"))
+            except etree.XMLSyntaxError:
+                return None  # Recovery produced invalid output — don't suggest it
+
+            # Content-preservation guard: lxml recover=True can COLLAPSE the tree
+            # when the break is high up (e.g. an unclosed tag near the root),
+            # silently dropping most elements. Never offer a "fix" that deletes a
+            # large chunk of the user's data — count opening tags and bail if the
+            # recovery lost more than 30% of them.
+            def _open_tags(s: str) -> int:
+                return len(re.findall(r"<[A-Za-z][\w:.\-]*", s))
+            src_n = _open_tags(source)
+            rec_n = _open_tags(recovered)
+            if src_n and rec_n < src_n * 0.7:
+                logger.warning(
+                    f"[FixSuggester] XML recovery dropped {src_n - rec_n}/{src_n} "
+                    f"elements — declining destructive fix."
+                )
+                return None
+
+            return _make_suggestion(recovered)
+
+        except Exception as e:
+            logger.debug(f"[FixSuggester] XML recovery failed: {e}")
+            return None
+
     # ── apply ─────────────────────────────────────────────────────────────────
 
     def apply(self, xml: str, xpath: str, fragment_xml: str) -> str:
+        # ── Whole-document replacement (xpath="/") ─────────────────────────
+        # xpath="/" is produced only by _try_xml_recovery (XML_SYNTAX fixes).
+        # fragment_xml IS the complete repaired document — return it directly.
+        # We must NOT fall through to the normal parse+find+replace path because:
+        #   1. The original XML may be malformed (cannot be parsed at all), and
+        #   2. Even when lxml tolerantly parses it, fromstring(fragment_xml) can
+        #      fail or produce wrong output when fragment_xml contains an XML
+        #      declaration (<?xml …?>) or has a different structure post-repair.
+        if xpath == "/" and fragment_xml:
+            decl = ""
+            dm = re.match(r"(<\?xml[^?]*\?>)", xml.strip())
+            if dm and not fragment_xml.lstrip().startswith("<?xml"):
+                decl = dm.group(1) + "\n"
+            return decl + fragment_xml
+
         root  = self._parse_xml(xml)
         nsmap = self._build_nsmap(root)
 

@@ -75,8 +75,10 @@ class Layer2Mixin:
             # Check for <Document> or <BusMsg>
             target_node = full_xml_doc.xpath("//*[local-name()='Document' or local-name()='BusMsg']")
             if not target_node:
-                # Check if root itself is Document/BusMsg
-                if any(x in full_xml_doc.tag for x in ['Document', 'BusMsg']):
+                # Check if root itself is Document/BusMsg — use exact localname,
+                # NOT substring, so 'BusMsgEnvlp' never false-matches 'BusMsg'.
+                root_local = etree.QName(full_xml_doc.tag).localname if isinstance(full_xml_doc.tag, str) else ""
+                if root_local in ('Document', 'BusMsg'):
                     target_node = [full_xml_doc]
             
             if not target_node:
@@ -1184,6 +1186,25 @@ class Layer2Mixin:
                     f" Empty elements found in '{name}'",
                     f"The field '{name}' cannot be left blank. Please enter a valid value before submitting."
                 )
+            m_max = re.search(r"allowed maximum length of '(\d+)'", msg)
+            m_min = re.search(r"allowed minimum length of '(\d+)'", msg)
+            m_act = re.search(r"length of '(\d+)'", msg)
+            
+            if m_max and m_act:
+                max_len = m_max.group(1)
+                act_len = m_act.group(1)
+                return (
+                    f"Field '{name}' has an invalid length: '{lv}'.",
+                    f"This field must be maximum {max_len} characters long. The current value '{lv}' is {act_len} characters long."
+                )
+            elif m_min and m_act:
+                min_len = m_min.group(1)
+                act_len = m_act.group(1)
+                return (
+                    f"Field '{name}' has an invalid length: '{lv}'.",
+                    f"This field must be minimum {min_len} characters long. The current value '{lv}' is {act_len} characters long."
+                )
+
             return (
                 f"Field '{name}' has an invalid length: '{lv}'.",
                 f"The value '{lv}' is either too long or too short for '{name}'. "

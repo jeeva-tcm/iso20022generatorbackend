@@ -1,0 +1,1566 @@
+{
+    "domain": "SWIFT MX CBPR+ pain.001.001.09",
+    "version": "SR2025",
+    "last_updated": "2026-06-01",
+    "purpose": "Context KB for pain.001.001.09 CustomerCreditTransferInitiation auto-fixing. For each XML tag: datatype, mandatory flag, possible errors, affected tags, and all possible fixes.",
+    "reference_documents": [
+        "ISO 20022 pain.001.001.09 CustomerCreditTransferInitiation schema",
+        "SWIFT CBPR+ Usage Guidelines SR2025"
+    ],
+    "iso_20022_rules": {
+        "NbOfTxsRule": "GrpHdr/NbOfTxs must equal the total number of CdtTrfTxInf occurrences across all PmtInf blocks.",
+        "CtrlSumRule": "If CtrlSum is present (at GrpHdr or PmtInf level), it must equal the arithmetic sum of all InstdAmt values in the corresponding scope.",
+        "PaymentMethodRule": "PmtInf/PmtMtd for a credit transfer initiation must be 'TRF' (transfer); 'TRA' and 'CHK' are not used for CBPR+ credit transfers.",
+        "RequestedExecutionDateRule": "PmtInf/ReqdExctnDt is a choice between Dt (ISODate) and DtTm (ISODateTime); exactly one of the two must be present.",
+        "AmountChoiceRule": "CdtTrfTxInf/Amt is a choice between InstdAmt (ActiveOrHistoricCurrencyAndAmount) and EqvtAmt; exactly one must be present.",
+        "DebtorAgentRule": "PmtInf/DbtrAgt must identify the debtor's agent by BICFI (FinInstnId/BICFI) or by ClrSysMmbId; a financial institution identification is mandatory.",
+        "InitiatingPartyRule": "GrpHdr/InitgPty must be present and must carry at least a Name (Nm) or an organisation/private identification.",
+        "AccountIdentificationRule": "Account identification (DbtrAcct/Id, CdtrAcct/Id) is a choice between IBAN and Othr; exactly one must be present per account."
+    },
+    "cbpr_plus_formal_rules": [
+        "AppHdr (BusinessApplicationHeaderV02) is mandatory and must precede the Document.",
+        "AppHdr/BizMsgIdr must equal Document/CstmrCdtTrfInitn/GrpHdr/MsgId.",
+        "AppHdr/MsgDefIdr must equal 'pain.001.001.09' and match the Document xmlns namespace identifier.",
+        "AppHdr/BizSvc must be 'swift.cbprplus.02' for the CBPR+ customer credit transfer initiation service.",
+        "All DateTime fields (AppHdr/CreDt, GrpHdr/CreDtTm, ReqdExctnDt/DtTm) must use YYYY-MM-DDTHH:MM:SS+HH:MM format; the 'Z' suffix and milliseconds are forbidden.",
+        "GrpHdr/NbOfTxs must equal the count of CdtTrfTxInf across every PmtInf block.",
+        "When CtrlSum is present it must equal the sum of all InstdAmt amounts in its scope.",
+        "When PmtTpInf/SvcLvl/Cd = 'SEPA', the InstdAmt currency (Ccy) must be 'EUR' and the debtor/creditor accounts must be IBANs.",
+        "All text/code fields are limited to the SWIFT FIN-X character set; Nm/Adr/RmtInf are extended with !#$&%*=^_{|}~\\\";<>@[\\] (encode < as &lt; and > as &gt;).",
+        "PstlAdr, when present, must contain a Ctry (ISO 3166-1 alpha-2 country code).",
+        "BICFI values must follow ISO 9362: 8 or 11 uppercase alphanumeric characters.",
+        "IBAN values must follow ISO 13616 format and pass the MOD-97 check-digit validation."
+    ],
+    "tags": [
+        {
+            "tag": "AppHdr",
+            "xml_element": "AppHdr",
+            "xpath": "/AppHdr",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "description": "Business Application Header V02. Mandatory for all CBPR+ messages and must precede the Document element.",
+            "errors": [
+                {
+                    "error_id": "APPHDR_MISSING",
+                    "error_code": "SCHEMA_ERR",
+                    "severity": "Fatal",
+                    "description": "AppHdr element is absent; CBPR+ mandates BusinessApplicationHeaderV02.",
+                    "affected_tags": [
+                        "AppHdr"
+                    ],
+                    "possible_fixes": [
+                        "Insert a complete <AppHdr> block before the <Document> element.",
+                        "Ensure AppHdr contains Fr, To, BizMsgIdr, MsgDefIdr, BizSvc, and CreDt."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "AppHdr/Fr",
+            "xml_element": "Fr",
+            "xpath": "/AppHdr/Fr",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "description": "Sending MessagingEndpoint. Must contain a BIC8 or BIC11 in FIId/FinInstnId/BICFI when exchanged on SWIFT.",
+            "errors": [
+                {
+                    "error_id": "APPHDR_FR_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "Fr element is absent from AppHdr.",
+                    "affected_tags": [
+                        "AppHdr/Fr"
+                    ],
+                    "possible_fixes": [
+                        "Insert <Fr><FIId><FinInstnId><BICFI>{sender_BICFI}</BICFI></FinInstnId></FIId></Fr> inside AppHdr.",
+                        "Harvest the BICFI value from PmtInf/DbtrAgt/FinInstnId/BICFI when available."
+                    ]
+                },
+                {
+                    "error_id": "APPHDR_FR_INVALID_BIC",
+                    "error_code": "INVALID_BICFI",
+                    "severity": "Fatal",
+                    "description": "AppHdr/Fr contains an invalid or malformed BIC.",
+                    "affected_tags": [
+                        "AppHdr/Fr/FIId/FinInstnId/BICFI"
+                    ],
+                    "possible_fixes": [
+                        "Replace with a valid BICFI: 8 or 11 uppercase alphanumeric characters per ISO 9362.",
+                        "Pattern: [A-Z]{6}[A-Z2-9][A-NP-Z0-9]([A-Z0-9]{3})?",
+                        "Example valid BIC: DEUTDEFFXXX"
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "AppHdr/To",
+            "xml_element": "To",
+            "xpath": "/AppHdr/To",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "description": "Receiving MessagingEndpoint. Must contain a BIC8 or BIC11 in FIId/FinInstnId/BICFI on SWIFT.",
+            "errors": [
+                {
+                    "error_id": "APPHDR_TO_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "To element is absent from AppHdr.",
+                    "affected_tags": [
+                        "AppHdr/To"
+                    ],
+                    "possible_fixes": [
+                        "Insert <To><FIId><FinInstnId><BICFI>{receiver_BICFI}</BICFI></FinInstnId></FIId></To> inside AppHdr."
+                    ]
+                },
+                {
+                    "error_id": "APPHDR_TO_INVALID_BIC",
+                    "error_code": "INVALID_BICFI",
+                    "severity": "Fatal",
+                    "description": "AppHdr/To contains an invalid or malformed BIC.",
+                    "affected_tags": [
+                        "AppHdr/To/FIId/FinInstnId/BICFI"
+                    ],
+                    "possible_fixes": [
+                        "Replace with a valid BICFI: 8 or 11 uppercase alphanumeric characters per ISO 9362.",
+                        "Pattern: [A-Z]{6}[A-Z2-9][A-NP-Z0-9]([A-Z0-9]{3})?"
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "AppHdr/BizMsgIdr",
+            "xml_element": "BizMsgIdr",
+            "xpath": "/AppHdr/BizMsgIdr",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Unique identifier of the Business Message. Must equal Document/CstmrCdtTrfInitn/GrpHdr/MsgId.",
+            "errors": [
+                {
+                    "error_id": "BIZMSGIDR_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "BizMsgIdr is absent from AppHdr.",
+                    "affected_tags": [
+                        "AppHdr/BizMsgIdr"
+                    ],
+                    "possible_fixes": [
+                        "Copy the value of GrpHdr/MsgId and insert as <BizMsgIdr>{MsgId_value}</BizMsgIdr>.",
+                        "If MsgId is also absent, generate a unique Max35Text value (e.g. MSG-YYYYMMDD-001)."
+                    ]
+                },
+                {
+                    "error_id": "BIZMSGIDR_NEQ_MSGID",
+                    "error_code": "BIZMSGIDR_EQ_GRPHDR_MSGID",
+                    "severity": "Fatal",
+                    "description": "AppHdr/BizMsgIdr does not equal Document/CstmrCdtTrfInitn/GrpHdr/MsgId.",
+                    "affected_tags": [
+                        "AppHdr/BizMsgIdr",
+                        "GrpHdr/MsgId"
+                    ],
+                    "possible_fixes": [
+                        "Read GrpHdr/MsgId and set BizMsgIdr to the same value.",
+                        "If BizMsgIdr is the source of truth, update GrpHdr/MsgId to match BizMsgIdr.",
+                        "Never invent a new value — always harvest from the other field."
+                    ]
+                },
+                {
+                    "error_id": "BIZMSGIDR_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Fatal",
+                    "description": "BizMsgIdr exceeds 35 characters.",
+                    "affected_tags": [
+                        "AppHdr/BizMsgIdr"
+                    ],
+                    "possible_fixes": [
+                        "Truncate the value to a maximum of 35 characters.",
+                        "Synchronize the truncated value back to GrpHdr/MsgId."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "AppHdr/MsgDefIdr",
+            "xml_element": "MsgDefIdr",
+            "xpath": "/AppHdr/MsgDefIdr",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "Max35Text",
+            "expected_value": "pain.001.001.09",
+            "description": "Message Definition Identifier. Must exactly match the Document namespace identifier 'pain.001.001.09'.",
+            "errors": [
+                {
+                    "error_id": "MSGDEFIDR_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "MsgDefIdr is absent from AppHdr.",
+                    "affected_tags": [
+                        "AppHdr/MsgDefIdr"
+                    ],
+                    "possible_fixes": [
+                        "Insert <MsgDefIdr>pain.001.001.09</MsgDefIdr> inside AppHdr."
+                    ]
+                },
+                {
+                    "error_id": "MSGDEFIDR_MISMATCH",
+                    "error_code": "MSGDEFIDR_MISMATCH",
+                    "severity": "Fatal",
+                    "description": "AppHdr/MsgDefIdr does not match the Document xmlns namespace identifier.",
+                    "affected_tags": [
+                        "AppHdr/MsgDefIdr"
+                    ],
+                    "possible_fixes": [
+                        "Read the xmlns attribute from the Document root element (urn:iso:std:iso:20022:tech:xsd:pain.001.001.09).",
+                        "Set MsgDefIdr to 'pain.001.001.09'.",
+                        "Ensure no trailing spaces or version mismatches."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "AppHdr/BizSvc",
+            "xml_element": "BizSvc",
+            "xpath": "/AppHdr/BizSvc",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "Max35Text",
+            "expected_value": "swift.cbprplus.02",
+            "description": "Business Service identifier. Must be 'swift.cbprplus.02' for the CBPR+ customer credit transfer initiation service.",
+            "errors": [
+                {
+                    "error_id": "BIZSVC_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "BizSvc is absent from AppHdr.",
+                    "affected_tags": [
+                        "AppHdr/BizSvc"
+                    ],
+                    "possible_fixes": [
+                        "Insert <BizSvc>swift.cbprplus.02</BizSvc> inside AppHdr."
+                    ]
+                },
+                {
+                    "error_id": "BIZSVC_WRONG_VALUE",
+                    "error_code": "SCHEMENAME_INVALID",
+                    "severity": "Error",
+                    "description": "BizSvc contains a value other than the expected CBPR+ service name.",
+                    "affected_tags": [
+                        "AppHdr/BizSvc"
+                    ],
+                    "possible_fixes": [
+                        "Replace value with 'swift.cbprplus.02'."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "AppHdr/CreDt",
+            "xml_element": "CreDt",
+            "xpath": "/AppHdr/CreDt",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "ISODateTime",
+            "description": "Creation date/time of the Business Message. Must use YYYY-MM-DDTHH:MM:SS+HH:MM format; the 'Z' suffix and milliseconds are forbidden under CBPR+.",
+            "errors": [
+                {
+                    "error_id": "CREDT_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "AppHdr/CreDt is absent.",
+                    "affected_tags": [
+                        "AppHdr/CreDt"
+                    ],
+                    "possible_fixes": [
+                        "Insert <CreDt>{current datetime in YYYY-MM-DDTHH:MM:SS+00:00 format}</CreDt> inside AppHdr."
+                    ]
+                },
+                {
+                    "error_id": "CREDT_Z_SUFFIX",
+                    "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+                    "severity": "Fatal",
+                    "description": "AppHdr/CreDt uses the 'Z' suffix which is forbidden under CBPR+.",
+                    "affected_tags": [
+                        "AppHdr/CreDt"
+                    ],
+                    "possible_fixes": [
+                        "Replace trailing 'Z' with '+00:00'. Example: 2026-06-01T10:00:00Z -> 2026-06-01T10:00:00+00:00."
+                    ]
+                },
+                {
+                    "error_id": "CREDT_NO_TIMEZONE",
+                    "error_code": "CBPR_DATETIME_NO_TIMEZONE",
+                    "severity": "Fatal",
+                    "description": "AppHdr/CreDt has no timezone offset; CBPR+ requires an explicit +HH:MM offset.",
+                    "affected_tags": [
+                        "AppHdr/CreDt"
+                    ],
+                    "possible_fixes": [
+                        "Append a timezone offset. Example: 2026-06-01T10:00:00 -> 2026-06-01T10:00:00+00:00."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "GrpHdr/MsgId",
+            "xml_element": "MsgId",
+            "xpath": "/Document/CstmrCdtTrfInitn/GrpHdr/MsgId",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Unique message identifier assigned by the initiating party. Must equal AppHdr/BizMsgIdr. No leading/trailing spaces.",
+            "errors": [
+                {
+                    "error_id": "MSGID_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "GrpHdr/MsgId is absent.",
+                    "affected_tags": [
+                        "GrpHdr/MsgId",
+                        "AppHdr/BizMsgIdr"
+                    ],
+                    "possible_fixes": [
+                        "Insert <MsgId>{unique identifier up to 35 chars}</MsgId> as the first child of GrpHdr.",
+                        "Use format MSG-YYYYMMDD-NNN (e.g. MSG-20260601-001).",
+                        "Ensure the same value is in AppHdr/BizMsgIdr."
+                    ]
+                },
+                {
+                    "error_id": "MSGID_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Fatal",
+                    "description": "GrpHdr/MsgId exceeds 35 characters.",
+                    "affected_tags": [
+                        "GrpHdr/MsgId"
+                    ],
+                    "possible_fixes": [
+                        "Truncate to a maximum of 35 characters preserving a meaningful prefix.",
+                        "Synchronize the truncated value to AppHdr/BizMsgIdr."
+                    ]
+                },
+                {
+                    "error_id": "MSGID_INVALID_CHARS",
+                    "error_code": "INVALID_CHARSETS",
+                    "severity": "Error",
+                    "description": "MsgId contains characters outside the FIN-X character set or contains spaces.",
+                    "affected_tags": [
+                        "GrpHdr/MsgId"
+                    ],
+                    "possible_fixes": [
+                        "Remove spaces and replace special/accented characters with ASCII equivalents.",
+                        "Allowed: A-Z a-z 0-9 / - ? : ( ) . , ' + (no leading or trailing spaces)."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "GrpHdr/CreDtTm",
+            "xml_element": "CreDtTm",
+            "xpath": "/Document/CstmrCdtTrfInitn/GrpHdr/CreDtTm",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "ISODateTime",
+            "description": "Creation date and time of the message. Format YYYY-MM-DDTHH:MM:SS+HH:MM. The 'Z' suffix and milliseconds are forbidden under CBPR+.",
+            "errors": [
+                {
+                    "error_id": "CREDTTM_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "GrpHdr/CreDtTm is absent.",
+                    "affected_tags": [
+                        "GrpHdr/CreDtTm"
+                    ],
+                    "possible_fixes": [
+                        "Insert <CreDtTm>{current datetime as YYYY-MM-DDTHH:MM:SS+00:00}</CreDtTm>."
+                    ]
+                },
+                {
+                    "error_id": "CREDTTM_Z_SUFFIX",
+                    "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+                    "severity": "Fatal",
+                    "description": "CreDtTm uses the 'Z' suffix; forbidden under CBPR+.",
+                    "affected_tags": [
+                        "GrpHdr/CreDtTm"
+                    ],
+                    "possible_fixes": [
+                        "Replace 'Z' with '+00:00'. Example: 2026-06-01T10:00:00Z -> 2026-06-01T10:00:00+00:00."
+                    ]
+                },
+                {
+                    "error_id": "CREDTTM_NO_TIMEZONE",
+                    "error_code": "CBPR_DATETIME_NO_TIMEZONE",
+                    "severity": "Fatal",
+                    "description": "CreDtTm has no timezone offset; CBPR+ requires an explicit +HH:MM offset.",
+                    "affected_tags": [
+                        "GrpHdr/CreDtTm"
+                    ],
+                    "possible_fixes": [
+                        "Append a timezone offset. Example: 2026-06-01T10:00:00 -> 2026-06-01T10:00:00+00:00."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "GrpHdr/NbOfTxs",
+            "xml_element": "NbOfTxs",
+            "xpath": "/Document/CstmrCdtTrfInitn/GrpHdr/NbOfTxs",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "Max15NumericText",
+            "max_length": 15,
+            "description": "Number of individual transactions. Must equal the total count of CdtTrfTxInf blocks across all PmtInf blocks.",
+            "errors": [
+                {
+                    "error_id": "NBOFTXS_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "GrpHdr/NbOfTxs is absent.",
+                    "affected_tags": [
+                        "GrpHdr/NbOfTxs"
+                    ],
+                    "possible_fixes": [
+                        "Count all CdtTrfTxInf blocks across every PmtInf and insert <NbOfTxs>{count}</NbOfTxs>."
+                    ]
+                },
+                {
+                    "error_id": "NBOFTXS_MISMATCH",
+                    "error_code": "NBOFTXS_MISMATCH",
+                    "severity": "Fatal",
+                    "description": "GrpHdr/NbOfTxs does not equal the actual count of CdtTrfTxInf blocks across all PmtInf.",
+                    "affected_tags": [
+                        "GrpHdr/NbOfTxs",
+                        "PmtInf/CdtTrfTxInf"
+                    ],
+                    "possible_fixes": [
+                        "Count every CdtTrfTxInf element in all PmtInf blocks and set NbOfTxs to that count."
+                    ]
+                },
+                {
+                    "error_id": "NBOFTXS_NON_NUMERIC",
+                    "error_code": "INVALID_CHARSETS",
+                    "severity": "Fatal",
+                    "description": "NbOfTxs contains non-numeric characters.",
+                    "affected_tags": [
+                        "GrpHdr/NbOfTxs"
+                    ],
+                    "possible_fixes": [
+                        "Replace with a numeric integer string (max 15 digits). Example: '1'."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "GrpHdr/CtrlSum",
+            "xml_element": "CtrlSum",
+            "xpath": "/Document/CstmrCdtTrfInitn/GrpHdr/CtrlSum",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "DecimalNumber",
+            "description": "Control sum. If present, must equal the arithmetic sum of all InstdAmt values across all CdtTrfTxInf blocks.",
+            "errors": [
+                {
+                    "error_id": "CTRLSUM_MISMATCH",
+                    "error_code": "CTRL_SUM_MISMATCH",
+                    "severity": "Error",
+                    "description": "GrpHdr/CtrlSum does not equal the sum of all InstdAmt values.",
+                    "affected_tags": [
+                        "GrpHdr/CtrlSum",
+                        "CdtTrfTxInf/Amt/InstdAmt"
+                    ],
+                    "possible_fixes": [
+                        "Sum all InstdAmt values and set CtrlSum to the result.",
+                        "Remove CtrlSum if it is not required, to avoid a mismatch error."
+                    ]
+                },
+                {
+                    "error_id": "CTRLSUM_INVALID_FORMAT",
+                    "error_code": "INVALID_CHARSETS",
+                    "severity": "Error",
+                    "description": "CtrlSum contains a non-numeric or invalid decimal value.",
+                    "affected_tags": [
+                        "GrpHdr/CtrlSum"
+                    ],
+                    "possible_fixes": [
+                        "Use a valid decimal number format (e.g. 1000.00).",
+                        "Maximum 18 digits total with up to 5 fraction digits."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "GrpHdr/InitgPty",
+            "xml_element": "InitgPty",
+            "xpath": "/Document/CstmrCdtTrfInitn/GrpHdr/InitgPty",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "description": "Initiating party. The party initiating the payment. Must carry at least a Name (Nm) or an organisation/private identification.",
+            "errors": [
+                {
+                    "error_id": "INITGPTY_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "GrpHdr/InitgPty block is absent.",
+                    "affected_tags": [
+                        "GrpHdr/InitgPty"
+                    ],
+                    "possible_fixes": [
+                        "Insert <InitgPty><Nm>{initiating party name, max 140 chars}</Nm></InitgPty> inside GrpHdr."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "GrpHdr/InitgPty/Nm",
+            "xml_element": "Nm",
+            "xpath": "/Document/CstmrCdtTrfInitn/GrpHdr/InitgPty/Nm",
+            "occurrence": "[0..1]",
+            "mandatory": true,
+            "datatype": "Max140Text",
+            "max_length": 140,
+            "description": "Name of the initiating party. CBPR+ requires the initiating party to be identified; Nm is the primary identifier when no structured Id is supplied.",
+            "errors": [
+                {
+                    "error_id": "INITGPTY_NM_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Error",
+                    "description": "InitgPty has neither Nm nor Id; the initiating party is not identifiable.",
+                    "affected_tags": [
+                        "GrpHdr/InitgPty/Nm"
+                    ],
+                    "possible_fixes": [
+                        "Insert <Nm>{initiating party name}</Nm> inside InitgPty.",
+                        "Alternatively provide InitgPty/Id with OrgId or PrvtId."
+                    ]
+                },
+                {
+                    "error_id": "INITGPTY_NM_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Error",
+                    "description": "InitgPty/Nm exceeds 140 characters.",
+                    "affected_tags": [
+                        "GrpHdr/InitgPty/Nm"
+                    ],
+                    "possible_fixes": [
+                        "Truncate the name to a maximum of 140 characters."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "PmtInf/PmtInfId",
+            "xml_element": "PmtInfId",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/PmtInfId",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Unique identification of the payment information block, assigned by the initiating party.",
+            "errors": [
+                {
+                    "error_id": "PMTINFID_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "PmtInf/PmtInfId is absent.",
+                    "affected_tags": [
+                        "PmtInf/PmtInfId"
+                    ],
+                    "possible_fixes": [
+                        "Insert <PmtInfId>{unique reference, max 35 chars}</PmtInfId> as the first child of PmtInf.",
+                        "Example: PMT-20260601-001"
+                    ]
+                },
+                {
+                    "error_id": "PMTINFID_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Fatal",
+                    "description": "PmtInfId exceeds 35 characters.",
+                    "affected_tags": [
+                        "PmtInf/PmtInfId"
+                    ],
+                    "possible_fixes": [
+                        "Truncate to a maximum of 35 characters preserving the unique prefix."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "PmtInf/PmtMtd",
+            "xml_element": "PmtMtd",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/PmtMtd",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "PaymentMethod3Code",
+            "valid_values": [
+                "TRF",
+                "TRA",
+                "CHK"
+            ],
+            "expected_value": "TRF",
+            "description": "Payment method. For CBPR+ credit transfer initiation this must be 'TRF' (transfer).",
+            "errors": [
+                {
+                    "error_id": "PMTMTD_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "PmtInf/PmtMtd is absent.",
+                    "affected_tags": [
+                        "PmtInf/PmtMtd"
+                    ],
+                    "possible_fixes": [
+                        "Insert <PmtMtd>TRF</PmtMtd> inside PmtInf."
+                    ]
+                },
+                {
+                    "error_id": "PMTMTD_INVALID_CODE",
+                    "error_code": "CODELIST_INVALID",
+                    "severity": "Fatal",
+                    "description": "PmtMtd contains a value that is not 'TRF' for a credit transfer initiation.",
+                    "affected_tags": [
+                        "PmtInf/PmtMtd"
+                    ],
+                    "possible_fixes": [
+                        "Replace value with 'TRF'.",
+                        "TRA and CHK are not applicable to CBPR+ customer credit transfers."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "PmtInf/ReqdExctnDt",
+            "xml_element": "ReqdExctnDt",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/ReqdExctnDt",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "ISODate",
+            "description": "Requested Execution Date — the date on which the initiating party requests the clearing agent to process the credit transfer. Must not be in the past.",
+            "errors": [
+                {
+                    "error_id": "REQDEXCTNDT_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "PmtInf is missing the mandatory <ReqdExctnDt>.",
+                    "affected_tags": [
+                        "PmtInf/ReqdExctnDt"
+                    ],
+                    "possible_fixes": [
+                        "Add <ReqdExctnDt><Dt>YYYY-MM-DD</Dt></ReqdExctnDt> inside each <PmtInf>.",
+                        "Use today's date or a future business date."
+                    ]
+                },
+                {
+                    "error_id": "REQDEXCTNDT_IN_PAST",
+                    "error_code": "PAST_DATE_ERROR",
+                    "severity": "Error",
+                    "description": "ReqdExctnDt is in the past.",
+                    "affected_tags": [
+                        "PmtInf/ReqdExctnDt"
+                    ],
+                    "possible_fixes": [
+                        "Replace with today's date (YYYY-MM-DD) or a future execution date."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "PmtInf/BtchBookg",
+            "xml_element": "BtchBookg",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/BtchBookg",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "TrueFalseIndicator",
+            "valid_values": [
+                "true",
+                "false"
+            ],
+            "description": "Batch booking indicator. If true, a single debit entry is requested for the sum of all transactions; if false, individual entries are requested.",
+            "errors": [
+                {
+                    "error_id": "BTCHBOOKG_INVALID_BOOLEAN",
+                    "error_code": "CODELIST_INVALID",
+                    "severity": "Error",
+                    "description": "BtchBookg contains a value that is not a valid boolean.",
+                    "affected_tags": [
+                        "PmtInf/BtchBookg"
+                    ],
+                    "possible_fixes": [
+                        "Replace with 'true' or 'false' (lowercase).",
+                        "Remove the element if batch booking is not specified."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "PmtInf/NbOfTxs",
+            "xml_element": "NbOfTxs",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/NbOfTxs",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "Max15NumericText",
+            "max_length": 15,
+            "description": "Number of transactions within this PmtInf block. If present, must equal the count of CdtTrfTxInf in this PmtInf.",
+            "errors": [
+                {
+                    "error_id": "PMTINF_NBOFTXS_MISMATCH",
+                    "error_code": "NBOFTXS_MISMATCH",
+                    "severity": "Error",
+                    "description": "PmtInf/NbOfTxs does not equal the count of CdtTrfTxInf within this PmtInf block.",
+                    "affected_tags": [
+                        "PmtInf/NbOfTxs",
+                        "PmtInf/CdtTrfTxInf"
+                    ],
+                    "possible_fixes": [
+                        "Count the CdtTrfTxInf blocks in this PmtInf and set NbOfTxs to that count.",
+                        "Remove PmtInf/NbOfTxs if not required."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "PmtInf/CtrlSum",
+            "xml_element": "CtrlSum",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/CtrlSum",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "DecimalNumber",
+            "description": "Control sum within this PmtInf block. If present, must equal the sum of InstdAmt across the CdtTrfTxInf in this PmtInf.",
+            "errors": [
+                {
+                    "error_id": "PMTINF_CTRLSUM_MISMATCH",
+                    "error_code": "CTRL_SUM_MISMATCH",
+                    "severity": "Error",
+                    "description": "PmtInf/CtrlSum does not equal the sum of InstdAmt within this PmtInf block.",
+                    "affected_tags": [
+                        "PmtInf/CtrlSum",
+                        "PmtInf/CdtTrfTxInf/Amt/InstdAmt"
+                    ],
+                    "possible_fixes": [
+                        "Sum the InstdAmt values within this PmtInf and set CtrlSum to the result.",
+                        "Remove PmtInf/CtrlSum if not required."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "PmtInf/PmtTpInf/SvcLvl/Cd",
+            "xml_element": "Cd",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/PmtTpInf/SvcLvl/Cd",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "ExternalServiceLevel1Code",
+            "valid_values": [
+                "SEPA",
+                "SDVA",
+                "PRPT",
+                "URGP",
+                "NURG",
+                "G001",
+                "G002",
+                "G003",
+                "G004"
+            ],
+            "description": "Service level code from the External Service Level code list. 'SEPA' indicates a SEPA credit transfer and forces EUR currency and IBAN accounts.",
+            "errors": [
+                {
+                    "error_id": "SVCLVL_CD_INVALID",
+                    "error_code": "CODELIST_INVALID",
+                    "severity": "Error",
+                    "description": "SvcLvl/Cd contains a value not in the External Service Level code list.",
+                    "affected_tags": [
+                        "PmtInf/PmtTpInf/SvcLvl/Cd"
+                    ],
+                    "possible_fixes": [
+                        "Replace with a valid External Service Level code (e.g. SEPA, URGP, NURG).",
+                        "Use Prtry under SvcLvl instead of Cd for proprietary service levels."
+                    ]
+                },
+                {
+                    "error_id": "SVCLVL_SEPA_NOT_EUR",
+                    "error_code": "CODELIST_INVALID",
+                    "severity": "Error",
+                    "description": "SvcLvl/Cd = 'SEPA' but the InstdAmt currency is not EUR.",
+                    "affected_tags": [
+                        "PmtInf/PmtTpInf/SvcLvl/Cd",
+                        "CdtTrfTxInf/Amt/InstdAmt"
+                    ],
+                    "possible_fixes": [
+                        "Set the InstdAmt Ccy attribute to 'EUR' for SEPA service level.",
+                        "Alternatively change the service level if the currency is not EUR."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "PmtInf/PmtTpInf/CtgyPurp/Cd",
+            "xml_element": "Cd",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/PmtTpInf/CtgyPurp/Cd",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "ExternalCategoryPurpose1Code",
+            "valid_values": [
+                "CASH",
+                "CORT",
+                "DIVI",
+                "GOVT",
+                "HEDG",
+                "INTC",
+                "INTE",
+                "LOAN",
+                "PENS",
+                "SALA",
+                "SECU",
+                "SSBE",
+                "SUPP",
+                "TAXS",
+                "TRAD",
+                "TREA",
+                "VATX",
+                "WHLD"
+            ],
+            "description": "Category purpose code from the External Category Purpose code list. Specifies the high-level purpose of the payment for processing routing.",
+            "errors": [
+                {
+                    "error_id": "CTGYPURP_CD_INVALID",
+                    "error_code": "CODELIST_INVALID",
+                    "severity": "Error",
+                    "description": "CtgyPurp/Cd contains a value not in the External Category Purpose code list.",
+                    "affected_tags": [
+                        "PmtInf/PmtTpInf/CtgyPurp/Cd"
+                    ],
+                    "possible_fixes": [
+                        "Replace with a valid External Category Purpose code (e.g. SALA, SUPP, TAXS).",
+                        "Use Prtry under CtgyPurp for proprietary category purposes."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "PmtInf/ReqdExctnDt/Dt",
+            "xml_element": "Dt",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/ReqdExctnDt/Dt",
+            "occurrence": "[0..1]",
+            "mandatory": true,
+            "datatype": "ISODate",
+            "description": "Requested execution date (date-only form). Choice with DtTm; exactly one must be present. Format YYYY-MM-DD. Must be today or a future business day.",
+            "errors": [
+                {
+                    "error_id": "REQDEXCTNDT_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "ReqdExctnDt is absent; neither Dt nor DtTm is present.",
+                    "affected_tags": [
+                        "PmtInf/ReqdExctnDt/Dt"
+                    ],
+                    "possible_fixes": [
+                        "Insert <ReqdExctnDt><Dt>{YYYY-MM-DD}</Dt></ReqdExctnDt> inside PmtInf.",
+                        "Use today's date or the next valid business day."
+                    ]
+                },
+                {
+                    "error_id": "REQDEXCTNDT_PAST_DATE",
+                    "error_code": "PAST_DATE_ERROR",
+                    "severity": "Error",
+                    "description": "ReqdExctnDt/Dt is in the past.",
+                    "affected_tags": [
+                        "PmtInf/ReqdExctnDt/Dt"
+                    ],
+                    "possible_fixes": [
+                        "Replace with today's date (YYYY-MM-DD) or the next valid business day.",
+                        "Use date-only format with no time component or offset."
+                    ]
+                },
+                {
+                    "error_id": "REQDEXCTNDT_WRONG_FORMAT",
+                    "error_code": "SCHEMA_ERR",
+                    "severity": "Fatal",
+                    "description": "ReqdExctnDt/Dt is not in YYYY-MM-DD format (e.g. includes time or slashes).",
+                    "affected_tags": [
+                        "PmtInf/ReqdExctnDt/Dt"
+                    ],
+                    "possible_fixes": [
+                        "Use date-only format YYYY-MM-DD with no time component.",
+                        "Example: 2026-06-02"
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "PmtInf/ReqdExctnDt/DtTm",
+            "xml_element": "DtTm",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/ReqdExctnDt/DtTm",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "ISODateTime",
+            "description": "Requested execution date/time (date-time form). Choice with Dt; exactly one must be present. Format YYYY-MM-DDTHH:MM:SS+HH:MM; 'Z' suffix forbidden under CBPR+.",
+            "errors": [
+                {
+                    "error_id": "REQDEXCTNDTTM_Z_SUFFIX",
+                    "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+                    "severity": "Fatal",
+                    "description": "ReqdExctnDt/DtTm uses the 'Z' suffix; forbidden under CBPR+.",
+                    "affected_tags": [
+                        "PmtInf/ReqdExctnDt/DtTm"
+                    ],
+                    "possible_fixes": [
+                        "Replace trailing 'Z' with '+00:00'. Example: 2026-06-02T09:00:00Z -> 2026-06-02T09:00:00+00:00."
+                    ]
+                },
+                {
+                    "error_id": "REQDEXCTNDTTM_NO_TIMEZONE",
+                    "error_code": "CBPR_DATETIME_NO_TIMEZONE",
+                    "severity": "Fatal",
+                    "description": "ReqdExctnDt/DtTm has no timezone offset.",
+                    "affected_tags": [
+                        "PmtInf/ReqdExctnDt/DtTm"
+                    ],
+                    "possible_fixes": [
+                        "Append a timezone offset. Example: 2026-06-02T09:00:00 -> 2026-06-02T09:00:00+00:00."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "PmtInf/Dbtr/Nm",
+            "xml_element": "Nm",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/Dbtr/Nm",
+            "occurrence": "[0..1]",
+            "mandatory": true,
+            "datatype": "Max140Text",
+            "max_length": 140,
+            "description": "Name of the debtor (the party owing the money / paying customer). Mandatory under CBPR+ for the ordering customer.",
+            "errors": [
+                {
+                    "error_id": "DBTR_NM_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "PmtInf/Dbtr is absent or has no Nm; the debtor is not identifiable.",
+                    "affected_tags": [
+                        "PmtInf/Dbtr/Nm"
+                    ],
+                    "possible_fixes": [
+                        "Insert <Dbtr><Nm>{debtor name, max 140 chars}</Nm></Dbtr> inside PmtInf."
+                    ]
+                },
+                {
+                    "error_id": "DBTR_NM_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Error",
+                    "description": "PmtInf/Dbtr/Nm exceeds 140 characters.",
+                    "affected_tags": [
+                        "PmtInf/Dbtr/Nm"
+                    ],
+                    "possible_fixes": [
+                        "Truncate the debtor name to a maximum of 140 characters."
+                    ]
+                },
+                {
+                    "error_id": "DBTR_NM_INVALID_CHARS",
+                    "error_code": "INVALID_CHARSETS",
+                    "severity": "Error",
+                    "description": "PmtInf/Dbtr/Nm contains characters outside the permitted (extended) character set.",
+                    "affected_tags": [
+                        "PmtInf/Dbtr/Nm"
+                    ],
+                    "possible_fixes": [
+                        "Nm fields support the extended charset: A-Z a-z 0-9 / - ? : ( ) . , ' + SPACE and !#$&%*=^_{|}~\\\";<>@[\\].",
+                        "Replace < with &lt; and > with &gt;."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "PmtInf/Dbtr/PstlAdr/Ctry",
+            "xml_element": "Ctry",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/Dbtr/PstlAdr/Ctry",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "CountryCode",
+            "max_length": 2,
+            "description": "Country of the debtor's postal address. ISO 3166-1 alpha-2 code. Mandatory within PstlAdr when PstlAdr is present.",
+            "errors": [
+                {
+                    "error_id": "DBTR_PSTLADR_MISSING_CTRY",
+                    "error_code": "PSTLADR_MISSING_CTRY",
+                    "severity": "Error",
+                    "description": "PmtInf/Dbtr/PstlAdr is present but Ctry is missing.",
+                    "affected_tags": [
+                        "PmtInf/Dbtr/PstlAdr/Ctry"
+                    ],
+                    "possible_fixes": [
+                        "Add <Ctry>{ISO 3166-1 alpha-2 code}</Ctry> inside PstlAdr.",
+                        "Example: <Ctry>GB</Ctry>"
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "PmtInf/DbtrAcct/Id/IBAN",
+            "xml_element": "IBAN",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/DbtrAcct/Id/IBAN",
+            "occurrence": "[0..1]",
+            "mandatory": true,
+            "datatype": "IBAN",
+            "max_length": 34,
+            "description": "Debtor account IBAN. DbtrAcct is mandatory; account Id is a choice between IBAN and Othr. IBAN follows ISO 13616 and MOD-97.",
+            "errors": [
+                {
+                    "error_id": "DBTRACCT_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "PmtInf/DbtrAcct is absent; the debtor account is mandatory.",
+                    "affected_tags": [
+                        "PmtInf/DbtrAcct/Id/IBAN"
+                    ],
+                    "possible_fixes": [
+                        "Insert <DbtrAcct><Id><IBAN>{debtor_iban}</IBAN></Id></DbtrAcct> inside PmtInf.",
+                        "If no IBAN, use <DbtrAcct><Id><Othr><Id>{account_number}</Id></Othr></Id></DbtrAcct>."
+                    ]
+                },
+                {
+                    "error_id": "DBTRACCT_INVALID_IBAN",
+                    "error_code": "IBAN_INVALID",
+                    "severity": "Fatal",
+                    "description": "DbtrAcct/Id/IBAN fails ISO 13616 format or the MOD-97 checksum.",
+                    "affected_tags": [
+                        "PmtInf/DbtrAcct/Id/IBAN"
+                    ],
+                    "possible_fixes": [
+                        "Replace with a valid IBAN: 2-letter country code + 2 check digits + BBAN (max 34 chars).",
+                        "Verify the MOD-97 check-digit computation.",
+                        "Example: DE89370400440532013000"
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "PmtInf/DbtrAgt/FinInstnId/BICFI",
+            "xml_element": "BICFI",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/DbtrAgt/FinInstnId/BICFI",
+            "occurrence": "[0..1]",
+            "mandatory": true,
+            "datatype": "BICFI",
+            "description": "BIC of the debtor agent (the debtor's bank). DbtrAgt is mandatory; identified by BICFI or ClrSysMmbId.",
+            "errors": [
+                {
+                    "error_id": "DBTRAGT_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "PmtInf/DbtrAgt is absent; the debtor agent is mandatory.",
+                    "affected_tags": [
+                        "PmtInf/DbtrAgt/FinInstnId/BICFI"
+                    ],
+                    "possible_fixes": [
+                        "Insert <DbtrAgt><FinInstnId><BICFI>{debtor_bank_bic}</BICFI></FinInstnId></DbtrAgt> inside PmtInf."
+                    ]
+                },
+                {
+                    "error_id": "DBTRAGT_INVALID_BIC",
+                    "error_code": "INVALID_BICFI",
+                    "severity": "Fatal",
+                    "description": "DbtrAgt/FinInstnId/BICFI is invalid or malformed.",
+                    "affected_tags": [
+                        "PmtInf/DbtrAgt/FinInstnId/BICFI"
+                    ],
+                    "possible_fixes": [
+                        "Replace with a valid BICFI: 8 or 11 uppercase alphanumeric characters per ISO 9362.",
+                        "Pattern: [A-Z]{6}[A-Z2-9][A-NP-Z0-9]([A-Z0-9]{3})?"
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "PmtInf/ChrgBr",
+            "xml_element": "ChrgBr",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/ChrgBr",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "ChargeBearerType1Code",
+            "valid_values": [
+                "DEBT",
+                "CRED",
+                "SHAR",
+                "SLEV"
+            ],
+            "description": "Charge bearer specifying who bears the transaction charges. SLEV = following service level.",
+            "errors": [
+                {
+                    "error_id": "CHRGBR_INVALID_CODE",
+                    "error_code": "CHRGBR_INVALID",
+                    "severity": "Error",
+                    "description": "ChrgBr contains an invalid code.",
+                    "affected_tags": [
+                        "PmtInf/ChrgBr"
+                    ],
+                    "possible_fixes": [
+                        "Replace with one of: DEBT, CRED, SHAR, SLEV.",
+                        "Use SLEV when following the agreed service level."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "CdtTrfTxInf/PmtId/InstrId",
+            "xml_element": "InstrId",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/CdtTrfTxInf/PmtId/InstrId",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "Max16Text",
+            "max_length": 16,
+            "description": "Instruction identification assigned by the initiating party for the individual transaction. Optional, max 16 characters (CBPR+ RestrictedFINXMax16Text).",
+            "errors": [
+                {
+                    "error_id": "INSTRID_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Error",
+                    "description": "PmtId/InstrId exceeds 16 characters.",
+                    "affected_tags": [
+                        "CdtTrfTxInf/PmtId/InstrId"
+                    ],
+                    "possible_fixes": [
+                        "Truncate to a maximum of 16 characters.",
+                        "Remove InstrId if it is not required."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "CdtTrfTxInf/PmtId/EndToEndId",
+            "xml_element": "EndToEndId",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/CdtTrfTxInf/PmtId/EndToEndId",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "End-to-end identification assigned by the initiating party. Must be passed through the chain unchanged. 'NOTPROVIDED' is allowed.",
+            "errors": [
+                {
+                    "error_id": "ENDTOENDID_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "EndToEndId is absent from PmtId.",
+                    "affected_tags": [
+                        "CdtTrfTxInf/PmtId/EndToEndId"
+                    ],
+                    "possible_fixes": [
+                        "Insert <EndToEndId>NOTPROVIDED</EndToEndId> if the value is unknown.",
+                        "Otherwise insert <EndToEndId>{originator's end-to-end reference, max 35 chars}</EndToEndId>."
+                    ]
+                },
+                {
+                    "error_id": "ENDTOENDID_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Fatal",
+                    "description": "EndToEndId exceeds 35 characters.",
+                    "affected_tags": [
+                        "CdtTrfTxInf/PmtId/EndToEndId"
+                    ],
+                    "possible_fixes": [
+                        "Truncate to 35 characters maximum.",
+                        "Use 'NOTPROVIDED' if the original reference cannot be preserved within the length limit."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "CdtTrfTxInf/Amt/InstdAmt",
+            "xml_element": "InstdAmt",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/CdtTrfTxInf/Amt/InstdAmt",
+            "occurrence": "[0..1]",
+            "mandatory": true,
+            "datatype": "ActiveOrHistoricCurrencyAndAmount",
+            "description": "Instructed amount with currency attribute (Ccy). Amt is a choice between InstdAmt and EqvtAmt; exactly one must be present. Amount must be greater than zero. ISO 4217 currency code.",
+            "errors": [
+                {
+                    "error_id": "INSTDAMT_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "CdtTrfTxInf/Amt is absent or neither InstdAmt nor EqvtAmt is present.",
+                    "affected_tags": [
+                        "CdtTrfTxInf/Amt/InstdAmt"
+                    ],
+                    "possible_fixes": [
+                        "Insert <Amt><InstdAmt Ccy=\"{ISO4217}\">{amount}</InstdAmt></Amt> inside CdtTrfTxInf.",
+                        "Ensure the Ccy attribute is a valid 3-letter ISO 4217 code (e.g. EUR, USD, GBP)."
+                    ]
+                },
+                {
+                    "error_id": "INSTDAMT_MISSING_CCY",
+                    "error_code": "INVALID_CHARSETS",
+                    "severity": "Fatal",
+                    "description": "InstdAmt is present but the Ccy attribute is missing or not a valid ISO 4217 code.",
+                    "affected_tags": [
+                        "CdtTrfTxInf/Amt/InstdAmt"
+                    ],
+                    "possible_fixes": [
+                        "Add a Ccy attribute with a valid 3-letter ISO 4217 currency code.",
+                        "Example: <InstdAmt Ccy=\"EUR\">{amount}</InstdAmt>"
+                    ]
+                },
+                {
+                    "error_id": "INSTDAMT_ZERO_OR_NEGATIVE",
+                    "error_code": "INVALID_CHARSETS",
+                    "severity": "Fatal",
+                    "description": "InstdAmt amount is zero or negative.",
+                    "affected_tags": [
+                        "CdtTrfTxInf/Amt/InstdAmt"
+                    ],
+                    "possible_fixes": [
+                        "Replace with a positive decimal amount greater than zero.",
+                        "Maximum: 18 digits total, 5 fraction digits."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "CdtTrfTxInf/CdtrAgt/FinInstnId/BICFI",
+            "xml_element": "BICFI",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/CdtTrfTxInf/CdtrAgt/FinInstnId/BICFI",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "BICFI",
+            "description": "BIC of the creditor agent (the creditor's bank). Optional; identified by BICFI or ClrSysMmbId when present.",
+            "errors": [
+                {
+                    "error_id": "CDTRAGT_INVALID_BIC",
+                    "error_code": "INVALID_BICFI",
+                    "severity": "Fatal",
+                    "description": "CdtrAgt/FinInstnId/BICFI is invalid or malformed.",
+                    "affected_tags": [
+                        "CdtTrfTxInf/CdtrAgt/FinInstnId/BICFI"
+                    ],
+                    "possible_fixes": [
+                        "Replace with a valid BICFI: 8 or 11 uppercase alphanumeric characters per ISO 9362.",
+                        "Pattern: [A-Z]{6}[A-Z2-9][A-NP-Z0-9]([A-Z0-9]{3})?"
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "CdtTrfTxInf/Cdtr/Nm",
+            "xml_element": "Nm",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/CdtTrfTxInf/Cdtr/Nm",
+            "occurrence": "[0..1]",
+            "mandatory": true,
+            "datatype": "Max140Text",
+            "max_length": 140,
+            "description": "Name of the creditor (beneficiary). Mandatory under CBPR+ for the beneficiary customer.",
+            "errors": [
+                {
+                    "error_id": "CDTR_NM_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "CdtTrfTxInf/Cdtr is absent or has no Nm; the creditor is not identifiable.",
+                    "affected_tags": [
+                        "CdtTrfTxInf/Cdtr/Nm"
+                    ],
+                    "possible_fixes": [
+                        "Insert <Cdtr><Nm>{creditor name, max 140 chars}</Nm></Cdtr> inside CdtTrfTxInf."
+                    ]
+                },
+                {
+                    "error_id": "CDTR_NM_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Error",
+                    "description": "CdtTrfTxInf/Cdtr/Nm exceeds 140 characters.",
+                    "affected_tags": [
+                        "CdtTrfTxInf/Cdtr/Nm"
+                    ],
+                    "possible_fixes": [
+                        "Truncate the creditor name to a maximum of 140 characters."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "CdtTrfTxInf/Cdtr/PstlAdr/Ctry",
+            "xml_element": "Ctry",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/CdtTrfTxInf/Cdtr/PstlAdr/Ctry",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "CountryCode",
+            "max_length": 2,
+            "description": "Country of the creditor's postal address. ISO 3166-1 alpha-2 code. Mandatory within PstlAdr when PstlAdr is present.",
+            "errors": [
+                {
+                    "error_id": "CDTR_PSTLADR_MISSING_CTRY",
+                    "error_code": "PSTLADR_MISSING_CTRY",
+                    "severity": "Error",
+                    "description": "CdtTrfTxInf/Cdtr/PstlAdr is present but Ctry is missing.",
+                    "affected_tags": [
+                        "CdtTrfTxInf/Cdtr/PstlAdr/Ctry"
+                    ],
+                    "possible_fixes": [
+                        "Add <Ctry>{ISO 3166-1 alpha-2 code}</Ctry> inside Cdtr/PstlAdr.",
+                        "Example: <Ctry>FR</Ctry>"
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "CdtTrfTxInf/CdtrAcct/Id/IBAN",
+            "xml_element": "IBAN",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/CdtTrfTxInf/CdtrAcct/Id/IBAN",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "IBAN",
+            "max_length": 34,
+            "description": "Creditor account IBAN. CdtrAcct is optional; account Id is a choice between IBAN and Othr. IBAN follows ISO 13616 and MOD-97.",
+            "errors": [
+                {
+                    "error_id": "CDTRACCT_INVALID_IBAN",
+                    "error_code": "IBAN_INVALID",
+                    "severity": "Fatal",
+                    "description": "CdtrAcct/Id/IBAN fails ISO 13616 format or the MOD-97 checksum.",
+                    "affected_tags": [
+                        "CdtTrfTxInf/CdtrAcct/Id/IBAN"
+                    ],
+                    "possible_fixes": [
+                        "Replace with a valid IBAN: 2-letter country code + 2 check digits + BBAN (max 34 chars).",
+                        "Verify the MOD-97 check-digit computation.",
+                        "Example: FR1420041010050500013M02606"
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "CdtTrfTxInf/RmtInf/Ustrd",
+            "xml_element": "Ustrd",
+            "xpath": "/Document/CstmrCdtTrfInitn/PmtInf/CdtTrfTxInf/RmtInf/Ustrd",
+            "occurrence": "[0..n]",
+            "mandatory": false,
+            "datatype": "Max140Text",
+            "max_length": 140,
+            "description": "Unstructured remittance information. RmtInf is a choice between Ustrd and Strd. Each Ustrd occurrence is limited to 140 characters.",
+            "errors": [
+                {
+                    "error_id": "RMTINF_USTRD_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Error",
+                    "description": "RmtInf/Ustrd exceeds 140 characters.",
+                    "affected_tags": [
+                        "CdtTrfTxInf/RmtInf/Ustrd"
+                    ],
+                    "possible_fixes": [
+                        "Truncate the Ustrd value to a maximum of 140 characters.",
+                        "Note: CBPR+ permits only a single Ustrd occurrence."
+                    ]
+                },
+                {
+                    "error_id": "RMTINF_USTRD_INVALID_CHARS",
+                    "error_code": "INVALID_CHARSETS",
+                    "severity": "Error",
+                    "description": "RmtInf/Ustrd contains characters outside the permitted (extended) character set.",
+                    "affected_tags": [
+                        "CdtTrfTxInf/RmtInf/Ustrd"
+                    ],
+                    "possible_fixes": [
+                        "RmtInf fields support the extended charset; replace < with &lt; and > with &gt;.",
+                        "Remove characters not permitted by the SWIFT extended character set."
+                    ]
+                }
+            ]
+        }
+    ],
+    "cross_tag_dependency_rules": [
+        {
+            "rule_id": "DEP_001",
+            "rule": "AppHdr/BizMsgIdr must equal Document/CstmrCdtTrfInitn/GrpHdr/MsgId.",
+            "affected_tags": [
+                "AppHdr/BizMsgIdr",
+                "GrpHdr/MsgId"
+            ],
+            "fix": "Harvest GrpHdr/MsgId and set BizMsgIdr to the same value (or vice versa)."
+        },
+        {
+            "rule_id": "DEP_002",
+            "rule": "AppHdr/MsgDefIdr must equal 'pain.001.001.09' and match the Document xmlns namespace.",
+            "affected_tags": [
+                "AppHdr/MsgDefIdr"
+            ],
+            "fix": "Set MsgDefIdr to 'pain.001.001.09'."
+        },
+        {
+            "rule_id": "DEP_003",
+            "rule": "GrpHdr/NbOfTxs must equal the count of CdtTrfTxInf across all PmtInf blocks.",
+            "affected_tags": [
+                "GrpHdr/NbOfTxs",
+                "PmtInf/CdtTrfTxInf"
+            ],
+            "fix": "Count every CdtTrfTxInf in all PmtInf and set NbOfTxs to that count."
+        },
+        {
+            "rule_id": "DEP_004",
+            "rule": "GrpHdr/CtrlSum must equal the sum of all InstdAmt values when present.",
+            "affected_tags": [
+                "GrpHdr/CtrlSum",
+                "CdtTrfTxInf/Amt/InstdAmt"
+            ],
+            "fix": "Sum all InstdAmt values and set CtrlSum to the result, or remove CtrlSum."
+        },
+        {
+            "rule_id": "DEP_005",
+            "rule": "PmtInf/NbOfTxs must equal the count of CdtTrfTxInf within its PmtInf block when present.",
+            "affected_tags": [
+                "PmtInf/NbOfTxs",
+                "PmtInf/CdtTrfTxInf"
+            ],
+            "fix": "Count CdtTrfTxInf within the PmtInf and set PmtInf/NbOfTxs accordingly."
+        },
+        {
+            "rule_id": "DEP_006",
+            "rule": "PmtInf/CtrlSum must equal the sum of InstdAmt within its PmtInf block when present.",
+            "affected_tags": [
+                "PmtInf/CtrlSum",
+                "PmtInf/CdtTrfTxInf/Amt/InstdAmt"
+            ],
+            "fix": "Sum InstdAmt within the PmtInf and set PmtInf/CtrlSum accordingly."
+        },
+        {
+            "rule_id": "DEP_007",
+            "rule": "PmtInf/PmtMtd must be 'TRF' for a credit transfer initiation.",
+            "affected_tags": [
+                "PmtInf/PmtMtd"
+            ],
+            "fix": "Set PmtMtd to 'TRF'."
+        },
+        {
+            "rule_id": "DEP_008",
+            "rule": "ReqdExctnDt is a choice: exactly one of Dt or DtTm must be present.",
+            "affected_tags": [
+                "PmtInf/ReqdExctnDt/Dt",
+                "PmtInf/ReqdExctnDt/DtTm"
+            ],
+            "fix": "Keep exactly one of Dt or DtTm; remove the other."
+        },
+        {
+            "rule_id": "DEP_009",
+            "rule": "CdtTrfTxInf/Amt is a choice: exactly one of InstdAmt or EqvtAmt must be present.",
+            "affected_tags": [
+                "CdtTrfTxInf/Amt/InstdAmt",
+                "CdtTrfTxInf/Amt/EqvtAmt"
+            ],
+            "fix": "Keep exactly one of InstdAmt or EqvtAmt; remove the other."
+        },
+        {
+            "rule_id": "DEP_010",
+            "rule": "When PmtTpInf/SvcLvl/Cd = 'SEPA', InstdAmt Ccy must be 'EUR' and accounts must be IBANs.",
+            "affected_tags": [
+                "PmtInf/PmtTpInf/SvcLvl/Cd",
+                "CdtTrfTxInf/Amt/InstdAmt",
+                "PmtInf/DbtrAcct/Id/IBAN",
+                "CdtTrfTxInf/CdtrAcct/Id/IBAN"
+            ],
+            "fix": "Set InstdAmt Ccy to EUR and ensure debtor/creditor accounts use IBAN when SvcLvl=SEPA."
+        },
+        {
+            "rule_id": "DEP_011",
+            "rule": "PstlAdr, when present, must contain a Ctry element.",
+            "affected_tags": [
+                "PmtInf/Dbtr/PstlAdr/Ctry",
+                "CdtTrfTxInf/Cdtr/PstlAdr/Ctry"
+            ],
+            "fix": "Add a Ctry (ISO 3166-1 alpha-2) element inside any PstlAdr that lacks one."
+        },
+        {
+            "rule_id": "DEP_012",
+            "rule": "Account Id is a choice: exactly one of IBAN or Othr must be present per account.",
+            "affected_tags": [
+                "PmtInf/DbtrAcct/Id/IBAN",
+                "CdtTrfTxInf/CdtrAcct/Id/IBAN"
+            ],
+            "fix": "Keep exactly one of IBAN or Othr per account; remove the other."
+        }
+    ],
+    "tag_insertion_order": {
+        "AppHdr": [
+            "Fr",
+            "To",
+            "BizMsgIdr",
+            "MsgDefIdr",
+            "BizSvc",
+            "CreDt",
+            "CpyDplct",
+            "PssblDplct",
+            "Prty",
+            "Sgntr",
+            "Rltd"
+        ],
+        "GrpHdr": [
+            "MsgId",
+            "CreDtTm",
+            "Authstn",
+            "NbOfTxs",
+            "CtrlSum",
+            "InitgPty",
+            "FwdgAgt"
+        ],
+        "PmtInf": [
+            "PmtInfId",
+            "PmtMtd",
+            "BtchBookg",
+            "NbOfTxs",
+            "CtrlSum",
+            "PmtTpInf",
+            "ReqdExctnDt",
+            "PoolgAdjstmntDt",
+            "Dbtr",
+            "DbtrAcct",
+            "DbtrAgt",
+            "DbtrAgtAcct",
+            "InstrForDbtrAgt",
+            "UltmtDbtr",
+            "ChrgBr",
+            "ChrgsAcct",
+            "ChrgsAcctAgt",
+            "CdtTrfTxInf"
+        ],
+        "CdtTrfTxInf": [
+            "PmtId",
+            "PmtTpInf",
+            "Amt",
+            "XchgRateInf",
+            "ChrgBr",
+            "UltmtDbtr",
+            "IntrmyAgt1",
+            "IntrmyAgt1Acct",
+            "IntrmyAgt2",
+            "IntrmyAgt2Acct",
+            "IntrmyAgt3",
+            "IntrmyAgt3Acct",
+            "CdtrAgt",
+            "CdtrAgtAcct",
+            "Cdtr",
+            "CdtrAcct",
+            "UltmtCdtr",
+            "InstrForCdtrAgt",
+            "InstrForDbtrAgt",
+            "Purp",
+            "RgltryRptg",
+            "Tax",
+            "RltdRmtInf",
+            "RmtInf"
+        ],
+        "PmtId": [
+            "InstrId",
+            "EndToEndId"
+        ],
+        "ReqdExctnDt": [
+            "Dt",
+            "DtTm"
+        ],
+        "Amt": [
+            "InstdAmt",
+            "EqvtAmt"
+        ]
+    },
+    "schema_mapping_notes": {
+        "root_element": "pain.001.001.09 root is /Document/CstmrCdtTrfInitn (CustomerCreditTransferInitiation); the AppHdr (BAH) precedes the Document.",
+        "msg_def_idr": "AppHdr/MsgDefIdr must be 'pain.001.001.09' matching the namespace urn:iso:std:iso:20022:tech:xsd:pain.001.001.09.",
+        "biz_svc": "AppHdr/BizSvc for the CBPR+ customer credit transfer initiation service is 'swift.cbprplus.02'.",
+        "structure": "pain.001 has two repeating levels: PmtInf [1..n] (payment-information/batch level carrying Dbtr, DbtrAcct, DbtrAgt, PmtMtd, ReqdExctnDt) and, nested within each PmtInf, CdtTrfTxInf [1..n] (the individual credit transfers carrying PmtId, Amt, Cdtr, CdtrAcct).",
+        "amount_location": "Unlike pacs.008/pacs.009 where the amount is IntrBkSttlmAmt directly under CdtTrfTxInf, pain.001 wraps the amount in an Amt container as a choice of InstdAmt or EqvtAmt.",
+        "debtor_at_pmtinf": "In pain.001 the Dbtr, DbtrAcct and DbtrAgt are defined once at PmtInf level and apply to every CdtTrfTxInf in that block, whereas the Cdtr, CdtrAcct and CdtrAgt are per-transaction under CdtTrfTxInf.",
+        "datetime_format": "All ISODateTime fields (AppHdr/CreDt, GrpHdr/CreDtTm, ReqdExctnDt/DtTm) must use YYYY-MM-DDTHH:MM:SS+HH:MM; the 'Z' suffix and milliseconds are forbidden under CBPR+.",
+        "nb_of_txs_scope": "GrpHdr/NbOfTxs counts CdtTrfTxInf across ALL PmtInf blocks, while the optional PmtInf/NbOfTxs counts only within a single PmtInf block."
+    }
+}

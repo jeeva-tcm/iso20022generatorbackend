@@ -774,7 +774,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
         any XSD errors (e.g. invalid amounts, IBANs, UETRs).
 
         Field limits enforced:
-          InstrId      → max 35 chars
+          InstrId      → max 16 chars (CBPR+ RestrictedFINXMax16Text)
           EndToEndId   → max 35 chars
           BizMsgIdr    → max 35 chars
           MsgId        → max 35 chars
@@ -785,7 +785,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
         # which checks UUID v4 format fully, so it is excluded here to avoid
         # double-reporting.
         ID_MAX_LENGTHS = {
-            "InstrId":    35,
+            "InstrId":    16,
             "EndToEndId": 35,
             "BizMsgIdr":  35,
             "MsgId":      35,
@@ -1180,19 +1180,40 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                 f"Header and payload must reference the same ISO 20022 message definition."
             ))
 
-        # 2. BizSvc format (CBPR+ uses 'swift.cbprplus.NN', HVPS+ uses 'swift.hvps.NN', etc.)
+        # 2. BizSvc — MANDATORY under CBPR+ / SWIFT MyStandards.
+        #    The base head.001 XSD declares <BizSvc> as minOccurs="0", so a message
+        #    WITHOUT it is XSD-valid yet REJECTED by MyStandards ("CreDt not
+        #    expected here … expected BizSvc", because MyStandards makes BizSvc
+        #    mandatory before CreDt). That is exactly the "passes in our validator
+        #    but fails in MyStandards" gap — so we enforce presence as a hard error
+        #    here, then validate the format when it IS present.
         biz_svc_el = app_hdr.find(".//{*}BizSvc")
-        if biz_svc_el is not None and biz_svc_el.text:
-            biz_svc = biz_svc_el.text.strip()
-            if not re.match(r'^swift\.[a-z]+(\.[0-9]+)?$', biz_svc):
-                line = str(biz_svc_el.sourceline or "?")
-                report.add_issue(ValidationIssue(
-                    "WARNING", 2, "HEAD001_BIZSVC_FORMAT", line,
-                    f"AppHdr.BizSvc '{biz_svc}' does not match the SWIFT business service "
-                    f"pattern 'swift.<service>.NN'.",
-                    "Use a recognised value such as 'swift.cbprplus.02' (CBPR+ SR2025), "
-                    "'swift.cbprplus.01', 'swift.hvps.01', or 'swift.csp.02'."
-                ))
+        biz_svc = (biz_svc_el.text or "").strip() if biz_svc_el is not None else ""
+        if not biz_svc:
+            # Anchor the error to MsgDefIdr (BizSvc must immediately follow it) or
+            # the AppHdr itself when MsgDefIdr is also absent. Use an /AppHdr/BizSvc
+            # path (not a bare line number) so the fix-suggester's namespace-aware,
+            # KB-ordered AppHdr inserter places <BizSvc> in the correct slot.
+            anchor = msg_def_idr_el if msg_def_idr_el is not None else app_hdr
+            line_no = (anchor.sourceline if anchor is not None else None)
+            report.add_issue(ValidationIssue(
+                "ERROR", 2, "HEAD001_BIZSVC_MISSING", "/AppHdr/BizSvc",
+                "AppHdr.BizSvc is missing. The business service is MANDATORY under "
+                "CBPR+ / SWIFT MyStandards, even though the base head.001 XSD marks it "
+                "optional — a message without it is rejected by MyStandards.",
+                "Add <BizSvc>swift.cbprplus.02</BizSvc> to the AppHdr, immediately after "
+                "<MsgDefIdr> and before <CreDt>.",
+                line=line_no,
+            ))
+        elif not re.match(r'^swift\.[a-z]+(\.[a-z]+)?(\.[0-9]+)?$', biz_svc):
+            line = str(biz_svc_el.sourceline or "?")
+            report.add_issue(ValidationIssue(
+                "WARNING", 2, "HEAD001_BIZSVC_FORMAT", line,
+                f"AppHdr.BizSvc '{biz_svc}' does not match the SWIFT business service "
+                f"pattern 'swift.<service>.NN'.",
+                "Use a recognised value such as 'swift.cbprplus.02' (CBPR+ SR2025), "
+                "'swift.cbprplus.01', 'swift.hvps.01', or 'swift.csp.02'."
+            ))
 
         # 3. Timezone consistency (warning) — both header CreDt and payload CreDtTm should
         # carry the same offset for downstream timing/cut-off calculations to be correct.
@@ -2681,32 +2702,36 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
         ])
         
         res = "Unknown"
-        # 1. Broad Namespace Search (Handles single/double quotes)
-        ns_patterns = self.config.get("validation_rules", {}).get("namespace_patterns", [
-            r'xmlns[:\w]*\s*=\s*["\']urn:iso:std:iso:20022:tech:xsd:([^"\']+)["\']',
-            r'xmlns[:\w]*\s*=\s*["\']urn:swift:xsd:([^"\']+)["\']'
-        ])
-        
-        candidates = []
-        for pattern in ns_patterns:
-            for match in re.finditer(pattern, xml_content[:scan_limit]): # Dynamic Scan Limit
-                val = match.group(1).strip()
-                # Prioritize non-header and non-envelope types
-                if all(x not in val.lower() for x in ["head.001", "envelope", "busmsgenvlp"]):
-                    res = val
-                    break
-                candidates.append(val)
-            if res != "Unknown": break
-        
-        # If no payload namespace, check candidates
-        if res == "Unknown" and candidates:
-            res = candidates[0]
 
-        # 2. MsgDefIdr Tag Search (Often has the correct Business Type)
+        # 1. MsgDefIdr — authoritative explicit declaration. Check FIRST so a
+        #    camt.056 message whose <Document> accidentally carries a pacs.008
+        #    namespace doesn't get detected as pacs.008 and validated against the
+        #    wrong XSD (producing a confusing "expected FIToFICstmrCdtTrf" error).
+        match_hdr = re.search(r'<MsgDefIdr>([^<]+)</MsgDefIdr>', xml_content)
+        if match_hdr:
+            res = match_hdr.group(1).strip()
+
+        # 2. Broad Namespace Search (Handles single/double quotes)
         if res == "Unknown":
-            match_hdr = re.search(r'<MsgDefIdr>([^<]+)</MsgDefIdr>', xml_content)
-            if match_hdr:
-                res = match_hdr.group(1).strip()
+            ns_patterns = self.config.get("validation_rules", {}).get("namespace_patterns", [
+                r'xmlns[:\w]*\s*=\s*["\']urn:iso:std:iso:20022:tech:xsd:([^"\']+)["\']',
+                r'xmlns[:\w]*\s*=\s*["\']urn:swift:xsd:([^"\']+)["\']'
+            ])
+
+            candidates = []
+            for pattern in ns_patterns:
+                for match in re.finditer(pattern, xml_content[:scan_limit]):
+                    val = match.group(1).strip()
+                    # Prioritize non-header and non-envelope types
+                    if all(x not in val.lower() for x in ["head.001", "envelope", "busmsgenvlp"]):
+                        res = val
+                        break
+                    candidates.append(val)
+                if res != "Unknown": break
+
+            # If no payload namespace, check candidates
+            if res == "Unknown" and candidates:
+                res = candidates[0]
 
         # 3. Root Tag Heuristic (e.g. <pacs.008.001.08 ...>)
         if res == "Unknown":

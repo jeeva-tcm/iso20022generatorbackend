@@ -124,7 +124,7 @@
       "ids": {
         "MsgId": "MSG-20260528-001",
         "BizMsgIdr": "MSG-20260528-001",
-        "InstrId": "INSTR-20260528-001",
+        "InstrId": "INSTR-260528-001",
         "EndToEndId": "E2E-20260528-001",
         "TxId": "TXN-20260528-001",
         "ClrSysRef": "CLR-REF-20260528-001",
@@ -723,9 +723,10 @@
           "notes": "Must equal GrpHdr/MsgId. No spaces."
         },
         "InstrId": {
-          "type": "Max35Text",
-          "max_length": 35,
-          "example": "INSTR-20260528-001"
+          "type": "Max16Text",
+          "max_length": 16,
+          "example": "INSTR-260528-001",
+          "notes": "CBPR+ restricts InstrId to RestrictedFINXMax16Text (max 16 chars)."
         },
         "EndToEndId": {
           "type": "Max35Text",
@@ -1490,9 +1491,10 @@
           "notes": "Must equal GrpHdr/MsgId. No spaces."
         },
         "InstrId": {
-          "type": "Max35Text",
-          "max_length": 35,
-          "example": "INSTR-20260528-001"
+          "type": "Max16Text",
+          "max_length": 16,
+          "example": "INSTR-260528-001",
+          "notes": "CBPR+ restricts InstrId to RestrictedFINXMax16Text (max 16 chars)."
         },
         "EndToEndId": {
           "type": "Max35Text",
@@ -2203,9 +2205,10 @@
           "notes": "Must equal GrpHdr/MsgId. No spaces."
         },
         "InstrId": {
-          "type": "Max35Text",
-          "max_length": 35,
-          "example": "INSTR-20260528-001"
+          "type": "Max16Text",
+          "max_length": 16,
+          "example": "INSTR-260528-001",
+          "notes": "CBPR+ restricts InstrId to RestrictedFINXMax16Text (max 16 chars)."
         },
         "EndToEndId": {
           "type": "Max35Text",
@@ -2833,9 +2836,10 @@
           "notes": "Must equal GrpHdr/MsgId. No spaces."
         },
         "InstrId": {
-          "type": "Max35Text",
-          "max_length": 35,
-          "example": "INSTR-20260528-001"
+          "type": "Max16Text",
+          "max_length": 16,
+          "example": "INSTR-260528-001",
+          "notes": "CBPR+ restricts InstrId to RestrictedFINXMax16Text (max 16 chars)."
         },
         "EndToEndId": {
           "type": "Max35Text",
@@ -3425,9 +3429,10 @@
           "notes": "Must equal GrpHdr/MsgId. No spaces."
         },
         "InstrId": {
-          "type": "Max35Text",
-          "max_length": 35,
-          "example": "INSTR-20260528-001"
+          "type": "Max16Text",
+          "max_length": 16,
+          "example": "INSTR-260528-001",
+          "notes": "CBPR+ restricts InstrId to RestrictedFINXMax16Text (max 16 chars)."
         },
         "EndToEndId": {
           "type": "Max35Text",
@@ -4037,9 +4042,10 @@
           "notes": "Must equal GrpHdr/MsgId. No spaces."
         },
         "InstrId": {
-          "type": "Max35Text",
-          "max_length": 35,
-          "example": "INSTR-20260528-001"
+          "type": "Max16Text",
+          "max_length": 16,
+          "example": "INSTR-260528-001",
+          "notes": "CBPR+ restricts InstrId to RestrictedFINXMax16Text (max 16 chars)."
         },
         "EndToEndId": {
           "type": "Max35Text",
@@ -4629,9 +4635,10 @@
           "notes": "Must equal GrpHdr/MsgId. No spaces."
         },
         "InstrId": {
-          "type": "Max35Text",
-          "max_length": 35,
-          "example": "INSTR-20260528-001"
+          "type": "Max16Text",
+          "max_length": 16,
+          "example": "INSTR-260528-001",
+          "notes": "CBPR+ restricts InstrId to RestrictedFINXMax16Text (max 16 chars)."
         },
         "EndToEndId": {
           "type": "Max35Text",
@@ -5221,9 +5228,10 @@
           "notes": "Must equal GrpHdr/MsgId. No spaces."
         },
         "InstrId": {
-          "type": "Max35Text",
-          "max_length": 35,
-          "example": "INSTR-20260528-001"
+          "type": "Max16Text",
+          "max_length": 16,
+          "example": "INSTR-260528-001",
+          "notes": "CBPR+ restricts InstrId to RestrictedFINXMax16Text (max 16 chars)."
         },
         "EndToEndId": {
           "type": "Max35Text",
@@ -5843,9 +5851,10 @@
           "notes": "Must equal GrpHdr/MsgId. No spaces."
         },
         "InstrId": {
-          "type": "Max35Text",
-          "max_length": 35,
-          "example": "INSTR-20260528-001"
+          "type": "Max16Text",
+          "max_length": 16,
+          "example": "INSTR-260528-001",
+          "notes": "CBPR+ restricts InstrId to RestrictedFINXMax16Text (max 16 chars)."
         },
         "EndToEndId": {
           "type": "Max35Text",
@@ -6435,9 +6444,10 @@
           "notes": "Must equal GrpHdr/MsgId. No spaces."
         },
         "InstrId": {
-          "type": "Max35Text",
-          "max_length": 35,
-          "example": "INSTR-20260528-001"
+          "type": "Max16Text",
+          "max_length": 16,
+          "example": "INSTR-260528-001",
+          "notes": "CBPR+ restricts InstrId to RestrictedFINXMax16Text (max 16 chars)."
         },
         "EndToEndId": {
           "type": "Max35Text",
@@ -7027,9 +7037,10 @@
           "notes": "Must equal GrpHdr/MsgId. No spaces."
         },
         "InstrId": {
-          "type": "Max35Text",
-          "max_length": 35,
-          "example": "INSTR-20260528-001"
+          "type": "Max16Text",
+          "max_length": 16,
+          "example": "INSTR-260528-001",
+          "notes": "CBPR+ restricts InstrId to RestrictedFINXMax16Text (max 16 chars)."
         },
         "EndToEndId": {
           "type": "Max35Text",
@@ -7619,9 +7630,10 @@
           "notes": "Must equal GrpHdr/MsgId. No spaces."
         },
         "InstrId": {
-          "type": "Max35Text",
-          "max_length": 35,
-          "example": "INSTR-20260528-001"
+          "type": "Max16Text",
+          "max_length": 16,
+          "example": "INSTR-260528-001",
+          "notes": "CBPR+ restricts InstrId to RestrictedFINXMax16Text (max 16 chars)."
         },
         "EndToEndId": {
           "type": "Max35Text",
@@ -8230,9 +8242,10 @@
           "notes": "Must equal GrpHdr/MsgId. No spaces."
         },
         "InstrId": {
-          "type": "Max35Text",
-          "max_length": 35,
-          "example": "INSTR-20260528-001"
+          "type": "Max16Text",
+          "max_length": 16,
+          "example": "INSTR-260528-001",
+          "notes": "CBPR+ restricts InstrId to RestrictedFINXMax16Text (max 16 chars)."
         },
         "EndToEndId": {
           "type": "Max35Text",
@@ -8841,9 +8854,10 @@
           "notes": "Must equal GrpHdr/MsgId. No spaces."
         },
         "InstrId": {
-          "type": "Max35Text",
-          "max_length": 35,
-          "example": "INSTR-20260528-001"
+          "type": "Max16Text",
+          "max_length": 16,
+          "example": "INSTR-260528-001",
+          "notes": "CBPR+ restricts InstrId to RestrictedFINXMax16Text (max 16 chars)."
         },
         "EndToEndId": {
           "type": "Max35Text",
@@ -9433,9 +9447,10 @@
           "notes": "Must equal GrpHdr/MsgId. No spaces."
         },
         "InstrId": {
-          "type": "Max35Text",
-          "max_length": 35,
-          "example": "INSTR-20260528-001"
+          "type": "Max16Text",
+          "max_length": 16,
+          "example": "INSTR-260528-001",
+          "notes": "CBPR+ restricts InstrId to RestrictedFINXMax16Text (max 16 chars)."
         },
         "EndToEndId": {
           "type": "Max35Text",
@@ -10044,9 +10059,10 @@
           "notes": "Must equal GrpHdr/MsgId. No spaces."
         },
         "InstrId": {
-          "type": "Max35Text",
-          "max_length": 35,
-          "example": "INSTR-20260528-001"
+          "type": "Max16Text",
+          "max_length": 16,
+          "example": "INSTR-260528-001",
+          "notes": "CBPR+ restricts InstrId to RestrictedFINXMax16Text (max 16 chars)."
         },
         "EndToEndId": {
           "type": "Max35Text",
@@ -10636,9 +10652,10 @@
           "notes": "Must equal GrpHdr/MsgId. No spaces."
         },
         "InstrId": {
-          "type": "Max35Text",
-          "max_length": 35,
-          "example": "INSTR-20260528-001"
+          "type": "Max16Text",
+          "max_length": 16,
+          "example": "INSTR-260528-001",
+          "notes": "CBPR+ restricts InstrId to RestrictedFINXMax16Text (max 16 chars)."
         },
         "EndToEndId": {
           "type": "Max35Text",
