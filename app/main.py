@@ -16,18 +16,16 @@ import os
 import csv
 import io
 
-import sys
-
 # Ensure the parent directory is in sys.path to allow absolute imports when run directly
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.schemas import validation as schemas
-from app.services.validator import ISOValidator
-from app.services.firebase_service import FirebaseHistoryService
-from app.services.schema_generator import SchemaGenerator
-from app.services.mt_mx_converter import MT2MXConverter
-from app.services.bic_refresh_service import BicRefreshService
-from app.services.bulk_generator import generate_single_xml, get_blocks_for_message
+from app.services.validation.validator import ISOValidator
+from app.services.external.firebase_service import FirebaseHistoryService
+from app.services.generation.schema_generator import SchemaGenerator
+from app.services.conversion.mt_mx_converter import MT2MXConverter
+from app.services.external.bic_refresh_service import BicRefreshService
+from app.services.generation.bulk_generator import generate_single_xml, get_blocks_for_message
 from app.chatbot.routes import router as chatbot_router
 from app.chatbot.chat_service import chat_service
 
@@ -233,11 +231,6 @@ async def convert_mt_to_mx(request: schemas.MTConversionRequest):
 
         return result
     except Exception as e:
-        import traceback
-        import os
-        log_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "crash_report.txt")
-        with open(log_path, "w") as f:
-            f.write(traceback.format_exc())
         raise
 
 @app.get("/history", response_model=List[schemas.HistorySummary])
@@ -752,7 +745,7 @@ if os.path.exists(frontend_path):
 @app.get("/firebase-status")
 def firebase_status():
     import os, base64 as _b64, json as _json
-    from app.services.firebase_service import FirebaseHistoryService
+    from app.services.external.firebase_service import FirebaseHistoryService
 
     pk = os.getenv("FIREBASE_PRIVATE_KEY", "")
     raw_b64 = os.getenv("FIREBASE_CREDENTIALS_BASE64", "")
