@@ -257,6 +257,201 @@ def _kb_msg_family(msg_type: str) -> str:
     return ".".join(parts[:2]) if len(parts) >= 2 else msg_type
 
 
+# ── Per-message KB context (resources/KB/<family>.json) ───────────────────────
+# Rich, human-authored catalogue keyed by tag/xpath: for every error it lists a
+# documented set of `possible_fixes`, plus cross-tag dependency rules. Used to:
+#   • drive deterministic AI fixes (extract the recommended literal value), and
+#   • surface the documented fix recipes to the LLM fallback as context, and
+#   • feed the validator's KB-driven dependency-rule checks.
+
+class _KBContext:
+    _cache: Dict[str, "_KBContext"] = {}
+
+    def __init__(self, family: str):
+        self.family = family
+        self.by_tag: Dict[str, list] = {}    # leaf local-name → [error records]
+        self.by_code: Dict[str, list] = {}   # error_code      → [error records]
+        self.valid_by_tag: Dict[str, list] = {}  # leaf local-name → [valid enum codes]
+        self.dependency_rules: list = []
+        self.formal_rules: list = []
+        self._load()
+
+    # Common KB files that are NOT per-message context catalogues.
+    _COMMON_KB_FILES = {"ai_knowledge_base.json", "swift_mx_enterprise_llm_kb.json"}
+
+    @classmethod
+    def _find_file(cls, kb_dir: str, family: str) -> Optional[str]:
+        """
+        Locate the per-message KB file for `family` (e.g. 'camt.054'), tolerating
+        any filename convention:
+          • exact  <family>.json            (e.g. pacs.008.json)
+          • descriptive  *<family>*.json     (e.g. CBPRPlus_camt.054.001.08_..._KB.json)
+        The shared common KBs are never matched here.
+        """
+        if not family or not os.path.isdir(kb_dir):
+            return None
+        exact = os.path.join(kb_dir, f"{family}.json")
+        if os.path.exists(exact):
+            return exact
+        cands = [
+            fn for fn in os.listdir(kb_dir)
+            if fn.endswith(".json")
+            and fn not in cls._COMMON_KB_FILES
+            and family in fn
+        ]
+        if cands:
+            cands.sort(key=len)  # prefer the most specific/shortest match
+            return os.path.join(kb_dir, cands[0])
+        return None
+
+    def _load(self) -> None:
+        kb_dir = os.path.normpath(os.path.join(
+            os.path.dirname(__file__), "..", "resources", "KB"))
+        path = self._find_file(kb_dir, self.family)
+        if not path or not os.path.exists(path):
+            return
+        try:
+            with open(path, "r", encoding="utf-8-sig") as f:
+                data = json.load(f)
+        except Exception as e:
+            logger.warning(f"[KBContext] Failed to load KB for {self.family}: {e}")
+            return
+        for t in data.get("tags", []) or []:
+            leaf = t.get("xml_element") or (t.get("tag", "").split("/")[-1])
+            # Tag-level enum allow-list (e.g. CdtDbtInd → [CRDT, DBIT]).
+            vv = t.get("valid_values")
+            if leaf and isinstance(vv, list) and vv and leaf not in self.valid_by_tag:
+                self.valid_by_tag[leaf] = [str(c) for c in vv]
+            for e in t.get("errors", []) or []:
+                rec = {
+                    "error_id": e.get("error_id", ""),
+                    "error_code": e.get("error_code", ""),
+                    "severity": e.get("severity", ""),
+                    "description": e.get("description", ""),
+                    "possible_fixes": e.get("possible_fixes", []) or [],
+                    "tag": t.get("tag", ""),
+                    "xpath": t.get("xpath", ""),
+                    "leaf": leaf,
+                }
+                if leaf:
+                    self.by_tag.setdefault(leaf, []).append(rec)
+                if rec["error_code"]:
+                    self.by_code.setdefault(rec["error_code"], []).append(rec)
+                # Enum codes are sometimes carried on the error entry instead.
+                ev = e.get("valid_values")
+                if leaf and isinstance(ev, list) and ev and leaf not in self.valid_by_tag:
+                    self.valid_by_tag[leaf] = [str(c) for c in ev]
+        self.dependency_rules = data.get("cross_tag_dependency_rules", []) or []
+        self.formal_rules = ((data.get("cbpr_plus_formal_rules", []) or [])
+                             + (data.get("iso_20022_rules", []) or []))
+
+    def _matching_records(self, code: str = "", leaf: str = "") -> list:
+        """Records matching the issue's error_code first, then the element tag."""
+        recs = list(self.by_code.get(code, [])) if code else []
+        if leaf:
+            for r in self.by_tag.get(leaf, []):
+                if r not in recs:
+                    recs.append(r)
+        return recs
+
+    def possible_fixes(self, code: str = "", leaf: str = "") -> list:
+        out: list = []
+        for r in self._matching_records(code, leaf):
+            for fx in r.get("possible_fixes", []):
+                if fx not in out:
+                    out.append(fx)
+        return out
+
+    def valid_codes(self, leaf: str) -> list:
+        """KB-documented enum allow-list for `leaf` (e.g. ['CRDT','DBIT'])."""
+        return self.valid_by_tag.get(leaf, [])
+
+    def literal_value(self, leaf: str, code: str = "") -> Optional[str]:
+        """
+        Extract a concrete, ready-to-use replacement value for `leaf` from the
+        documented possible_fixes (e.g. BizSvc → 'swift.cbprplus.03',
+        ChrgBr → 'SLEV'). Placeholder-bearing recipes ({...}, generated UUIDs)
+        are skipped — those are handled by the deterministic generators.
+
+        Only records for the SAME element (`leaf`) are considered — a literal
+        value is element-specific, so we must never borrow a value documented
+        for a different tag (some KB error_codes are shared across tags).
+        Records whose error_code matches the issue are tried first.
+        """
+        recs = self.by_tag.get(leaf, [])
+        ordered = sorted(recs, key=lambda r: 0 if r.get("error_code") == code else 1)
+        for r in ordered:
+            for fx in r.get("possible_fixes", []):
+                val = _extract_literal_from_fix(fx, leaf)
+                if val:
+                    return val
+        return None
+
+    @classmethod
+    def get(cls, msg_type: str) -> Optional["_KBContext"]:
+        family = _kb_msg_family(msg_type)
+        if not family:
+            return None
+        if family not in cls._cache:
+            cls._cache[family] = _KBContext(family)
+        ctx = cls._cache[family]
+        # Treat an empty context (no file) as unavailable
+        return ctx if (ctx.by_tag or ctx.dependency_rules) else None
+
+
+def _extract_literal_from_fix(fix_text: str, leaf: str) -> Optional[str]:
+    """
+    Pull a concrete literal value out of a documented fix instruction.
+
+    Handles, in order:
+      1. ``<Leaf ...>VALUE</Leaf>`` inline element       → VALUE
+      2. ``'VALUE'`` / ``"VALUE"`` quoted literal        → VALUE
+      3. ``one of: A, B, C`` enumerations                → A (first / preferred)
+    Any candidate containing a ``{placeholder}`` is rejected (it needs runtime
+    harvesting, not a literal).
+    """
+    if not fix_text:
+        return None
+
+    def _ok(v: str) -> bool:
+        v = (v or "").strip()
+        return bool(v) and "{" not in v and "}" not in v and "..." not in v
+
+    # 1. Inline element form: <Leaf>VALUE</Leaf>
+    m = re.search(rf"<{re.escape(leaf)}\b[^>]*>([^<]+)</{re.escape(leaf)}>", fix_text)
+    if m and _ok(m.group(1)):
+        return m.group(1).strip()
+
+    # 2. Quoted literal (prefer ones that look like real values: codes / dotted ids)
+    for qm in re.finditer(r"'([^']{2,40})'|\"([^\"]{2,40})\"", fix_text):
+        cand = (qm.group(1) or qm.group(2) or "").strip()
+        if _ok(cand) and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._\-]*", cand):
+            return cand
+
+    # 3. "one of: A, B, C" enumeration → first option
+    m = re.search(r"one of:\s*([A-Z0-9]{2,}(?:\s*,\s*[A-Z0-9]{2,})+)", fix_text)
+    if m:
+        first = m.group(1).split(",")[0].strip()
+        if _ok(first):
+            return first
+    return None
+
+
+def _detect_family_from_tree(root: "etree._Element") -> str:
+    """Find the payload message family (e.g. 'pacs.008') from any element's
+    namespace in the tree — works for both AppHdr (head.001) and Document nodes."""
+    if root is None:
+        return ""
+    for el in root.iter():
+        if not isinstance(el.tag, str):
+            continue
+        ns = etree.QName(el.tag).namespace or ""
+        m = re.search(r"((?:pacs|pain|camt|sese|reda|acmt)\.\d{2,3})\.\d{3}\.\d{2}", ns)
+        if m:
+            return m.group(1)
+    return ""
+
+
 def _kb_tag_template(tag_name: str, msg_type: str) -> Optional[str]:
     """
     Return the message-specific template for a tag, else the default.
@@ -1691,6 +1886,26 @@ class FixSuggester:
             if inserted is not None:
                 return inserted
 
+            # KB-driven removal: some "not expected" elements are CBPR-removed
+            # elements (e.g. SplmtryData, MsgPgntn) whose documented fix is simply
+            # to delete them. Only remove when the KB explicitly says "Remove <X>"
+            # — never guess removal for choice members like Othr.
+            try:
+                _nx_el = self._find_target(root, path, self._build_nsmap(root)) if (path and path != "/") else None
+            except Exception:
+                _nx_el = None
+            if _nx_el is None:
+                _nx_el = self._recover_target_from_message(root, msg, fix_hint)
+            if _nx_el is not None:
+                _nx_local = etree.QName(_nx_el.tag).localname
+                _kb = _KBContext.get(_detect_family_from_tree(root))
+                _kb_fixes = _kb.possible_fixes(code, _nx_local) if _kb else []
+                if any(re.search(r"\bremove\b", fx, re.I) and _nx_local.lower() in fx.lower()
+                       for fx in _kb_fixes):
+                    _rem = self._remove_element_fix(_nx_el, code, msg)
+                    if _rem is not None:
+                        return _rem
+
             _target_xpath = path if (path and path != "/") else self._xpath_of(root)
             _frag = ""
             try:
@@ -2315,6 +2530,40 @@ class FixSuggester:
         return FixSuggestion(xpath, original_fragment,
                               self._serialize(el_copy), code, msg, "high")
 
+    def _remove_element_fix(self, el: etree._Element, code: str,
+                            msg: str) -> Optional[FixSuggestion]:
+        """
+        Produce a fix that DELETES `el` from its parent (used for CBPR-removed
+        elements like SplmtryData / MsgPgntn). Targets the parent and removes the
+        exact offending occurrence, preserving every other sibling.
+        """
+        import copy as _copy_mod
+        parent = el.getparent()
+        if parent is None:
+            return None
+        local = etree.QName(el.tag).localname
+        sibs = [c for c in parent if isinstance(c.tag, str)
+                and etree.QName(c.tag).localname == local]
+        try:
+            idx = sibs.index(el)
+        except ValueError:
+            idx = 0
+        parent_copy = _copy_mod.deepcopy(parent)
+        parent_copy.tail = None
+        csibs = [c for c in parent_copy if isinstance(c.tag, str)
+                 and etree.QName(c.tag).localname == local]
+        if idx >= len(csibs):
+            return None
+        parent_copy.remove(csibs[idx])
+        return FixSuggestion(
+            xpath=self._xpath_of(parent),
+            original_fragment=self._serialize(parent),
+            fragment_xml=self._serialize(parent_copy),
+            issue_code=code,
+            issue_message=msg,
+            confidence="high",
+        )
+
     # ── _fix_value ────────────────────────────────────────────────────────────
 
     def _fix_value(self, el: etree._Element, code: str, msg: str,
@@ -2324,6 +2573,86 @@ class FixSuggester:
         xpath             = self._xpath_of(el)
         msg_l             = msg.lower()
         el_local          = etree.QName(el.tag).localname
+
+        # ── Currency code (Ccy attribute) on amount elements ──────────────────
+        # "Invalid currency code 'Ccy'" / "Missing currency code" is about the
+        # @Ccy ATTRIBUTE, not the element's numeric text. Route to the attribute
+        # fixer, which harvests a valid ISO 4217 code from the document (else USD).
+        if (("currency" in msg_l) or ("ccy" in msg_l)) and \
+           (el_local.endswith("Amt") or el.get("Ccy") is not None or "amount" in msg_l):
+            return self._fix_attribute(el, "Ccy", code, msg, fix_hint)
+
+        # ── Enum / code value with a KB-documented allow-list ─────────────────
+        # e.g. CpyDplctInd → CODU/COPY/DUPL, CdtDbtInd → CRDT/DBIT. Picks a code
+        # named in the error text if present, else the first documented code.
+        if not list(el) and el.text is not None:
+            try:
+                _tr = el.getroottree().getroot() if el.getroottree() is not None else None
+            except Exception:
+                _tr = None
+            _kb = _KBContext.get(_detect_family_from_tree(_tr)) if _tr is not None else None
+            if _kb:
+                _codes = _kb.valid_codes(el_local)
+                _cur = (el.text or "").strip()
+                if _codes and _cur not in _codes:
+                    _combined = f"{fix_hint} {msg}"
+                    _chosen = next((c for c in _codes
+                                    if re.search(rf"\b{re.escape(c)}\b", _combined)), _codes[0])
+                    el_copy = self._copy(el)
+                    el_copy.text = _chosen
+                    return FixSuggestion(xpath, original_fragment,
+                                         self._serialize(el_copy), code, msg, "high")
+
+        # ── DateTime with forbidden 'Z' / milliseconds (CBPR+ needs an offset) ─
+        if not list(el) and el.text:
+            _cur = el.text.strip()
+            if re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$", _cur) and (
+                el_local.endswith(("DtTm", "Tm", "Dt")) or "datetime" in msg_l
+                or "format" in msg_l or "pattern" in msg_l):
+                _new = re.sub(r"\.\d+", "", _cur)        # drop milliseconds (forbidden)
+                _new = re.sub(r"Z$", "+00:00", _new)      # 'Z' → explicit UTC offset
+                el_copy = self._copy(el)
+                el_copy.text = _new
+                return FixSuggestion(xpath, original_fragment,
+                                     self._serialize(el_copy), code, msg, "high")
+
+        # ── Numeric value expected but the value isn't a number ───────────────
+        # Fires for explicit "type Number" errors, and for numeric-named fields
+        # (…Nb / SeqNb / NbOfTxs / PgNb) whose value isn't numeric — e.g.
+        # "Field 'ElctrncSeqNb' has an invalid value: 'ABC'".
+        _numeric_field = (
+            el_local.endswith("Nb")
+            or el_local in {"ElctrncSeqNb", "LglSeqNb", "NbOfTxs", "TtlNbOfTxs",
+                            "PgNb", "NbOfDays", "Qty", "Nb"}
+            or (isinstance(_kb_field_constraint(el_local), dict)
+                and _kb_field_constraint(el_local).get("type") in ("Number", "Numeric15", "Quantity"))
+        )
+        if not list(el) and el.text and (
+                ("number" in msg_l and "type" in msg_l)
+                or (_numeric_field and any(k in msg_l for k in
+                    ("invalid value", "invalid", "not a valid", "number", "format", "type", "expected")))):
+            _cur = el.text.strip()
+            if not re.match(r"^-?\d+(\.\d+)?$", _cur):
+                _con = _kb_field_constraint(el_local)
+                _ex = _con.get("example") if isinstance(_con, dict) else None
+                _new = str(_ex) if (_ex and re.match(r"^-?\d+(\.\d+)?$", str(_ex))) else "1"
+                el_copy = self._copy(el)
+                el_copy.text = _new
+                return FixSuggestion(xpath, original_fragment,
+                                     self._serialize(el_copy), code, msg, "high")
+
+        # ── BizMsgIdr must equal GrpHdr/MsgId → harvest MsgId (KB rule DEP_001) ──
+        if el_local == "BizMsgIdr" and (code == "BIZMSGIDR_NEQ_MSGID" or "msgid" in msg_l):
+            try:
+                root = el.getroottree().getroot() if el.getroottree() is not None else None
+            except Exception:
+                root = None
+            mv = self._harvest_value(root, "MsgId") if root is not None else None
+            if mv and mv != (el.text or "").strip():
+                el_copy = self._copy(el)
+                el_copy.text = mv
+                return FixSuggestion(xpath, original_fragment,
+                                     self._serialize(el_copy), code, msg, "high")
 
         # ── Length overflow → shorten the value to the KB/schema max_length ───
         # Highest-priority, deterministic fix for "Field X has an invalid length"
@@ -2480,22 +2809,61 @@ class FixSuggester:
                      or con.get("max_length") or con.get("min_length"))
             )
             if is_format_con and not self._violates_constraint(current_text, con):
+                # The value passes the generic field constraint, but the per-message
+                # KB may still mandate a specific literal (e.g. BizSvc must be
+                # 'swift.cbprplus.03'). Honour that before treating it as a no-op.
+                try:
+                    _troot = el.getroottree().getroot() if el.getroottree() is not None else None
+                except Exception:
+                    _troot = None
+                _kbctx = _KBContext.get(_detect_family_from_tree(_troot)) if _troot is not None else None
+                if _kbctx:
+                    _kbval = _kbctx.literal_value(el_local, code)
+                    if _kbval and _kbval != current_text and "{" not in _kbval:
+                        el_copy = self._copy(el)
+                        el_copy.text = _kbval
+                        return FixSuggestion(xpath, original_fragment,
+                                             self._serialize(el_copy), code, msg, "high")
                 return FixSuggestion(xpath, original_fragment, original_fragment,
                                      code, msg, "low")
 
-        # ── Disallowed / duplicate → remove the offending child ──────────────
-        if code == "DUPLICATE_TAG" or "duplicate" in msg_l:
-            m = re.search(r"<(\w+)>", msg)
-            if m:
-                el_copy = self._copy(el)
+        # ── Duplicate element → keep the first occurrence, drop the extras ────
+        if (code == "DUPLICATE_TAG" or "duplicate" in msg_l
+                or "appears more than once" in msg_l
+                or ("appears" in msg_l and "times" in msg_l)
+                or "occurs more than allowed" in msg_l):
+            # Identify the duplicated tag: <Tag> in text, else 'Field'/"tag X", else the element itself.
+            dm = (re.search(r"<(\w+)>", msg + " " + fix_hint)
+                  or re.search(r"(?:tag|field|element)\s+'?\"?<?(\w[\w]*)>?\"?", msg, re.I))
+            dup = dm.group(1) if dm else el_local
+
+            def _dedupe(parent_el):
+                """Return a copy of parent_el with all but the first `dup` child removed."""
+                p_copy = self._copy(parent_el)
                 seen = False
-                for child in list(el_copy):
-                    if isinstance(child.tag, str) and etree.QName(child.tag).localname == m.group(1):
+                removed = False
+                for child in list(p_copy):
+                    if isinstance(child.tag, str) and etree.QName(child.tag).localname == dup:
                         if seen:
-                            el_copy.remove(child)
+                            p_copy.remove(child)
+                            removed = True
                         else:
                             seen = True
-                return FixSuggestion(xpath, original_fragment, self._serialize(el_copy), code, msg, "high")
+                return p_copy, removed
+
+            # Case 1: the located element IS the duplicate → dedupe among siblings.
+            if dup == el_local:
+                parent = el.getparent()
+                if parent is not None:
+                    p_copy, removed = _dedupe(parent)
+                    if removed:
+                        return FixSuggestion(self._xpath_of(parent), self._serialize(parent),
+                                             self._serialize(p_copy), code, msg, "high")
+            # Case 2: the duplicate is a child of the located element.
+            el_copy, removed = _dedupe(el)
+            if removed:
+                return FixSuggestion(xpath, original_fragment,
+                                     self._serialize(el_copy), code, msg, "high")
 
         if any(k in msg_l for k in ("must not", "not allowed", "forbidden",
                                      "disallowed", "cannot coexist", "may not")):
@@ -2636,14 +3004,40 @@ class FixSuggester:
             el_copy.text = smart_val
             return FixSuggestion(xpath, original_fragment, self._serialize(el_copy), code, msg, "high")
 
-        # Fall through to LLM
-        return self._llm_fallback(xpath, original_fragment, code, msg, fix_hint)
+        # ── KB-documented literal value (resources/KB/<family>.json) ──────────
+        # e.g. BizSvc → 'swift.cbprplus.03'. The KB is authoritative, so we trust
+        # its value (only guarding against placeholders / the tag name itself).
+        kb_fixes: list = []
+        if not list(el):
+            try:
+                tree_root = el.getroottree().getroot() if el.getroottree() is not None else None
+            except Exception:
+                tree_root = None
+            kb = _KBContext.get(_detect_family_from_tree(tree_root)) if tree_root is not None else None
+            if kb:
+                kb_fixes = kb.possible_fixes(code, el_local)
+                kb_val = kb.literal_value(el_local, code)
+                if kb_val and kb_val != el_local and kb_val != (el.text or "").strip():
+                    el_copy = self._copy(el)
+                    el_copy.text = kb_val
+                    return FixSuggestion(xpath, original_fragment,
+                                         self._serialize(el_copy), code, msg, "high")
+
+        # Fall through to LLM (enriched with the KB's documented fix recipes)
+        return self._llm_fallback(xpath, original_fragment, code, msg, fix_hint, kb_fixes)
 
     def _llm_fallback(self, xpath: str, original_fragment: str,
-                      code: str, msg: str, fix_hint: str = "") -> FixSuggestion:
+                      code: str, msg: str, fix_hint: str = "",
+                      kb_fixes: Optional[list] = None) -> FixSuggestion:
         """Last-resort LLM call with rich context. max_tokens=400, temperature=0."""
         # Build context: include rule hint, codelists, field constraints, deps
         context_lines = []
+
+        # ── Per-message KB (resources/KB/<family>.json): documented fix recipes ──
+        if kb_fixes:
+            context_lines.append(
+                "CBPR+ KB documented fixes for this field:\n"
+                + "\n".join(f"- {fx}" for fx in kb_fixes[:6]))
 
         # ── Enterprise KB: error-specific fix recipe (highest priority context) ──
         if code:

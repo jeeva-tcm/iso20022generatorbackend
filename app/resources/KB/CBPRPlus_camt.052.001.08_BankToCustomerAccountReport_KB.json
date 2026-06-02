@@ -1,0 +1,1374 @@
+{
+  "domain": "SWIFT MX CBPR+ camt.052.001.08",
+  "version": "SR2025",
+  "last_updated": "2026-05-28",
+  "purpose": "Context KB for camt.052 BankToCustomerAccountReport validation. For each XML tag: possible errors, affected tags, and all possible fixes. Based on CBPR+ SR2025 Usage Guideline (camt.052.001.08) and SWIFT MX Enterprise KB.",
+  "reference_documents": [
+    "CBPRPlus-camt.052.001.08_BankToCustomerAccountReport CBPRPlus SR2025 (Combined), 21 March 2025",
+    "SWIFT MX Enterprise LLM KB v2.0"
+  ],
+  "iso_20022_rules": [
+    {"rule_id": "R1", "name": "RelatedPresentWhenCopyDupl", "description": "If CopyDuplicate is present, then Related MUST be present. Related MUST contain the relevant BusinessApplicationHeader elements of the BusinessMessage to which this BusinessMessage relates.", "error_code": "H00001", "severity": "Warning", "error_text": "Element Related is missing"},
+    {"rule_id": "R4", "name": "MessageOrReportPaginationRule", "description": "MessagePagination may be present or ReportPagination may be present, but not both.", "error_code": "X00261", "severity": "Fatal", "error_text": "Pagination may only be present at message or report level."},
+    {"rule_id": "R5", "name": "SupplementaryDataRule", "description": "The SupplementaryData building block at message level must not be used to provide additional information about a transaction; the SupplementaryData element at transaction level should be used for that purpose. NOTE: removed by CBPR+ guideline (message-level SupplementaryData is removed).", "error_code": "Undefined", "severity": "Undefined", "status": "removed_by_cbpr_plus"},
+    {"rule_id": "R12", "name": "CurrencyAmount", "description": "The number of fractional digits (or minor unit of currency) of any amount must comply with ISO 4217. The decimal separator is a dot. Applies to all ActiveOrHistoricCurrencyAndAmount elements (Bal/Amt, Ntry/Amt, etc.).", "error_code": "D00007", "severity": "Fatal", "error_text": "Invalid currency code or too many decimal digits."},
+    {"rule_id": "R13", "name": "ForwardBalanceAndAvailabilityRule", "description": "If Balance/Type is equal to ForwardAvailable, then Availability is not allowed.", "error_code": "", "severity": "Fatal", "error_text": "Invalid message content for forward available balance."},
+    {"rule_id": "R14", "name": "DomainOrProprietaryRule", "description": "In BankTransactionCode (BkTxCd), either Proprietary or Domain or both must be present.", "error_code": "X00104", "severity": "Fatal", "error_text": "Invalid bank transaction code."},
+    {"rule_id": "R15", "name": "BICFI", "description": "Valid BICs for financial institutions are registered and published by the ISO 9362 Registration Authority and consist of eight (8) or eleven (11) contiguous characters.", "error_code": "D00001", "severity": "Fatal", "error_text": "Invalid FI BIC."}
+  ],
+  "cbpr_plus_formal_rules": [
+    {"rule_id": "CBPR_COPY_DUPLICATE", "name": "CBPR_Copy_Duplicate_FormalRule", "description": "If CopyDuplicate indicator is used in the Business Application Header (AppHdr/CpyDplct), it must be identical to the CopyDuplicateIndicator in the business document (Report/CpyDplctInd) when the latter is present."},
+    {"rule_id": "CBPR_AGENT_BICFI_EXCLUSIVE", "name": "CBPR_Agent_Identification_TextualRule", "description": "For agents: if BICFI is present inside FinInstnId, then Nm and PstlAdr are NOT allowed (ClrSysMmbId and LEI may complement); BICFI takes precedence on conflict. If BICFI is absent, (Nm & PstlAdr) OR [(Nm & PstlAdr) and ClrSysMmbId] must be present; exception: when Debtor Agent, Creditor Agent and all agents in between are within the same country, the clearing code only may be used."},
+    {"rule_id": "CBPR_PARTY_ANYBIC_EXCLUSIVE", "name": "CBPR_Party_Identification_TextualRule", "description": "For Debtor/Creditor parties: if AnyBIC is present, then (Name and Postal Address) is NOT allowed (other elements remain optional); AnyBIC takes precedence on conflict. If Name is present, it is recommended to also use Postal Address."},
+    {"rule_id": "CBPR_AGENT_BICFI_MANDATORY", "name": "CBPR_Agent_PointToPointOnSWIFT", "description": "If the transaction is exchanged on the SWIFT network (instructing agent/sender and instructed agent/receiver are on SWIFT), then BICFI is mandatory and other elements (e.g. LEI) are optional."},
+    {"rule_id": "CBPR_BIZ_SVC", "name": "CBPR_Business_Service_Usage_TextualRule", "description": "AppHdr/BizSvc must be 'swift.cbprplus.03' (SR2025). This element is mandatory (minimum occurrence changed to 1). Datatype changed to UsageIdentifierPatternText."},
+    {"rule_id": "CBPR_BIZ_MSG_IDR", "name": "CBPR_Business_Message_Identifier_TextualRule", "description": "AppHdr/BizMsgIdr must equal GrpHdr/MsgId (the Message Identification of the underlying group header)."},
+    {"rule_id": "CBPR_MSGDEF_IDR", "name": "CBPR_Message_Definition_Identifier_TextualRule", "description": "AppHdr/MsgDefIdr must be formatted exactly as it appears in the namespace of the Business Message instance, i.e. 'camt.052.001.08'."},
+    {"rule_id": "CBPR_CHARSET", "name": "CBPR_Character_Set_Usage_TextualRule", "description": "Character sets restricted as for pacs.008/pacs.009: all proprietary/text fields (excl. Nm/Adr for all actors and RmtInf) limited to FIN-X charset. Nm/Adr/RmtInf and proxy email extended with !#$&%*=^_`{|}~\";<>@[\\] (< as &lt;, > as &gt;)."},
+    {"rule_id": "CBPR_DATETIME_NO_Z", "name": "CBPR_DateTime_Format", "description": "DateTime fields (CreDt, CreDtTm, Bal/Dt/DtTm, Ntry/BookgDt/DtTm, Ntry/ValDt/DtTm, FrToDt) must use YYYY-MM-DDTHH:MM:SS+HH:MM format with a mandatory +/-HH:MM UTC offset. Z suffix is forbidden by the pattern '.*(\\+|-)((0[0-9])|(1[0-4])):[0-5][0-9]'."},
+    {"rule_id": "CBPR_SINGLE_REPORT", "name": "Single Report Only", "description": "Report (Rpt) maximum occurrence reduced to 1 by CBPR+ SR2025 (base [1..*]). The number of occurrences of Report and Entries must be bilaterally agreed."},
+    {"rule_id": "CBPR_BOTH_LEGS", "name": "Bank-to-Bank and Bank-to-Customer", "description": "CBPR+ camt.052 covers both the Bank-to-Bank and the Bank-to-Customer legs and all payment instruments (not credit transfers / direct debits only); fewer restrictions are applied to elements than in the payment-instruction usage guidelines."},
+    {"rule_id": "CBPR_ELCTRNC_SEQ", "name": "CBPR_Electronic_Sequence_Number_TextualRule", "description": "For intra-day report: ElctrncSeqNb is the sequential number of the report assigned by the account servicer, increased incrementally by 1 for each report sent electronically. Recommended not to reset more often than once a day; reset/continuation is bilaterally determined."},
+    {"rule_id": "CBPR_COPY_DUPLICATE_IND", "name": "CBPR_Copy_Duplicate_Indicator_TextualRule", "description": "If applicable, for Copy or Duplicate, the ElectronicSequenceNumber and LegalSequenceNumber must be the same as the original report."},
+    {"rule_id": "CBPR_BRANCH_REMOVED", "name": "BrnchId Removed", "description": "BranchIdentification is removed from agent FinInstnId blocks (AppHdr Fr/To agents, Related Fr/To agents, account servicer and transaction agents) under CBPR+ SR2025."},
+    {"rule_id": "CBPR_REMOVED_ELEMENTS", "name": "Removed Building Blocks/Elements", "description": "Removed under CBPR+ SR2025 include: AppHdr/BizPrcgDt, AppHdr/Sgntr, GrpHdr/MessagePagination, message-level SupplementaryData, plus numerous optional sub-elements across Report/Entry/EntryDetails/TransactionDetails (see Usage Guideline removed-elements list)."},
+    {"rule_id": "CBPR_ACCT_CCY_MANDATORY", "name": "Account Currency Mandatory", "description": "Report/Account/Currency (Acct/Ccy) is made mandatory (minimum occurrence changed to 1) under CBPR+ SR2025."},
+    {"rule_id": "CBPR_NTRY_VALDT_MANDATORY", "name": "Entry ValueDate Mandatory", "description": "Report/Entry/ValueDate (Ntry/ValDt) is made mandatory (minimum occurrence changed to 1) under CBPR+ SR2025."},
+    {"rule_id": "CBPR_NTRY_REFERENCE", "name": "ReferenceGuideline", "description": "At least one reference should be present in a ReportEntry to identify the underlying transaction(s)."}
+  ],
+  "tags": [
+
+    {
+      "tag": "AppHdr",
+      "xml_element": "AppHdr",
+      "xpath": "/AppHdr",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Business Application Header V02. Mandatory for all CBPR+ messages (BusinessApplicationHeaderV02 defined as mandatory).",
+      "errors": [
+        {
+          "error_id": "APPHDR_MISSING",
+          "error_code": "SCHEMA_ERR",
+          "severity": "Fatal",
+          "description": "AppHdr element is absent; CBPR+ mandates BusinessApplicationHeaderV02.",
+          "affected_tags": ["AppHdr"],
+          "possible_fixes": [
+            "Insert a complete <AppHdr> block before the <Document> element.",
+            "Ensure AppHdr contains Fr, To, BizMsgIdr, MsgDefIdr, BizSvc, CreDt, and optionally CharSet/MktPrctc/CpyDplct/PssblDplct/Prty/Rltd."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "AppHdr/Fr",
+      "xml_element": "Fr",
+      "xpath": "/AppHdr/Fr",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Sending MessagingEndpoint (the account servicing institution / sender). When exchanged on SWIFT, must contain a BIC8 or BIC11 (FIId/FinInstnId/BICFI). If inconsistent, BIC takes precedence.",
+      "errors": [
+        {
+          "error_id": "APPHDR_FR_MISSING",
+          "error_code": "SCHEMA_ERR",
+          "severity": "Fatal",
+          "description": "Fr element is absent from AppHdr.",
+          "affected_tags": ["AppHdr/Fr"],
+          "possible_fixes": [
+            "Insert <Fr><FIId><FinInstnId><BICFI>{sender_BICFI}</BICFI></FinInstnId></FIId></Fr> inside AppHdr.",
+            "Use the account servicer BIC (typically Report/Account/Servicer)."
+          ]
+        },
+        {
+          "error_id": "APPHDR_FR_INVALID_BIC",
+          "error_code": "INVALID_BICFI",
+          "severity": "Fatal",
+          "description": "AppHdr/Fr contains an invalid or malformed BIC.",
+          "affected_tags": ["AppHdr/Fr/FIId/FinInstnId/BICFI"],
+          "possible_fixes": [
+            "Replace with a valid BICFI: 8 or 11 uppercase alphanumeric characters following ISO 9362.",
+            "Pattern: [A-Z0-9]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?",
+            "Example valid BIC: DEUTDEFFXXX"
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "AppHdr/To",
+      "xml_element": "To",
+      "xpath": "/AppHdr/To",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Receiving MessagingEndpoint (account owner or party authorised to receive the report). When exchanged on SWIFT, must contain a BIC8 or BIC11 (FIId/FinInstnId/BICFI). If inconsistent, BIC takes precedence.",
+      "errors": [
+        {
+          "error_id": "APPHDR_TO_MISSING",
+          "error_code": "SCHEMA_ERR",
+          "severity": "Fatal",
+          "description": "To element is absent from AppHdr.",
+          "affected_tags": ["AppHdr/To"],
+          "possible_fixes": [
+            "Insert <To><FIId><FinInstnId><BICFI>{recipient_BICFI}</BICFI></FinInstnId></FIId></To> inside AppHdr.",
+            "Use the BIC of the account owner / message recipient."
+          ]
+        },
+        {
+          "error_id": "APPHDR_TO_INVALID_BIC",
+          "error_code": "INVALID_BICFI",
+          "severity": "Fatal",
+          "description": "AppHdr/To contains an invalid or malformed BIC.",
+          "affected_tags": ["AppHdr/To/FIId/FinInstnId/BICFI"],
+          "possible_fixes": [
+            "Replace with a valid BICFI: 8 or 11 uppercase alphanumeric characters following ISO 9362.",
+            "Pattern: [A-Z0-9]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?"
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "AppHdr/BizMsgIdr",
+      "xml_element": "BizMsgIdr",
+      "xpath": "/AppHdr/BizMsgIdr",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "Max35Text",
+      "max_length": 35,
+      "description": "Unique identifier of the Business Message. Must equal GrpHdr/MsgId (the Message Identification of the underlying group header).",
+      "errors": [
+        {
+          "error_id": "BIZMSGIDR_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "BizMsgIdr is absent from AppHdr.",
+          "affected_tags": ["AppHdr/BizMsgIdr"],
+          "possible_fixes": [
+            "Copy the value of GrpHdr/MsgId and insert as <BizMsgIdr>{MsgId_value}</BizMsgIdr>.",
+            "If MsgId is also absent, generate a unique Max35Text value (e.g. RPT-YYYYMMDD-001)."
+          ]
+        },
+        {
+          "error_id": "BIZMSGIDR_NEQ_MSGID",
+          "error_code": "CBPR_BIZ_MSG_IDR",
+          "severity": "Fatal",
+          "description": "AppHdr/BizMsgIdr does not equal Document/BkToCstmrAcctRpt/GrpHdr/MsgId.",
+          "affected_tags": ["AppHdr/BizMsgIdr", "GrpHdr/MsgId"],
+          "possible_fixes": [
+            "Read GrpHdr/MsgId and set BizMsgIdr to the same value.",
+            "If BizMsgIdr is the source of truth, update GrpHdr/MsgId to match BizMsgIdr.",
+            "Never invent a new value — always harvest from the other field."
+          ]
+        },
+        {
+          "error_id": "BIZMSGIDR_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "BizMsgIdr exceeds 35 characters.",
+          "affected_tags": ["AppHdr/BizMsgIdr"],
+          "possible_fixes": [
+            "Truncate the value to a maximum of 35 characters.",
+            "Synchronize the truncated value back to GrpHdr/MsgId."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "AppHdr/MsgDefIdr",
+      "xml_element": "MsgDefIdr",
+      "xpath": "/AppHdr/MsgDefIdr",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "Max35Text",
+      "description": "Message Definition Identifier. Must exactly match the Document namespace.",
+      "expected_value": "camt.052.001.08",
+      "errors": [
+        {
+          "error_id": "MSGDEFIDR_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "MsgDefIdr is absent from AppHdr.",
+          "affected_tags": ["AppHdr/MsgDefIdr"],
+          "possible_fixes": [
+            "Insert <MsgDefIdr>camt.052.001.08</MsgDefIdr> inside AppHdr."
+          ]
+        },
+        {
+          "error_id": "MSGDEFIDR_MISMATCH",
+          "error_code": "MSGDEFIDR_MISMATCH",
+          "severity": "Fatal",
+          "description": "AppHdr/MsgDefIdr does not match the Document xmlns namespace identifier.",
+          "affected_tags": ["AppHdr/MsgDefIdr"],
+          "possible_fixes": [
+            "Read the xmlns attribute from the Document root element (e.g. urn:iso:std:iso:20022:tech:xsd:camt.052.001.08).",
+            "Extract the message identifier portion and set MsgDefIdr to 'camt.052.001.08'.",
+            "Ensure no trailing spaces or version mismatches."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "AppHdr/BizSvc",
+      "xml_element": "BizSvc",
+      "xpath": "/AppHdr/BizSvc",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "note": "Minimum occurrence changed to 1 by CBPR+ SR2025 guideline. Datatype changed to UsageIdentifierPatternText.",
+      "expected_value": "swift.cbprplus.03",
+      "datatype": "UsageIdentifierPatternText",
+      "description": "Business Service identifier. Mandatory under CBPR+ SR2025; must be 'swift.cbprplus.03'.",
+      "errors": [
+        {
+          "error_id": "BIZSVC_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "BizSvc is absent; it is mandatory under CBPR+ SR2025.",
+          "affected_tags": ["AppHdr/BizSvc"],
+          "possible_fixes": [
+            "Insert <BizSvc>swift.cbprplus.03</BizSvc> inside AppHdr."
+          ]
+        },
+        {
+          "error_id": "BIZSVC_WRONG_VALUE",
+          "error_code": "CBPR_BIZ_SVC",
+          "severity": "Fatal",
+          "description": "BizSvc contains an incorrect value (e.g. 'swift.cbprplus.02' from older release).",
+          "affected_tags": ["AppHdr/BizSvc"],
+          "possible_fixes": [
+            "Replace value with 'swift.cbprplus.03' as mandated by SR2025.",
+            "Note: SR2024 and earlier used 'swift.cbprplus.02'; upgrade to .03 for SR2025."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "AppHdr/CreDt",
+      "xml_element": "CreDt",
+      "xpath": "/AppHdr/CreDt",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "CBPR_DateTime",
+      "description": "Creation date/time of the Business Message. Must use YYYY-MM-DDTHH:MM:SS+HH:MM format with a mandatory +/-HH:MM UTC offset; Z suffix forbidden by the CBPR_DateTime pattern.",
+      "errors": [
+        {
+          "error_id": "CREDT_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "AppHdr/CreDt is absent.",
+          "affected_tags": ["AppHdr/CreDt"],
+          "possible_fixes": [
+            "Insert <CreDt>{current datetime in YYYY-MM-DDTHH:MM:SS+00:00 format}</CreDt> inside AppHdr."
+          ]
+        },
+        {
+          "error_id": "CREDT_Z_SUFFIX",
+          "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+          "severity": "Fatal",
+          "description": "AppHdr/CreDt uses 'Z' suffix which is forbidden under the CBPR_DateTime pattern (a +/-HH:MM offset is mandatory).",
+          "affected_tags": ["AppHdr/CreDt"],
+          "possible_fixes": [
+            "Replace trailing 'Z' with '+00:00'. Example: 2026-05-28T10:00:00Z → 2026-05-28T10:00:00+00:00."
+          ]
+        },
+        {
+          "error_id": "CREDT_NO_OFFSET",
+          "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+          "severity": "Fatal",
+          "description": "AppHdr/CreDt lacks the mandatory +/-HH:MM UTC offset.",
+          "affected_tags": ["AppHdr/CreDt"],
+          "possible_fixes": [
+            "Append a UTC offset. Example: 2026-05-28T10:00:00 → 2026-05-28T10:00:00+00:00."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "AppHdr/Prty",
+      "xml_element": "Prty",
+      "xpath": "/AppHdr/Prty",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "valid_values": ["NORM", "HIGH"],
+      "datatype": "Priority2Code",
+      "description": "Priority of the Business Message. Datatype changed to Priority2Code (NORM, HIGH).",
+      "errors": [
+        {
+          "error_id": "PRTY_INVALID_CODE",
+          "error_code": "SCHEMENAME_INVALID",
+          "severity": "Fatal",
+          "description": "AppHdr/Prty contains a value not in the allowed code list (Priority2Code).",
+          "affected_tags": ["AppHdr/Prty"],
+          "possible_fixes": [
+            "Replace with 'NORM' (normal) or 'HIGH' (high priority).",
+            "Default to 'NORM' if priority is not specifically determined."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "AppHdr/BizPrcgDt",
+      "xml_element": "BizPrcgDt",
+      "xpath": "/AppHdr/BizPrcgDt",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "note": "Removed by CBPR+ SR2025 guideline.",
+      "description": "Business Processing Date. Removed under CBPR+; must not be present.",
+      "errors": [
+        {
+          "error_id": "BIZPRCGDT_PRESENT",
+          "error_code": "CBPR_REMOVED_ELEMENTS",
+          "severity": "Fatal",
+          "description": "AppHdr/BizPrcgDt is present; this element is removed under CBPR+ SR2025.",
+          "affected_tags": ["AppHdr/BizPrcgDt"],
+          "possible_fixes": [
+            "Remove the BizPrcgDt element from AppHdr entirely."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "AppHdr/Sgntr",
+      "xml_element": "Sgntr",
+      "xpath": "/AppHdr/Sgntr",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "note": "Removed by CBPR+ SR2025 guideline. This information is available at the level of the SWIFTNet Header.",
+      "description": "Digital signature of the Business Entity. Removed under CBPR+; must not be present.",
+      "errors": [
+        {
+          "error_id": "SGNTR_PRESENT",
+          "error_code": "CBPR_REMOVED_ELEMENTS",
+          "severity": "Fatal",
+          "description": "AppHdr/Sgntr is present; this element is removed under CBPR+ SR2025 (signature handled at SWIFTNet Header level).",
+          "affected_tags": ["AppHdr/Sgntr"],
+          "possible_fixes": [
+            "Remove the Sgntr element from AppHdr entirely."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "AppHdr/CpyDplct",
+      "xml_element": "CpyDplct",
+      "xpath": "/AppHdr/CpyDplct",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "valid_values": ["CODU", "COPY", "DUPL"],
+      "datatype": "CopyDuplicate1Code",
+      "description": "Indicates whether the message is a Copy, a Duplicate or a copy of a duplicate. If used, must equal Report/CpyDplctInd when the latter is present (CBPR_Copy_Duplicate_FormalRule). If present, Related (Rltd) must be present (R1).",
+      "errors": [
+        {
+          "error_id": "CPYDPLCT_NEQ_RPT_IND",
+          "error_code": "CBPR_COPY_DUPLICATE",
+          "severity": "Fatal",
+          "description": "AppHdr/CpyDplct does not equal Report/CpyDplctInd while both are present.",
+          "affected_tags": ["AppHdr/CpyDplct", "Rpt/CpyDplctInd"],
+          "possible_fixes": [
+            "Set AppHdr/CpyDplct and Rpt/CpyDplctInd to the same CopyDuplicate1Code value (CODU, COPY or DUPL).",
+            "Remove one of the indicators if the message is neither a copy nor a duplicate."
+          ]
+        },
+        {
+          "error_id": "CPYDPLCT_WITHOUT_RLTD",
+          "error_code": "H00001",
+          "severity": "Warning",
+          "description": "CpyDplct is present but Rltd is absent; violates R1 (RelatedPresentWhenCopyDupl).",
+          "affected_tags": ["AppHdr/CpyDplct", "AppHdr/Rltd"],
+          "possible_fixes": [
+            "Add a <Rltd> block carrying the BAH elements of the related (original) message.",
+            "Remove CpyDplct if the message is not a copy/duplicate."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "AppHdr/Rltd",
+      "xml_element": "Rltd",
+      "xpath": "/AppHdr/Rltd",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "note": "Maximum occurrence reduced to 1 by CBPR+ SR2025 (base [0..*]).",
+      "description": "Related Business Application Header(s). If used, must transport the exact same information as in the BAH of the related message. Must be present when CpyDplct is present (R1).",
+      "errors": [
+        {
+          "error_id": "RLTD_MISSING_WHEN_CPYDPLCT",
+          "error_code": "H00001",
+          "severity": "Warning",
+          "description": "CpyDplct is present but Rltd is absent; violates R1.",
+          "affected_tags": ["AppHdr/Rltd", "AppHdr/CpyDplct"],
+          "possible_fixes": [
+            "Insert a <Rltd> block carrying the BAH elements of the related (original) message.",
+            "Alternatively remove CpyDplct if the message is not a copy/duplicate."
+          ]
+        },
+        {
+          "error_id": "RLTD_MULTIPLE",
+          "error_code": "CBPR_REMOVED_ELEMENTS",
+          "severity": "Fatal",
+          "description": "More than one Rltd occurrence present; CBPR+ SR2025 reduced maximum occurrence to 1.",
+          "affected_tags": ["AppHdr/Rltd"],
+          "possible_fixes": [
+            "Keep only a single Rltd block; remove additional occurrences."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "GrpHdr/MsgId",
+      "xml_element": "MsgId",
+      "xpath": "/Document/BkToCstmrAcctRpt/GrpHdr/MsgId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "CBPR_RestrictedFINXMax35Text",
+      "max_length": 35,
+      "description": "Unique message identifier (point to point reference assigned by the account servicing institution). Must equal AppHdr/BizMsgIdr. Limited to FIN-X character set.",
+      "errors": [
+        {
+          "error_id": "MSGID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "GrpHdr/MsgId is absent.",
+          "affected_tags": ["GrpHdr/MsgId", "AppHdr/BizMsgIdr"],
+          "possible_fixes": [
+            "Insert <MsgId>{unique identifier up to 35 chars}</MsgId> as first child of GrpHdr.",
+            "Use format RPT-YYYYMMDD-NNN (e.g. RPT-20260528-001).",
+            "Ensure the same value is in AppHdr/BizMsgIdr."
+          ]
+        },
+        {
+          "error_id": "MSGID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "GrpHdr/MsgId exceeds 35 characters.",
+          "affected_tags": ["GrpHdr/MsgId"],
+          "possible_fixes": [
+            "Truncate to maximum 35 characters preserving meaningful prefix.",
+            "Synchronize truncated value to AppHdr/BizMsgIdr."
+          ]
+        },
+        {
+          "error_id": "MSGID_INVALID_CHARS",
+          "error_code": "INVALID_CHARSETS",
+          "severity": "Fatal",
+          "description": "MsgId contains characters outside the FIN-X character set (CBPR_RestrictedFINXMax35Text).",
+          "affected_tags": ["GrpHdr/MsgId"],
+          "possible_fixes": [
+            "Replace special/accented characters with ASCII equivalents.",
+            "Allowed: 0-9 a-z A-Z / - ? : ( ) . , ' + SPACE.",
+            "Pattern: [0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "GrpHdr/CreDtTm",
+      "xml_element": "CreDtTm",
+      "xpath": "/Document/BkToCstmrAcctRpt/GrpHdr/CreDtTm",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "CBPR_DateTime",
+      "description": "Creation date and time of the message. Format: YYYY-MM-DDTHH:MM:SS+HH:MM with a mandatory +/-HH:MM UTC offset. Z suffix forbidden by the CBPR_DateTime pattern.",
+      "errors": [
+        {
+          "error_id": "CREDTTM_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "GrpHdr/CreDtTm is absent.",
+          "affected_tags": ["GrpHdr/CreDtTm"],
+          "possible_fixes": [
+            "Insert <CreDtTm>{current datetime as YYYY-MM-DDTHH:MM:SS+00:00}</CreDtTm>."
+          ]
+        },
+        {
+          "error_id": "CREDTTM_Z_SUFFIX",
+          "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+          "severity": "Fatal",
+          "description": "CreDtTm uses 'Z' suffix or lacks the mandatory +/-HH:MM offset; forbidden by the CBPR_DateTime pattern.",
+          "affected_tags": ["GrpHdr/CreDtTm"],
+          "possible_fixes": [
+            "Replace 'Z' with '+00:00'. Example: 2026-05-28T10:00:00Z → 2026-05-28T10:00:00+00:00.",
+            "Append a UTC offset if none is present."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "GrpHdr/MsgRcpt",
+      "xml_element": "MsgRcpt",
+      "xpath": "/Document/BkToCstmrAcctRpt/GrpHdr/MsgRcpt",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Party authorised by the account owner to receive information. Should only be identified when different from the account owner. If AnyBIC present, Name/PstlAdr not allowed; if Name present, PstlAdr recommended.",
+      "errors": [
+        {
+          "error_id": "MSGRCPT_ANYBIC_WITH_NAME",
+          "error_code": "BICFI_EXCLUSIVE",
+          "severity": "Fatal",
+          "description": "MsgRcpt/Id/OrgId/AnyBIC is present together with Nm and/or PstlAdr; not allowed (AnyBIC takes precedence).",
+          "affected_tags": ["GrpHdr/MsgRcpt/Nm", "GrpHdr/MsgRcpt/Id/OrgId/AnyBIC"],
+          "possible_fixes": [
+            "Remove Nm and PstlAdr when AnyBIC is present.",
+            "Or remove AnyBIC and retain Nm/PstlAdr."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "GrpHdr/MsgPgntn",
+      "xml_element": "MsgPgntn",
+      "xpath": "/Document/BkToCstmrAcctRpt/GrpHdr/MsgPgntn",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "note": "Removed by CBPR+ SR2025 guideline. Pagination, if used, is provided at report level (Rpt/RptPgntn).",
+      "description": "Message-level pagination. Removed under CBPR+; must not be present. (R4: message-level and report-level pagination are mutually exclusive.)",
+      "errors": [
+        {
+          "error_id": "MSGPGNTN_PRESENT",
+          "error_code": "CBPR_REMOVED_ELEMENTS",
+          "severity": "Fatal",
+          "description": "GrpHdr/MsgPgntn is present; this element is removed under CBPR+ SR2025.",
+          "affected_tags": ["GrpHdr/MsgPgntn"],
+          "possible_fixes": [
+            "Remove the MsgPgntn element from GrpHdr.",
+            "If pagination is required, use Rpt/RptPgntn (report level) instead."
+          ]
+        },
+        {
+          "error_id": "PGNTN_BOTH_LEVELS",
+          "error_code": "X00261",
+          "severity": "Fatal",
+          "description": "Both message-level (MsgPgntn) and report-level (RptPgntn) pagination present; violates R4.",
+          "affected_tags": ["GrpHdr/MsgPgntn", "Rpt/RptPgntn"],
+          "possible_fixes": [
+            "Keep pagination at report level only (Rpt/RptPgntn); remove MsgPgntn."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "GrpHdr/AddtlInf",
+      "xml_element": "AddtlInf",
+      "xpath": "/Document/BkToCstmrAcctRpt/GrpHdr/AddtlInf",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "datatype": "CBPR_RestrictedFINXMax500Text",
+      "max_length": 500,
+      "description": "Further details of the message. Datatype changed to CBPR_RestrictedFINXMax500Text.",
+      "errors": [
+        {
+          "error_id": "GRPHDR_ADDTLINF_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "GrpHdr/AddtlInf exceeds 500 characters.",
+          "affected_tags": ["GrpHdr/AddtlInf"],
+          "possible_fixes": [
+            "Truncate to maximum 500 characters."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt",
+      "xml_element": "Rpt",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "note": "Maximum occurrence reduced to 1 by CBPR+ SR2025 (base [1..*]). The number of occurrences of Report and Entries must be bilaterally agreed.",
+      "description": "Account report block. Reports on a single cash account. Single occurrence only under CBPR+.",
+      "errors": [
+        {
+          "error_id": "RPT_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Rpt block is absent; at least one Report is mandatory.",
+          "affected_tags": ["Rpt"],
+          "possible_fixes": [
+            "Insert a <Rpt> block containing at minimum Id and Account (Acct)."
+          ]
+        },
+        {
+          "error_id": "RPT_MULTIPLE",
+          "error_code": "CBPR_SINGLE_REPORT",
+          "severity": "Fatal",
+          "description": "More than one Rpt block present; CBPR+ SR2025 reduced maximum occurrence to 1.",
+          "affected_tags": ["Rpt"],
+          "possible_fixes": [
+            "Keep a single Rpt block; split additional reports into separate camt.052 messages (subject to bilateral agreement)."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/Id",
+      "xml_element": "Id",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/Id",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "CBPR_RestrictedFINXMax35Text",
+      "max_length": 35,
+      "description": "Unique identification of the account report, assigned by the account servicer.",
+      "errors": [
+        {
+          "error_id": "RPT_ID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Rpt/Id is absent.",
+          "affected_tags": ["Rpt/Id"],
+          "possible_fixes": [
+            "Insert <Id>{unique report identification, max 35 chars}</Id> as first child of Rpt."
+          ]
+        },
+        {
+          "error_id": "RPT_ID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Rpt/Id exceeds 35 characters.",
+          "affected_tags": ["Rpt/Id"],
+          "possible_fixes": [
+            "Truncate to maximum 35 characters."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/RptPgntn",
+      "xml_element": "RptPgntn",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/RptPgntn",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "note": "Pagination only allowed when bilaterally agreed. R4: report-level and message-level pagination are mutually exclusive (MsgPgntn is removed under CBPR+). Sub-elements PgNb and LastPgInd are [1..1].",
+      "description": "Report pagination (PgNb, LastPgInd). Only present when agreed between parties.",
+      "errors": [
+        {
+          "error_id": "RPTPGNTN_BOTH_LEVELS",
+          "error_code": "X00261",
+          "severity": "Fatal",
+          "description": "Report-level pagination present together with message-level pagination; violates R4.",
+          "affected_tags": ["Rpt/RptPgntn", "GrpHdr/MsgPgntn"],
+          "possible_fixes": [
+            "Keep pagination at report level only; remove GrpHdr/MsgPgntn (which is removed under CBPR+ anyway)."
+          ]
+        },
+        {
+          "error_id": "RPTPGNTN_MISSING_SUBFIELDS",
+          "error_code": "MISSING_EXPECTED_ELEMENT",
+          "severity": "Fatal",
+          "description": "RptPgntn present but PgNb or LastPgInd is absent.",
+          "affected_tags": ["Rpt/RptPgntn/PgNb", "Rpt/RptPgntn/LastPgInd"],
+          "possible_fixes": [
+            "Provide both <PgNb>{page number}</PgNb> and <LastPgInd>{true|false}</LastPgInd> inside RptPgntn."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/ElctrncSeqNb",
+      "xml_element": "ElctrncSeqNb",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/ElctrncSeqNb",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "datatype": "Number",
+      "description": "Sequential number of the report assigned by the account servicer, increased incrementally by 1 for each report sent electronically. For Copy/Duplicate it must equal the original report's value.",
+      "errors": [
+        {
+          "error_id": "ELCTRNCSEQNB_NON_NUMERIC",
+          "error_code": "INVALID_CHARSETS",
+          "severity": "Fatal",
+          "description": "ElctrncSeqNb is not a valid number.",
+          "affected_tags": ["Rpt/ElctrncSeqNb"],
+          "possible_fixes": [
+            "Provide an integer/decimal Number value (e.g. 1)."
+          ]
+        },
+        {
+          "error_id": "ELCTRNCSEQNB_COPY_MISMATCH",
+          "error_code": "CBPR_COPY_DUPLICATE_IND",
+          "severity": "Warning",
+          "description": "Rpt/CpyDplctInd indicates COPY/DUPL but ElctrncSeqNb differs from the original report.",
+          "affected_tags": ["Rpt/ElctrncSeqNb", "Rpt/CpyDplctInd"],
+          "possible_fixes": [
+            "Set ElctrncSeqNb (and LglSeqNb) to the same value as the original report when sending a copy/duplicate."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/CreDtTm",
+      "xml_element": "CreDtTm",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/CreDtTm",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "datatype": "CBPR_DateTime",
+      "description": "Date and time at which the report was created. If present, must use YYYY-MM-DDTHH:MM:SS+HH:MM with mandatory offset; Z forbidden.",
+      "errors": [
+        {
+          "error_id": "RPT_CREDTTM_Z_SUFFIX",
+          "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+          "severity": "Fatal",
+          "description": "Rpt/CreDtTm uses 'Z' suffix or lacks the mandatory +/-HH:MM offset; forbidden by CBPR_DateTime pattern.",
+          "affected_tags": ["Rpt/CreDtTm"],
+          "possible_fixes": [
+            "Replace 'Z' with an explicit offset. Example: 2026-05-28T10:00:00Z → 2026-05-28T10:00:00+00:00."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/CpyDplctInd",
+      "xml_element": "CpyDplctInd",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/CpyDplctInd",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "valid_values": ["CODU", "COPY", "DUPL"],
+      "datatype": "CopyDuplicate1Code",
+      "description": "Indicates whether the document is a copy, a duplicate, or a duplicate of a copy. Must equal AppHdr/CpyDplct when both present (CBPR_Copy_Duplicate_FormalRule).",
+      "errors": [
+        {
+          "error_id": "CPYDPLCTIND_NEQ_APPHDR",
+          "error_code": "CBPR_COPY_DUPLICATE",
+          "severity": "Fatal",
+          "description": "Rpt/CpyDplctInd does not equal AppHdr/CpyDplct while both are present.",
+          "affected_tags": ["Rpt/CpyDplctInd", "AppHdr/CpyDplct"],
+          "possible_fixes": [
+            "Set Rpt/CpyDplctInd and AppHdr/CpyDplct to the same CopyDuplicate1Code value.",
+            "Remove one indicator if the report is neither a copy nor a duplicate."
+          ]
+        },
+        {
+          "error_id": "CPYDPLCTIND_INVALID_CODE",
+          "error_code": "SCHEMENAME_INVALID",
+          "severity": "Fatal",
+          "description": "Rpt/CpyDplctInd is not a valid CopyDuplicate1Code.",
+          "affected_tags": ["Rpt/CpyDplctInd"],
+          "possible_fixes": [
+            "Replace with CODU, COPY or DUPL."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/Acct",
+      "xml_element": "Acct",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/Acct",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Cash account to which credit and debit entries are made. Contains Id [1..1] (IBAN or Othr), Tp, Ccy (mandatory under CBPR+), Nm, Prxy, Ownr, Svcr.",
+      "errors": [
+        {
+          "error_id": "ACCT_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Rpt/Acct is absent.",
+          "affected_tags": ["Rpt/Acct"],
+          "possible_fixes": [
+            "Insert <Acct><Id><IBAN>{valid IBAN}</IBAN></Id><Ccy>{ISO4217}</Ccy></Acct>.",
+            "If no IBAN, use <Id><Othr><Id>{account number}</Id></Othr></Id>."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/Acct/Id",
+      "xml_element": "Id",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/Acct/Id",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "note": "Choice: IBAN or Othr (mutually exclusive).",
+      "description": "Account identification. IBAN preferred; otherwise Othr.",
+      "errors": [
+        {
+          "error_id": "ACCT_ID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Rpt/Acct/Id is absent.",
+          "affected_tags": ["Rpt/Acct/Id"],
+          "possible_fixes": [
+            "Insert <Id><IBAN>{valid IBAN}</IBAN></Id> or <Id><Othr><Id>{account number}</Id></Othr></Id>."
+          ]
+        },
+        {
+          "error_id": "ACCT_ID_INVALID_IBAN",
+          "error_code": "IBAN_INVALID",
+          "severity": "Fatal",
+          "description": "Rpt/Acct/Id/IBAN fails ISO 13616 format or MOD97 checksum validation.",
+          "affected_tags": ["Rpt/Acct/Id/IBAN"],
+          "possible_fixes": [
+            "Replace with a valid IBAN: 2-letter country code + 2 check digits + BBAN (max 34 chars).",
+            "Verify MOD97 check digit computation. Example: DE89370400440532013000"
+          ]
+        },
+        {
+          "error_id": "ACCT_ID_IBAN_AND_OTHR",
+          "error_code": "IBAN_XOR_OTHR",
+          "severity": "Fatal",
+          "description": "Both IBAN and Othr are present in Acct/Id; mutually exclusive.",
+          "affected_tags": ["Rpt/Acct/Id/IBAN", "Rpt/Acct/Id/Othr"],
+          "possible_fixes": [
+            "Remove Othr if IBAN is correct; remove IBAN if Othr is correct."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/Acct/Ccy",
+      "xml_element": "Ccy",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/Acct/Ccy",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "note": "Made mandatory (min 1) by CBPR+ SR2025.",
+      "datatype": "ActiveOrHistoricCurrencyCode",
+      "description": "Currency in which the account is held. Mandatory under CBPR+; ISO 4217 3-letter code.",
+      "errors": [
+        {
+          "error_id": "ACCT_CCY_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Rpt/Acct/Ccy is absent; it is mandatory under CBPR+ SR2025.",
+          "affected_tags": ["Rpt/Acct/Ccy"],
+          "possible_fixes": [
+            "Insert <Ccy>{ISO 4217 code}</Ccy> inside Acct. Example: <Ccy>USD</Ccy>."
+          ]
+        },
+        {
+          "error_id": "ACCT_CCY_INVALID",
+          "error_code": "INVALID_CHARSETS",
+          "severity": "Fatal",
+          "description": "Rpt/Acct/Ccy is not a valid ISO 4217 currency code.",
+          "affected_tags": ["Rpt/Acct/Ccy"],
+          "possible_fixes": [
+            "Replace with a valid 3-letter ISO 4217 code (e.g. USD, EUR, GBP, JPY)."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/Bal",
+      "xml_element": "Bal",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/Bal",
+      "occurrence": "[0..*]",
+      "mandatory": false,
+      "note": "Recommended; defines the account balances. Contains Tp [1..1], CdtLine [0..*], Amt [1..1], CdtDbtInd [1..1], Dt [1..1], Avlbty [0..*].",
+      "description": "Cash balance. R13: if Type = ForwardAvailable, Availability is not allowed.",
+      "errors": [
+        {
+          "error_id": "BAL_FORWARD_WITH_AVLBTY",
+          "error_code": "FORWARD_BAL_AVLBTY",
+          "severity": "Fatal",
+          "description": "Balance Type is ForwardAvailable but Availability (Avlbty) is present; violates R13.",
+          "affected_tags": ["Rpt/Bal/Tp", "Rpt/Bal/Avlbty"],
+          "possible_fixes": [
+            "Remove Avlbty when the balance type is ForwardAvailable.",
+            "Or change the balance type if availability information is required."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/Bal/Tp",
+      "xml_element": "Tp",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/Bal/Tp",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "note": "Tp contains CdOrPrtry [1..1] (Cd is ExternalBalanceType1Code) and SubTp [0..1].",
+      "description": "Balance type. CdOrPrtry/Cd uses ExternalBalanceType1Code (e.g. OPBD, CLBD, ITBD, FWAV, PRCD, CLAV).",
+      "errors": [
+        {
+          "error_id": "BAL_TP_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Rpt/Bal/Tp is absent.",
+          "affected_tags": ["Rpt/Bal/Tp"],
+          "possible_fixes": [
+            "Insert <Tp><CdOrPrtry><Cd>{balance type code}</Cd></CdOrPrtry></Tp>.",
+            "Use a valid ExternalBalanceType1Code, e.g. CLBD (ClosingBooked), OPBD (OpeningBooked), ITBD (InterimBooked)."
+          ]
+        },
+        {
+          "error_id": "BAL_TP_INVALID_CODE",
+          "error_code": "SCHEMENAME_INVALID",
+          "severity": "Fatal",
+          "description": "Rpt/Bal/Tp/CdOrPrtry/Cd is not in the ExternalBalanceType1Code list (max 4 chars).",
+          "affected_tags": ["Rpt/Bal/Tp/CdOrPrtry/Cd"],
+          "possible_fixes": [
+            "Use a valid ExternalBalanceType1Code (max 4 chars) or supply CdOrPrtry/Prtry.",
+            "Download the current external code set from www.iso20022.org to validate."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/Bal/Amt",
+      "xml_element": "Amt",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/Bal/Amt",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "ActiveOrHistoricCurrencyAndAmount",
+      "description": "Amount of money of the cash balance, with Ccy attribute. ISO 4217. Fraction digits must comply with the currency (R12).",
+      "errors": [
+        {
+          "error_id": "BAL_AMT_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Rpt/Bal/Amt is absent.",
+          "affected_tags": ["Rpt/Bal/Amt"],
+          "possible_fixes": [
+            "Insert <Amt Ccy=\"{ISO4217}\">{amount}</Amt>."
+          ]
+        },
+        {
+          "error_id": "BAL_AMT_MISSING_CCY",
+          "error_code": "INVALID_CHARSETS",
+          "severity": "Fatal",
+          "description": "Rpt/Bal/Amt is present but the Ccy attribute is missing.",
+          "affected_tags": ["Rpt/Bal/Amt"],
+          "possible_fixes": [
+            "Add Ccy attribute with a valid ISO 4217 3-letter code. Example: <Amt Ccy=\"USD\">1000.00</Amt>."
+          ]
+        },
+        {
+          "error_id": "BAL_AMT_FRACTION_DIGITS",
+          "error_code": "D00007",
+          "severity": "Fatal",
+          "description": "Rpt/Bal/Amt has more fractional digits than allowed for the currency (R12 CurrencyAmount) or an invalid currency.",
+          "affected_tags": ["Rpt/Bal/Amt"],
+          "possible_fixes": [
+            "Limit fraction digits to the ISO 4217 minor-unit for the currency (e.g. 2 for USD, 0 for JPY).",
+            "Use a dot as decimal separator; max 18 total digits, 5 fraction digits."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/Bal/CdtDbtInd",
+      "xml_element": "CdtDbtInd",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/Bal/CdtDbtInd",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "valid_values": ["CRDT", "DBIT"],
+      "datatype": "CreditDebitCode",
+      "description": "Indicates whether the balance is a credit or debit balance. A zero balance is considered a credit balance.",
+      "errors": [
+        {
+          "error_id": "BAL_CDTDBTIND_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Rpt/Bal/CdtDbtInd is absent.",
+          "affected_tags": ["Rpt/Bal/CdtDbtInd"],
+          "possible_fixes": [
+            "Insert <CdtDbtInd>CRDT</CdtDbtInd> or <CdtDbtInd>DBIT</CdtDbtInd>."
+          ]
+        },
+        {
+          "error_id": "BAL_CDTDBTIND_INVALID",
+          "error_code": "SCHEMENAME_INVALID",
+          "severity": "Fatal",
+          "description": "Rpt/Bal/CdtDbtInd is not CRDT or DBIT.",
+          "affected_tags": ["Rpt/Bal/CdtDbtInd"],
+          "possible_fixes": [
+            "Replace with CRDT (credit/increase) or DBIT (debit/decrease)."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/Bal/Dt",
+      "xml_element": "Dt",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/Bal/Dt",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "note": "Choice: Dt (ISODate) or DtTm (CBPR_DateTime) via DateAndDateTime2Choice__1.",
+      "description": "Date (and time) of the balance.",
+      "errors": [
+        {
+          "error_id": "BAL_DT_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Rpt/Bal/Dt is absent.",
+          "affected_tags": ["Rpt/Bal/Dt"],
+          "possible_fixes": [
+            "Insert <Dt><Dt>{YYYY-MM-DD}</Dt></Dt> or <Dt><DtTm>{YYYY-MM-DDTHH:MM:SS+00:00}</DtTm></Dt>."
+          ]
+        },
+        {
+          "error_id": "BAL_DT_DTTM_Z_SUFFIX",
+          "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+          "severity": "Fatal",
+          "description": "Rpt/Bal/Dt/DtTm uses 'Z' suffix or lacks the mandatory +/-HH:MM offset; forbidden by CBPR_DateTime pattern.",
+          "affected_tags": ["Rpt/Bal/Dt/DtTm"],
+          "possible_fixes": [
+            "Replace 'Z' with an explicit offset, or use the date-only choice <Dt>YYYY-MM-DD</Dt>."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/TxsSummry",
+      "xml_element": "TxsSummry",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/TxsSummry",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Transactions summary: TtlNtries, TtlCdtNtries, TtlDbtNtries and TtlNtriesPerBkTxCd. Provides totals of entries reported.",
+      "errors": [
+        {
+          "error_id": "TXSSUMMRY_AMT_FRACTION_DIGITS",
+          "error_code": "D00007",
+          "severity": "Fatal",
+          "description": "A summary amount (e.g. TtlNtries/Sum) has more fractional digits than allowed for the currency (R12).",
+          "affected_tags": ["Rpt/TxsSummry/TtlNtries/Sum"],
+          "possible_fixes": [
+            "Limit fraction digits per ISO 4217 minor unit; use a dot decimal separator."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/Ntry",
+      "xml_element": "Ntry",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/Ntry",
+      "occurrence": "[0..*]",
+      "mandatory": false,
+      "note": "Number of Entries to be bilaterally agreed. Contains Amt [1..1], CdtDbtInd [1..1], Sts [1..1], ValDt [1..1] (made mandatory), BkTxCd [1..1], NtryDtls [0..*], etc.",
+      "description": "Report entry — details on an individual entry. At least one reference should be present to identify the underlying transaction(s) (ReferenceGuideline).",
+      "errors": [
+        {
+          "error_id": "NTRY_NO_REFERENCE",
+          "error_code": "MISSING_EXPECTED_ELEMENT",
+          "severity": "Warning",
+          "description": "Entry has no reference identifying the underlying transaction(s) (ReferenceGuideline).",
+          "affected_tags": ["Rpt/Ntry/NtryRef", "Rpt/Ntry/NtryDtls/TxDtls/Refs"],
+          "possible_fixes": [
+            "Populate NtryRef or a reference within NtryDtls/TxDtls/Refs (e.g. EndToEndId, TxId, UETR) to identify the transaction."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/Ntry/Amt",
+      "xml_element": "Amt",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/Ntry/Amt",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "ActiveOrHistoricCurrencyAndAmount",
+      "description": "Amount of money in the cash entry, with Ccy attribute. Fraction digits must comply with the currency (R12).",
+      "errors": [
+        {
+          "error_id": "NTRY_AMT_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Rpt/Ntry/Amt is absent.",
+          "affected_tags": ["Rpt/Ntry/Amt"],
+          "possible_fixes": [
+            "Insert <Amt Ccy=\"{ISO4217}\">{amount}</Amt>."
+          ]
+        },
+        {
+          "error_id": "NTRY_AMT_MISSING_CCY",
+          "error_code": "INVALID_CHARSETS",
+          "severity": "Fatal",
+          "description": "Rpt/Ntry/Amt present but the Ccy attribute is missing.",
+          "affected_tags": ["Rpt/Ntry/Amt"],
+          "possible_fixes": [
+            "Add a valid ISO 4217 Ccy attribute. Example: <Amt Ccy=\"EUR\">250.00</Amt>."
+          ]
+        },
+        {
+          "error_id": "NTRY_AMT_FRACTION_DIGITS",
+          "error_code": "D00007",
+          "severity": "Fatal",
+          "description": "Rpt/Ntry/Amt has more fractional digits than allowed for the currency (R12).",
+          "affected_tags": ["Rpt/Ntry/Amt"],
+          "possible_fixes": [
+            "Limit fraction digits to the ISO 4217 minor unit; use a dot decimal separator."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/Ntry/CdtDbtInd",
+      "xml_element": "CdtDbtInd",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/Ntry/CdtDbtInd",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "valid_values": ["CRDT", "DBIT"],
+      "datatype": "CreditDebitCode",
+      "description": "Indicates whether the entry is a credit or debit entry. Combined with RvslInd to determine the original operation direction.",
+      "errors": [
+        {
+          "error_id": "NTRY_CDTDBTIND_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Rpt/Ntry/CdtDbtInd is absent.",
+          "affected_tags": ["Rpt/Ntry/CdtDbtInd"],
+          "possible_fixes": [
+            "Insert <CdtDbtInd>CRDT</CdtDbtInd> or <CdtDbtInd>DBIT</CdtDbtInd>."
+          ]
+        },
+        {
+          "error_id": "NTRY_CDTDBTIND_INVALID",
+          "error_code": "SCHEMENAME_INVALID",
+          "severity": "Fatal",
+          "description": "Rpt/Ntry/CdtDbtInd is not CRDT or DBIT.",
+          "affected_tags": ["Rpt/Ntry/CdtDbtInd"],
+          "possible_fixes": [
+            "Replace with CRDT or DBIT."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/Ntry/Sts",
+      "xml_element": "Sts",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/Ntry/Sts",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "note": "Sts contains Cd (ExternalEntryStatus1Code) or Prtry (choice).",
+      "description": "Status of the entry on the books of the account servicer (e.g. BOOK, PDNG, INFO, FUTR).",
+      "errors": [
+        {
+          "error_id": "NTRY_STS_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Rpt/Ntry/Sts is absent.",
+          "affected_tags": ["Rpt/Ntry/Sts"],
+          "possible_fixes": [
+            "Insert <Sts><Cd>{status code}</Cd></Sts> with a valid ExternalEntryStatus1Code (e.g. BOOK, PDNG, INFO, FUTR)."
+          ]
+        },
+        {
+          "error_id": "NTRY_STS_INVALID_CODE",
+          "error_code": "SCHEMENAME_INVALID",
+          "severity": "Fatal",
+          "description": "Rpt/Ntry/Sts/Cd is not in the ExternalEntryStatus1Code list (max 4 chars).",
+          "affected_tags": ["Rpt/Ntry/Sts/Cd"],
+          "possible_fixes": [
+            "Use a valid ExternalEntryStatus1Code (max 4 chars) or supply Sts/Prtry.",
+            "Download the current external code set from www.iso20022.org to validate."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/Ntry/ValDt",
+      "xml_element": "ValDt",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/Ntry/ValDt",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "note": "Made mandatory (min 1) by CBPR+ SR2025. Choice: Dt (ISODate) or DtTm (CBPR_DateTime).",
+      "description": "Value date — when assets become available (credit) or cease to be available (debit). Mandatory under CBPR+.",
+      "errors": [
+        {
+          "error_id": "NTRY_VALDT_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Rpt/Ntry/ValDt is absent; it is mandatory under CBPR+ SR2025.",
+          "affected_tags": ["Rpt/Ntry/ValDt"],
+          "possible_fixes": [
+            "Insert <ValDt><Dt>{YYYY-MM-DD}</Dt></ValDt> or <ValDt><DtTm>{YYYY-MM-DDTHH:MM:SS+00:00}</DtTm></ValDt>."
+          ]
+        },
+        {
+          "error_id": "NTRY_VALDT_DTTM_Z_SUFFIX",
+          "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+          "severity": "Fatal",
+          "description": "Rpt/Ntry/ValDt/DtTm uses 'Z' suffix or lacks the mandatory +/-HH:MM offset; forbidden by CBPR_DateTime pattern.",
+          "affected_tags": ["Rpt/Ntry/ValDt/DtTm"],
+          "possible_fixes": [
+            "Replace 'Z' with an explicit offset, or use the date-only choice <Dt>YYYY-MM-DD</Dt>."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/Ntry/BookgDt",
+      "xml_element": "BookgDt",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/Ntry/BookgDt",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "note": "Choice: Dt (ISODate) or DtTm (CBPR_DateTime).",
+      "description": "Booking date — when the entry is posted to the account. For booked entries this is the actual booking date.",
+      "errors": [
+        {
+          "error_id": "NTRY_BOOKGDT_DTTM_Z_SUFFIX",
+          "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+          "severity": "Fatal",
+          "description": "Rpt/Ntry/BookgDt/DtTm uses 'Z' suffix or lacks the mandatory +/-HH:MM offset; forbidden by CBPR_DateTime pattern.",
+          "affected_tags": ["Rpt/Ntry/BookgDt/DtTm"],
+          "possible_fixes": [
+            "Replace 'Z' with an explicit offset, or use the date-only choice <Dt>YYYY-MM-DD</Dt>."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/Ntry/BkTxCd",
+      "xml_element": "BkTxCd",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/Ntry/BkTxCd",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "note": "Contains Domn [0..1] and Prtry [0..1]; R14 requires at least one (Domain or Proprietary or both).",
+      "description": "Bank transaction code — identifies the type/operation of the entry.",
+      "errors": [
+        {
+          "error_id": "NTRY_BKTXCD_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Rpt/Ntry/BkTxCd is absent.",
+          "affected_tags": ["Rpt/Ntry/BkTxCd"],
+          "possible_fixes": [
+            "Insert a <BkTxCd> block with a Domn (Domain) and/or Prtry (Proprietary) structure."
+          ]
+        },
+        {
+          "error_id": "NTRY_BKTXCD_NO_DOMN_PRTRY",
+          "error_code": "X00104",
+          "severity": "Fatal",
+          "description": "BkTxCd present but neither Domn nor Prtry is present; violates R14 (DomainOrProprietaryRule).",
+          "affected_tags": ["Rpt/Ntry/BkTxCd/Domn", "Rpt/Ntry/BkTxCd/Prtry"],
+          "possible_fixes": [
+            "Add a Domn (Domain) structure with Cd and Fmly, and/or a Prtry (Proprietary) structure with Cd and Issr."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/Ntry/NtryDtls",
+      "xml_element": "NtryDtls",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/Ntry/NtryDtls",
+      "occurrence": "[0..*]",
+      "mandatory": false,
+      "note": "Contains Btch [0..1] and TxDtls [0..*]. TxDtls carries references (EndToEndId, TxId, UETR), amounts, agents and parties of the underlying transaction.",
+      "description": "Entry details — batch and per-transaction details for the entry. Agent BICFI/Name and party AnyBIC/Name exclusivity rules apply inside TxDtls.",
+      "errors": [
+        {
+          "error_id": "NTRYDTLS_AGT_BICFI_EXCLUSIVE",
+          "error_code": "BICFI_EXCLUSIVE",
+          "severity": "Fatal",
+          "description": "An agent inside NtryDtls/TxDtls (e.g. DbtrAgt/CdtrAgt) has BICFI present together with Nm and/or PstlAdr.",
+          "affected_tags": ["Rpt/Ntry/NtryDtls/TxDtls/RltdAgts/DbtrAgt/FinInstnId", "Rpt/Ntry/NtryDtls/TxDtls/RltdAgts/CdtrAgt/FinInstnId"],
+          "possible_fixes": [
+            "Remove Nm and PstlAdr from any FinInstnId where BICFI is present (BICFI takes precedence)."
+          ]
+        },
+        {
+          "error_id": "NTRYDTLS_PARTY_ANYBIC_EXCLUSIVE",
+          "error_code": "BICFI_EXCLUSIVE",
+          "severity": "Fatal",
+          "description": "A Debtor/Creditor party inside NtryDtls/TxDtls has AnyBIC present together with Nm and/or PstlAdr.",
+          "affected_tags": ["Rpt/Ntry/NtryDtls/TxDtls/RltdPties/Dbtr", "Rpt/Ntry/NtryDtls/TxDtls/RltdPties/Cdtr"],
+          "possible_fixes": [
+            "Remove Nm and PstlAdr from the party when AnyBIC is present (AnyBIC takes precedence)."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "Rpt/AddtlRptInf",
+      "xml_element": "AddtlRptInf",
+      "xpath": "/Document/BkToCstmrAcctRpt/Rpt/AddtlRptInf",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "datatype": "CBPR_RestrictedFINXMax500Text",
+      "max_length": 500,
+      "description": "Additional report information. Datatype restricted to CBPR_RestrictedFINXMax500Text.",
+      "errors": [
+        {
+          "error_id": "ADDTLRPTINF_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Rpt/AddtlRptInf exceeds 500 characters.",
+          "affected_tags": ["Rpt/AddtlRptInf"],
+          "possible_fixes": [
+            "Truncate to maximum 500 characters."
+          ]
+        }
+      ]
+    },
+
+    {
+      "tag": "SplmtryData",
+      "xml_element": "SplmtryData",
+      "xpath": "/Document/BkToCstmrAcctRpt/SplmtryData",
+      "occurrence": "[0..*]",
+      "mandatory": false,
+      "note": "Removed by CBPR+ SR2025 guideline at message level (R5).",
+      "description": "Message-level Supplementary Data. Removed under CBPR+; must not be present.",
+      "errors": [
+        {
+          "error_id": "SPLMTRYDATA_MSGLEVEL_PRESENT",
+          "error_code": "CBPR_REMOVED_ELEMENTS",
+          "severity": "Fatal",
+          "description": "Message-level SplmtryData is present; it is removed under CBPR+ SR2025.",
+          "affected_tags": ["SplmtryData"],
+          "possible_fixes": [
+            "Remove the message-level SplmtryData block.",
+            "If supplementary data is required, carry it within the appropriate transaction-level structure where allowed."
+          ]
+        }
+      ]
+    }
+  ],
+  "cross_tag_dependency_rules": [
+    {"rule_id": "DEP_001", "rule": "AppHdr/BizMsgIdr must equal GrpHdr/MsgId", "affected_tags": ["AppHdr/BizMsgIdr", "GrpHdr/MsgId"], "fix": "Harvest MsgId from GrpHdr and set BizMsgIdr to same value or vice versa."},
+    {"rule_id": "DEP_002", "rule": "AppHdr/MsgDefIdr must equal 'camt.052.001.08' and match the Document namespace", "affected_tags": ["AppHdr/MsgDefIdr"], "fix": "Set MsgDefIdr to camt.052.001.08."},
+    {"rule_id": "DEP_003", "rule": "AppHdr/CpyDplct must equal Report/CpyDplctInd when both present (CBPR_Copy_Duplicate_FormalRule)", "affected_tags": ["AppHdr/CpyDplct", "Rpt/CpyDplctInd"], "fix": "Align both indicators to the same CopyDuplicate1Code value."},
+    {"rule_id": "DEP_004", "rule": "If CpyDplct is present, Rltd must be present (R1)", "affected_tags": ["AppHdr/CpyDplct", "AppHdr/Rltd"], "fix": "Add the Rltd BAH block when CpyDplct is present, or remove CpyDplct."},
+    {"rule_id": "DEP_005", "rule": "MessagePagination and ReportPagination are mutually exclusive (R4); MsgPgntn is removed under CBPR+", "affected_tags": ["GrpHdr/MsgPgntn", "Rpt/RptPgntn"], "fix": "Remove MsgPgntn; use Rpt/RptPgntn only when bilaterally agreed."},
+    {"rule_id": "DEP_006", "rule": "Report (Rpt) must occur exactly once (max occurrence reduced to 1)", "affected_tags": ["Rpt"], "fix": "Keep a single Rpt; split additional reports into separate messages (subject to bilateral agreement)."},
+    {"rule_id": "DEP_007", "rule": "Report/Account/Currency (Acct/Ccy) is mandatory under CBPR+", "affected_tags": ["Rpt/Acct/Ccy"], "fix": "Populate Acct/Ccy with a valid ISO 4217 code."},
+    {"rule_id": "DEP_008", "rule": "Report/Entry/ValueDate (Ntry/ValDt) is mandatory under CBPR+", "affected_tags": ["Rpt/Ntry/ValDt"], "fix": "Populate Ntry/ValDt with Dt or DtTm."},
+    {"rule_id": "DEP_009", "rule": "Balance/Type ForwardAvailable forbids Availability (R13)", "affected_tags": ["Rpt/Bal/Tp", "Rpt/Bal/Avlbty"], "fix": "Remove Avlbty when balance type is ForwardAvailable."},
+    {"rule_id": "DEP_010", "rule": "BkTxCd requires Domain or Proprietary or both (R14)", "affected_tags": ["Rpt/Ntry/BkTxCd/Domn", "Rpt/Ntry/BkTxCd/Prtry"], "fix": "Provide Domn and/or Prtry inside BkTxCd."},
+    {"rule_id": "DEP_011", "rule": "All amounts must comply with ISO 4217 minor-unit fraction digits (R12)", "affected_tags": ["Rpt/Bal/Amt", "Rpt/Ntry/Amt", "Rpt/TxsSummry/TtlNtries/Sum"], "fix": "Limit fraction digits per currency; use a dot decimal separator."},
+    {"rule_id": "DEP_012", "rule": "If agent FinInstnId/BICFI present, Nm and PstlAdr MUST NOT be present in same block", "affected_tags": ["FinInstnId/BICFI", "FinInstnId/Nm", "FinInstnId/PstlAdr"], "fix": "Remove Nm and PstlAdr when BICFI is present (BICFI takes precedence)."},
+    {"rule_id": "DEP_013", "rule": "If a Debtor/Creditor party AnyBIC present, Name and PstlAdr MUST NOT be present", "affected_tags": ["Dbtr/Id/OrgId/AnyBIC", "Dbtr/Nm", "Dbtr/PstlAdr"], "fix": "Remove Nm and PstlAdr when AnyBIC is present (AnyBIC takes precedence)."},
+    {"rule_id": "DEP_014", "rule": "BrnchId is removed from all agent FinInstnId blocks under CBPR+ SR2025", "affected_tags": ["AppHdr/Fr/FIId/FinInstnId/BrnchId", "AppHdr/To/FIId/FinInstnId/BrnchId", "Rpt/Acct/Svcr/FinInstnId/BrnchId"], "fix": "Remove all BrnchId elements from agent blocks."},
+    {"rule_id": "DEP_015", "rule": "For Copy/Duplicate reports, ElctrncSeqNb and LglSeqNb must equal the original report (CBPR_Copy_Duplicate_Indicator_TextualRule)", "affected_tags": ["Rpt/CpyDplctInd", "Rpt/ElctrncSeqNb", "Rpt/LglSeqNb"], "fix": "Set ElctrncSeqNb and LglSeqNb to the original report's values when CpyDplctInd indicates COPY/DUPL."},
+    {"rule_id": "DEP_016", "rule": "Each ReportEntry should carry at least one reference to identify the underlying transaction(s)", "affected_tags": ["Rpt/Ntry/NtryRef", "Rpt/Ntry/NtryDtls/TxDtls/Refs"], "fix": "Populate NtryRef or a reference within NtryDtls/TxDtls/Refs (EndToEndId, TxId, UETR)."}
+  ],
+  "tag_insertion_order": {
+    "AppHdr": ["CharSet", "Fr", "To", "BizMsgIdr", "MsgDefIdr", "BizSvc", "MktPrctc", "CreDt", "CpyDplct", "PssblDplct", "Prty", "Rltd"],
+    "BkToCstmrAcctRpt": ["GrpHdr", "Rpt"],
+    "GrpHdr": ["MsgId", "CreDtTm", "MsgRcpt", "OrgnlBizQry", "AddtlInf"],
+    "Rpt": ["Id", "RptPgntn", "ElctrncSeqNb", "RptgSeq", "LglSeqNb", "CreDtTm", "FrToDt", "CpyDplctInd", "RptgSrc", "Acct", "RltdAcct", "Intrst", "Bal", "TxsSummry", "Ntry", "AddtlRptInf"],
+    "Acct": ["Id", "Tp", "Ccy", "Nm", "Prxy", "Ownr", "Svcr"],
+    "Bal": ["Tp", "CdtLine", "Amt", "CdtDbtInd", "Dt", "Avlbty"],
+    "Ntry": ["NtryRef", "Amt", "CdtDbtInd", "RvslInd", "Sts", "BookgDt", "ValDt", "AcctSvcrRef", "Avlbty", "BkTxCd", "ComssnWvrInd", "AddtlInfInd", "AmtDtls", "Chrgs", "TechInptChanl", "Intrst", "CardTx", "NtryDtls", "AddtlNtryInf"]
+  }
+}

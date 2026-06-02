@@ -455,6 +455,11 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                     # different schemas; this is a frequent integration/routing bug.
                     self._validate_apphdr_payload_match(xml_content, report)
 
+                    # KB-driven cross-tag dependency rules (resources/KB/<family>.json),
+                    # e.g. BizMsgIdr must equal GrpHdr/MsgId. Enforces documented CBPR+
+                    # rules not covered elsewhere; dedup-guarded so it never double-reports.
+                    self._validate_kb_dependency_rules(xml_content, report, detected_type)
+
                     # SWIFT CBPR+ Rule: pain.008 GrpHdr must contain FwdgAgt.
                     # Base XSD declares FwdgAgt optional, but SWIFT MyStandards
                     # promotes it to mandatory for cross-border direct debits.
@@ -1174,6 +1179,64 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                     "For consistency, use the same UTC offset in both header and payload "
                     "timestamps (e.g. both '+00:00' or both '+05:30')."
                 ))
+
+    def _validate_kb_dependency_rules(self, xml_content: str, report: ValidationReport,
+                                       message_type: str) -> None:
+        """
+        Enforce cross-tag dependency rules documented in resources/KB/<family>.json
+        that are not already covered by the dedicated validators above.
+
+        Currently enforces:
+          • CBPR_BIZ_MSG_IDR / DEP_001 — AppHdr/BizMsgIdr must equal GrpHdr/MsgId.
+
+        The rule set is driven by the KB (we only emit a check when the KB for this
+        message family actually declares the rule), and every issue is dedup-guarded
+        against the existing report so it can never double-report.
+        """
+        try:
+            from app.services.fix_suggester import _KBContext
+        except Exception:
+            return
+        kb = _KBContext.get(message_type or "")
+        if kb is None:
+            return
+
+        try:
+            parser = etree.XMLParser(recover=True, no_network=True, resolve_entities=False)
+            root = etree.fromstring(xml_content.encode("utf-8"), parser)
+        except Exception:
+            return
+        if root is None:
+            return
+
+        existing_codes = {i.get("code") for i in report.issues}
+
+        # ── BizMsgIdr == GrpHdr/MsgId ─────────────────────────────────────────
+        rule_declared = (
+            any(fr.get("rule_id") == "CBPR_BIZ_MSG_IDR" for fr in kb.formal_rules)
+            or any("BizMsgIdr" in r.get("rule", "") and "MsgId" in r.get("rule", "")
+                   for r in kb.dependency_rules)
+        )
+        if rule_declared and "BIZMSGIDR_NEQ_MSGID" not in existing_codes:
+            biz_el = root.find(".//{*}BizMsgIdr")
+            # GrpHdr/MsgId specifically — the documented counterpart. Messages
+            # that carry their identifier elsewhere (e.g. camt.055 Assgnmt/Id)
+            # simply aren't checked here, avoiding false positives.
+            msgid_el = root.find(".//{*}GrpHdr/{*}MsgId")
+            if biz_el is not None and msgid_el is not None:
+                bv = (biz_el.text or "").strip()
+                mv = (msgid_el.text or "").strip()
+                if bv and mv and bv != mv:
+                    # Emitted as Layer 2 (like the other AppHdr cross-field checks)
+                    # so it surfaces even when Layer 2 schema errors are present and
+                    # isn't dropped by the Layer-3 SKIPPED cleanup.
+                    report.add_issue(ValidationIssue(
+                        "ERROR", 2, "BIZMSGIDR_NEQ_MSGID", "/AppHdr/BizMsgIdr",
+                        f"AppHdr/BizMsgIdr '{bv}' must equal GrpHdr/MsgId '{mv}'.",
+                        "Set <BizMsgIdr> to the same value as GrpHdr/MsgId "
+                        f"(i.e. '{mv}'). Always harvest from MsgId rather than inventing a value.",
+                        line=biz_el.sourceline
+                    ))
 
     def _validate_pain008_fwdgagt_rule(self, xml_content: str, report: ValidationReport) -> None:
         """
