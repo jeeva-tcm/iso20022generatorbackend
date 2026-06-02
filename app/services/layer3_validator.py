@@ -429,66 +429,189 @@ class Layer3Mixin:
         # 2. Logic Based Rules
         else:
             condition = rule.get("condition", "True")
-            if not self._evaluate_expression(condition, data, line_map, codelists=codelists, report=report):
-                return
-
             error_msg = rule.get("errorMessage", desc)
             fix_suggestion = rule.get("fix", "")
+            expr = rule.get("expression")
+
+            # Detect if this is a transaction-scoped rule BEFORE global condition check
+            is_transaction_scoped = (expr and ("all_unique" in expr or "values" in expr) and
+                                   "CdtTrfTxInf" in expr and "InstrForCdtrAgt" in expr)
+
+            # For non-transaction-scoped rules, check condition globally first
+            if not is_transaction_scoped:
+                if not self._evaluate_expression(condition, data, line_map, codelists=codelists, report=report):
+                    return
 
             for field in rule.get("mandatory_fields", []):
                 if not self._evaluate_expression(f"exists({field})", data, line_map, codelists=codelists, report=report):
                     report.add_issue(ValidationIssue(severity, layer, rule_id, field, error_msg, fix_suggestion, line=_get_line_num(field)))
 
-            expr = rule.get("expression")
             if expr:
                 rule_meta = {"severity": severity, "layer": layer, "rule_id": rule_id, "desc": desc}
-                if not self._evaluate_expression(expr, data, line_map, KEY="", rule_meta=rule_meta, codelists=codelists, report=report):
-                     fallback_line_str = _find_fallback_line(rule)
-                     fallback_line = int(fallback_line_str) if fallback_line_str.isdigit() else None
-                     
-                     # Try to find a path to display
-                     extracted_path = "/"
-                     for field in ["expression", "condition", "selector"]:
-                         val = rule.get(field)
-                         if val and isinstance(val, str):
-                             paths = re.findall(r'\b(?:Document|AppHdr)(?:\.[a-zA-Z0-9_\[\]]+)+', val)
-                             if paths:
-                                 extracted_path = paths[0]
-                                 break
-                     
-                     if extracted_path == "/":
-                         # Fallback path extraction: look for tags in the rule's expression/condition/selector
-                         for field in ["expression", "condition", "selector"]:
-                             val = rule.get(field)
-                             if val and isinstance(val, str):
-                                 # Find all words that look like tags (e.g., camelCase or uppercase start)
-                                 words = re.findall(r'\b[A-Z][a-zA-Z0-9_]+\b', val)
-                                 found_path = False
-                                 for word in words:
-                                     # Avoid matching common Python functions or keywords
-                                     if word in ["True", "False", "None", "DATA", "any", "all", "re", "match", "search"]:
-                                         continue
-                                     # Look for a key in data that contains this word
-                                     for key in data.keys():
-                                         if f".{word}" in key or key == word or key.startswith(word + "."):
-                                             # Truncate key up to this word
-                                             parts = key.split('.')
-                                             for idx, part in enumerate(parts):
-                                                 # Strip index for matching
-                                                 part_clean = part.split('[')[0]
-                                                 if part_clean == word:
-                                                    extracted_path = '.'.join(parts[:idx+1])
-                                                    extracted_path = re.sub(r'\[\d+\]', '', extracted_path)
-                                                    found_path = True
+
+                # Handle transaction-scoped aggregate rules (e.g., CBPR_R36, R13, R14)
+                # These rules need to be evaluated separately for each CdtTrfTxInf transaction
+                if is_transaction_scoped:
+                    # Extract transaction paths from data
+                    # CdtTrfTxInf may or may not have an index depending on whether there are multiple transactions
+                    tx_pattern_indexed = re.compile(r'^Document\.FIToFICstmrCdtTrf(?:\[\d+\])?\.CdtTrfTxInf\[(\d+)\]')
+                    tx_pattern_single = re.compile(r'^Document\.FIToFICstmrCdtTrf(?:\[\d+\])?\.CdtTrfTxInf\.')
+                    tx_indices = set()
+
+                    # First try to find explicitly indexed transactions
+                    for key in data.keys():
+                        match = tx_pattern_indexed.match(key)
+                        if match:
+                            tx_indices.add(int(match.group(1)))
+
+                    # If no indexed transactions found, check for single transaction (no index)
+                    if not tx_indices:
+                        for key in data.keys():
+                            if tx_pattern_single.match(key):
+                                tx_indices.add(0)  # Use index 0 for single transaction
+                                break
+
+                    # Evaluate rule separately for each transaction
+                    rule_failed = False
+                    for tx_idx in sorted(tx_indices):
+                        # Create filtered data for this transaction only
+                        if tx_idx == 0 and not any(k.startswith('Document.FIToFICstmrCdtTrf[0].CdtTrfTxInf[0]') for k in data.keys()):
+                            # Single transaction case (no explicit indices)
+                            tx_prefix = "Document.FIToFICstmrCdtTrf.CdtTrfTxInf."
+                        else:
+                            # Multiple transactions case (explicit indices)
+                            tx_prefix = f"Document.FIToFICstmrCdtTrf[0].CdtTrfTxInf[{tx_idx}]"
+                        tx_data = {k: v for k, v in data.items() if k.startswith(tx_prefix)}
+
+                        if not tx_data:
+                            continue
+
+                        # Rewrite condition and expression for multi-transaction messages
+                        # (single transaction case needs no rewriting — paths are already correct)
+                        is_single_tx = len(tx_indices) == 1 and 0 in tx_indices
+
+                        def rewrite_path_expr(expr_str, tx_idx, is_single_tx):
+                            if is_single_tx:
+                                return expr_str  # no index substitution needed
+                            # Replace generic paths with transaction-specific indexed paths
+                            result = expr_str.replace(
+                                "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstrForCdtrAgt.Cd",
+                                f"Document.FIToFICstmrCdtTrf[0].CdtTrfTxInf[{tx_idx}].InstrForCdtrAgt.Cd"
+                            )
+                            result = result.replace(
+                                "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstrForCdtrAgt",
+                                f"Document.FIToFICstmrCdtTrf[0].CdtTrfTxInf[{tx_idx}].InstrForCdtrAgt"
+                            )
+                            return result
+
+                        tx_expr = rewrite_path_expr(expr, tx_idx, is_single_tx)
+                        tx_condition = rewrite_path_expr(condition, tx_idx, is_single_tx)
+
+                        # Evaluate condition for this transaction
+                        if not self._evaluate_expression(tx_condition, tx_data, line_map, codelists=codelists, report=report):
+                            continue
+
+                        # Evaluate expression for this transaction
+                        if not self._evaluate_expression(tx_expr, tx_data, line_map, KEY="", rule_meta=rule_meta, codelists=codelists, report=report):
+                            rule_failed = True
+                            break
+
+                    if rule_failed:
+                        fallback_line_str = _find_fallback_line(rule)
+                        fallback_line = int(fallback_line_str) if fallback_line_str.isdigit() else None
+
+                        # Try to find a path to display
+                        extracted_path = "/"
+                        for field in ["expression", "condition", "selector"]:
+                            val = rule.get(field)
+                            if val and isinstance(val, str):
+                                paths = re.findall(r'\b(?:Document|AppHdr)(?:\.[a-zA-Z0-9_\[\]]+)+', val)
+                                if paths:
+                                    extracted_path = paths[0]
+                                    break
+
+                        if extracted_path == "/":
+                            # Fallback path extraction: look for tags in the rule's expression/condition/selector
+                            for field in ["expression", "condition", "selector"]:
+                                val = rule.get(field)
+                                if val and isinstance(val, str):
+                                    # Find all words that look like tags (e.g., camelCase or uppercase start)
+                                    words = re.findall(r'\b[A-Z][a-zA-Z0-9_]+\b', val)
+                                    found_path = False
+                                    for word in words:
+                                        # Avoid matching common Python functions or keywords
+                                        if word in ["True", "False", "None", "DATA", "any", "all", "re", "match", "search"]:
+                                            continue
+                                        # Look for a key in data that contains this word
+                                        for key in data.keys():
+                                            if f".{word}" in key or key == word or key.startswith(word + "."):
+                                                # Truncate key up to this word
+                                                parts = key.split('.')
+                                                for idx, part in enumerate(parts):
+                                                    # Strip index for matching
+                                                    part_clean = part.split('[')[0]
+                                                    if part_clean == word:
+                                                        extracted_path = '.'.join(parts[:idx+1])
+                                                        extracted_path = re.sub(r'\[\d+\]', '', extracted_path)
+                                                        found_path = True
+                                                        break
+                                                if found_path:
                                                     break
-                                             if found_path:
-                                                 break
-                                     if found_path:
-                                         break
-                             if extracted_path != "/":
-                                 break
-                     
-                     report.add_issue(ValidationIssue(severity, layer, rule_id, extracted_path, error_msg, fix_suggestion, line=fallback_line))
+                                        if found_path:
+                                            break
+                                if extracted_path != "/":
+                                    break
+
+                        report.add_issue(ValidationIssue(severity, layer, rule_id, extracted_path, error_msg, fix_suggestion, line=fallback_line))
+                else:
+                    # Non-transaction-scoped rules evaluated once for entire data
+                    if not self._evaluate_expression(expr, data, line_map, KEY="", rule_meta=rule_meta, codelists=codelists, report=report):
+                        fallback_line_str = _find_fallback_line(rule)
+                        fallback_line = int(fallback_line_str) if fallback_line_str.isdigit() else None
+
+                        # Try to find a path to display
+                        extracted_path = "/"
+                        for field in ["expression", "condition", "selector"]:
+                            val = rule.get(field)
+                            if val and isinstance(val, str):
+                                paths = re.findall(r'\b(?:Document|AppHdr)(?:\.[a-zA-Z0-9_\[\]]+)+', val)
+                                if paths:
+                                    extracted_path = paths[0]
+                                    break
+
+                        if extracted_path == "/":
+                            # Fallback path extraction: look for tags in the rule's expression/condition/selector
+                            for field in ["expression", "condition", "selector"]:
+                                val = rule.get(field)
+                                if val and isinstance(val, str):
+                                    # Find all words that look like tags (e.g., camelCase or uppercase start)
+                                    words = re.findall(r'\b[A-Z][a-zA-Z0-9_]+\b', val)
+                                    found_path = False
+                                    for word in words:
+                                        # Avoid matching common Python functions or keywords
+                                        if word in ["True", "False", "None", "DATA", "any", "all", "re", "match", "search"]:
+                                            continue
+                                        # Look for a key in data that contains this word
+                                        for key in data.keys():
+                                            if f".{word}" in key or key == word or key.startswith(word + "."):
+                                                # Truncate key up to this word
+                                                parts = key.split('.')
+                                                for idx, part in enumerate(parts):
+                                                    # Strip index for matching
+                                                    part_clean = part.split('[')[0]
+                                                    if part_clean == word:
+                                                        extracted_path = '.'.join(parts[:idx+1])
+                                                        extracted_path = re.sub(r'\[\d+\]', '', extracted_path)
+                                                        found_path = True
+                                                        break
+                                                if found_path:
+                                                    break
+                                        if found_path:
+                                            break
+                                if extracted_path != "/":
+                                    break
+
+                        report.add_issue(ValidationIssue(severity, layer, rule_id, extracted_path, error_msg, fix_suggestion, line=fallback_line))
 
     def _evaluate_expression(self, expr: str, data: Dict[str, Any], line_map: Dict[str, int] = None, VALUE: Any = None, KEY: str = "", rule_meta: Dict[str, Any] = None, codelists: Dict[str, Any] = None, report: ValidationReport = None) -> bool:
         """
@@ -508,6 +631,21 @@ class Layer3Mixin:
                 return "True" if any(re.match(f"^{regex_path}(\\[\\d+\\])?(\\..*)?$", k) for k in data.keys()) else "False"
             # Return original string to be handled by the 'exists' lambda in eval()
             return match.group(0)
+
+        def all_unique(path):
+            path = path.strip("\"'")
+            escaped = [p.replace("[", "\\[").replace("]", "\\]") for p in path.split('.')]
+            regex_path = r'(\[\d+\])?\.'.join(escaped)
+            pattern = re.compile(f"^{regex_path}(\\[\\d+\\])?$")
+            value_list = [data[k] for k in data.keys() if pattern.match(k)]
+            return len(value_list) == len(set(str(v) for v in value_list))
+
+        def values(path):
+            path = path.strip("\"'")
+            escaped = [p.replace("[", "\\[").replace("]", "\\]") for p in path.split('.')]
+            regex_path = r'(\[\d+\])?\.'.join(escaped)
+            pattern = re.compile(f"^{regex_path}(\\[\\d+\\])?$")
+            return [data[k] for k in data.keys() if pattern.match(k)]
 
         def count_paths(path):
             path = path.strip("\"'")
@@ -710,6 +848,18 @@ class Layer3Mixin:
             # substitution loop cannot corrupt the path string inside the quotes.
             temp_expr = re.sub(r'robust_exists\(([^)]+)\)', robust_exists_sub, expr)
             temp_expr = re.sub(r'(?<!robust_)exists\(([^)]+)\)', exists_sub, temp_expr)
+
+            # Quote unquoted path arguments in all_unique() and values() so that
+            # eval() receives a proper string instead of trying to resolve dotted
+            # names as Python attribute-access chains (which causes a NameError
+            # when the path contains indexed segments like InstrForCdtrAgt[0]).
+            def quote_path_arg(m):
+                func = m.group(1)
+                arg = m.group(2).strip()
+                if (arg.startswith("'") and arg.endswith("'")) or (arg.startswith('"') and arg.endswith('"')):
+                    return m.group(0)  # already quoted
+                return f"{func}('{arg}')"
+            temp_expr = re.sub(r'\b(all_unique|values)\(([^)]+)\)', quote_path_arg, temp_expr)
             
             mandate_date_str = self.config.get("validation_rules", {}).get("cbpr_plus_mandate_date", "2026-11-01T00:00:00")
             try:
@@ -721,10 +871,10 @@ class Layer3Mixin:
                 "float": float, "int": int, "str": str, "len": len, "datetime": datetime,
                 "True": True, "False": False, "None": None, "any": any, "all": all,
                 "VALUE": VALUE, "KEY": KEY, "DATA": data,
-                "check_address": lambda p: check_address(p, data, report, 
-                                                        rule_meta.get("severity", "ERROR"), 
-                                                        rule_meta.get("layer", 3), 
-                                                        rule_meta.get("rule_id", "E001"), 
+                "check_address": lambda p: check_address(p, data, report,
+                                                        rule_meta.get("severity", "ERROR"),
+                                                        rule_meta.get("layer", 3),
+                                                        rule_meta.get("rule_id", "E001"),
                                                         rule_meta.get("desc", "")) if rule_meta else True,
                 "check_bic_match": check_bic_match,
                 "check_purpose_limit": lambda k, v: check_purpose_limit(k, v, data, report, rule_meta),
@@ -735,12 +885,14 @@ class Layer3Mixin:
                 "count": count_paths,
                 "exists_any": exists_any_paths,
                 "all_max_length": all_max_length_paths,
+                "all_unique": all_unique,
+                "values": values,
                 "check_msg_uetr_duplicate": lambda m, u: self._check_msg_uetr_duplicate(m, u, report),
                 "re": re,
                 "MESSAGE_TYPE": report.message_type if report else "Unknown"
             }
             
-            reserved = set(["VALUE", "KEY", "DATA", "True", "False", "None", "exists", "count", "exists_any", "all_max_length", "check_address", "check_bic_match", "datetime", "len", "float", "int", "str", "re"])
+            reserved = set(["VALUE", "KEY", "DATA", "True", "False", "None", "exists", "count", "exists_any", "all_max_length", "all_unique", "values", "check_address", "check_bic_match", "datetime", "len", "float", "int", "str", "re"])
             for key in sorted(data.keys(), key=len, reverse=True):
                 pattern = r'(?<![\'\"])\b' + re.escape(key) + r'\b(?![\'\"])'
                 if re.search(pattern, temp_expr) and key not in reserved:
