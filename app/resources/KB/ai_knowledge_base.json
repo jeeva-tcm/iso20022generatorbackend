@@ -580,6 +580,79 @@
         ]
     },
 
+    "auto_fix_rules": {
+        "_doc": "Declarative repair rules the AI Fix engine reads to auto-fix structural/business validation issues across ALL ISO 20022 message types. Matched by error code OR message regex; the engine applies the named fix_action and revalidates. Add new rules here — no code change required.",
+        "predecessor": [
+            {
+                "id": "INTRMY_ORDER_1",
+                "codes": ["L3_INTRMY_ORDER_1"],
+                "message_pattern": "IntrmyAgt2 cannot exist without IntrmyAgt1",
+                "element": "IntrmyAgt2",
+                "requires": "IntrmyAgt1",
+                "fix_action": "insert_predecessor",
+                "description": "IntrmyAgt2 requires IntrmyAgt1 before it (CBPR+ agent ordering, all payment messages)."
+            },
+            {
+                "id": "INTRMY_ORDER_2",
+                "codes": ["L3_INTRMY_ORDER_2"],
+                "message_pattern": "IntrmyAgt3 cannot exist without IntrmyAgt2",
+                "element": "IntrmyAgt3",
+                "requires": "IntrmyAgt2",
+                "fix_action": "insert_predecessor",
+                "description": "IntrmyAgt3 requires IntrmyAgt2 before it."
+            },
+            {
+                "id": "PRVS_INSTG_ORDER_2",
+                "codes": [],
+                "message_pattern": "PrvsInstgAgt2 cannot exist without PrvsInstgAgt1",
+                "element": "PrvsInstgAgt2",
+                "requires": "PrvsInstgAgt1",
+                "fix_action": "insert_predecessor"
+            },
+            {
+                "id": "PRVS_INSTG_ORDER_3",
+                "codes": [],
+                "message_pattern": "PrvsInstgAgt3 cannot exist without PrvsInstgAgt2",
+                "element": "PrvsInstgAgt3",
+                "requires": "PrvsInstgAgt2",
+                "fix_action": "insert_predecessor"
+            }
+        ],
+        "exclusive": [
+            {
+                "id": "BICFI_EXCLUSIVE",
+                "codes": ["CBPR_COM_R9", "CBPR_AGENT_BICFI_EXCLUSIVE", "DEP_013"],
+                "message_pattern": "BICFI is present.*not allowed",
+                "containers": ["FinInstnId"],
+                "if_present": "BICFI",
+                "remove": ["Nm", "PstlAdr"],
+                "fix_action": "remove_disallowed",
+                "description": "If BICFI is present in FinInstnId, Nm and PstlAdr are not allowed → remove them."
+            },
+            {
+                "id": "ANYBIC_EXCLUSIVE",
+                "codes": ["CBPR_COM_R11"],
+                "message_pattern": "AnyBIC is present.*not allowed",
+                "containers": ["OrgId", "PrvtId", "Id"],
+                "if_present": "AnyBIC",
+                "remove": ["Nm", "PstlAdr"],
+                "fix_action": "remove_disallowed",
+                "description": "If AnyBIC is present, Nm and PstlAdr are not allowed → remove them."
+            }
+        ],
+        "coexistence": [
+            {
+                "id": "NAME_ADDRESS_COEXISTENCE",
+                "codes": ["NAME_ADDRESS_COEXISTENCE", "DEP_014"],
+                "message_pattern": "present together",
+                "elements": ["Nm", "PstlAdr"],
+                "exclusive_with": "BICFI",
+                "fix_action": "coexist_or_remove",
+                "description": "Nm and PstlAdr must both be present; if the block also has BICFI, remove the lone one (exclusivity wins), else add the missing counterpart."
+            }
+        ]
+    },
+
     "dummy_data": {
         "_doc": "High-quality reusable sample values. AI should harvest from the live document first and only fall back to this dictionary when the document has no matching value.",
 

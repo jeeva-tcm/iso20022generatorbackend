@@ -127,6 +127,82 @@ def _kb_get(path: str, default: Any = None) -> Any:
     return cur
 
 
+# ── KB-folder per-message validation KBs (cached) ─────────────────────────────
+# resources/KB/<msg>_cbprplus_sr2025_validation_kb.json is the authoritative
+# reference for each tag's datatype and expected value. Consulted to generate
+# schema-valid leaf values (e.g. DtOfSgntr is ISODate, not 'SMPL-...').
+
+_KB_FOLDER_CACHE: Dict[str, Any] = {}
+
+
+def _kb_folder_name(msg_type: str, xml: str = "") -> Optional[str]:
+    if not msg_type:
+        return None
+    if msg_type.startswith("pacs.009"):
+        is_cov = ("cov" in msg_type.lower() or "cov" in xml.lower()
+                  or "swift.cbprplus.cov" in xml.lower())
+        return ("pacs009_cov_cbprplus_sr2025_validation_kb.json" if is_cov
+                else "pacs009_cbprplus_sr2025_validation_kb.json")
+    if msg_type.startswith("pacs.003"):
+        return "pacs003_cbprplus_sr2025_validation_kb.json"
+    return None
+
+
+def _load_kb_folder(msg_type: str, xml: str = "") -> Dict[str, Any]:
+    name = _kb_folder_name(msg_type, xml)
+    if not name:
+        return {}
+    if name in _KB_FOLDER_CACHE:
+        return _KB_FOLDER_CACHE[name]
+    path = os.path.normpath(
+        os.path.join(os.path.dirname(__file__), "..", "resources", "KB", name)
+    )
+    try:
+        with open(path, "r", encoding="utf-8-sig") as f:
+            _KB_FOLDER_CACHE[name] = json.load(f)
+    except Exception as e:
+        logger.warning(f"[FixSuggester] KB folder load failed for {name}: {e}")
+        _KB_FOLDER_CACHE[name] = {}
+    return _KB_FOLDER_CACHE[name]
+
+
+def _value_for_datatype(dt: str) -> Optional[str]:
+    """Generate a schema-valid leaf value for a KB-declared datatype."""
+    from datetime import date, datetime, timezone
+    dt = (dt or "").lower()
+    if "datetime" in dt:
+        return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+    if "date" in dt:
+        return date.today().isoformat()
+    if "decimal" in dt or "amount" in dt:
+        return "0.00"
+    if "uuid" in dt:
+        return str(uuid.uuid4())
+    return None
+
+
+def _kb_folder_leaf_value(tag_name: str, msg_type: str, xml: str = "") -> Optional[str]:
+    """Authoritative leaf value for a tag from the KB folder: expected_value,
+    first valid_value, or a value derived from the declared datatype. None when
+    the KB has no entry yielding a concrete value."""
+    kb = _load_kb_folder(msg_type, xml)
+    for entry in kb.get("tags", []):
+        xml_el = entry.get("xml_element") or entry.get("tag", "").split("/")[-1]
+        if xml_el != tag_name:
+            continue
+        ev = entry.get("expected_value")
+        if ev:
+            return str(ev)
+        vv = entry.get("valid_values")
+        if isinstance(vv, list) and vv:
+            return str(vv[0])
+        dt = entry.get("datatype")
+        if dt:
+            return _value_for_datatype(dt)
+        return None
+    return None
+
+
 # ── Enterprise KB (swift_mx_enterprise_llm_kb.json) — cached, app-wide ───────
 # 17-module knowledge base with per-message field_rules, dependency_rules,
 # error_resolution_rules, tag_templates, and shared dummy data.
@@ -646,10 +722,16 @@ def _detect_msg_type(xml: str) -> str:
     Format: <family>.<message_no>.<variant>.<version>
             letters . digits . digits . digits
     """
-    # Match family.NNN.NNN.NN where family is lowercase letters
-    m = re.search(r"([a-z]+\.\d{2,3}\.\d{3}\.\d{2})", xml)
-    if m:
-        return m.group(1)
+    # A header-wrapped message contains BOTH the BAH type (head.001.001.0x,
+    # which appears first) and the actual Document message type. Always prefer
+    # the business message type — otherwise every message-specific lookup (KB
+    # folder, rules index, templates) would key off 'head.*'.
+    matches = re.findall(r"([a-z]+\.\d{2,3}\.\d{3}\.\d{2})", xml)
+    for mt in matches:
+        if not mt.startswith("head."):
+            return mt
+    if matches:
+        return matches[0]
     # Looser fallback: family.NNN (e.g. just pacs.008)
     m = re.search(r"([a-z]+\.\d{2,3})", xml)
     return m.group(1) if m else ""
@@ -850,16 +932,95 @@ class _XsdTypeMap:
             if not tn:
                 continue
             enums = [e.get("value") for e in st.findall(f".//{{{XS}}}enumeration") if e.get("value")]
-            self.type_info[tn] = {"kind": "simple", "children": [], "attrs": [], "enums": enums}
+            restr = st.find(f"{{{XS}}}restriction")
+            base  = restr.get("base", "") if restr is not None else ""
+            self.type_info[tn] = {"kind": "simple", "children": [], "attrs": [],
+                                   "enums": enums, "base": base}
 
     def get_child_type(self, parent_type: str, child_name: str) -> Optional[str]:
         return self.local_type.get((parent_type, child_name)) or self.element_type.get(child_name)
+
+    def type_of_path(self, path_locals: list) -> Optional[str]:
+        """Resolve the XSD type of the element addressed by a list of local
+        names (e.g. ['Document','FIToFICstmrDrctDbt','DrctDbtTxInf','PmtId']).
+
+        ISO 20022 XSDs declare a single global element (Document) and nest every
+        other element as a *local* element keyed by its parent TYPE — so a
+        name-only lookup resolves nothing. We instead walk the type chain from
+        the root through local_type. Works for every MX message schema.
+        """
+        if not path_locals:
+            return None
+        parts = list(path_locals)
+        # Anchor on the first part that is a known global element (handles
+        # wrapper roots like RequestPayload/AppHdr or AppHdr/Document/...).
+        anchor = next((i for i, p in enumerate(parts) if p in self.element_type), None)
+        if anchor is not None:
+            cur  = self.element_type[parts[anchor]]
+            rest = parts[anchor + 1:]
+        elif len(self.element_type) == 1:
+            cur  = next(iter(self.element_type.values()))  # anchor on sole root
+            rest = parts
+        else:
+            return None
+        for child in rest:
+            cur = self.local_type.get((cur, child))
+            if cur is None:
+                return None
+        return cur
+
+    def order_for_type(self, type_name: Optional[str]) -> list:
+        """Return the child element order for a sequence complexType, or []."""
+        info = self.type_info.get(type_name or "", {})
+        if info.get("kind") == "sequence":
+            return [c["name"] for c in info.get("children", [])]
+        return []
 
     @classmethod
     def get(cls, xsd_path: str) -> "_XsdTypeMap":
         if xsd_path not in cls._cache:
             cls._cache[xsd_path] = _XsdTypeMap(xsd_path)
         return cls._cache[xsd_path]
+
+
+def _xsd_simple_value(name: str, type_name: str, info: dict) -> Optional[str]:
+    """Generate a schema-valid value for an XSD simpleType leaf, derived from
+    its restriction base (xs:date, xs:dateTime, xs:decimal, xs:boolean, ...),
+    its enumerations, or name/type heuristics. Returns None so the caller can
+    fall back to a generic token for plain free-text types.
+
+    This is what makes XSD-driven construction datatype-aware for ALL message
+    types — e.g. an ISODate leaf becomes a real date instead of 'SMPL-...'.
+    """
+    enums = info.get("enums") or []
+    if enums:
+        return enums[0]
+    base = (info.get("base") or "").split(":")[-1].lower()
+    from datetime import date, datetime, timezone
+    if base == "datetime":
+        return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+    if base == "date":
+        return date.today().isoformat()
+    if base in ("decimal", "double", "float"):
+        return "0"
+    if base in ("integer", "nonnegativeinteger", "positiveinteger", "int", "long"):
+        return "1"
+    if base == "boolean":
+        return "true"
+    if base == "gyear":
+        return str(date.today().year)
+    if base == "gyearmonth":
+        return date.today().strftime("%Y-%m")
+    # String-ish types: reuse known field examples (BICFI, IBAN, Ctry, Ccy, ...)
+    ex = (_kb_field_constraint(name) or {}).get("example")
+    if ex:
+        return ex
+    tnl = (type_name or "").lower()
+    if "bic" in tnl:                          return "DEUTDEFFXXX"
+    if "iban" in tnl:                         return "GB29NWBK60161331926819"
+    if "countrycode" in tnl:                  return "US"
+    if "currencycode" in tnl or "currency" in tnl: return "USD"
+    return None
 
 
 def _xsd_build(name: str, type_name: str, tmap: Optional[_XsdTypeMap], ns: str, depth: int = 0) -> Optional[etree._Element]:
@@ -871,8 +1032,8 @@ def _xsd_build(name: str, type_name: str, tmap: Optional[_XsdTypeMap], ns: str, 
     info = tmap.type_info.get(type_name, {})
     kind = info.get("kind", "")
     if kind == "simple":
-        enums = info.get("enums", [])
-        el.text = enums[0] if enums else f"SMPL-{name}"
+        v = _xsd_simple_value(name, type_name, info)
+        el.text = v if v is not None else f"SMPL-{name}"
         return el
     if kind == "simpleContent":
         el.text = "0.00" if "Amount" in type_name else "SMPL"
@@ -1390,19 +1551,55 @@ class FixSuggester:
     # ── XSD loading ───────────────────────────────────────────────────────────
 
     def _get_xsd_path(self, xml: str) -> Optional[str]:
-        m = re.search(r"urn:iso:[^\"\':\s]+:((?:[a-z]+\.){2,3}\d+)", xml)
-        if not m:
+        """Resolve the Document message XSD for any MX type, version-blind.
+
+        Messages frequently declare an older version than the XSD library ships
+        (e.g. pacs.003.001.08 vs pacs.003.001.11.xsd). We resolve the message
+        type robustly, try an exact file, then fall back to the highest
+        available <family>.<msg>.<variant>.* version. This unlocks schema-aware
+        fixing for every message type with an XSD on disk (acmt, admi, camt,
+        pacs, pain, sese, reda, …).
+        """
+        msg_type = _detect_msg_type(xml)
+        if not msg_type:
             return None
-        msg_type = m.group(1)
         xsd_dir = os.path.normpath(
             os.path.join(os.path.dirname(__file__), "..", "..", "xsds", "extracted")
         )
+        if not os.path.isdir(xsd_dir):
+            return None
         exact = os.path.join(xsd_dir, f"{msg_type}.xsd")
         if os.path.exists(exact):
             return exact
         try:
-            prefix = ".".join(msg_type.split(".")[:3])
-            cands = [f for f in os.listdir(xsd_dir) if f.startswith(prefix) and f.endswith(".xsd")]
+            parts = msg_type.split(".")
+            # Match on family.msg.variant (e.g. 'pacs.003.001'); pick newest version.
+            prefix = ".".join(parts[:3]) if len(parts) >= 3 else msg_type
+            cands = [f for f in os.listdir(xsd_dir)
+                     if f.startswith(prefix + ".") and f.endswith(".xsd")]
+            if cands:
+                return os.path.join(xsd_dir, sorted(cands, reverse=True)[0])
+        except Exception:
+            pass
+        return None
+
+    def _get_apphdr_xsd_path(self, xml: str) -> Optional[str]:
+        """Resolve the Business Application Header (head.001) XSD for AppHdr/*
+        fixes. Prefers the exact version declared by the AppHdr namespace, else
+        the newest head.001.001.* on disk."""
+        xsd_dir = os.path.normpath(
+            os.path.join(os.path.dirname(__file__), "..", "..", "xsds", "extracted")
+        )
+        if not os.path.isdir(xsd_dir):
+            return None
+        m = re.search(r"head\.001\.001\.\d{2}", xml)
+        if m:
+            exact = os.path.join(xsd_dir, f"{m.group(0)}.xsd")
+            if os.path.exists(exact):
+                return exact
+        try:
+            cands = [f for f in os.listdir(xsd_dir)
+                     if f.startswith("head.001.001.") and f.endswith(".xsd")]
             if cands:
                 return os.path.join(xsd_dir, sorted(cands, reverse=True)[0])
         except Exception:
@@ -1590,19 +1787,28 @@ class FixSuggester:
             except Exception:
                 pass
 
-        # 3. XSD type map
+        # 3. XSD type map — resolve the element's type via its full path. ISO
+        #    XSDs nest local elements by parent type, so path resolution (not a
+        #    name-only lookup) is required for the type map to apply at all.
         if tmap:
-            type_name = tmap.element_type.get(tag_name, tag_name)
+            type_name = None
+            if path_parts:
+                type_name = tmap.type_of_path(path_parts)
+            if not type_name:
+                type_name = tmap.element_type.get(tag_name, tag_name)
             el = _xsd_build(tag_name, type_name, tmap, ns)
             if el is not None and (el.text or len(el)):
                 if existing_parent is not None and len(el):
                     el = self._prune_duplicate_children(el, existing_parent)
                 return el
 
-        # 4. Minimal leaf
+        # 4. Minimal leaf — prefer the KB-folder authoritative value
+        #    (datatype / expected_value / valid_values) so typed leaves like
+        #    DtOfSgntr (ISODate) get a real value instead of 'SMPL-...'.
         tag = f"{{{ns}}}{tag_name}" if ns else tag_name
         leaf = etree.Element(tag)
-        leaf.text = self._placeholder(tag_name)
+        kb_val = _kb_folder_leaf_value(tag_name, msg_type)
+        leaf.text = kb_val if kb_val is not None else self._placeholder(tag_name)
         return leaf
 
     def _harvest_value(self, root: Optional[etree._Element], tag_name: str) -> Optional[str]:
@@ -1870,12 +2076,22 @@ class FixSuggester:
         # (the exact "it changes tags and makes new errors" complaint). Without
         # an LLM we deliberately decline rather than corrupt the document:
         # return low confidence so the UI shows guidance, not a bad auto-fix.
+        # ── Element-ordering / structural-position errors ────────────────────
+        # "X is not expected here ... One of the following elements is expected:
+        # A, B." means a mandatory element is missing before X (or siblings are
+        # out of XSD order). We FIRST attempt a schema-driven reconstruction:
+        # insert the missing mandatory element(s) named by the schema and
+        # reorder the parent to the XSD sequence (see _try_sequence_fix). Only
+        # if the schema cannot resolve it do we decline (low confidence) rather
+        # than risk corrupting the document with a guessed reorder.
         _msg_lc_early = (msg + " " + fix_hint).lower()
         if any(s in _msg_lc_early for s in (
             "not expected at this position",
             "not expected here",
             "is not allowed here",
             "not allowed in this context",
+            "following element",
+            "missing before",
         )):
             # A mandatory sibling that must precede this element may have been
             # deleted entirely (e.g. AppHdr/Fr removed → <To> trips this error).
@@ -1919,11 +2135,27 @@ class FixSuggester:
 
         ns = etree.QName(root.tag).namespace or ""
 
-        # Load XSD and rules index once per XML (cached)
-        xsd_path  = self._get_xsd_path(xml)
+        # Load XSD and rules index once per XML (cached). AppHdr/* elements are
+        # defined by the Business Application Header (head.001) schema, not the
+        # Document message schema — pick the right one so AppHdr fixes are also
+        # schema-driven (e.g. AppHdr/CreDt is ISODateTime, ordered Fr→To→…→CreDt).
+        targets_apphdr = path.replace("/", ".").strip(".").split(".")[:1] == ["AppHdr"]
+        xsd_path  = (self._get_apphdr_xsd_path(xml) if targets_apphdr
+                     else self._get_xsd_path(xml))
         tmap      = _XsdTypeMap.get(xsd_path) if xsd_path else None
         msg_type  = _detect_msg_type(xml)
         rules_idx = _RulesIndex.get(msg_type) if msg_type else None
+
+        # ── Cross-field dependency rules (BICFI/AnyBIC exclusivity, Name/Address
+        #    coexistence) report a line number or "/" path — not the offending
+        #    element — so resolve and repair the block directly from the rule. ──
+        pred_fix = self._fix_missing_predecessor(root, xml, code, msg, msg_type)
+        if pred_fix is not None:
+            return pred_fix
+
+        dep_fix = self._try_dependency_fix(root, path, code, msg, msg_type, tmap)
+        if dep_fix is not None:
+            return dep_fix
 
         # If the issue's fix_hint is empty, try to pull `fix` from the matching
         # rule so downstream value-extraction has something to work with.
@@ -2043,7 +2275,8 @@ class FixSuggester:
         # Insert the new child in the correct position based on XSD sequence order.
         # Fallback: append (safe default).
         parent_copy = self._copy(parent_el)
-        insert_idx  = self._find_insert_index(parent_copy, missing_tag, tmap)
+        insert_idx  = self._find_insert_index(parent_copy, missing_tag, tmap,
+                                              parent_path=parts[:-1])
         if insert_idx is None:
             parent_copy.append(child_el)
         else:
@@ -2173,9 +2406,12 @@ class FixSuggester:
 
         # Append the built subtree to a copy of anchor
         anchor_copy = self._copy(anchor_el)
+        anchor_path = (path_parts[:-(len(missing_chain) + 1)]
+                       if path_parts and len(path_parts) > len(missing_chain)
+                       else None)
         insert_idx  = self._find_insert_index(anchor_copy,
                                                etree.QName(inner.tag).localname,
-                                               tmap)
+                                               tmap, parent_path=anchor_path)
         if insert_idx is None:
             anchor_copy.append(inner)
         else:
@@ -2192,15 +2428,21 @@ class FixSuggester:
 
     def _find_insert_index(self, parent_copy: etree._Element,
                             new_tag: str,
-                            tmap: Optional[_XsdTypeMap]) -> Optional[int]:
+                            tmap: Optional[_XsdTypeMap],
+                            parent_path: Optional[list[str]] = None) -> Optional[int]:
         """
         Determine the correct insertion index for new_tag inside parent_copy,
-        based on XSD sequence order. Returns None if order cannot be determined.
+        based on XSD sequence order. The parent's type is resolved via its path
+        (ISO XSDs key local elements by parent type, so a name-only lookup
+        fails); falls back to a global-element lookup. Returns None if order
+        cannot be determined (caller appends).
         """
         if not tmap:
             return None
-        parent_local = etree.QName(parent_copy.tag).localname
-        parent_type  = tmap.element_type.get(parent_local)
+        parent_type = tmap.type_of_path(parent_path) if parent_path else None
+        if not parent_type:
+            parent_local = etree.QName(parent_copy.tag).localname
+            parent_type  = tmap.element_type.get(parent_local)
         if not parent_type:
             return None
         info = tmap.type_info.get(parent_type, {})
@@ -2481,6 +2723,358 @@ class FixSuggester:
             return el.text.strip()[:max_len]
 
         return self._placeholder(tag_name)
+
+    def _local_name_path(self, el: etree._Element) -> list:
+        """Return the local-name path from the document root to `el`."""
+        parts = []
+        cur = el
+        while cur is not None and isinstance(cur.tag, str):
+            parts.append(etree.QName(cur.tag).localname)
+            cur = cur.getparent()
+        return list(reversed(parts))
+
+    def _try_sequence_fix(self, root: etree._Element, xml: str, code: str,
+                          msg: str, ns: str, msg_type: str,
+                          rules_idx: Optional["_RulesIndex"]) -> Optional[FixSuggestion]:
+        """Repair XSD sequence/order violations of the form:
+
+          "The element 'To' is not expected here ... One of the following
+           elements is expected: 'CharSet, Fr'."
+
+        Strategy (schema-driven, works for any message type / AppHdr):
+          1. Parse the offending element and the expected element list.
+          2. Insert the expected element(s) that are missing from the parent —
+             preferring mandatory ones (minOccurs >= 1) per the XSD.
+          3. Reorder the parent's children to the XSD sequence order.
+
+        The element is reconstructed via the XSD type map, so it is built with
+        the correct child structure and valid datatypes for ALL MX schemas.
+        """
+        if not re.search(r"is not expected here|following element|missing before", msg, re.I):
+            return None
+        m_off = re.search(r"element '([^']+)' is not expected here", msg, re.I)
+        # Tolerate "expected:", "expected :" and surrounding quotes/spaces.
+        m_exp = re.search(r"following elements?\s*(?:is|are)?\s*expected\s*:?\s*'?([^'\n]+?)'?\.?\s*$",
+                          msg, re.I)
+        if not m_off or not m_exp:
+            return None
+        offending = m_off.group(1).strip().strip("':\" ")
+        expected = [e.strip().strip("':\" ")
+                    for e in re.split(r"[,/]| or ", m_exp.group(1))
+                    if e.strip().strip("':\" ")]
+        if not expected:
+            return None
+
+        off_el = next((el for el in root.iter()
+                       if isinstance(el.tag, str)
+                       and etree.QName(el.tag).localname == offending), None)
+        if off_el is None:
+            return None
+        parent = off_el.getparent()
+        if parent is None:
+            return None
+        parent_path = self._local_name_path(parent)
+        # Build new children in the PARENT's namespace (AppHdr is head.001, the
+        # Document body is the message namespace) — not the document root's.
+        ns = etree.QName(parent.tag).namespace or ns
+
+        # Pick the schema that defines this parent: AppHdr → head (BAH) XSD,
+        # everything else → the Document message XSD.
+        in_apphdr = "AppHdr" in parent_path
+        xsd_path  = (self._get_apphdr_xsd_path(xml) if in_apphdr
+                     else self._get_xsd_path(xml))
+        tmap = _XsdTypeMap.get(xsd_path) if xsd_path else None
+        parent_type = tmap.type_of_path(parent_path) if tmap else None
+        order = tmap.order_for_type(parent_type) if (tmap and parent_type) else []
+
+        original_fragment = self._serialize(parent)
+        xpath = self._xpath_of(parent)
+
+        # ── Case 1: misnamed element. The offending tag is not a valid child but
+        #    is a near-match of one (e.g. <BIC> where <BICFI> is expected) — a
+        #    common ISO 20022 mistake. Rename it, preserving its value, then
+        #    reorder to the XSD sequence. ──────────────────────────────────────
+        if offending not in expected:
+            cand = self._closest_expected(offending, expected)
+            if cand:
+                off_idx = list(parent).index(off_el)
+                parent_copy = self._copy(parent)
+                old = list(parent_copy)[off_idx]
+                parent_copy.replace(old, self._rename_element(old, cand, ns))
+                if order:
+                    self._reorder_children(parent_copy, order)
+                return FixSuggestion(xpath, original_fragment,
+                                     self._serialize(parent_copy), code, msg, "high")
+
+        # ── Case 2: a mandatory element is missing before the offending one.
+        #    Insert the missing mandatory expected element(s) and reorder. We add
+        #    ONLY mandatory elements — never optional ones — so a pure ordering
+        #    issue is not "fixed" by injecting unwanted optional tags. ──────────
+        existing = {etree.QName(c.tag).localname for c in parent if isinstance(c.tag, str)}
+
+        def is_mandatory(child: str) -> bool:
+            if not (tmap and parent_type):
+                return False  # no schema info → can't assert mandatory; decline
+            for c in tmap.type_info.get(parent_type, {}).get("children", []):
+                if c["name"] == child:
+                    return c.get("min", "1") != "0"
+            return False
+
+        to_add = [e for e in expected if e not in existing and is_mandatory(e)]
+        if not to_add:
+            return None
+
+        parent_copy = self._copy(parent)
+        for child in to_add:
+            child_el = self._build_child(child, "", ns, tmap,
+                                         existing_parent=parent_copy,
+                                         rules_idx=rules_idx,
+                                         path_parts=parent_path + [child],
+                                         root=root, msg_type=msg_type)
+            if child_el is not None:
+                parent_copy.append(child_el)
+        if order:
+            self._reorder_children(parent_copy, order)
+
+        return FixSuggestion(xpath, original_fragment,
+                             self._serialize(parent_copy), code, msg, "high")
+
+    def _closest_expected(self, name: str, expected: list) -> Optional[str]:
+        """Best valid-element match for a misnamed element: exact (case-insensitive),
+        then prefix containment (BIC→BICFI), then longest shared prefix (>=2)."""
+        nl = name.lower()
+        for e in expected:
+            if e.lower() == nl:
+                return e
+        for e in expected:
+            el = e.lower()
+            if el.startswith(nl) or nl.startswith(el):
+                return e
+        best, best_cp = None, 1
+        for e in expected:
+            cp = 0
+            for a, b in zip(nl, e.lower()):
+                if a == b:
+                    cp += 1
+                else:
+                    break
+            if cp > best_cp:
+                best, best_cp = e, cp
+        return best
+
+    def _rename_element(self, old: etree._Element, new_name: str,
+                        ns: str) -> etree._Element:
+        """Return a copy of `old` with its tag changed to new_name, preserving
+        text, attributes and child elements."""
+        tag = f"{{{ns}}}{new_name}" if ns else new_name
+        new = etree.Element(tag)
+        new.text = old.text
+        for k, v in old.attrib.items():
+            new.set(k, v)
+        for ch in old:
+            new.append(self._copy(ch))
+        return new
+
+    def _reorder_children(self, parent: etree._Element, order: list) -> None:
+        """Reorder parent's children to match the XSD sequence `order` (stable;
+        tags not in `order` keep their relative position at the end)."""
+        kids = list(parent)
+        for k in kids:
+            parent.remove(k)
+        def _key(k):
+            ln = etree.QName(k.tag).localname if isinstance(k.tag, str) else ""
+            return order.index(ln) if ln in order else len(order)
+        for k in sorted(kids, key=_key):
+            parent.append(k)
+
+    def _pick_nearest(self, elems: list, line_hint: Optional[int]):
+        """Return the element whose source line is closest to line_hint, else the
+        first element. Empty list → None."""
+        if not elems:
+            return None
+        if line_hint is None:
+            return elems[0]
+        return min(elems, key=lambda e: abs((e.sourceline or 0) - line_hint))
+
+    def _fix_missing_predecessor(self, root: etree._Element, xml: str, code: str,
+                                 msg: str, msg_type: str) -> Optional[FixSuggestion]:
+        """Repair "X cannot exist without Y" ordering rules (e.g. L3_INTRMY_ORDER:
+        IntrmyAgt2 requires IntrmyAgt1; IntrmyAgt3 requires IntrmyAgt2) by
+        inserting the missing predecessor Y immediately before X and reordering
+        to the XSD sequence. Y is built from ai_knowledge_base.json tag_templates
+        (e.g. IntrmyAgt1), so it works for every message type that uses the
+        element. Generic for any "X cannot exist without Y" message.
+        """
+        x_tag = y_tag = None
+        # 1. KB-driven: read declarative predecessor rules from ai_knowledge_base.json
+        for rule in (_kb_get("auto_fix_rules.predecessor", []) or []):
+            pat = rule.get("message_pattern")
+            if code in (rule.get("codes") or []) or (pat and re.search(pat, msg, re.I)):
+                x_tag, y_tag = rule.get("element"), rule.get("requires")
+                break
+        # 2. Generic message parse: "X cannot exist without Y"
+        if not (x_tag and y_tag):
+            m = re.search(r"['\"<]?(\w+)['\">]?\s+cannot exist without\s+['\"<]?(\w+)", msg, re.I)
+            if m:
+                x_tag, y_tag = m.group(1), m.group(2)
+        # 3. Code fallback
+        if not (x_tag and y_tag):
+            if code == "L3_INTRMY_ORDER_1":
+                x_tag, y_tag = "IntrmyAgt2", "IntrmyAgt1"
+            elif code == "L3_INTRMY_ORDER_2":
+                x_tag, y_tag = "IntrmyAgt3", "IntrmyAgt2"
+        if not (x_tag and y_tag):
+            return None
+
+        def local(t) -> str:
+            return etree.QName(t).localname if isinstance(t, str) else ""
+
+        for x_el in root.iter():
+            if local(x_el.tag) != x_tag:
+                continue
+            parent = x_el.getparent()
+            if parent is None:
+                continue
+            if any(local(c.tag) == y_tag for c in parent):
+                continue  # predecessor already present in this parent
+            ns = etree.QName(parent.tag).namespace or ""
+            parent_path = self._local_name_path(parent)
+            xsd_path = (self._get_apphdr_xsd_path(xml) if "AppHdr" in parent_path
+                        else self._get_xsd_path(xml))
+            tmap = _XsdTypeMap.get(xsd_path) if xsd_path else None
+            y_el = self._build_child(y_tag, "", ns, tmap,
+                                     path_parts=parent_path + [y_tag],
+                                     root=root, msg_type=msg_type)
+            if y_el is None:
+                continue
+            parent_copy = self._copy(parent)
+            x_idx = list(parent).index(x_el)
+            parent_copy.insert(x_idx, y_el)
+            ptype = tmap.type_of_path(parent_path) if tmap else None
+            order = tmap.order_for_type(ptype) if (tmap and ptype) else []
+            if order:
+                self._reorder_children(parent_copy, order)
+            return FixSuggestion(self._xpath_of(parent), self._serialize(parent),
+                                 self._serialize(parent_copy), code, msg, "high")
+        return None
+
+    def _try_dependency_fix(self, root: etree._Element, path: str, code: str,
+                            msg: str, msg_type: str,
+                            tmap: Optional[_XsdTypeMap]) -> Optional[FixSuggestion]:
+        """Repair CBPR+ cross-field dependency rules that report a line number or
+        '/' as the path (so the generic element walk can't act):
+
+          • BICFI / AnyBIC exclusivity (CBPR_COM_R9 / CBPR_COM_R11 / DEP_013):
+            if BICFI (or AnyBIC) is present in a block, Nm and PstlAdr are NOT
+            allowed → remove Nm and PstlAdr.
+          • Name/Address coexistence (NAME_ADDRESS_COEXISTENCE / DEP_014):
+            Nm and PstlAdr must both be present → if the block also has BICFI,
+            remove the lone one (exclusivity wins); otherwise add the missing
+            counterpart.
+
+        KB folder (pacs00x_…_validation_kb.json) is the source of truth for both
+        fixes (DEP_013 / DEP_014 / CBPR_AGENT_BICFI_EXCLUSIVE).
+        """
+        msg_l = msg.lower()
+
+        # Rules are declared in ai_knowledge_base.json (auto_fix_rules); match by
+        # code or message_pattern so new rules need only a KB edit, no code change.
+        def _kb_match(rule: dict) -> bool:
+            pat = rule.get("message_pattern")
+            return (code in (rule.get("codes") or [])
+                    or (pat is not None and re.search(pat, msg, re.I) is not None))
+
+        excl_rule = next((r for r in (_kb_get("auto_fix_rules.exclusive", []) or [])
+                          if _kb_match(r)), None)
+        coex_rule = next((r for r in (_kb_get("auto_fix_rules.coexistence", []) or [])
+                          if _kb_match(r)), None)
+
+        # KB match (preferred) → fall back to built-in detection for robustness.
+        is_anybic_excl = (excl_rule is not None and excl_rule.get("if_present") == "AnyBIC") \
+            or (excl_rule is None and (code == "CBPR_COM_R11"
+                or ("anybic is present" in msg_l and "not allowed" in msg_l)))
+        is_bicfi_excl  = (excl_rule is not None and not is_anybic_excl) \
+            or (excl_rule is None and (code in ("CBPR_COM_R9", "CBPR_AGENT_BICFI_EXCLUSIVE", "DEP_013")
+                or ("bicfi is present" in msg_l and "not allowed" in msg_l)))
+        is_name_addr   = (coex_rule is not None) \
+            or (code in ("NAME_ADDRESS_COEXISTENCE", "DEP_014") or "present together" in msg_l)
+        if not (is_bicfi_excl or is_anybic_excl or is_name_addr):
+            return None
+
+        # Parameters from the KB rule (with sensible defaults).
+        remove_tags = tuple((excl_rule or {}).get("remove") or ("Nm", "PstlAdr"))
+        coex_tags   = tuple((coex_rule or {}).get("elements") or ("Nm", "PstlAdr"))
+        excl_with   = (coex_rule or {}).get("exclusive_with", "BICFI")
+
+        line_hint = None
+        try:
+            line_hint = int(str(path).strip())
+        except (TypeError, ValueError):
+            line_hint = None
+
+        def local(t) -> str:
+            return etree.QName(t).localname if isinstance(t, str) else ""
+
+        def child(el, name):
+            for c in el:
+                if local(c.tag) == name:
+                    return c
+            return None
+
+        def has_desc(el, name) -> bool:
+            return any(local(d.tag) == name for d in el.iter())
+
+        def emit(target):
+            copy = self._copy(target)
+            ns = etree.QName(target.tag).namespace or ""
+            # Exclusivity (the block carries BICFI/AnyBIC) → remove disallowed tags.
+            if is_bicfi_excl or is_anybic_excl or has_desc(target, excl_with) or has_desc(target, "AnyBIC"):
+                tags = remove_tags if (is_bicfi_excl or is_anybic_excl) else coex_tags
+                removed = False
+                for name in tags:
+                    c = child(copy, name)
+                    while c is not None:
+                        copy.remove(c)
+                        removed = True
+                        c = child(copy, name)
+                if not removed:
+                    return None
+            else:
+                # Coexistence → add the missing counterpart, first element first.
+                a = coex_tags[0]
+                b = coex_tags[1] if len(coex_tags) > 1 else "PstlAdr"
+                ca, cb = child(copy, a), child(copy, b)
+                if ca is not None and cb is None:
+                    built = self._build_child(b, "", ns, tmap, root=root, msg_type=msg_type)
+                    if built is not None:
+                        copy.insert(list(copy).index(child(copy, a)) + 1, built)
+                elif cb is not None and ca is None:
+                    built = self._build_child(a, "", ns, tmap, root=root, msg_type=msg_type)
+                    if built is not None:
+                        copy.insert(list(copy).index(child(copy, b)), built)
+                else:
+                    return None
+            return FixSuggestion(self._xpath_of(target), self._serialize(target),
+                                 self._serialize(copy), code, msg, "high")
+
+        # ── BICFI / AnyBIC exclusivity: blocks carrying the id AND a disallowed tag ──
+        if is_bicfi_excl or is_anybic_excl:
+            id_tag     = (excl_rule or {}).get("if_present") or ("AnyBIC" if is_anybic_excl else "BICFI")
+            containers  = tuple((excl_rule or {}).get("containers")
+                                or (("OrgId", "PrvtId", "Id") if is_anybic_excl else ("FinInstnId",)))
+            targets = [el for el in root.iter()
+                       if local(el.tag) in containers and has_desc(el, id_tag)
+                       and any(child(el, t) is not None for t in remove_tags)]
+            target = self._pick_nearest(targets, line_hint)
+            return emit(target) if target is not None else None
+
+        # ── Name/Address coexistence: blocks with exactly one of the pair ─────
+        a = coex_tags[0]
+        b = coex_tags[1] if len(coex_tags) > 1 else "PstlAdr"
+        targets = [el for el in root.iter()
+                   if (child(el, a) is not None) != (child(el, b) is not None)]
+        target = self._pick_nearest(targets, line_hint)
+        return emit(target) if target is not None else None
 
     def _fix_attribute(self, el: etree._Element, attr_name: str, code: str,
                         msg: str, fix_hint: str, _ns: str = "") -> FixSuggestion:

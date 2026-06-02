@@ -5739,122 +5739,6 @@
     "deleted": false
   },
   {
-    "validation_id": "VAL29052600005",
-    "batch_id": "VAL29052600005",
-    "file_id": "FILE0001",
-    "timestamp": "2026-05-29T11:03:58.585380+00:00",
-    "message_type": "pacs.008.001.08",
-    "status": "FAIL",
-    "total_errors": 1,
-    "total_warnings": 0,
-    "execution_time_ms": 3.86,
-    "report_json": {
-      "validation_id": "VAL29052600005",
-      "timestamp": "2026-05-29T11:03:58.585380+00:00",
-      "status": "FAIL",
-      "schema": "Unknown",
-      "message": "pacs.008.001.08",
-      "errors": 1,
-      "warnings": 0,
-      "total_time_ms": 3.86,
-      "layer_status": {
-        "1": {
-          "status": "✅",
-          "time": 1.29
-        },
-        "2": {
-          "status": "❌",
-          "time": 2.57
-        },
-        "3": {
-          "status": "SKIPPED",
-          "time": 0
-        }
-      },
-      "details": [
-        {
-          "severity": "ERROR",
-          "layer": 2,
-          "code": "HEADER_VAL",
-          "path": "/BusMsgEnvlp/AppHdr/MsgDefIdr",
-          "message": "The element 'MsgDefIdr' is not expected here. Either it is not allowed in this specification, or another mandatory element is missing before this one. One of the following elements is expected : 'CharSet, Fr'",
-          "fix_suggestion": "To fix this, ensure that one of the following elements is present before 'MsgDefIdr': 'CharSet, Fr'. Review the ISO 20022 schema sequence requirements for this message type.",
-          "related_test": "",
-          "line": 6
-        }
-      ],
-      "metadata": {
-        "MsgId": "MSGFQ1EXNM94FVRW2KV",
-        "UETR": "a1aa60d7-4d7f-447e-827c-7a688828a135",
-        "Namespace": "urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08"
-      },
-      "fixed_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n       \n       \n        <Fr><FIId><FinInstnId><BICFI>DEUTDEFF</BICFI></FinInstnId></FIId></Fr><MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-05-29T08:59:18+00:00</CreDt></AppHdr><Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGFQ1EXNM94FVRW2KV</MsgId>\n                <CreDtTm>2026-05-29T08:59:18+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd>\n                </SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTRQ0T74WFOESP</InstrId>\n                    <EndToEndId>E2EAIDS5VO8XI2WRUOW</EndToEndId>\n                    <TxId>TXSCFT3XIXHEH0BHGM</TxId>\n                    <UETR>a1aa60d7-4d7f-447e-827c-7a688828a135</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>NURG</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"NOK\">41997.24</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"NOK\">15645.18</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"NOK\">125092.76</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>NWBKNOKKXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>RBOSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>INGBNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>DEUTDEFF</BICFI></FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>DBSSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTM0WN8RF384</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCT547HM3XDM9</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>HSBCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTH5UP21D7EV</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Pacific Investments SA Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>263</BldgNb>\n                        <TwnNm>Garcia City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Hall Street</StrtNm>\n                        <BldgNb>30</BldgNb>\n                        <TwnNm>Taylor City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>NO8432105577575</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CACRNOKKXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTCD3OYZGF6S</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>BARCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTRCQXL80FPU</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Emma Jones</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>857</BldgNb>\n                        <TwnNm>Anderson City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>NO9227199517445</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Emma Jones Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Smith Street</StrtNm>\n                        <BldgNb>891</BldgNb>\n                        <PstCd>84003</PstCd>\n                        <TwnNm>Lewis City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REFRSIUNHGUH54YWAKT</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
-      "file_id": "FILE0001",
-      "batch_id": "VAL29052600005"
-    },
-    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n       \n       \n        <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-05-29T08:59:18+00:00</CreDt></AppHdr><Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGFQ1EXNM94FVRW2KV</MsgId>\n                <CreDtTm>2026-05-29T08:59:18+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd>\n                </SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTRQ0T74WFOESP</InstrId>\n                    <EndToEndId>E2EAIDS5VO8XI2WRUOW</EndToEndId>\n                    <TxId>TXSCFT3XIXHEH0BHGM</TxId>\n                    <UETR>a1aa60d7-4d7f-447e-827c-7a688828a135</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>NURG</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"NOK\">41997.24</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"NOK\">15645.18</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"NOK\">125092.76</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>NWBKNOKKXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>RBOSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>INGBNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>DEUTDEFF</BICFI></FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>DBSSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTM0WN8RF384</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCT547HM3XDM9</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>HSBCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTH5UP21D7EV</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Pacific Investments SA Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>263</BldgNb>\n                        <TwnNm>Garcia City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Hall Street</StrtNm>\n                        <BldgNb>30</BldgNb>\n                        <TwnNm>Taylor City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>NO8432105577575</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CACRNOKKXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTCD3OYZGF6S</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>BARCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTRCQXL80FPU</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Emma Jones</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>857</BldgNb>\n                        <TwnNm>Anderson City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>NO9227199517445</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Emma Jones Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Smith Street</StrtNm>\n                        <BldgNb>891</BldgNb>\n                        <PstCd>84003</PstCd>\n                        <TwnNm>Lewis City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REFRSIUNHGUH54YWAKT</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
-    "origin": "Pasted",
-    "deleted": false
-  },
-  {
-    "validation_id": "VAL29052600006",
-    "batch_id": "VAL29052600006",
-    "file_id": "FILE0001",
-    "timestamp": "2026-05-29T11:04:01.701299+00:00",
-    "message_type": "pacs.008.001.08",
-    "status": "FAIL",
-    "total_errors": 1,
-    "total_warnings": 0,
-    "execution_time_ms": 3.53,
-    "report_json": {
-      "validation_id": "VAL29052600006",
-      "timestamp": "2026-05-29T11:04:01.701299+00:00",
-      "status": "FAIL",
-      "schema": "Unknown",
-      "message": "pacs.008.001.08",
-      "errors": 1,
-      "warnings": 0,
-      "total_time_ms": 3.53,
-      "layer_status": {
-        "1": {
-          "status": "✅",
-          "time": 0.75
-        },
-        "2": {
-          "status": "❌",
-          "time": 2.78
-        },
-        "3": {
-          "status": "SKIPPED",
-          "time": 0
-        }
-      },
-      "details": [
-        {
-          "severity": "ERROR",
-          "layer": 2,
-          "code": "HEADER_VAL",
-          "path": "/BusMsgEnvlp/AppHdr/MsgDefIdr",
-          "message": "The element 'MsgDefIdr' is not expected here. Either it is not allowed in this specification, or another mandatory element is missing before this one. One of the following elements is expected : 'To'",
-          "fix_suggestion": "To fix this, ensure that one of the following elements is present before 'MsgDefIdr': 'To'. Review the ISO 20022 schema sequence requirements for this message type.",
-          "related_test": "",
-          "line": 6
-        }
-      ],
-      "metadata": {
-        "MsgId": "MSGFQ1EXNM94FVRW2KV",
-        "UETR": "a1aa60d7-4d7f-447e-827c-7a688828a135",
-        "Namespace": "urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08"
-      },
-      "fixed_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n       \n       \n        <Fr><FIId><FinInstnId><BICFI>DEUTDEFF</BICFI></FinInstnId></FIId></Fr><To><FIId><FinInstnId><BICFI>BNPPNOKKXXX</BICFI></FinInstnId></FIId></To><MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-05-29T08:59:18+00:00</CreDt></AppHdr><Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGFQ1EXNM94FVRW2KV</MsgId>\n                <CreDtTm>2026-05-29T08:59:18+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd>\n                </SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTRQ0T74WFOESP</InstrId>\n                    <EndToEndId>E2EAIDS5VO8XI2WRUOW</EndToEndId>\n                    <TxId>TXSCFT3XIXHEH0BHGM</TxId>\n                    <UETR>a1aa60d7-4d7f-447e-827c-7a688828a135</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>NURG</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"NOK\">41997.24</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"NOK\">15645.18</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"NOK\">125092.76</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>NWBKNOKKXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>RBOSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>INGBNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>DEUTDEFF</BICFI></FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>DBSSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTM0WN8RF384</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCT547HM3XDM9</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>HSBCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTH5UP21D7EV</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Pacific Investments SA Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>263</BldgNb>\n                        <TwnNm>Garcia City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Hall Street</StrtNm>\n                        <BldgNb>30</BldgNb>\n                        <TwnNm>Taylor City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>NO8432105577575</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CACRNOKKXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTCD3OYZGF6S</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>BARCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTRCQXL80FPU</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Emma Jones</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>857</BldgNb>\n                        <TwnNm>Anderson City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>NO9227199517445</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Emma Jones Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Smith Street</StrtNm>\n                        <BldgNb>891</BldgNb>\n                        <PstCd>84003</PstCd>\n                        <TwnNm>Lewis City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REFRSIUNHGUH54YWAKT</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
-      "file_id": "FILE0001",
-      "batch_id": "VAL29052600006"
-    },
-    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n       \n       \n        <Fr><FIId><FinInstnId><BICFI>DEUTDEFF</BICFI></FinInstnId></FIId></Fr><MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-05-29T08:59:18+00:00</CreDt></AppHdr><Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGFQ1EXNM94FVRW2KV</MsgId>\n                <CreDtTm>2026-05-29T08:59:18+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd>\n                </SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTRQ0T74WFOESP</InstrId>\n                    <EndToEndId>E2EAIDS5VO8XI2WRUOW</EndToEndId>\n                    <TxId>TXSCFT3XIXHEH0BHGM</TxId>\n                    <UETR>a1aa60d7-4d7f-447e-827c-7a688828a135</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>NURG</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"NOK\">41997.24</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"NOK\">15645.18</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"NOK\">125092.76</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>NWBKNOKKXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>RBOSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>INGBNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>DEUTDEFF</BICFI></FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>DBSSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTM0WN8RF384</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCT547HM3XDM9</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>HSBCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTH5UP21D7EV</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Pacific Investments SA Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>263</BldgNb>\n                        <TwnNm>Garcia City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Hall Street</StrtNm>\n                        <BldgNb>30</BldgNb>\n                        <TwnNm>Taylor City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>NO8432105577575</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CACRNOKKXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTCD3OYZGF6S</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>BARCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTRCQXL80FPU</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Emma Jones</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>857</BldgNb>\n                        <TwnNm>Anderson City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>NO9227199517445</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Emma Jones Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Smith Street</StrtNm>\n                        <BldgNb>891</BldgNb>\n                        <PstCd>84003</PstCd>\n                        <TwnNm>Lewis City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REFRSIUNHGUH54YWAKT</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
-    "origin": "Pasted",
-    "deleted": false
-  },
-  {
     "validation_id": "VAL29052600007",
     "batch_id": "VAL29052600007",
     "file_id": "FILE0001",
@@ -6083,29 +5967,29 @@
     "validation_id": "VAL29052600001",
     "batch_id": "VAL29052600001",
     "file_id": "FILE0001",
-    "timestamp": "2026-05-29T11:26:32.646046+00:00",
+    "timestamp": "2026-05-29T11:38:33.924305+00:00",
     "message_type": "pacs.008.001.08",
     "status": "FAIL",
     "total_errors": 1,
     "total_warnings": 0,
-    "execution_time_ms": 15.5,
+    "execution_time_ms": 40.16,
     "report_json": {
       "validation_id": "VAL29052600001",
-      "timestamp": "2026-05-29T11:26:32.646046+00:00",
+      "timestamp": "2026-05-29T11:38:33.924305+00:00",
       "status": "FAIL",
       "schema": "Unknown",
       "message": "pacs.008.001.08",
       "errors": 1,
       "warnings": 0,
-      "total_time_ms": 15.5,
+      "total_time_ms": 40.16,
       "layer_status": {
         "1": {
           "status": "✅",
-          "time": 1.89
+          "time": 14.08
         },
         "2": {
           "status": "❌",
-          "time": 13.61
+          "time": 26.08
         },
         "3": {
           "status": "SKIPPED",
@@ -6116,12 +6000,12 @@
         {
           "severity": "ERROR",
           "layer": 2,
-          "code": "SCHEMA_VAL",
-          "path": "/BusMsgEnvlp/Document/FIToFICstmrCdtTrf/CdtTrfTxInf/UltmtDbtr/Nm",
-          "message": "Field 'Nm' has an invalid length: '147'.",
-          "fix_suggestion": "The value '147' is either too long or too short for 'Nm'. Check the maximum and minimum character length allowed by the schema.",
+          "code": "HEADER_VAL",
+          "path": "/AppHdr/Fr",
+          "message": "The mandatory header element 'Fr' is missing from the Business Application Header (AppHdr).",
+          "fix_suggestion": "Add a <Fr> element inside <AppHdr>. Party Choice is required by the ISO 20022 BAH (head.001) schema.",
           "related_test": "",
-          "line": 120
+          "line": 3
         }
       ],
       "metadata": {
@@ -6129,11 +6013,11 @@
         "UETR": "a1aa60d7-4d7f-447e-827c-7a688828a135",
         "Namespace": "urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08"
       },
-      "fixed_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n       \n       \n       \n       <Fr>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>DEUTDEFF</BICFI>\n               </FinInstnId>\n           </FIId>\n       </Fr>\n       <To>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>BNPPNOKKXXX</BICFI>\n               </FinInstnId>\n           </FIId>\n       </To>\n       <BizMsgIdr>MSGFQ1EXNM94FVRW2KV</BizMsgIdr>\n       <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n       <BizSvc>swift.cbprplus.02</BizSvc>\n       <CreDt>2026-05-29T08:59:18+00:00</CreDt>\n   </AppHdr><Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGFQ1EXNM94FVRW2KV</MsgId>\n                <CreDtTm>2026-05-29T08:59:18+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd>\n                </SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTRQ0T74WFOESP</InstrId>\n                    <EndToEndId>E2EAIDS5VO8XI2WRUOW</EndToEndId>\n                    <TxId>TXSCFT3XIXHEH0BHGM</TxId>\n                    <UETR>a1aa60d7-4d7f-447e-827c-7a688828a135</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>NURG</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"NOK\">41997.24</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"NOK\">15645.18</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"NOK\">125092.76</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>NWBKNOKKXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>RBOSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>INGBNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>DEUTDEFF</BICFI></FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>DBSSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTM0WN8RF384</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCT547HM3XDM9</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>HSBCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTH5UP21D7EV</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>263</BldgNb>\n                        <TwnNm>Garcia City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Hall Street</StrtNm>\n                        <BldgNb>30</BldgNb>\n                        <TwnNm>Taylor City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>NO8432105577575</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CACRNOKKXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTCD3OYZGF6S</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>BARCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTRCQXL80FPU</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Emma Jones</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>857</BldgNb>\n                        <TwnNm>Anderson City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>NO9227199517445</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Emma Jones Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Smith Street</StrtNm>\n                        <BldgNb>891</BldgNb>\n                        <PstCd>84003</PstCd>\n                        <TwnNm>Lewis City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REFRSIUNHGUH54YWAKT</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+      "fixed_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n       <Fr>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>DEUTDEFF</BICFI>\n               </FinInstnId>\n           </FIId>\n       </Fr>\n       <To>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>BNPPNOKKXXX</BICFI>\n               </FinInstnId>\n           </FIId>\n       </To>\n       <BizMsgIdr>MSGFQ1EXNM94FVRW2KV</BizMsgIdr>\n       <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n       <BizSvc>swift.cbprplus.02</BizSvc>\n       <CreDt>2026-05-29T08:59:18+00:00</CreDt>\n   </AppHdr><Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGFQ1EXNM94FVRW2KV</MsgId>\n                <CreDtTm>2026-05-29T08:59:18+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd>\n                </SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTRQ0T74WFOESP</InstrId>\n                    <EndToEndId>E2EAIDS5VO8XI2WRUOW</EndToEndId>\n                    <TxId>TXSCFT3XIXHEH0BHGM</TxId>\n                    <UETR>a1aa60d7-4d7f-447e-827c-7a688828a135</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>NURG</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"NOK\">41997.24</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"NOK\">15645.18</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"NOK\">125092.76</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>NWBKNOKKXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>RBOSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>INGBNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>DEUTDEFF</BICFI></FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>DBSSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTM0WN8RF384</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCT547HM3XDM9</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>HSBCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTH5UP21D7EV</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>263</BldgNb>\n                        <TwnNm>Garcia City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Hall Street</StrtNm>\n                        <BldgNb>30</BldgNb>\n                        <TwnNm>Taylor City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>NO8432105577575</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CACRNOKKXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTCD3OYZGF6S</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>BARCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTRCQXL80FPU</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Emma Jones</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>857</BldgNb>\n                        <TwnNm>Anderson City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>NO9227199517445</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Emma Jones Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Smith Street</StrtNm>\n                        <BldgNb>891</BldgNb>\n                        <PstCd>84003</PstCd>\n                        <TwnNm>Lewis City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REFRSIUNHGUH54YWAKT</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
       "file_id": "FILE0001",
       "batch_id": "VAL29052600001"
     },
-    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n       \n       \n       \n       <Fr>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>DEUTDEFF</BICFI>\n               </FinInstnId>\n           </FIId>\n       </Fr>\n       <To>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>BNPPNOKKXXX</BICFI>\n               </FinInstnId>\n           </FIId>\n       </To>\n       <BizMsgIdr>MSGFQ1EXNM94FVRW2KV</BizMsgIdr>\n       <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n       <BizSvc>swift.cbprplus.02</BizSvc>\n       <CreDt>2026-05-29T08:59:18+00:00</CreDt>\n   </AppHdr><Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGFQ1EXNM94FVRW2KV</MsgId>\n                <CreDtTm>2026-05-29T08:59:18+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd>\n                </SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTRQ0T74WFOESP</InstrId>\n                    <EndToEndId>E2EAIDS5VO8XI2WRUOW</EndToEndId>\n                    <TxId>TXSCFT3XIXHEH0BHGM</TxId>\n                    <UETR>a1aa60d7-4d7f-447e-827c-7a688828a135</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>NURG</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"NOK\">41997.24</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"NOK\">15645.18</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"NOK\">125092.76</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>NWBKNOKKXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>RBOSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>INGBNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>DEUTDEFF</BICFI></FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>DBSSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTM0WN8RF384</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCT547HM3XDM9</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>HSBCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTH5UP21D7EV</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Pacific Investments SA Groupppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>263</BldgNb>\n                        <TwnNm>Garcia City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Hall Street</StrtNm>\n                        <BldgNb>30</BldgNb>\n                        <TwnNm>Taylor City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>NO8432105577575</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CACRNOKKXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTCD3OYZGF6S</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>BARCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTRCQXL80FPU</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Emma Jones</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>857</BldgNb>\n                        <TwnNm>Anderson City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>NO9227199517445</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Emma Jones Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Smith Street</StrtNm>\n                        <BldgNb>891</BldgNb>\n                        <PstCd>84003</PstCd>\n                        <TwnNm>Lewis City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REFRSIUNHGUH54YWAKT</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n       \n       \n       \n       \n       <To>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>BNPPNOKKXXX</BICFI>\n               </FinInstnId>\n           </FIId>\n       </To>\n       <BizMsgIdr>MSGFQ1EXNM94FVRW2KV</BizMsgIdr>\n       <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n       <BizSvc>swift.cbprplus.02</BizSvc>\n       <CreDt>2026-05-29T08:59:18+00:00</CreDt>\n   </AppHdr><Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGFQ1EXNM94FVRW2KV</MsgId>\n                <CreDtTm>2026-05-29T08:59:18+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd>\n                </SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTRQ0T74WFOESP</InstrId>\n                    <EndToEndId>E2EAIDS5VO8XI2WRUOW</EndToEndId>\n                    <TxId>TXSCFT3XIXHEH0BHGM</TxId>\n                    <UETR>a1aa60d7-4d7f-447e-827c-7a688828a135</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>NURG</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"NOK\">41997.24</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"NOK\">15645.18</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"NOK\">125092.76</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>NWBKNOKKXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>RBOSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>INGBNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>DEUTDEFF</BICFI></FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>DBSSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTM0WN8RF384</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCT547HM3XDM9</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>HSBCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTH5UP21D7EV</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>263</BldgNb>\n                        <TwnNm>Garcia City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Hall Street</StrtNm>\n                        <BldgNb>30</BldgNb>\n                        <TwnNm>Taylor City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>NO8432105577575</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CACRNOKKXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTCD3OYZGF6S</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>BARCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTRCQXL80FPU</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Emma Jones</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>857</BldgNb>\n                        <TwnNm>Anderson City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>NO9227199517445</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Emma Jones Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Smith Street</StrtNm>\n                        <BldgNb>891</BldgNb>\n                        <PstCd>84003</PstCd>\n                        <TwnNm>Lewis City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REFRSIUNHGUH54YWAKT</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
     "origin": "Pasted",
     "deleted": false
   },
@@ -6141,33 +6025,33 @@
     "validation_id": "VAL29052600002",
     "batch_id": "VAL29052600002",
     "file_id": "FILE0001",
-    "timestamp": "2026-05-29T11:26:38.711147+00:00",
+    "timestamp": "2026-05-29T11:38:37.023059+00:00",
     "message_type": "pacs.008.001.08",
     "status": "PASS",
     "total_errors": 0,
     "total_warnings": 12,
-    "execution_time_ms": 47.42,
+    "execution_time_ms": 97.96,
     "report_json": {
       "validation_id": "VAL29052600002",
-      "timestamp": "2026-05-29T11:26:38.711147+00:00",
+      "timestamp": "2026-05-29T11:38:37.023059+00:00",
       "status": "PASS",
       "schema": "Unknown",
       "message": "pacs.008.001.08",
       "errors": 0,
       "warnings": 12,
-      "total_time_ms": 47.42,
+      "total_time_ms": 97.96,
       "layer_status": {
         "1": {
           "status": "✅",
-          "time": 1.3
+          "time": 1.31
         },
         "2": {
           "status": "✅",
-          "time": 0.85
+          "time": 2.21
         },
         "3": {
           "status": "✅",
-          "time": 45.27
+          "time": 94.44
         }
       },
       "details": [
@@ -6179,7 +6063,7 @@
           "message": "BIC 'BNPPNOKKXXX' not found in official directory.",
           "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
           "related_test": "",
-          "line": 17
+          "line": 14
         },
         {
           "severity": "WARNING",
@@ -6189,7 +6073,7 @@
           "message": "BIC 'NWBKNOKKXXX' not found in official directory.",
           "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
           "related_test": "",
-          "line": 55
+          "line": 52
         },
         {
           "severity": "WARNING",
@@ -6199,7 +6083,7 @@
           "message": "BIC 'BNPPNOKKXXX' not found in official directory.",
           "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
           "related_test": "",
-          "line": 61
+          "line": 58
         },
         {
           "severity": "WARNING",
@@ -6209,7 +6093,7 @@
           "message": "BIC 'RBOSNOKKXXX' not found in official directory.",
           "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
           "related_test": "",
-          "line": 66
+          "line": 63
         },
         {
           "severity": "WARNING",
@@ -6219,7 +6103,7 @@
           "message": "BIC 'INGBNOKKXXX' not found in official directory.",
           "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
           "related_test": "",
-          "line": 71
+          "line": 68
         },
         {
           "severity": "WARNING",
@@ -6229,7 +6113,7 @@
           "message": "BIC 'BNPPNOKKXXX' not found in official directory.",
           "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
           "related_test": "",
-          "line": 80
+          "line": 77
         },
         {
           "severity": "WARNING",
@@ -6239,7 +6123,7 @@
           "message": "BIC 'DBSSNOKKXXX' not found in official directory.",
           "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
           "related_test": "",
-          "line": 85
+          "line": 82
         },
         {
           "severity": "WARNING",
@@ -6249,7 +6133,7 @@
           "message": "BIC 'UBSWNOKKXXX' not found in official directory.",
           "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
           "related_test": "",
-          "line": 97
+          "line": 94
         },
         {
           "severity": "WARNING",
@@ -6259,7 +6143,7 @@
           "message": "BIC 'HSBCNOKKXXX' not found in official directory.",
           "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
           "related_test": "",
-          "line": 109
+          "line": 106
         },
         {
           "severity": "WARNING",
@@ -6269,7 +6153,7 @@
           "message": "BIC 'CACRNOKKXXX' not found in official directory.",
           "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
           "related_test": "",
-          "line": 144
+          "line": 141
         },
         {
           "severity": "WARNING",
@@ -6279,7 +6163,7 @@
           "message": "BIC 'BARCNOKKXXX' not found in official directory.",
           "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
           "related_test": "",
-          "line": 156
+          "line": 153
         },
         {
           "severity": "WARNING",
@@ -6289,7 +6173,7 @@
           "message": "Missing timing config for parties.",
           "fix_suggestion": "",
           "related_test": "",
-          "line": 29
+          "line": 26
         }
       ],
       "metadata": {
@@ -6300,7 +6184,7 @@
       "file_id": "FILE0001",
       "batch_id": "VAL29052600002"
     },
-    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n       \n       \n       \n       <Fr>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>DEUTDEFF</BICFI>\n               </FinInstnId>\n           </FIId>\n       </Fr>\n       <To>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>BNPPNOKKXXX</BICFI>\n               </FinInstnId>\n           </FIId>\n       </To>\n       <BizMsgIdr>MSGFQ1EXNM94FVRW2KV</BizMsgIdr>\n       <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n       <BizSvc>swift.cbprplus.02</BizSvc>\n       <CreDt>2026-05-29T08:59:18+00:00</CreDt>\n   </AppHdr><Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGFQ1EXNM94FVRW2KV</MsgId>\n                <CreDtTm>2026-05-29T08:59:18+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd>\n                </SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTRQ0T74WFOESP</InstrId>\n                    <EndToEndId>E2EAIDS5VO8XI2WRUOW</EndToEndId>\n                    <TxId>TXSCFT3XIXHEH0BHGM</TxId>\n                    <UETR>a1aa60d7-4d7f-447e-827c-7a688828a135</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>NURG</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"NOK\">41997.24</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"NOK\">15645.18</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"NOK\">125092.76</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>NWBKNOKKXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>RBOSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>INGBNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>DEUTDEFF</BICFI></FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>DBSSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTM0WN8RF384</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCT547HM3XDM9</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>HSBCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTH5UP21D7EV</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>263</BldgNb>\n                        <TwnNm>Garcia City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Hall Street</StrtNm>\n                        <BldgNb>30</BldgNb>\n                        <TwnNm>Taylor City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>NO8432105577575</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CACRNOKKXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTCD3OYZGF6S</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>BARCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTRCQXL80FPU</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Emma Jones</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>857</BldgNb>\n                        <TwnNm>Anderson City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>NO9227199517445</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Emma Jones Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Smith Street</StrtNm>\n                        <BldgNb>891</BldgNb>\n                        <PstCd>84003</PstCd>\n                        <TwnNm>Lewis City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REFRSIUNHGUH54YWAKT</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n       <Fr>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>DEUTDEFF</BICFI>\n               </FinInstnId>\n           </FIId>\n       </Fr>\n       <To>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>BNPPNOKKXXX</BICFI>\n               </FinInstnId>\n           </FIId>\n       </To>\n       <BizMsgIdr>MSGFQ1EXNM94FVRW2KV</BizMsgIdr>\n       <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n       <BizSvc>swift.cbprplus.02</BizSvc>\n       <CreDt>2026-05-29T08:59:18+00:00</CreDt>\n   </AppHdr><Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGFQ1EXNM94FVRW2KV</MsgId>\n                <CreDtTm>2026-05-29T08:59:18+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd>\n                </SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTRQ0T74WFOESP</InstrId>\n                    <EndToEndId>E2EAIDS5VO8XI2WRUOW</EndToEndId>\n                    <TxId>TXSCFT3XIXHEH0BHGM</TxId>\n                    <UETR>a1aa60d7-4d7f-447e-827c-7a688828a135</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>NURG</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"NOK\">41997.24</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"NOK\">15645.18</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"NOK\">125092.76</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>NWBKNOKKXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>RBOSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>INGBNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>DEUTDEFF</BICFI></FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>DBSSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTM0WN8RF384</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCT547HM3XDM9</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>HSBCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTH5UP21D7EV</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>263</BldgNb>\n                        <TwnNm>Garcia City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Hall Street</StrtNm>\n                        <BldgNb>30</BldgNb>\n                        <TwnNm>Taylor City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>NO8432105577575</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CACRNOKKXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTCD3OYZGF6S</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>BARCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTRCQXL80FPU</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Emma Jones</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>857</BldgNb>\n                        <TwnNm>Anderson City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>NO9227199517445</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Emma Jones Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Smith Street</StrtNm>\n                        <BldgNb>891</BldgNb>\n                        <PstCd>84003</PstCd>\n                        <TwnNm>Lewis City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REFRSIUNHGUH54YWAKT</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
     "origin": "Pasted",
     "deleted": false
   },
@@ -6308,29 +6192,29 @@
     "validation_id": "VAL29052600003",
     "batch_id": "VAL29052600003",
     "file_id": "FILE0001",
-    "timestamp": "2026-05-29T11:26:58.349364+00:00",
+    "timestamp": "2026-05-29T11:46:18.648042+00:00",
     "message_type": "pacs.008.001.08",
     "status": "FAIL",
-    "total_errors": 1,
+    "total_errors": 5,
     "total_warnings": 0,
-    "execution_time_ms": 5.6,
+    "execution_time_ms": 33.12,
     "report_json": {
       "validation_id": "VAL29052600003",
-      "timestamp": "2026-05-29T11:26:58.349364+00:00",
+      "timestamp": "2026-05-29T11:46:18.648042+00:00",
       "status": "FAIL",
       "schema": "Unknown",
       "message": "pacs.008.001.08",
-      "errors": 1,
+      "errors": 5,
       "warnings": 0,
-      "total_time_ms": 5.6,
+      "total_time_ms": 33.12,
       "layer_status": {
         "1": {
           "status": "✅",
-          "time": 1.74
+          "time": 18.4
         },
         "2": {
           "status": "❌",
-          "time": 3.86
+          "time": 14.72
         },
         "3": {
           "status": "SKIPPED",
@@ -6341,12 +6225,52 @@
         {
           "severity": "ERROR",
           "layer": 2,
-          "code": "SCHEMA_VAL",
-          "path": "/BusMsgEnvlp/Document/FIToFICstmrCdtTrf/CdtTrfTxInf/Dbtr/Nm",
-          "message": "Field 'Nm' has an invalid length: '177'.",
-          "fix_suggestion": "The value '177' is either too long or too short for 'Nm'. Check the maximum and minimum character length allowed by the schema.",
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <CreDtTm> contains '2026-05-20T08:59:18+00:00', which is before today (2026-05-29).",
+          "fix_suggestion": "Update <CreDtTm> to today (2026-05-29) or a future date. (Line: 13)",
           "related_test": "",
-          "line": 129
+          "line": 13
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "SCHEMA_VAL",
+          "path": "/BusMsgEnvlp/Document/FIToFICstmrCdtTrf/CdtTrfTxInf/PmtId/InstrId",
+          "message": "Field 'InstrId' has an invalid length: '0'.",
+          "fix_suggestion": "The value '0' is either too long or too short for 'InstrId'. Check the maximum and minimum character length allowed by the schema.",
+          "related_test": "",
+          "line": 19
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "SCHEMA_VAL",
+          "path": "/BusMsgEnvlp/Document/FIToFICstmrCdtTrf/CdtTrfTxInf/IntrBkSttlmAmt",
+          "message": "Invalid currency code 'NO'.",
+          "fix_suggestion": "'NO' is not a recognised ISO 4217 currency code. Use a standard 3-letter code such as 'USD', 'EUR', 'GBP', 'JPY', 'INR', 'AED', etc.",
+          "related_test": "",
+          "line": 29
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "HEADER_VAL",
+          "path": "/AppHdr/Fr",
+          "message": "The mandatory header element 'Fr' is missing from the Business Application Header (AppHdr).",
+          "fix_suggestion": "Add a <Fr> element inside <AppHdr>. Party Choice is required by the ISO 20022 BAH (head.001) schema.",
+          "related_test": "",
+          "line": 3
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "HEADER_VAL",
+          "path": "/AppHdr/To",
+          "message": "The mandatory header element 'To' is missing from the Business Application Header (AppHdr).",
+          "fix_suggestion": "Add a <To> element inside <AppHdr>. Party Choice is required by the ISO 20022 BAH (head.001) schema.",
+          "related_test": "",
+          "line": 3
         }
       ],
       "metadata": {
@@ -6354,11 +6278,11 @@
         "UETR": "a1aa60d7-4d7f-447e-827c-7a688828a135",
         "Namespace": "urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08"
       },
-      "fixed_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n       \n       \n       \n       <Fr>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>DEUTDEFF</BICFI>\n               </FinInstnId>\n           </FIId>\n       </Fr>\n       <To>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>BNPPNOKKXXX</BICFI>\n               </FinInstnId>\n           </FIId>\n       </To>\n       <BizMsgIdr>MSGFQ1EXNM94FVRW2KV</BizMsgIdr>\n       <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n       <BizSvc>swift.cbprplus.02</BizSvc>\n       <CreDt>2026-05-29T08:59:18+00:00</CreDt>\n   </AppHdr><Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGFQ1EXNM94FVRW2KV</MsgId>\n                <CreDtTm>2026-05-29T08:59:18+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd>\n                </SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTRQ0T74WFOESP</InstrId>\n                    <EndToEndId>E2EAIDS5VO8XI2WRUOW</EndToEndId>\n                    <TxId>TXSCFT3XIXHEH0BHGM</TxId>\n                    <UETR>a1aa60d7-4d7f-447e-827c-7a688828a135</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>NURG</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"NOK\">41997.24</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"NOK\">15645.18</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"NOK\">125092.76</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>NWBKNOKKXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>RBOSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>INGBNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>DEUTDEFF</BICFI></FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>DBSSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTM0WN8RF384</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCT547HM3XDM9</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>HSBCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTH5UP21D7EV</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>263</BldgNb>\n                        <TwnNm>Garcia City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Hall Street</StrtNm>\n                        <BldgNb>30</BldgNb>\n                        <TwnNm>Taylor City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>NO8432105577575</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CACRNOKKXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTCD3OYZGF6S</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>BARCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTRCQXL80FPU</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Emma Jones</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>857</BldgNb>\n                        <TwnNm>Anderson City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>NO9227199517445</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Emma Jones Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Smith Street</StrtNm>\n                        <BldgNb>891</BldgNb>\n                        <PstCd>84003</PstCd>\n                        <TwnNm>Lewis City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REFRSIUNHGUH54YWAKT</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+      "fixed_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n       <Fr>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>DEUTDEFF</BICFI>\n               </FinInstnId>\n           </FIId>\n       </Fr>\n       <To>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>BNPPNOKKXXX</BICFI>\n               </FinInstnId>\n           </FIId>\n       </To>\n       <BizMsgIdr>MSGFQ1EXNM94FVRW2KV</BizMsgIdr>\n       <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n       <BizSvc>swift.cbprplus.02</BizSvc>\n       <CreDt>2026-05-29T08:59:18+00:00</CreDt>\n   </AppHdr><Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGFQ1EXNM94FVRW2KV</MsgId>\n                <CreDtTm>2026-05-29T11:46:18+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd>\n                </SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTR-20260528-001</InstrId>\n                    <EndToEndId>E2EAIDS5VO8XI2WRUOW</EndToEndId>\n                    <TxId>TXSCFT3XIXHEH0BHGM</TxId>\n                    <UETR>a1aa60d7-4d7f-447e-827c-7a688828a135</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>NURG</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"NOK\">41997.24</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"NOK\">15645.18</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"NOK\">125092.76</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>NWBKNOKKXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>RBOSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>INGBNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>DEUTDEFF</BICFI></FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>DBSSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTM0WN8RF384</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCT547HM3XDM9</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>HSBCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTH5UP21D7EV</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>263</BldgNb>\n                        <TwnNm>Garcia City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Hall Street</StrtNm>\n                        <BldgNb>30</BldgNb>\n                        <TwnNm>Taylor City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>NO8432105577575</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CACRNOKKXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTCD3OYZGF6S</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>BARCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTRCQXL80FPU</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Emma Jones</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>857</BldgNb>\n                        <TwnNm>Anderson City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>NO9227199517445</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Emma Jones Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Smith Street</StrtNm>\n                        <BldgNb>891</BldgNb>\n                        <PstCd>84003</PstCd>\n                        <TwnNm>Lewis City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REFRSIUNHGUH54YWAKT</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
       "file_id": "FILE0001",
       "batch_id": "VAL29052600003"
     },
-    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n       \n       \n       \n       <Fr>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>DEUTDEFF</BICFI>\n               </FinInstnId>\n           </FIId>\n       </Fr>\n       <To>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>BNPPNOKKXXX</BICFI>\n               </FinInstnId>\n           </FIId>\n       </To>\n       <BizMsgIdr>MSGFQ1EXNM94FVRW2KV</BizMsgIdr>\n       <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n       <BizSvc>swift.cbprplus.02</BizSvc>\n       <CreDt>2026-05-29T08:59:18+00:00</CreDt>\n   </AppHdr><Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGFQ1EXNM94FVRW2KV</MsgId>\n                <CreDtTm>2026-05-29T08:59:18+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd>\n                </SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTRQ0T74WFOESP</InstrId>\n                    <EndToEndId>E2EAIDS5VO8XI2WRUOW</EndToEndId>\n                    <TxId>TXSCFT3XIXHEH0BHGM</TxId>\n                    <UETR>a1aa60d7-4d7f-447e-827c-7a688828a135</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>NURG</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"NOK\">41997.24</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"NOK\">15645.18</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"NOK\">125092.76</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>NWBKNOKKXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>RBOSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>INGBNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>DEUTDEFF</BICFI></FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>DBSSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTM0WN8RF384</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCT547HM3XDM9</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>HSBCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTH5UP21D7EV</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>263</BldgNb>\n                        <TwnNm>Garcia City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Pacific Investments SAppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp</Nm>\n                    <PstlAdr>\n                        <StrtNm>Hall Street</StrtNm>\n                        <BldgNb>30</BldgNb>\n                        <TwnNm>Taylor City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>NO8432105577575</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CACRNOKKXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTCD3OYZGF6S</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>BARCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTRCQXL80FPU</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Emma Jones</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>857</BldgNb>\n                        <TwnNm>Anderson City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>NO9227199517445</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Emma Jones Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Smith Street</StrtNm>\n                        <BldgNb>891</BldgNb>\n                        <PstCd>84003</PstCd>\n                        <TwnNm>Lewis City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REFRSIUNHGUH54YWAKT</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n      \n       <BizMsgIdr>MSGFQ1EXNM94FVRW2KV</BizMsgIdr>\n       <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n       <BizSvc>swift.cbprplus.02</BizSvc>\n       <CreDt>2026-05-29T08:59:18+00:00</CreDt>\n   </AppHdr><Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGFQ1EXNM94FVRW2KV</MsgId>\n                <CreDtTm>2026-05-20T08:59:18+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd>\n                </SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId></InstrId>\n                    <EndToEndId>E2EAIDS5VO8XI2WRUOW</EndToEndId>\n                    <TxId>TXSCFT3XIXHEH0BHGM</TxId>\n                    <UETR>a1aa60d7-4d7f-447e-827c-7a688828a135</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>NURG</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"NO\">41997.24</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"NOK\">15645.18</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"NOK\">125092.76</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>NWBKNOKKXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>RBOSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>INGBNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>DEUTDEFF</BICFI></FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>DBSSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTM0WN8RF384</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCT547HM3XDM9</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>HSBCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTH5UP21D7EV</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>263</BldgNb>\n                        <TwnNm>Garcia City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Hall Street</StrtNm>\n                        <BldgNb>30</BldgNb>\n                        <TwnNm>Taylor City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>NO8432105577575</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CACRNOKKXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTCD3OYZGF6S</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>BARCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTRCQXL80FPU</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Emma Jones</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>857</BldgNb>\n                        <TwnNm>Anderson City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>NO9227199517445</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Emma Jones Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Smith Street</StrtNm>\n                        <BldgNb>891</BldgNb>\n                        <PstCd>84003</PstCd>\n                        <TwnNm>Lewis City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REFRSIUNHGUH54YWAKT</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
     "origin": "Pasted",
     "deleted": false
   },
@@ -6366,33 +6290,33 @@
     "validation_id": "VAL29052600004",
     "batch_id": "VAL29052600004",
     "file_id": "FILE0001",
-    "timestamp": "2026-05-29T11:27:01.564521+00:00",
+    "timestamp": "2026-05-29T11:46:27.288585+00:00",
     "message_type": "pacs.008.001.08",
     "status": "PASS",
     "total_errors": 0,
     "total_warnings": 12,
-    "execution_time_ms": 29.14,
+    "execution_time_ms": 29.94,
     "report_json": {
       "validation_id": "VAL29052600004",
-      "timestamp": "2026-05-29T11:27:01.564521+00:00",
+      "timestamp": "2026-05-29T11:46:27.288585+00:00",
       "status": "PASS",
       "schema": "Unknown",
       "message": "pacs.008.001.08",
       "errors": 0,
       "warnings": 12,
-      "total_time_ms": 29.14,
+      "total_time_ms": 29.94,
       "layer_status": {
         "1": {
           "status": "✅",
-          "time": 1.36
+          "time": 1.24
         },
         "2": {
           "status": "✅",
-          "time": 1.36
+          "time": 1.32
         },
         "3": {
           "status": "✅",
-          "time": 26.42
+          "time": 27.38
         }
       },
       "details": [
@@ -6404,7 +6328,7 @@
           "message": "BIC 'BNPPNOKKXXX' not found in official directory.",
           "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
           "related_test": "",
-          "line": 17
+          "line": 14
         },
         {
           "severity": "WARNING",
@@ -6414,7 +6338,7 @@
           "message": "BIC 'NWBKNOKKXXX' not found in official directory.",
           "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
           "related_test": "",
-          "line": 55
+          "line": 52
         },
         {
           "severity": "WARNING",
@@ -6424,7 +6348,7 @@
           "message": "BIC 'BNPPNOKKXXX' not found in official directory.",
           "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
           "related_test": "",
-          "line": 61
+          "line": 58
         },
         {
           "severity": "WARNING",
@@ -6434,7 +6358,7 @@
           "message": "BIC 'RBOSNOKKXXX' not found in official directory.",
           "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
           "related_test": "",
-          "line": 66
+          "line": 63
         },
         {
           "severity": "WARNING",
@@ -6444,7 +6368,7 @@
           "message": "BIC 'INGBNOKKXXX' not found in official directory.",
           "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
           "related_test": "",
-          "line": 71
+          "line": 68
         },
         {
           "severity": "WARNING",
@@ -6454,7 +6378,7 @@
           "message": "BIC 'BNPPNOKKXXX' not found in official directory.",
           "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
           "related_test": "",
-          "line": 80
+          "line": 77
         },
         {
           "severity": "WARNING",
@@ -6464,7 +6388,7 @@
           "message": "BIC 'DBSSNOKKXXX' not found in official directory.",
           "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
           "related_test": "",
-          "line": 85
+          "line": 82
         },
         {
           "severity": "WARNING",
@@ -6474,7 +6398,7 @@
           "message": "BIC 'UBSWNOKKXXX' not found in official directory.",
           "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
           "related_test": "",
-          "line": 97
+          "line": 94
         },
         {
           "severity": "WARNING",
@@ -6484,7 +6408,7 @@
           "message": "BIC 'HSBCNOKKXXX' not found in official directory.",
           "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
           "related_test": "",
-          "line": 109
+          "line": 106
         },
         {
           "severity": "WARNING",
@@ -6494,7 +6418,7 @@
           "message": "BIC 'CACRNOKKXXX' not found in official directory.",
           "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
           "related_test": "",
-          "line": 144
+          "line": 141
         },
         {
           "severity": "WARNING",
@@ -6504,7 +6428,7 @@
           "message": "BIC 'BARCNOKKXXX' not found in official directory.",
           "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
           "related_test": "",
-          "line": 156
+          "line": 153
         },
         {
           "severity": "WARNING",
@@ -6514,7 +6438,7 @@
           "message": "Missing timing config for parties.",
           "fix_suggestion": "",
           "related_test": "",
-          "line": 29
+          "line": 26
         }
       ],
       "metadata": {
@@ -6525,7 +6449,232 @@
       "file_id": "FILE0001",
       "batch_id": "VAL29052600004"
     },
-    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n       \n       \n       \n       <Fr>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>DEUTDEFF</BICFI>\n               </FinInstnId>\n           </FIId>\n       </Fr>\n       <To>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>BNPPNOKKXXX</BICFI>\n               </FinInstnId>\n           </FIId>\n       </To>\n       <BizMsgIdr>MSGFQ1EXNM94FVRW2KV</BizMsgIdr>\n       <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n       <BizSvc>swift.cbprplus.02</BizSvc>\n       <CreDt>2026-05-29T08:59:18+00:00</CreDt>\n   </AppHdr><Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGFQ1EXNM94FVRW2KV</MsgId>\n                <CreDtTm>2026-05-29T08:59:18+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd>\n                </SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTRQ0T74WFOESP</InstrId>\n                    <EndToEndId>E2EAIDS5VO8XI2WRUOW</EndToEndId>\n                    <TxId>TXSCFT3XIXHEH0BHGM</TxId>\n                    <UETR>a1aa60d7-4d7f-447e-827c-7a688828a135</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>NURG</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"NOK\">41997.24</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"NOK\">15645.18</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"NOK\">125092.76</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>NWBKNOKKXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>RBOSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>INGBNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>DEUTDEFF</BICFI></FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>DBSSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTM0WN8RF384</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCT547HM3XDM9</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>HSBCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTH5UP21D7EV</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>263</BldgNb>\n                        <TwnNm>Garcia City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Hall Street</StrtNm>\n                        <BldgNb>30</BldgNb>\n                        <TwnNm>Taylor City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>NO8432105577575</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CACRNOKKXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTCD3OYZGF6S</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>BARCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTRCQXL80FPU</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Emma Jones</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>857</BldgNb>\n                        <TwnNm>Anderson City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>NO9227199517445</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Emma Jones Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Smith Street</StrtNm>\n                        <BldgNb>891</BldgNb>\n                        <PstCd>84003</PstCd>\n                        <TwnNm>Lewis City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REFRSIUNHGUH54YWAKT</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n       <Fr>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>DEUTDEFF</BICFI>\n               </FinInstnId>\n           </FIId>\n       </Fr>\n       <To>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>BNPPNOKKXXX</BICFI>\n               </FinInstnId>\n           </FIId>\n       </To>\n       <BizMsgIdr>MSGFQ1EXNM94FVRW2KV</BizMsgIdr>\n       <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n       <BizSvc>swift.cbprplus.02</BizSvc>\n       <CreDt>2026-05-29T08:59:18+00:00</CreDt>\n   </AppHdr><Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGFQ1EXNM94FVRW2KV</MsgId>\n                <CreDtTm>2026-05-29T11:46:24+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd>\n                </SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTR-20260528-001</InstrId>\n                    <EndToEndId>E2EAIDS5VO8XI2WRUOW</EndToEndId>\n                    <TxId>TXSCFT3XIXHEH0BHGM</TxId>\n                    <UETR>a1aa60d7-4d7f-447e-827c-7a688828a135</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>NURG</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"NOK\">41997.24</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"NOK\">15645.18</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"NOK\">125092.76</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>NWBKNOKKXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>RBOSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>INGBNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>DEUTDEFF</BICFI></FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>DBSSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTM0WN8RF384</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCT547HM3XDM9</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>HSBCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTH5UP21D7EV</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>263</BldgNb>\n                        <TwnNm>Garcia City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Hall Street</StrtNm>\n                        <BldgNb>30</BldgNb>\n                        <TwnNm>Taylor City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>NO8432105577575</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CACRNOKKXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTCD3OYZGF6S</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>BARCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTRCQXL80FPU</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Emma Jones</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>857</BldgNb>\n                        <TwnNm>Anderson City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>NO9227199517445</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Emma Jones Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Smith Street</StrtNm>\n                        <BldgNb>891</BldgNb>\n                        <PstCd>84003</PstCd>\n                        <TwnNm>Lewis City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REFRSIUNHGUH54YWAKT</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+    "origin": "Pasted",
+    "deleted": false
+  },
+  {
+    "validation_id": "VAL29052600005",
+    "batch_id": "VAL29052600005",
+    "file_id": "FILE0001",
+    "timestamp": "2026-05-29T11:46:40.694498+00:00",
+    "message_type": "pacs.008.001.08",
+    "status": "FAIL",
+    "total_errors": 1,
+    "total_warnings": 0,
+    "execution_time_ms": 1.93,
+    "report_json": {
+      "validation_id": "VAL29052600005",
+      "timestamp": "2026-05-29T11:46:40.694498+00:00",
+      "status": "FAIL",
+      "schema": "Unknown",
+      "message": "pacs.008.001.08",
+      "errors": 1,
+      "warnings": 0,
+      "total_time_ms": 1.93,
+      "layer_status": {
+        "1": {
+          "status": "✅",
+          "time": 0.84
+        },
+        "2": {
+          "status": "❌",
+          "time": 1.09
+        },
+        "3": {
+          "status": "SKIPPED",
+          "time": 0
+        }
+      },
+      "details": [
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "HEADER_VAL",
+          "path": "/AppHdr/Fr",
+          "message": "The mandatory header element 'Fr' is missing from the Business Application Header (AppHdr).",
+          "fix_suggestion": "Add a <Fr> element inside <AppHdr>. Party Choice is required by the ISO 20022 BAH (head.001) schema.",
+          "related_test": "",
+          "line": 3
+        }
+      ],
+      "metadata": {
+        "MsgId": "MSGFQ1EXNM94FVRW2KV",
+        "UETR": "a1aa60d7-4d7f-447e-827c-7a688828a135",
+        "Namespace": "urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08"
+      },
+      "fixed_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n       <Fr>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>DEUTDEFF</BICFI>\n               </FinInstnId>\n           </FIId>\n       </Fr>\n       <To>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>BNPPNOKKXXX</BICFI>\n               </FinInstnId>\n           </FIId>\n       </To>\n       <BizMsgIdr>MSGFQ1EXNM94FVRW2KV</BizMsgIdr>\n       <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n       <BizSvc>swift.cbprplus.02</BizSvc>\n       <CreDt>2026-05-29T08:59:18+00:00</CreDt>\n   </AppHdr><Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGFQ1EXNM94FVRW2KV</MsgId>\n                <CreDtTm>2026-05-29T11:46:24+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd>\n                </SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTR-20260528-001</InstrId>\n                    <EndToEndId>E2EAIDS5VO8XI2WRUOW</EndToEndId>\n                    <TxId>TXSCFT3XIXHEH0BHGM</TxId>\n                    <UETR>a1aa60d7-4d7f-447e-827c-7a688828a135</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>NURG</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"NOK\">41997.24</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"NOK\">15645.18</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"NOK\">125092.76</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>NWBKNOKKXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>RBOSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>INGBNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>DEUTDEFF</BICFI></FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>DBSSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTM0WN8RF384</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCT547HM3XDM9</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>HSBCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTH5UP21D7EV</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>263</BldgNb>\n                        <TwnNm>Garcia City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Hall Street</StrtNm>\n                        <BldgNb>30</BldgNb>\n                        <TwnNm>Taylor City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>NO8432105577575</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CACRNOKKXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTCD3OYZGF6S</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>BARCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTRCQXL80FPU</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Emma Jones</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>857</BldgNb>\n                        <TwnNm>Anderson City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>NO9227199517445</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Emma Jones Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Smith Street</StrtNm>\n                        <BldgNb>891</BldgNb>\n                        <PstCd>84003</PstCd>\n                        <TwnNm>Lewis City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REFRSIUNHGUH54YWAKT</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+      "file_id": "FILE0001",
+      "batch_id": "VAL29052600005"
+    },
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n       \n       <To>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>BNPPNOKKXXX</BICFI>\n               </FinInstnId>\n           </FIId>\n       </To>\n       <BizMsgIdr>MSGFQ1EXNM94FVRW2KV</BizMsgIdr>\n       <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n       <BizSvc>swift.cbprplus.02</BizSvc>\n       <CreDt>2026-05-29T08:59:18+00:00</CreDt>\n   </AppHdr><Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGFQ1EXNM94FVRW2KV</MsgId>\n                <CreDtTm>2026-05-29T11:46:24+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd>\n                </SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTR-20260528-001</InstrId>\n                    <EndToEndId>E2EAIDS5VO8XI2WRUOW</EndToEndId>\n                    <TxId>TXSCFT3XIXHEH0BHGM</TxId>\n                    <UETR>a1aa60d7-4d7f-447e-827c-7a688828a135</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>NURG</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"NOK\">41997.24</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"NOK\">15645.18</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"NOK\">125092.76</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>NWBKNOKKXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>RBOSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>INGBNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>DEUTDEFF</BICFI></FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>DBSSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTM0WN8RF384</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCT547HM3XDM9</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>HSBCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTH5UP21D7EV</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>263</BldgNb>\n                        <TwnNm>Garcia City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Hall Street</StrtNm>\n                        <BldgNb>30</BldgNb>\n                        <TwnNm>Taylor City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>NO8432105577575</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CACRNOKKXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTCD3OYZGF6S</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>BARCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTRCQXL80FPU</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Emma Jones</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>857</BldgNb>\n                        <TwnNm>Anderson City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>NO9227199517445</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Emma Jones Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Smith Street</StrtNm>\n                        <BldgNb>891</BldgNb>\n                        <PstCd>84003</PstCd>\n                        <TwnNm>Lewis City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REFRSIUNHGUH54YWAKT</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
+    "origin": "Pasted",
+    "deleted": false
+  },
+  {
+    "validation_id": "VAL29052600006",
+    "batch_id": "VAL29052600006",
+    "file_id": "FILE0001",
+    "timestamp": "2026-05-29T11:46:43.617775+00:00",
+    "message_type": "pacs.008.001.08",
+    "status": "PASS",
+    "total_errors": 0,
+    "total_warnings": 12,
+    "execution_time_ms": 22.95,
+    "report_json": {
+      "validation_id": "VAL29052600006",
+      "timestamp": "2026-05-29T11:46:43.617775+00:00",
+      "status": "PASS",
+      "schema": "Unknown",
+      "message": "pacs.008.001.08",
+      "errors": 0,
+      "warnings": 12,
+      "total_time_ms": 22.95,
+      "layer_status": {
+        "1": {
+          "status": "✅",
+          "time": 1.37
+        },
+        "2": {
+          "status": "✅",
+          "time": 0.76
+        },
+        "3": {
+          "status": "✅",
+          "time": 20.82
+        }
+      },
+      "details": [
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "AppHdr.To.FIId.FinInstnId.BICFI",
+          "message": "BIC 'BNPPNOKKXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 14
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf.Agt.FinInstnId.BICFI",
+          "message": "BIC 'NWBKNOKKXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 52
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt1.FinInstnId.BICFI",
+          "message": "BIC 'BNPPNOKKXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 58
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt2.FinInstnId.BICFI",
+          "message": "BIC 'RBOSNOKKXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 63
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt3.FinInstnId.BICFI",
+          "message": "BIC 'INGBNOKKXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 68
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstdAgt.FinInstnId.BICFI",
+          "message": "BIC 'BNPPNOKKXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 77
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt1.FinInstnId.BICFI",
+          "message": "BIC 'DBSSNOKKXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 82
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt2.FinInstnId.BICFI",
+          "message": "BIC 'UBSWNOKKXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 94
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt3.FinInstnId.BICFI",
+          "message": "BIC 'HSBCNOKKXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 106
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.DbtrAgt.FinInstnId.BICFI",
+          "message": "BIC 'CACRNOKKXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 141
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.CdtrAgt.FinInstnId.BICFI",
+          "message": "BIC 'BARCNOKKXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 153
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "CONFIG_NOT_FOUND",
+          "path": "/",
+          "message": "Missing timing config for parties.",
+          "fix_suggestion": "",
+          "related_test": "",
+          "line": 26
+        }
+      ],
+      "metadata": {
+        "MsgId": "MSGFQ1EXNM94FVRW2KV",
+        "UETR": "a1aa60d7-4d7f-447e-827c-7a688828a135",
+        "Namespace": "urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08"
+      },
+      "file_id": "FILE0001",
+      "batch_id": "VAL29052600006"
+    },
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n       <Fr>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>DEUTDEFF</BICFI>\n               </FinInstnId>\n           </FIId>\n       </Fr>\n       <To>\n           <FIId>\n               <FinInstnId>\n                   <BICFI>BNPPNOKKXXX</BICFI>\n               </FinInstnId>\n           </FIId>\n       </To>\n       <BizMsgIdr>MSGFQ1EXNM94FVRW2KV</BizMsgIdr>\n       <MsgDefIdr>pacs.008.001.08</MsgDefIdr>\n       <BizSvc>swift.cbprplus.02</BizSvc>\n       <CreDt>2026-05-29T08:59:18+00:00</CreDt>\n   </AppHdr><Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08\">\n        <FIToFICstmrCdtTrf>\n            <GrpHdr>\n                <MsgId>MSGFQ1EXNM94FVRW2KV</MsgId>\n                <CreDtTm>2026-05-29T11:46:24+00:00</CreDtTm><NbOfTxs>1</NbOfTxs><SttlmInf>\n                    <SttlmMtd>INGA</SttlmMtd>\n                </SttlmInf>\n            </GrpHdr>\n            <CdtTrfTxInf>\n                <PmtId>\n                    <InstrId>INSTR-20260528-001</InstrId>\n                    <EndToEndId>E2EAIDS5VO8XI2WRUOW</EndToEndId>\n                    <TxId>TXSCFT3XIXHEH0BHGM</TxId>\n                    <UETR>a1aa60d7-4d7f-447e-827c-7a688828a135</UETR>\n                </PmtId>\n                <PmtTpInf>\n                    <SvcLvl>\n                        <Cd>NURG</Cd>\n                    </SvcLvl>\n                </PmtTpInf>\n                <IntrBkSttlmAmt Ccy=\"NOK\">41997.24</IntrBkSttlmAmt><IntrBkSttlmDt>2026-05-29</IntrBkSttlmDt>\n                <SttlmTmReq>\n                    <CLSTm>14:00:00+00:00</CLSTm>\n                </SttlmTmReq>\n                <InstdAmt Ccy=\"NOK\">15645.18</InstdAmt>\n                <ChrgBr>SHAR</ChrgBr>\n                <ChrgsInf>\n                    <Amt Ccy=\"NOK\">125092.76</Amt>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>NWBKNOKKXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </ChrgsInf>\n                <PrvsInstgAgt1>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt1>\n                <PrvsInstgAgt2>\n                    <FinInstnId>\n                        <BICFI>RBOSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt2>\n                <PrvsInstgAgt3>\n                    <FinInstnId>\n                        <BICFI>INGBNOKKXXX</BICFI>\n                    </FinInstnId>\n                </PrvsInstgAgt3>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>DEUTDEFF</BICFI></FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>BNPPNOKKXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <IntrmyAgt1>\n                    <FinInstnId>\n                        <BICFI>DBSSNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt1>\n                <IntrmyAgt1Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTM0WN8RF384</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt1Acct>\n                <IntrmyAgt2>\n                    <FinInstnId>\n                        <BICFI>UBSWNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt2>\n                <IntrmyAgt2Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCT547HM3XDM9</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt2Acct>\n                <IntrmyAgt3>\n                    <FinInstnId>\n                        <BICFI>HSBCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </IntrmyAgt3>\n                <IntrmyAgt3Acct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTH5UP21D7EV</Id>\n                        </Othr>\n                    </Id>\n                </IntrmyAgt3Acct>\n                <UltmtDbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Brown Street</StrtNm>\n                        <BldgNb>263</BldgNb>\n                        <TwnNm>Garcia City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtDbtr>\n                <Dbtr>\n                    <Nm>Pacific Investments SA</Nm>\n                    <PstlAdr>\n                        <StrtNm>Hall Street</StrtNm>\n                        <BldgNb>30</BldgNb>\n                        <TwnNm>Taylor City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Dbtr>\n                <DbtrAcct>\n                    <Id>\n                        <IBAN>NO8432105577575</IBAN>\n                    </Id>\n                </DbtrAcct>\n                <DbtrAgt>\n                    <FinInstnId>\n                        <BICFI>CACRNOKKXXX</BICFI>\n                    </FinInstnId>\n                </DbtrAgt>\n                <DbtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTCD3OYZGF6S</Id>\n                        </Othr>\n                    </Id>\n                </DbtrAgtAcct>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>BARCNOKKXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <CdtrAgtAcct>\n                    <Id>\n                        <Othr>\n                            <Id>ACCTRCQXL80FPU</Id>\n                        </Othr>\n                    </Id>\n                </CdtrAgtAcct>\n                <Cdtr>\n                    <Nm>Emma Jones</Nm>\n                    <PstlAdr>\n                        <StrtNm>Martinez Street</StrtNm>\n                        <BldgNb>857</BldgNb>\n                        <TwnNm>Anderson City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>NO9227199517445</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <UltmtCdtr>\n                    <Nm>Emma Jones Group</Nm>\n                    <PstlAdr>\n                        <StrtNm>Smith Street</StrtNm>\n                        <BldgNb>891</BldgNb>\n                        <PstCd>84003</PstCd>\n                        <TwnNm>Lewis City</TwnNm>\n                        <Ctry>NO</Ctry>\n                    </PstlAdr>\n                </UltmtCdtr>\n                <RmtInf>\n                    <Ustrd>REFRSIUNHGUH54YWAKT</Ustrd>\n                </RmtInf>\n            </CdtTrfTxInf>\n        </FIToFICstmrCdtTrf>\n    </Document>\n</BusMsgEnvlp>\n",
     "origin": "Pasted",
     "deleted": false
   }
