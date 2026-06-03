@@ -35,6 +35,11 @@ class Layer3Mixin:
     # files on every validation was ~35ms of avoidable work per call.
     _rules_cache: Dict[str, List[Dict[str, Any]]] = {}
 
+    @classmethod
+    def clear_rules_cache(cls) -> None:
+        """Flush the rules cache so updated JSON rule files are reloaded."""
+        cls._rules_cache.clear()
+
     def _load_all_rules(self, message_type: str) -> List[Dict[str, Any]]:
         """
         Loads global rules + family rules + message-specific rules.
@@ -610,16 +615,21 @@ class Layer3Mixin:
             # 1. Find Header BIC
             h_key = f"AppHdr.{header_role}.FIId.FinInstnId.BICFI"
             h_val = data.get(h_key)
-            
-            # 2. Find Document BIC (Search anywhere in message)
+
+            # 2. Find Document BIC — try direct path first, then with Agt intermediary
+            # (camt.056 Assgnr/Assgne have an extra Agt level: Assgnr.Agt.FinInstnId.BICFI)
             d_val = None
             d_key = None
-            suffix = f".{doc_role}.FinInstnId.BICFI"
-            
-            for k, v in data.items():
-                if k.endswith(suffix):
-                    d_val = v
-                    d_key = k
+            for suffix in [
+                f".{doc_role}.FinInstnId.BICFI",
+                f".{doc_role}.Agt.FinInstnId.BICFI",
+            ]:
+                for k, v in data.items():
+                    if k.endswith(suffix):
+                        d_val = v
+                        d_key = k
+                        break
+                if d_val is not None:
                     break
             
             # If either is missing, we can't compare

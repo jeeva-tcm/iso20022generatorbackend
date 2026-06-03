@@ -1,5 +1,31 @@
 [
     {
+        "rule_id": "PACS009_UETR_REQUIRED",
+        "description": "CBPR+: UETR is mandatory in pacs.009 even though the XSD declares it optional.",
+        "condition": "exists(Document.FICdtTrf.CdtTrfTxInf)",
+        "mandatory_fields": [
+            "Document.FICdtTrf.CdtTrfTxInf.PmtId.UETR"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "UETR (Unique End-to-End Transaction Reference) is mandatory in pacs.009 under CBPR+.",
+        "fix": "Add a valid UUID v4 to <PmtId><UETR> (e.g., 4a1a0945-5772-409a-83ba-240e666e0267)."
+    },
+    {
+        "rule_id": "PACS009_PMTID_REQUIRED",
+        "description": "CBPR+: InstrId, EndToEndId and TxId are mandatory in pacs.009 PmtId (XSD declares some optional).",
+        "condition": "exists(Document.FICdtTrf.CdtTrfTxInf.PmtId)",
+        "mandatory_fields": [
+            "Document.FICdtTrf.CdtTrfTxInf.PmtId.InstrId",
+            "Document.FICdtTrf.CdtTrfTxInf.PmtId.EndToEndId",
+            "Document.FICdtTrf.CdtTrfTxInf.PmtId.TxId"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "InstrId, EndToEndId and TxId are mandatory in pacs.009 PmtId under CBPR+.",
+        "fix": "Add <InstrId>, <EndToEndId> and <TxId> inside <PmtId>."
+    },
+    {
         "rule_id": "PACS009_001",
         "description": "Financial Institution Credit Transfer: Debtor must identify as a Financial Institution (FinInstnId). customer elements like Nm, OrgId, PrvtId are not allowed.",
         "condition": "exists(Document.FICdtTrf)",

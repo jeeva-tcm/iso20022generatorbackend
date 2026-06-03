@@ -1,7 +1,9 @@
 {
-  "domain": "SWIFT MX CBPR+ pacs.010.001.03",
+  "domain": "SWIFT MX CBPR+ pacs.010.001.03 / pacs.010.001.06",
   "version": "SR2025",
-  "last_updated": "2026-06-01",
+  "last_updated": "2026-06-03",
+  "xsd_version": "pacs.010.001.06",
+  "xsd_namespace": "urn:iso:std:iso:20022:tech:xsd:pacs.010.001.06",
   "purpose": "Context KB for pacs.010 FinancialInstitutionDirectDebit auto-fixing. For each XML tag: datatype, mandatory, errors, possible_fixes.",
   "reference_documents": [
     "ISO 20022 pacs.010.001.03 FinancialInstitutionDirectDebit schema",
@@ -14,7 +16,13 @@
     "FinancialInstitutionParties": "Dbtr and Cdtr are financial institutions (BranchAndFinancialInstitutionIdentification6 / FinancialInstitutionIdentification18). They carry FinInstnId, not customer PartyIdentification (no Id/PrvtId/Birth date).",
     "SettlementAmountCurrency": "All amount elements carry a mandatory Ccy attribute that must be a valid ISO 4217 active currency code; the value must be a non-negative decimal with at most 5 fraction digits.",
     "DirectDebitTransactionMandatory": "Each CdtInstr must contain at least one DrctDbtTxInf [1..n], and each DrctDbtTxInf must carry PmtId/EndToEndId and IntrBkSttlmAmt.",
-    "SettlementDatePresence": "Interbank settlement date may be carried at CdtInstr level or at DrctDbtTxInf level; when present it must be a valid ISODate."
+    "SettlementDatePresence": "Interbank settlement date may be carried at CdtInstr level or at DrctDbtTxInf level; when present it must be a valid ISODate.",
+    "XSDAmountConstraints": "ActiveCurrencyAndAmount: fractionDigits=5, totalDigits=18, minInclusive=0. Currency Ccy attribute is REQUIRED. This applies to IntrBkSttlmAmt, CdtInstr/TtlIntrBkSttlmAmt, and GrpHdr/CtrlSum.",
+    "XSDBICFIPattern": "BICFIDec2014Identifier pattern: [A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3})?. Applies to all FinInstnId/BICFI in CdtInstr/Cdtr, CdtInstr/CdtrAgt, DrctDbtTxInf/Dbtr, DrctDbtTxInf/DbtrAgt.",
+    "XSDIBANPattern": "IBAN2007Identifier: [A-Z]{2,2}[0-9]{2,2}[a-zA-Z0-9]{1,30}. Max 34 chars. Used in CdtInstr/CdtrAcct/Id/IBAN and DrctDbtTxInf/DbtrAcct/Id/IBAN.",
+    "XSDUUIDPattern": "UUIDv4Identifier: [a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}. Mandatory in DrctDbtTxInf/PmtId/UETR under CBPR+.",
+    "XSDNbOfTxsPattern": "Max15NumericText: [0-9]{1,15}. NbOfTxs counts CdtInstr blocks (NOT DrctDbtTxInf inside them). Example: 1 CdtInstr with 3 DrctDbtTxInf → NbOfTxs=1.",
+    "XSDPacs010v06Changes": "pacs.010.001.06 (vs .001.03): Added SplmtryData at message level. DrctDbtTxInf sequence: PmtId, PmtTpInf, IntrBkSttlmAmt, IntrBkSttlmDt, Dbtr, DbtrAcct, DbtrAgt, Purp, RmtInf, SplmtryData. CdtInstr mandatory children: CdtId (mandatory), then SttlmInf, then Cdtr, then DrctDbtTxInf."
   },
   "cbpr_plus_formal_rules": [
     "AppHdr (BusinessApplicationHeaderV02) is mandatory for all CBPR+ exchanges and must precede the Document.",

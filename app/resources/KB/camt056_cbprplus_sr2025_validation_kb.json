@@ -1,7 +1,9 @@
 {
-    "domain": "SWIFT MX CBPR+ camt.056.001.08",
+    "domain": "SWIFT MX CBPR+ camt.056.001.08 / camt.056.001.11",
     "version": "SR2025",
-    "last_updated": "2026-06-01",
+    "last_updated": "2026-06-03",
+    "xsd_version": "camt.056.001.11",
+    "xsd_namespace": "urn:iso:std:iso:20022:tech:xsd:camt.056.001.11",
     "purpose": "Context KB for camt.056.001.08 FIToFIPaymentCancellationRequest auto-fixing. For each XML tag: datatype, mandatory, errors, possible_fixes.",
     "reference_documents": [
         "ISO 20022 camt.056.001.08 FIToFIPaymentCancellationRequest schema",
@@ -29,7 +31,11 @@
         "All text fields are limited to the FIN-X (SWIFT) character set; accented or non-permitted characters are not allowed.",
         "CBPR+ permits a single underlying transaction per camt.056 message; multiple Undrlyg/TxInf occurrences should be split into separate messages.",
         "AddtlInf is limited to Max105Text per occurrence and may repeat.",
-        "Original message identification (OrgnlGrpInf/OrgnlMsgId and OrgnlMsgNmId) should reference the camt/pacs message being cancelled."
+        "Original message identification (OrgnlGrpInf/OrgnlMsgId and OrgnlMsgNmId) should reference the camt/pacs message being cancelled.",
+        "XSD_BICFIPattern: BICFIDec2014Identifier [A-Z0-9]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})? — applies to Assgnr/Agt/FinInstnId/BICFI, Assgne/Agt/FinInstnId/BICFI, AppHdr/Fr, AppHdr/To.",
+        "XSD_DateTimeFormat: ISODateTime used for Assgnmt/CreDtTm and AppHdr/CreDt — must be CBPR+ format YYYY-MM-DDTHH:MM:SS+HH:MM. No Z, no milliseconds.",
+        "XSD_V11_Changes: camt.056.001.11 vs 001.08 — FIToFIPaymentCancellationRequestV11 root. Added SplmtryData at message level. Assgnmt/Assgnr and Assgnmt/Assgne now accept either Agt (agent) OR Pty (party) — previously only Agt. TxInf sequence updated: CxlId, Case, OrgnlGrpInf, OrgnlInstrId, OrgnlEndToEndId, OrgnlTxId, OrgnlUETR, OrgnlClrSysRef (NEW), OrgnlIntrBkSttlmAmt, OrgnlIntrBkSttlmDt, CxlRsnInf, OrgnlTxRef, SplmtryData.",
+        "XSD_NewElement_OrgnlClrSysRef: camt.056.001.11 TxInf adds OrgnlClrSysRef (original clearing system reference) as an optional identifier for the cancelled transaction. Use when the original payment was identified by clearing system reference rather than UETR/TxId."
     ],
     "tags": [
         {

@@ -1,0 +1,55 @@
+[
+    {
+        "rule_id": "PACS010_CDTID_REQUIRED",
+        "description": "pacs.010: CdtInstr/CdtId is mandatory.",
+        "condition": "exists(Document.FIDrctDbt.CdtInstr)",
+        "mandatory_fields": [
+            "Document.FIDrctDbt.CdtInstr.CdtId"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtInstr/CdtId is mandatory in pacs.010.",
+        "fix": "Add <CdtId> as the first child of <CdtInstr>."
+    },
+    {
+        "rule_id": "PACS010_AGENTS_REQUIRED",
+        "description": "CBPR+: InstgAgt and InstdAgt are mandatory in pacs.010 CdtInstr (XSD declares them optional).",
+        "condition": "exists(Document.FIDrctDbt.CdtInstr)",
+        "mandatory_fields": [
+            "Document.FIDrctDbt.CdtInstr.InstgAgt",
+            "Document.FIDrctDbt.CdtInstr.InstdAgt"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "InstgAgt and InstdAgt are mandatory in pacs.010 CdtInstr under CBPR+.",
+        "fix": "Add <InstgAgt> and <InstdAgt> (FinInstnId/BICFI) inside <CdtInstr>."
+    },
+    {
+        "rule_id": "PACS010_CDTR_REQUIRED",
+        "description": "pacs.010: CdtInstr/Cdtr (the financial-institution creditor) is mandatory.",
+        "condition": "exists(Document.FIDrctDbt.CdtInstr)",
+        "mandatory_fields": [
+            "Document.FIDrctDbt.CdtInstr.Cdtr"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtInstr/Cdtr is mandatory in pacs.010 (FinInstnId/BICFI).",
+        "fix": "Add <Cdtr><FinInstnId><BICFI>...</BICFI></FinInstnId></Cdtr> inside <CdtInstr>."
+    },
+    {
+        "rule_id": "PACS010_DRCTDBT_REQUIRED",
+        "description": "CBPR+: UETR, EndToEndId, IntrBkSttlmAmt, Dbtr and DbtrAgt are mandatory in pacs.010 DrctDbtTxInf.",
+        "condition": "exists(Document.FIDrctDbt.CdtInstr.DrctDbtTxInf)",
+        "mandatory_fields": [
+            "Document.FIDrctDbt.CdtInstr.DrctDbtTxInf.PmtId.UETR",
+            "Document.FIDrctDbt.CdtInstr.DrctDbtTxInf.PmtId.EndToEndId",
+            "Document.FIDrctDbt.CdtInstr.DrctDbtTxInf.IntrBkSttlmAmt",
+            "Document.FIDrctDbt.CdtInstr.DrctDbtTxInf.Dbtr",
+            "Document.FIDrctDbt.CdtInstr.DrctDbtTxInf.DbtrAgt"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "UETR, EndToEndId, IntrBkSttlmAmt, Dbtr and DbtrAgt are mandatory in pacs.010 DrctDbtTxInf under CBPR+.",
+        "fix": "Add the missing element inside <DrctDbtTxInf> (Dbtr/DbtrAgt use FinInstnId/BICFI; UETR is a UUID v4)."
+    }
+]

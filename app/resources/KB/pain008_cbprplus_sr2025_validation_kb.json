@@ -14,7 +14,13 @@
         "ReqdColltnDt_present": "Each PmtInf must carry a ReqdColltnDt (Requested Collection Date); it is mandatory and date-only (ISODate).",
         "MndtRltdInf_pair": "When MndtRltdInf is present, MndtId and DtOfSgntr are both required within it.",
         "Cdtr_identification": "Each PmtInf must identify the Creditor (Cdtr/Nm), the Creditor account (CdtrAcct/Id/IBAN) and the Creditor agent (CdtrAgt/FinInstnId/BICFI).",
-        "Dbtr_identification": "Each DrctDbtTxInf must identify the Debtor (Dbtr/Nm), the Debtor account (DbtrAcct/Id/IBAN) and the Debtor agent (DbtrAgt/FinInstnId/BICFI)."
+        "Dbtr_identification": "Each DrctDbtTxInf must identify the Debtor (Dbtr/Nm), the Debtor account (DbtrAcct/Id/IBAN) and the Debtor agent (DbtrAgt/FinInstnId/BICFI).",
+        "XSD_BICFIPattern": "BICFIDec2014Identifier (pain.008.001.11): [A-Z0-9]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})? — applies to CdtrAgt/FinInstnId/BICFI, DbtrAgt/FinInstnId/BICFI, AppHdr/Fr, AppHdr/To.",
+        "XSD_IBANPattern": "IBAN2007Identifier: [A-Z]{2}[0-9]{2}[a-zA-Z0-9]{1,30}. Applies to CdtrAcct/Id/IBAN and DbtrAcct/Id/IBAN.",
+        "XSD_AmountConstraints": "ActiveOrHistoricCurrencyAndAmount (InstdAmt): fractionDigits=5, totalDigits=18, minInclusive=0. Ccy attribute is required.",
+        "XSD_V11Changes": "pain.008.001.11 (latest XSD) vs 001.08: Updated PaymentInstruction types. MandateRelatedInformation15 now includes TrckgDays (tracking days) field. LocalInstrument may include new codes. SplmtryData element added.",
+        "XSD_SequenceOrder_PmtInf": "PmtInf mandatory element order (PmtInstructionInformation9/10): PmtInfId, PmtMtd, [BtchBookg, NbOfTxs, CtrlSum, PmtTpInf,] ReqdColltnDt, Cdtr, CdtrAcct, CdtrAgt, [CdtrSchmeId, ChrgBr,] DrctDbtTxInf.",
+        "XSD_SequenceOrder_DrctDbtTxInf": "DrctDbtTxInf mandatory element order: PmtId, [PmtTpInf,] InstdAmt, [DrctDbtTx, UltmtCdtr,] DbtrAgt, [DbtrAgtAcct,] Dbtr, DbtrAcct, [UltmtDbtr, InstrForCdtrAgt, Purp, RgltryRptg, Tax, RltdRmtInf,] RmtInf."
     },
     "cbpr_plus_formal_rules": [
         "AppHdr (BusinessApplicationHeaderV02) is mandatory for all CBPR+ exchanges and must precede the Document.",
@@ -28,7 +34,10 @@
         "All text fields are restricted to the SWIFT FIN-X character set; Nm/Adr/RmtInf may use the extended Latin character set.",
         "Agent identification (CdtrAgt, DbtrAgt) must use FinInstnId; when BICFI is present, Nm and PstlAdr are not used in the same block.",
         "Account identification (CdtrAcct, DbtrAcct) should use IBAN where the account is held in an IBAN country.",
-        "GrpHdr/NbOfTxs must equal the count of DrctDbtTxInf occurrences and CBPR+ favours single-transaction messages."
+        "GrpHdr/NbOfTxs must equal the count of DrctDbtTxInf occurrences and CBPR+ favours single-transaction messages.",
+        "ENVELOPE_STRUCTURE: The correct pain.008 document structure is: (1) AppHdr as a standalone element with xmlns='urn:iso:std:iso:20022:tech:xsd:head.001.001.02', followed by (2) Document as a sibling element with xmlns='urn:iso:std:iso:20022:tech:xsd:pain.008.001.08' containing <CstmrDrctDbtInitn>. Wrapping in a <BusMsgEnvlp xmlns='urn:swift:xsd:envelope'> is INVALID and prevents XSD validation. CstmrDrctDbtInitn MUST be inside Document, NOT inside AppHdr.",
+        "ENVELOPE_ERROR_CANNOT_AUTO_FIX: If a BusMsgEnvlp wrapper is detected, or if CstmrDrctDbtInitn appears as a direct child of AppHdr, the AI CANNOT auto-fix this. Error code: BUSMSGENVLP_INVALID_NAMESPACE / DOCUMENT_NESTED_IN_APPHDR. Human must manually restructure the XML. See ai_knowledge_base.error_code_catalogue.BUSMSGENVLP_INVALID_NAMESPACE for the correct structure and steps.",
+        "APPHDR_MANDATORY_FIELDS: A valid pain.008 AppHdr must contain: <Fr> (sender BICFI = FwdgAgt BICFI), <To> (receiver BICFI = CdtrAgt BICFI), <BizMsgIdr> (= GrpHdr/MsgId), <MsgDefIdr>pain.008.001.08</MsgDefIdr>, <BizSvc>swift.cbprplus.02</BizSvc>, <CreDt> (YYYY-MM-DDTHH:MM:SS+HH:MM). Any of these missing produces separate fixable errors."
     ],
     "tags": [
         {

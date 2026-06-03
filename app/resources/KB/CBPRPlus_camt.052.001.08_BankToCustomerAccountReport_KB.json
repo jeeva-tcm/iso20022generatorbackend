@@ -1,7 +1,9 @@
 {
-  "domain": "SWIFT MX CBPR+ camt.052.001.08",
+  "domain": "SWIFT MX CBPR+ camt.052.001.08 / camt.052.001.13",
   "version": "SR2025",
-  "last_updated": "2026-05-28",
+  "last_updated": "2026-06-03",
+  "xsd_version": "camt.052.001.13",
+  "xsd_namespace": "urn:iso:std:iso:20022:tech:xsd:camt.052.001.13",
   "purpose": "Context KB for camt.052 BankToCustomerAccountReport validation. For each XML tag: possible errors, affected tags, and all possible fixes. Based on CBPR+ SR2025 Usage Guideline (camt.052.001.08) and SWIFT MX Enterprise KB.",
   "reference_documents": [
     "CBPRPlus-camt.052.001.08_BankToCustomerAccountReport CBPRPlus SR2025 (Combined), 21 March 2025",
@@ -14,7 +16,12 @@
     {"rule_id": "R12", "name": "CurrencyAmount", "description": "The number of fractional digits (or minor unit of currency) of any amount must comply with ISO 4217. The decimal separator is a dot. Applies to all ActiveOrHistoricCurrencyAndAmount elements (Bal/Amt, Ntry/Amt, etc.).", "error_code": "D00007", "severity": "Fatal", "error_text": "Invalid currency code or too many decimal digits."},
     {"rule_id": "R13", "name": "ForwardBalanceAndAvailabilityRule", "description": "If Balance/Type is equal to ForwardAvailable, then Availability is not allowed.", "error_code": "", "severity": "Fatal", "error_text": "Invalid message content for forward available balance."},
     {"rule_id": "R14", "name": "DomainOrProprietaryRule", "description": "In BankTransactionCode (BkTxCd), either Proprietary or Domain or both must be present.", "error_code": "X00104", "severity": "Fatal", "error_text": "Invalid bank transaction code."},
-    {"rule_id": "R15", "name": "BICFI", "description": "Valid BICs for financial institutions are registered and published by the ISO 9362 Registration Authority and consist of eight (8) or eleven (11) contiguous characters.", "error_code": "D00001", "severity": "Fatal", "error_text": "Invalid FI BIC."}
+    {"rule_id": "R15", "name": "BICFI", "description": "Valid BICs for financial institutions are registered and published by the ISO 9362 Registration Authority and consist of eight (8) or eleven (11) contiguous characters.", "error_code": "D00001", "severity": "Fatal", "error_text": "Invalid FI BIC."},
+    {"rule_id": "R16", "name": "XSDBICFIPattern", "description": "XSD pattern for BICFIDec2014Identifier (camt.052.001.13): [A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3})?. All FI BICs in Acct/Id, AcctSvcr/FinInstnId, AcctOwnr/FinInstnId must match this pattern.", "error_code": "INVALID_BICFI", "severity": "Fatal", "xsd_source": "BICFIDec2014Identifier"},
+    {"rule_id": "R17", "name": "XSDAmountConstraints", "description": "ActiveOrHistoricCurrencyAndAmount: fractionDigits=5, totalDigits=18, minInclusive=0. Ccy attribute is required. Applies to Bal/Amt, Ntry/Amt, TxDtls/Amt, ChrgsInf/Amt. Negative amounts are invalid in amount fields; use CreditDebitCode (CRDT/DBIT) to indicate direction.", "error_code": "AMOUNT_NEGATIVE", "severity": "Fatal", "xsd_source": "ActiveOrHistoricCurrencyAndAmount_SimpleType"},
+    {"rule_id": "R18", "name": "XSDBalanceTypeChoiceRule", "description": "Balance/Tp is a BalanceType13Choice: either Cd (ExternalBalanceType1Code, 1-4 chars) or Prtry (Max35Text). Common codes: OPBD (opening booked), CLBD (closing booked), CLAV (closing available), ITBD (interim booked), ITAV (interim available).", "error_code": "SCHEMENAME_INVALID", "severity": "Fatal", "xsd_source": "BalanceType13Choice"},
+    {"rule_id": "R19", "name": "XSDNtryStatusRule", "description": "Entry/Sts (EntryStatus1Choice) must contain Cd (EntryStatus1Code): BOOK (booked), PDNG (pending), FUTR (future-dated), INFO (info only). Used for Ntry/Sts. AI fix: default to BOOK.", "error_code": "INVALID_CODE", "severity": "Fatal", "xsd_source": "EntryStatus1Code / EntryStatus1Choice"},
+    {"rule_id": "R20", "name": "XSDCdtDbtIndRule", "description": "CreditDebitCode (used in Ntry/CdtDbtInd, Bal/CdtDbtInd): valid values are CRDT (credit) or DBIT (debit) only. This must be present when Amt is present.", "error_code": "INVALID_CODE", "severity": "Fatal", "xsd_source": "CreditDebitCode"}
   ],
   "cbpr_plus_formal_rules": [
     {"rule_id": "CBPR_COPY_DUPLICATE", "name": "CBPR_Copy_Duplicate_FormalRule", "description": "If CopyDuplicate indicator is used in the Business Application Header (AppHdr/CpyDplct), it must be identical to the CopyDuplicateIndicator in the business document (Report/CpyDplctInd) when the latter is present."},
