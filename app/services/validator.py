@@ -876,7 +876,12 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                     continue
 
             # 3. Check for mandatory offset using the user-provided regex
-            # Regex: .*(\+|-)((0[0-9])|(1[0-4])):[0-5][0-9]
+            # Skip garbage values that aren't datetimes at all (e.g. 'with', 'abc').
+            # Those are already caught by XSD validation; emitting a CBPR timezone
+            # error on top produces a confusing duplicate with contradictory hints.
+            if not re.match(r'^\d{4}-\d{2}-\d{2}T', raw_value):
+                continue
+
             offset_patt = re.compile(r'.*(\+|-)((0[0-9])|(1[0-4])):[0-5][0-9]$')
             if not offset_patt.match(raw_value):
                 line_num = xml_content.count('\n', 0, m.start()) + 1

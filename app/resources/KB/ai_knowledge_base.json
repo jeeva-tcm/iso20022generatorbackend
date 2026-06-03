@@ -879,9 +879,12 @@
             "requires_human_review": false
         },
         "AMOUNT_PRECISION_EXCEEDED": {
-            "root_cause": "Amount has more than 5 fractional digits, exceeding the XSD fractionDigits=5 constraint on ActiveCurrencyAndAmount and ActiveOrHistoricCurrencyAndAmount.",
-            "fix": "Round the amount to a maximum of 5 decimal places. For example, 1000.123456 becomes 1000.12346.",
-            "requires_human_review": false
+            "root_cause": "Amount field has more than 5 fractional digits, violating XSD fractionDigits=5 on ActiveCurrencyAndAmount / ActiveOrHistoricCurrencyAndAmount. Applies to all ISO 20022 message types: pacs.008/009/003/010, pain.001/002/008, camt.052/053/054/055/056/057.",
+            "fix": "Round the existing amount to the ISO 4217 standard precision for the currency (e.g. 2 for EUR/USD/GBP, 0 for JPY, 3 for KWD), capped at 5 decimal places. Always preserve the original numeric value — round it, do NOT replace it with a dummy. Example: EUR 444911.1234567 → 444911.12. The AI fixer reads currency precision from currency.json and repairs in-place.",
+            "requires_human_review": false,
+            "applies_to": ["pacs.008", "pacs.009", "pacs.003", "pacs.010", "pain.001", "pain.002", "pain.008", "camt.052", "camt.053", "camt.054", "camt.055", "camt.056", "camt.057"],
+            "affected_elements": ["IntrBkSttlmAmt", "InstdAmt", "Amt", "ChrgsInf/Amt", "TtlIntrBkSttlmAmt", "TtlRtrdIntrBkSttlmAmt", "EqvtAmt", "RetrdInstdAmt", "XchgRate/AgrdRate"],
+            "do_not": "Do NOT replace the amount with a dummy value (1000.00) or borrow the amount from another transaction. Always repair the existing numeric value by rounding."
         },
         "PACS002_MISSING_ORGNLMSGID": {
             "root_cause": "pacs.002 OrgnlGrpInfAndSts is present but OrgnlMsgId is absent. OrgnlMsgId is mandatory (minOccurs=1) inside OriginalGroupHeader.",
@@ -1293,8 +1296,17 @@
             "camt.056": "<TxInf><OrgnlUETR>$UETR</OrgnlUETR><CxlRsnInf><Rsn><Cd>DUPL</Cd></Rsn></CxlRsnInf></TxInf>"
         },
         "Case": {
-            "camt.056": "<Case><Id>CASE-001</Id></Case>",
+            "camt.056": "<Case><Id>CASE-001</Id><Cretr><Pty><Nm>Case Creator</Nm><PstlAdr><StrtNm>Main Street</StrtNm><BldgNb>1</BldgNb><TwnNm>Amsterdam</TwnNm><Ctry>NL</Ctry></PstlAdr></Pty></Cretr></Case>",
             "default": "<Case><Id>CASE-001</Id></Case>"
+        },
+        "Cretr": {
+            "camt.056": "<Cretr><Pty><Nm>Case Creator</Nm><PstlAdr><StrtNm>Main Street</StrtNm><BldgNb>1</BldgNb><TwnNm>Amsterdam</TwnNm><Ctry>NL</Ctry></PstlAdr></Pty></Cretr>",
+            "default": "<Cretr><Pty><Nm>Case Creator</Nm><PstlAdr><StrtNm>Main Street</StrtNm><BldgNb>1</BldgNb><TwnNm>Amsterdam</TwnNm><Ctry>NL</Ctry></PstlAdr></Pty></Cretr>",
+            "_note": "Cretr uses Pty (with mandatory Nm when AnyBIC/BICFI absent) or Agt. When no BICFI is available, Pty/Nm is mandatory per CBPR+ rules."
+        },
+        "Pty": {
+            "default": "<Pty><Nm>Party Name</Nm><PstlAdr><StrtNm>Main Street</StrtNm><BldgNb>1</BldgNb><TwnNm>Amsterdam</TwnNm><Ctry>NL</Ctry></PstlAdr></Pty>",
+            "_note": "Pty requires Nm when AnyBIC is absent. PstlAdr with at least TwnNm and Ctry is recommended."
         },
         "ReqdColltnDt": {
             "default": "<ReqdColltnDt>$STTLM_DT</ReqdColltnDt>"
@@ -2532,7 +2544,58 @@
     },
     "auto_fix_rules": {
         "_doc": "Declarative repair rules the AI Fix engine reads to auto-fix structural/business validation issues across ALL ISO 20022 message types. Matched by error code OR message regex; the engine applies the named fix_action and revalidates. Add new rules here — no code change required.",
+        "reposition": [
+            {
+                "id": "WRONG_LEVEL_ELEMENT",
+                "codes": ["SCHEMA_VAL", "SCHEMA_ERROR"],
+                "message_pattern": "is not expected at this position",
+                "fix_action": "wrap_into_allowed_container",
+                "description": "An element is at the wrong hierarchy level (not a valid child of its parent) but one of the parent's child containers allows it per the XSD. The engine moves the element (preserving its value) into that container, builds the container's template children, and reorders both levels to the XSD sequence. Resolved dynamically from the XSD type map — works for all message types.",
+                "examples": [
+                    "FinInstnId/Ctry -> FinInstnId/PstlAdr/Ctry (Ctry is not a direct child of FinInstnId; PstlAdr allows it)",
+                    "Cdtr/Ctry -> Cdtr/PstlAdr/Ctry"
+                ]
+            }
+        ],
+        "duplicate": [
+            {
+                "id": "DUPLICATE_ELEMENT",
+                "codes": ["DUPLICATE_TAG", "DUPLICATE_ELEMENT"],
+                "message_pattern": "duplicate (tag|element)",
+                "fix_action": "remove_extra_keep_first",
+                "description": "An element appears more than once where the schema allows it once (e.g. two <BICFI> in one FinInstnId). Keep the first valid (non-empty) occurrence; remove the rest. Also triggered when a sequence error names an element that already appears earlier in the same parent."
+            }
+        ],
+        "enumeration": [
+            {
+                "id": "SETTLEMENT_METHOD",
+                "codes": [],
+                "message_pattern": "must be one of",
+                "elements": ["SttlmMtd"],
+                "valid_values": ["INDA", "INGA", "COVE", "CLRG"],
+                "preferred": "INGA",
+                "fix_action": "replace_with_valid",
+                "description": "Replace an invalid enumeration value with a schema-valid one. The allowed set is read from the validator message ('must be one of: A, B'); `preferred` is used when it is in that set, else the first listed value. pacs.009 GrpHdr/SttlmMtd allows only INDA/INGA (COVE forbidden there)."
+            }
+        ],
         "predecessor": [
+            {
+                "id": "PRVS_INSTG_CHAIN_3",
+                "codes": [],
+                "message_pattern": "PreviousInstructingAgent3 is present.*PreviousInstructingAgent2 must be present",
+                "element": "PrvsInstgAgt3",
+                "requires": "PrvsInstgAgt2",
+                "fix_action": "insert_predecessor",
+                "description": "pacs.009 COV: if PrvsInstgAgt3 is present, PrvsInstgAgt2 must be present (validator uses long name PreviousInstructingAgent3/2)."
+            },
+            {
+                "id": "PRVS_INSTG_CHAIN_2",
+                "codes": [],
+                "message_pattern": "PreviousInstructingAgent2 is present.*PreviousInstructingAgent1 must be present",
+                "element": "PrvsInstgAgt2",
+                "requires": "PrvsInstgAgt1",
+                "fix_action": "insert_predecessor"
+            },
             {
                 "id": "INTRMY_ORDER_1",
                 "codes": [
@@ -2696,6 +2759,35 @@
             }
         ]
     },
+        ]
+    },
+
+    "country_repair": {
+        "_doc": "ISO 3166-1 alpha-2 country-code repair for <Ctry>/<CtryOfRes>/<CtryOfBirth>. A value is valid only if it is in resources/codelists/country.json (250 codes) — NOT merely two uppercase letters (e.g. 'UK' and 'UN' match [A-Z]{2} but are NOT valid ISO codes; the ISO code for the United Kingdom is 'GB'). For an invalid/empty value the engine resolves, in order: (1) alias map below, (2) a valid country code harvested from elsewhere in the document, (3) `default`. Applies to AppHdr (head.001) and all business messages.",
+        "default": "GB",
+        "aliases": {
+            "UK": "GB", "UKK": "GB", "GBR": "GB", "GREATBRITAIN": "GB", "UNITEDKINGDOM": "GB",
+            "ENGLAND": "GB", "SCOTLAND": "GB", "WALES": "GB", "NORTHERNIRELAND": "GB",
+            "USA": "US", "UNITEDSTATES": "US", "UNITEDSTATESOFAMERICA": "US", "AMERICA": "US",
+            "UAE": "AE", "UNITEDARABEMIRATES": "AE",
+            "DEU": "DE", "GERMANY": "DE", "GER": "DE",
+            "FRA": "FR", "FRANCE": "FR",
+            "IND": "IN", "INDIA": "IN",
+            "CHN": "CN", "CHINA": "CN",
+            "JPN": "JP", "JAPAN": "JP",
+            "CHE": "CH", "SWITZERLAND": "CH",
+            "NLD": "NL", "NETHERLANDS": "NL", "HOLLAND": "NL",
+            "ESP": "ES", "SPAIN": "ES",
+            "ITA": "IT", "ITALY": "IT",
+            "CAN": "CA", "CANADA": "CA",
+            "AUS": "AU", "AUSTRALIA": "AU",
+            "SGP": "SG", "SINGAPORE": "SG",
+            "IRL": "IE", "IRELAND": "IE",
+            "BEL": "BE", "BELGIUM": "BE",
+            "LUX": "LU", "LUXEMBOURG": "LU"
+        }
+    },
+
     "dummy_data": {
         "_doc": "High-quality reusable sample values. AI should harvest from the live document first and only fall back to this dictionary when the document has no matching value.",
         "ids": {

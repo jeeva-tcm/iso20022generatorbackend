@@ -130,7 +130,12 @@ async def shutdown_event():
 # incomplete), but a value that is definitively NOT in the list is safely
 # replaceable with a valid code. Deliberately excludes advisory warnings such as
 # BIC_NOT_FOUND / CONFIG_NOT_FOUND / HEAD001_TZ_DRIFT, which must not be rewritten.
-_AUTOFIX_WARNING_CODES = {"L3_CLRSYS_CODE", "L3_ACCT_TYPE_CODE", "L3_LCLINSTRM_CODE"}
+_AUTOFIX_WARNING_CODES = {
+    "L3_CLRSYS_CODE", "L3_ACCT_TYPE_CODE", "L3_LCLINSTRM_CODE",
+    # BizSvc format errors (e.g. 'swift..02') are deterministically fixable
+    # — the correct value is derived from the message type KB.
+    "HEAD001_BIZSVC_FORMAT",
+}
 
 
 async def _auto_fix_iterative(original_xml: str, message_type: str = "Auto-detect",
@@ -297,8 +302,7 @@ async def validate_message(
 ):
     report = await validator.validate(request.xml_content, request.mode, request.message_type, validation_id=request.batch_id)
     report_dict = report.to_dict()
-    await _apply_auto_fixes(report_dict, request.xml_content, request.message_type)
-    
+
     # Attach file_id and batch_id to the report dict for frontend display
     if request.file_id:
         report_dict["file_id"] = request.file_id
@@ -339,8 +343,7 @@ async def validate_file(
     
     report = await validator.validate(xml_content, mode, message_type, filename=file.filename, validation_id=batch_id)
     report_dict = report.to_dict()
-    await _apply_auto_fixes(report_dict, xml_content, message_type)
-    
+
     # Attach file_id and batch_id to the report dict
     if file_id:
         report_dict["file_id"] = file_id

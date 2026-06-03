@@ -51,6 +51,77 @@ class Layer2Mixin:
         Layer2Mixin._hdr_mandatory_cache[xsd_path] = result
         return result
 
+    def _validate_swift_characters(self, xml_content: str) -> list:
+        """
+        Check for forbidden SWIFT characters (,#;@{}[]()) that appear as junk
+        BETWEEN elements — specifically in:
+          - element.text  when that element has child elements (mixed content)
+          - element.tail  (text after a closing tag, before the next sibling/parent)
+
+        Leaf element text content (e.g. <Amt>1000.00</Amt>) is intentionally
+        NOT checked here — dots, colons, quotes etc. are all legitimate there.
+        """
+        # Characters genuinely forbidden as inter-element junk in SWIFT/ISO 20022.
+        # Excludes . : ' " because those appear legitimately in amounts, timestamps,
+        # BizSvc values (swift.cbprplus.02), and attribute-like content.
+        FORBIDDEN = set(',#;@{}[]()')
+        issues = []
+
+        try:
+            parser = etree.XMLParser(remove_blank_text=False, no_network=True, recover=True)
+            root = etree.fromstring(xml_content.encode('utf-8'), parser)
+        except Exception:
+            # If the XML can't be parsed at all, skip — XML_SYNTAX will catch it.
+            return issues
+
+        def _bad_chars(text: str) -> list:
+            """Return the unique forbidden characters found in text (ignoring whitespace)."""
+            non_ws = ''.join(c for c in text if not c.isspace())
+            return sorted({c for c in non_ws if c in FORBIDDEN})
+
+        for elem in root.iter():
+            if not isinstance(elem.tag, str):
+                continue
+            local = etree.QName(elem.tag).localname
+            line_num = getattr(elem, 'sourceline', None) or 0
+
+            # 1. parent.text — text before the first child element.
+            #    Only flag when the element HAS children (mixed content = junk).
+            if len(elem) > 0 and elem.text:
+                bad = _bad_chars(elem.text)
+                if bad:
+                    chars_str = ', '.join(f"'{c}'" for c in bad)
+                    issues.append(ValidationIssue(
+                        "ERROR", 2, "SWIFT_FORBIDDEN_CHAR", str(line_num),
+                        f"Element <{local}> contains forbidden character(s) {chars_str} "
+                        f"in text content before its child elements. "
+                        f"SWIFT/ISO 20022 messages must not contain these characters outside of tag values.",
+                        f"Remove the character(s) {chars_str} from the text content "
+                        f"inside <{local}> that appears before its child elements.",
+                        line=line_num
+                    ))
+
+            # 2. child.tail — text after a closing tag (</Child>) before the
+            #    next sibling or parent close.  This is always inter-element junk.
+            if elem.tail:
+                bad = _bad_chars(elem.tail)
+                if bad:
+                    parent = elem.getparent()
+                    parent_name = etree.QName(parent.tag).localname if parent is not None and isinstance(parent.tag, str) else 'root'
+                    tail_line = getattr(elem, 'sourceline', None) or line_num
+                    chars_str = ', '.join(f"'{c}'" for c in bad)
+                    issues.append(ValidationIssue(
+                        "ERROR", 2, "SWIFT_FORBIDDEN_CHAR", str(tail_line),
+                        f"Forbidden character(s) {chars_str} found after closing tag </{local}> "
+                        f"inside <{parent_name}>. "
+                        f"SWIFT/ISO 20022 messages must not contain these characters between elements.",
+                        f"Remove the character(s) {chars_str} that appear after </{local}> "
+                        f"inside <{parent_name}>.",
+                        line=tail_line
+                    ))
+
+        return issues
+
     async def _run_layer_2(self, xml_content: str, report: ValidationReport, message_type: str) -> bool:
         """
         LAYER 2 — ISO Structure Validation (XSD)
@@ -367,6 +438,13 @@ class Layer2Mixin:
              issues.append(ValidationIssue("ERROR", 2, "XML_SYNTAX", "/", f"XML Markup Error: {str(e)}", line=e.lineno))
         except Exception as e:
              issues.append(ValidationIssue("ERROR", 2, "VAL_ERR", "/", f"Internal Layer 2 Error: {str(e)}"))
+
+        # Step 10 — SWIFT Character Validation (forbidden chars outside tags)
+        try:
+            swift_issues = self._validate_swift_characters(xml_content)
+            issues.extend(swift_issues)
+        except Exception as e:
+            pass  # Non-blocking; SWIFT char validation doesn't fail validation
 
         # Final Collection & Success Assessment
         for issue in issues:
@@ -989,8 +1067,9 @@ class Layer2Mixin:
             if "datetime" in msg.lower():
                 return (
                     f"Invalid date/time value: '{dv}'.",
-                    "Date-time fields must use the format YYYY-MM-DDThh:mm:ss (e.g. 2026-11-20T14:30:00). "
-                    "Ensure there is no trailing space and the 'T' separator is present."
+                    "Date-time fields must use the format YYYY-MM-DDThh:mm:ss+HH:MM with a timezone offset "
+                    "(e.g. 2026-11-20T14:30:00+00:00). Ensure the 'T' separator is present and append "
+                    "an explicit offset such as +00:00 or +05:30."
                 )
             return (
                 f"Invalid date value: '{dv}'.",
@@ -1189,20 +1268,47 @@ class Layer2Mixin:
             m_max = re.search(r"allowed maximum length of '(\d+)'", msg)
             m_min = re.search(r"allowed minimum length of '(\d+)'", msg)
             m_act = re.search(r"length of '(\d+)'", msg)
-            
+
+            # lv may be a length digit extracted from the XSD error (e.g. '179') rather
+            # than the actual field text. Try to recover the real value from the XML line.
+            if lv.isdigit() and xml_content and error_line:
+                lines = xml_content.splitlines()
+                for idx in [error_line - 1, error_line, error_line - 2]:
+                    if 0 <= idx < len(lines):
+                        xml_m = re.search(f"<{re.escape(name)}[^>]*>([^<]+)</{re.escape(name)}>", lines[idx])
+                        if xml_m:
+                            lv = xml_m.group(1).strip()
+                            break
+
             if m_max and m_act:
                 max_len = m_max.group(1)
                 act_len = m_act.group(1)
+                # If lv is still a pure digit (couldn't find actual text), omit it from message
+                if lv.isdigit():
+                    return (
+                        f"Field '{name}' has an invalid length.",
+                        f"This field must be maximum {max_len} characters long. "
+                        f"The current value is {act_len} characters long, which exceeds the limit by "
+                        f"{int(act_len) - int(max_len)} characters. Please shorten the value."
+                    )
                 return (
-                    f"Field '{name}' has an invalid length: '{lv}'.",
-                    f"This field must be maximum {max_len} characters long. The current value '{lv}' is {act_len} characters long."
+                    f"Field '{name}' has an invalid length.",
+                    f"This field must be maximum {max_len} characters long. "
+                    f"The current value is {act_len} characters long. Please shorten it."
                 )
             elif m_min and m_act:
                 min_len = m_min.group(1)
                 act_len = m_act.group(1)
+                if lv.isdigit():
+                    return (
+                        f"Field '{name}' has an invalid length.",
+                        f"This field must be at least {min_len} characters long. "
+                        f"The current value is only {act_len} characters long."
+                    )
                 return (
-                    f"Field '{name}' has an invalid length: '{lv}'.",
-                    f"This field must be minimum {min_len} characters long. The current value '{lv}' is {act_len} characters long."
+                    f"Field '{name}' has an invalid length.",
+                    f"This field must be at least {min_len} characters long. "
+                    f"The current value is only {act_len} characters long."
                 )
 
             return (
