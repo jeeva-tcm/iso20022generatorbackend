@@ -146,8 +146,26 @@
             "mandatory": false,
             "datatype": "Max35Text",
             "expected_value": "swift.cbprplus.02",
-            "description": "Business Service. Should be 'swift.cbprplus.02' for CBPR+ messages.",
-            "errors": []
+            "description": "Business Service identifier. The ONLY valid value for camt.057 in this implementation is 'swift.cbprplus.02'. The validator rule CBPR_R8 (CBPR_Business_Service_Usage_camt057) must enforce 'swift.cbprplus.02'. Any message with 'swift.cbprplus.03' must be fixed to 'swift.cbprplus.02'.",
+            "errors": [
+                {
+                    "error_id": "BIZSVC_WRONG_VALUE",
+                    "error_code": "CBPR_R8",
+                    "severity": "Error",
+                    "description": "BizSvc contains a value other than 'swift.cbprplus.02'. For camt.057 in this implementation, only 'swift.cbprplus.02' is accepted. The validator rule CBPR_R8 fires when the value is not the expected one.",
+                    "affected_tags": ["AppHdr/BizSvc"],
+                    "correct_value": "swift.cbprplus.02",
+                    "possible_fixes": [
+                        "Set <BizSvc>swift.cbprplus.02</BizSvc> in AppHdr.",
+                        "If the current value is 'swift.cbprplus.03', replace it with 'swift.cbprplus.02'.",
+                        "If BizSvc is absent, insert <BizSvc>swift.cbprplus.02</BizSvc> after MsgDefIdr."
+                    ],
+                    "ai_fix_action": "replace_value",
+                    "ai_fix_old": "swift.cbprplus.03",
+                    "ai_fix_new": "swift.cbprplus.02",
+                    "ai_fix_note": "Always use 'swift.cbprplus.02' for camt.057 regardless of what the CBPR_R8 error message says."
+                }
+            ]
         },
         {
             "tag": "AppHdr/CreDt",

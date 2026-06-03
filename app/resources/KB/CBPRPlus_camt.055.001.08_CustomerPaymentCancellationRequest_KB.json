@@ -1,7 +1,9 @@
 {
-  "domain": "SWIFT MX CBPR+ camt.055.001.08",
+  "domain": "SWIFT MX CBPR+ camt.055.001.08 / camt.055.001.12",
   "version": "SR2025",
-  "last_updated": "2026-05-28",
+  "last_updated": "2026-06-03",
+  "xsd_version": "camt.055.001.12",
+  "xsd_namespace": "urn:iso:std:iso:20022:tech:xsd:camt.055.001.12",
   "purpose": "Context KB for camt.055 CustomerPaymentCancellationRequest validation. For each XML tag: possible errors, affected tags, and all possible fixes. Based on CBPR+ SR2025 Usage Guideline (camt.055.001.08) and SWIFT MX Enterprise KB.",
   "reference_documents": [
     "CBPRPlus-camt.055.001.08_CustomerPaymentCancellationRequest CBPRPlus SR2025 (Combined), 21 March 2025",
@@ -19,7 +21,10 @@
     {"rule_id": "R13", "name": "GroupCancellationFalseAndPaymentInformationRule", "description": "If OriginalGroupInformationAndCancellation/GroupCancellation is false, then OriginalPaymentInformationAndCancellation must be present.", "error_code": "X00106", "severity": "Fatal", "error_text": "Invalid message content for group cancellation and payment information."},
     {"rule_id": "R16", "name": "PaymentInformationCancellationTrueAndTransactionInformationRule", "description": "If OriginalPaymentInformationAndCancellation/PaymentInformationCancellation is true, then TransactionInformation is not allowed.", "error_code": "X00105", "severity": "Fatal", "error_text": "Invalid message content for group cancellation and transaction information."},
     {"rule_id": "R17", "name": "PaymentInformationCancellationFalseAndTransactionInformationRule", "description": "If OriginalPaymentInformationAndCancellation/PaymentInformationCancellation is false, then TransactionInformation must be present.", "error_code": "X00106", "severity": "Fatal", "error_text": "Invalid message content for negative group cancellation and transaction information."},
-    {"rule_id": "R15", "name": "BICFI", "description": "Valid BICs for financial institutions are registered and published by the ISO 9362 Registration Authority and consist of eight (8) or eleven (11) contiguous characters.", "error_code": "D00001", "severity": "Fatal", "error_text": "Invalid FI BIC."}
+    {"rule_id": "R15", "name": "BICFI", "description": "Valid BICs for financial institutions are registered and published by the ISO 9362 Registration Authority and consist of eight (8) or eleven (11) contiguous characters.", "error_code": "D00001", "severity": "Fatal", "error_text": "Invalid FI BIC."},
+    {"rule_id": "R18", "name": "XSDBICFIPattern", "description": "XSD BICFIDec2014Identifier pattern (camt.055.001.12): [A-Z0-9]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})? — applies to Assgnmt/Assgnr/Agt, Assgnmt/Assgne/Agt, AppHdr/Fr, AppHdr/To.", "error_code": "INVALID_BICFI", "severity": "Fatal", "xsd_source": "BICFIDec2014Identifier — camt.055.001.12"},
+    {"rule_id": "R19", "name": "XSDDateTimeFormat", "description": "Assgnmt/CreDtTm (ISODateTime) and AppHdr/CreDt must use CBPR+ format YYYY-MM-DDTHH:MM:SS+HH:MM. No Z suffix, no milliseconds.", "error_code": "CBPR_DATETIME_Z_FORBIDDEN", "severity": "Fatal", "xsd_source": "ISODateTime — camt.055.001.12"},
+    {"rule_id": "R20", "name": "XSDv12Changes", "description": "camt.055.001.12 (vs 001.08): Root element is CustomerPaymentCancellationRequestV12. Assgnmt/Assgnr and Assgnmt/Assgne accept Agt (agent) or Pty (party). CancellationReason3Choice uses ExternalCancellationReason1Code (4 chars) or Prtry (Max35Text). OrgnlClrSysRef added to TransactionInformation (new in v12). CtrlData element added at root level to carry NbOfTxs and CtrlSum.", "error_code": "SEQUENCE_ORDER_VIOLATION", "severity": "Warning", "xsd_source": "CustomerPaymentCancellationRequestV12 — camt.055.001.12"}
   ],
   "cbpr_plus_formal_rules": [
     {"rule_id": "CBPR_FR_TO_ASSGN_1", "name": "CBPR_From_To_Assigner_Assignee_BIC_1_FormalRule", "description": "AppHdr/Fr BIC must match Assignment/Assigner/Agent BIC and AppHdr/To BIC must match Assignment/Assignee/Agent BIC, except where AppHdr/CopyDuplicate = COPY or CODU."},

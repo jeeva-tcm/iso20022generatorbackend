@@ -1,7 +1,9 @@
 {
-  "domain": "SWIFT MX CBPR+ camt.053.001.08",
+  "domain": "SWIFT MX CBPR+ camt.053.001.08 / camt.053.001.13",
   "version": "SR2025",
-  "last_updated": "2026-05-28",
+  "last_updated": "2026-06-03",
+  "xsd_version": "camt.053.001.13",
+  "xsd_namespace": "urn:iso:std:iso:20022:tech:xsd:camt.053.001.13",
   "purpose": "Context KB for camt.053 BankToCustomerStatement validation. For each XML tag: possible errors, affected tags, and all possible fixes. Based on CBPR+ SR2025 Usage Guideline (camt.053.001.08) and SWIFT MX Enterprise KB.",
   "reference_documents": [
     "CBPRPlus-camt.053.001.08_BankToCustomerStatement CBPRPlus SR2025 (Combined), 21 March 2025",
@@ -14,7 +16,11 @@
     {"rule_id": "R12", "name": "CurrencyAmount", "description": "The number of fractional digits (or minor unit of currency) of any amount must comply with ISO 4217. The decimal separator is a dot. Applies to all ActiveOrHistoricCurrencyAndAmount elements (Bal/Amt, Ntry/Amt, etc.).", "error_code": "D00007", "severity": "Fatal", "error_text": "Invalid currency code or too many decimal digits."},
     {"rule_id": "R13", "name": "ForwardBalanceAndAvailabilityRule", "description": "If Balance/Type is equal to ForwardAvailable, then Availability is not allowed.", "error_code": "", "severity": "Fatal", "error_text": "Invalid message content for forward available balance."},
     {"rule_id": "R14", "name": "DomainOrProprietaryRule", "description": "In BankTransactionCode (BkTxCd), either Proprietary or Domain or both must be present.", "error_code": "X00104", "severity": "Fatal", "error_text": "Invalid bank transaction code."},
-    {"rule_id": "R15", "name": "BICFI", "description": "Valid BICs for financial institutions are registered and published by the ISO 9362 Registration Authority and consist of eight (8) or eleven (11) contiguous characters.", "error_code": "D00001", "severity": "Fatal", "error_text": "Invalid FI BIC."}
+    {"rule_id": "R15", "name": "BICFI", "description": "Valid BICs for financial institutions are registered and published by the ISO 9362 Registration Authority and consist of eight (8) or eleven (11) contiguous characters.", "error_code": "D00001", "severity": "Fatal", "error_text": "Invalid FI BIC."},
+    {"rule_id": "R16", "name": "XSDBICFIPattern", "description": "XSD pattern BICFIDec2014Identifier: [A-Z0-9]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})? — confirmed in camt.053.001.13.", "error_code": "INVALID_BICFI", "severity": "Fatal", "xsd_source": "BICFIDec2014Identifier — camt.053.001.13"},
+    {"rule_id": "R17", "name": "XSDAmountAndCurrencyConstraints", "description": "All amount elements (Bal/Amt, Ntry/Amt, etc.): fractionDigits=5, totalDigits=18, minInclusive=0. Ccy attribute required. CdtDbtInd (CRDT/DBIT) indicates direction — never use negative amounts.", "error_code": "AMOUNT_NEGATIVE", "severity": "Fatal", "xsd_source": "ActiveOrHistoricCurrencyAndAmount — camt.053.001.13"},
+    {"rule_id": "R18", "name": "XSDBalanceMandatoryFields", "description": "Bal/Tp is mandatory for each balance. Bal/Amt is mandatory. Bal/CdtDbtInd (CRDT or DBIT) is mandatory. Bal/Dt is mandatory (ISODate or ISODateTime). Missing any of these inside a Bal block is a schema violation.", "error_code": "MISSING_MANDATORY_FIELD", "severity": "Fatal", "xsd_source": "CashBalance8 — camt.053.001.13"},
+    {"rule_id": "R19", "name": "XSDNtryMandatoryFields", "description": "Ntry (Entry) mandatory fields: Amt (with Ccy), CdtDbtInd (CRDT/DBIT), Sts (EntryStatus1Choice: BOOK/PDNG/FUTR/INFO). BookgDt is optional but strongly recommended.", "error_code": "MISSING_MANDATORY_FIELD", "severity": "Fatal", "xsd_source": "ReportEntry14 — camt.053.001.13"}
   ],
   "cbpr_plus_formal_rules": [
     {"rule_id": "CBPR_COPY_DUPLICATE", "name": "CBPR_Copy_Duplicate_FormalRule", "description": "If CopyDuplicate indicator is used in the Business Application Header (AppHdr/CpyDplct), it must be identical to the CopyDuplicateIndicator in the business document (Statement/CpyDplctInd) when the latter is present."},

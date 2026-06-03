@@ -12,6 +12,19 @@
         "fix": "Add a valid UUID v4 to <PmtId><UETR> (e.g., 4a1a0945-5772-409a-83ba-240e666e0267)."
     },
     {
+        "rule_id": "PACS008_PMTID_REQUIRED",
+        "description": "CBPR+: InstrId and TxId are mandatory in pacs.008 PmtId (XSD declares them optional).",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtId)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtId.InstrId",
+            "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtId.TxId"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "InstrId and TxId are mandatory in pacs.008 PmtId under CBPR+.",
+        "fix": "Add <InstrId> and <TxId> inside <PmtId> (Max16Text / Max35Text identifiers)."
+    },
+    {
         "rule_id": "PACS008_DBTR_REQUIRED",
         "description": "CBPR+: Debtor is mandatory in pacs.008.",
         "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf)",
@@ -273,14 +286,14 @@
     {
         "rule_id": "CBPR_R8",
         "name": "CBPR_Business_Service_Usage_TextualRule",
-        "description": "BizSvc must have the value 'swift.cbprplus.03' for pacs.008 (CBPR+ SR2025).",
+        "description": "BizSvc must have the value 'swift.cbprplus.02' for pacs.008 (CBPR+).",
         "selector": "AppHdr.BizSvc",
         "type": "expression",
-        "expression": "VALUE == 'swift.cbprplus.03'",
+        "expression": "VALUE == 'swift.cbprplus.02'",
         "severity": "ERROR",
         "layer": 3,
-        "errorMessage": "AppHdr <BizSvc> must be 'swift.cbprplus.03' for pacs.008 (CBPR+ SR2025).",
-        "fix": "Set <BizSvc>swift.cbprplus.03</BizSvc> in AppHdr."
+        "errorMessage": "AppHdr <BizSvc> must be 'swift.cbprplus.02' for pacs.008 (CBPR+).",
+        "fix": "Set <BizSvc>swift.cbprplus.02</BizSvc> in AppHdr."
     },
     {
         "rule_id": "CBPR_P8_STTLMMTD",

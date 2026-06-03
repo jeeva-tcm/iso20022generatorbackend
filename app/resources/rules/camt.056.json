@@ -48,5 +48,29 @@
         "layer": 3,
         "errorMessage": "Underlying transaction must reference an OrgnlUETR (or at minimum OrgnlTxId) for the cancellation to be processable.",
         "fix": "Add <OrgnlUETR>uuid-v4</OrgnlUETR> identifying the payment being cancelled."
+    },
+    {
+        "rule_id": "CAMT056_FR_EQ_ASSGNR_BIC",
+        "name": "CBPR_From_Assigner_BIC_FormalRule",
+        "description": "When AppHdr/CpyDplct is absent: AppHdr/Fr BICFI must match Assgnmt/Assgnr/Agt BICFI.",
+        "condition": "not exists(AppHdr.CpyDplct)",
+        "expression": "check_bic_match('Fr', 'Assgnr')",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "AppHdr <Fr> BICFI must match <Assgnr> Agt BICFI when CpyDplct is absent.",
+        "fix": "Align AppHdr <Fr> BICFI with Assgnmt/Assgnr/Agt BICFI."
+    },
+    {
+        "rule_id": "CAMT056_TO_EQ_ASSGNE_BIC",
+        "name": "CBPR_To_Assignee_BIC_FormalRule",
+        "description": "When AppHdr/CpyDplct is absent: AppHdr/To BICFI must match Assgnmt/Assgne/Agt BICFI.",
+        "condition": "not exists(AppHdr.CpyDplct)",
+        "expression": "check_bic_match('To', 'Assgne')",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "AppHdr <To> BICFI must match <Assgne> Agt BICFI when CpyDplct is absent.",
+        "fix": "Align AppHdr <To> BICFI with Assgnmt/Assgne/Agt BICFI."
     }
 ]

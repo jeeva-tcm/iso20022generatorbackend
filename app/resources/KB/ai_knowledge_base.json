@@ -1,8 +1,10 @@
 {
     "_meta": {
         "purpose": "Consolidated knowledge base the AI fix suggester consults BEFORE inventing values. Combines: field constraints (regex/length), tag templates (exact XML structures per message type), dependency rules (cross-field invariants), error-code catalogue with fix recipes, date-fix rules, tag insertion-order maps, and high-quality dummy data. Always prefer this file's data over hallucinated values.",
-        "version": "2.1",
-        "last_updated": "2026-05-29"
+        "version": "2.2",
+        "last_updated": "2026-06-03",
+        "xsd_version_coverage": "Rules derived from: pacs.008.001.13, pacs.009.001.12, pacs.003.001.11, pacs.002.001.12, pacs.010.001.06, pain.001.001.12, pain.002.001.14, pain.008.001.11, camt.052/053/054.001.13, camt.055.001.12, camt.056.001.11, camt.057.001.08. All rules are backward-compatible — they also apply to older minor versions (e.g. pacs.008.001.08, pacs.008.001.09, pacs.008.001.12) unless explicitly noted otherwise.",
+        "bizsvc_note": "SR2023/SR2024 uses BizSvc='swift.cbprplus.02'. SR2025 uses BizSvc='swift.cbprplus.03'. Both are valid — the validator enforces the version that matches the document's namespace URI. The BIZSVC_V03_TO_V02 auto_fix_rule only triggers when the validator is configured for SR2023/SR2024 compliance. Do NOT apply this rule blindly for SR2025 documents."
     },
     "field_constraints": {
         "_doc": "Per-field validation rules. type=regex algorithm name. min/max are character limits unless noted.",
@@ -11,38 +13,60 @@
             "max_length": 11,
             "min_length": 8,
             "example": "DEUTDEFFXXX",
-            "notes": "8 chars or 11 with branch. Banks-only ISO 9362."
+            "xsd_pattern": "[A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}",
+            "xsd_source": "BICFIDec2014Identifier — confirmed across pacs.008.001.13, pacs.009.001.12, pacs.002.001.12",
+            "notes": "8 chars (AAAABBCC) or 11 with branch code (AAAABBCCDDD). First 4: institution code (A-Z0-9). Next 2: country (A-Z). Next 2: location (A-Z0-9). Optional 3: branch (A-Z0-9). Banks-only ISO 9362. Pattern does NOT allow lowercase.",
+            "error_code": "BICFI_REGEX_INVALID"
         },
         "AnyBIC": {
             "type": "AnyBIC",
             "max_length": 11,
             "min_length": 8,
-            "example": "DEUTDEFFXXX"
+            "example": "DEUTDEFFXXX",
+            "xsd_pattern": "[A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}",
+            "xsd_source": "AnyBICDec2014Identifier — same pattern as BICFI, used in OrgId/AnyBIC",
+            "notes": "Same format as BICFI. Used for legal entity identification in OrgId.",
+            "error_code": "ANYBIC_REGEX_INVALID"
         },
         "IBAN": {
             "type": "IBAN",
             "max_length": 34,
             "min_length": 15,
             "example": "DE89370400440532013000",
-            "notes": "ISO 13616, country-specific length."
+            "xsd_pattern": "[A-Z]{2,2}[0-9]{2,2}[a-zA-Z0-9]{1,30}",
+            "xsd_source": "IBAN2007Identifier — confirmed across pacs.008.001.13, pacs.002.001.12",
+            "notes": "ISO 13616, country-specific length. First 2: country code (uppercase). Next 2: check digits (numeric). Remaining: BBAN (alphanumeric, country-specific). XSD allows lowercase in BBAN but SWIFT normalizes to uppercase.",
+            "error_code": "IBAN_INVALID"
         },
         "LEI": {
             "type": "LEI",
             "max_length": 20,
             "min_length": 20,
-            "example": "529900T8BM49AURSDO55"
+            "example": "529900T8BM49AURSDO55",
+            "xsd_pattern": "[A-Z0-9]{18,18}[0-9]{2,2}",
+            "xsd_source": "LEIIdentifier — confirmed across pacs.008.001.13, pacs.002.001.12",
+            "notes": "Exactly 20 chars: 18 alphanumeric (A-Z0-9) + 2 numeric check digits. ISO 17442. Validated using MOD 97-10 algorithm.",
+            "error_code": "LEI_INVALID"
         },
         "Ccy": {
             "type": "Currency",
             "max_length": 3,
             "min_length": 3,
-            "example": "USD"
+            "example": "USD",
+            "xsd_pattern": "[A-Z]{3,3}",
+            "xsd_source": "ActiveCurrencyCode / ActiveOrHistoricCurrencyCode",
+            "notes": "Exactly 3 uppercase letters. ISO 4217 currency code. Lowercase is invalid — always uppercase.",
+            "error_code": "CURRENCY_PATTERN_INVALID"
         },
         "Ctry": {
             "type": "Country",
             "max_length": 2,
             "min_length": 2,
-            "example": "US"
+            "example": "US",
+            "xsd_pattern": "[A-Z]{2,2}",
+            "xsd_source": "CountryCode",
+            "notes": "Exactly 2 uppercase letters. ISO 3166-1 alpha-2 country code. Lowercase is invalid.",
+            "error_code": "COUNTRY_PATTERN_INVALID"
         },
         "UETR": {
             "type": "UUID",
@@ -87,7 +111,7 @@
             "type": "Max35Text",
             "max_length": 35,
             "example": "swift.cbprplus.02",
-            "notes": "CBPR+ uses swift.cbprplus.02."
+            "notes": "CBPR+ uses swift.cbprplus.02 for all SR2025 payment messages (pacs.008, pacs.009, pacs.002, pacs.003, pacs.004, camt.056, etc.). The value swift.cbprplus.03 is NOT valid for SR2025 — it is a fictitious value sometimes inserted by mistake. Always use swift.cbprplus.02."
         },
         "MsgDefIdr": {
             "type": "Max35Text",
@@ -243,6 +267,150 @@
                 "PDNG",
                 "RJCT"
             ]
+        },
+        "BtchBookg": {
+            "type": "Boolean",
+            "max_length": 5,
+            "example": "false",
+            "valid": ["true", "false"],
+            "notes": "When true, all transactions in the batch must settle as one. All CdtTrfTxInf blocks MUST share the same IntrBkSttlmDt. AI CANNOT auto-fix cross-transaction date inconsistency when BtchBookg=true."
+        },
+        "MmbId": {
+            "type": "Max28Text",
+            "max_length": 28,
+            "example": "026009593",
+            "notes": "ClrSysMmbId/MmbId format is country-specific: US ABA routing = exactly 9 digits; UK GBDSC sort code = 6 digits; DE BLZDE = 8 digits. AI cannot validate without the parent ClrSys/Cd value. CANNOT coexist with BICFI in the same FinInstnId."
+        },
+        "TtlRtrdIntrBkSttlmAmt": {
+            "type": "Amount",
+            "example": "1000.00",
+            "notes": "pacs.004 only. Must NOT exceed the original IntrBkSttlmAmt. AI cannot verify this without access to the original pacs.008/009 message. Human review required when amount is suspect."
+        },
+        "OrgnlUETR": {
+            "type": "UUID",
+            "max_length": 36,
+            "min_length": 36,
+            "example": "4a1a0945-5772-409a-83ba-240e666e0267",
+            "notes": "UUID v4 referencing the original payment's UETR. Must exactly match the UETR of the original message. AI cannot verify cross-message UETR existence — human must confirm the original was sent."
+        },
+        "MndtId": {
+            "type": "Max35Text",
+            "max_length": 35,
+            "example": "MNDT-2026-001",
+            "notes": "pain.008 direct debit mandate ID. Must reference a pre-agreed mandate between creditor and debtor. AI CANNOT generate a valid mandate ID — it must come from the creditor's mandate registry."
+        },
+        "DtOfSgntr": {
+            "type": "Date",
+            "example": "2025-01-15",
+            "notes": "Date the direct debit mandate was signed. Must be in the past. AI can ensure format is valid (YYYY-MM-DD, past date) but cannot verify the mandate actually exists."
+        },
+        "PhoneNumber": {
+            "type": "regex",
+            "pattern": "\\+[0-9]{1,3}-[0-9()+\\-]{1,30}",
+            "example": "+1-2025551234",
+            "notes": "Telephone/mobile/fax numbers must start with + country code, dash, then digits/symbols. Example: +44-2071234567"
+        },
+        "HexBinaryText": {
+            "type": "regex",
+            "pattern": "[0-9a-fA-F]+",
+            "example": "a3f4b8",
+            "notes": "Used for ILPV4 cryptographic keys. Only hexadecimal characters allowed."
+        },
+        "SHA256SignatureText": {
+            "type": "regex",
+            "pattern": "[A-Za-z0-9+/]{1,}={0,2}",
+            "example": "c2hhMjU2c2lnbmF0dXJlX2V4YW1wbGU=",
+            "notes": "Base64-encoded SHA-256 signature for PmtSgntr/Sgntr element in pacs.008/009."
+        },
+        "UUIDv4Identifier": {
+            "type": "regex",
+            "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}",
+            "example": "4a1a0945-5772-409a-83ba-240e666e0267",
+            "notes": "UUID v4 format. Used for UETR and OrgnlUETR. Must always be freshly generated — never reuse."
+        },
+        "Exact4AlphaNumericText": {
+            "type": "regex",
+            "pattern": "[a-zA-Z0-9]{4}",
+            "example": "A1B2",
+            "notes": "Exactly 4 alphanumeric characters. Used for GenericIdentification30/Id (AddressType proprietary codes)."
+        },
+        "Exact2NumericText": {
+            "type": "regex",
+            "pattern": "[0-9]{2}",
+            "example": "01",
+            "notes": "Exactly 2 numeric digits. Used in FrequencyAndMoment1/PtInTm and MandateRelatedInformation/TrckgDays."
+        },
+        "Max10KBinary": {
+            "type": "base64Binary",
+            "max_length": 10240,
+            "min_length": 1,
+            "example": "c2lnbmF0dXJl",
+            "notes": "Base64-encoded binary up to 10 KB. Used for electronic signatures in mandate/payment signature fields."
+        },
+        "ActiveCurrencyAndAmount": {
+            "type": "decimal",
+            "fractionDigits": 5,
+            "totalDigits": 18,
+            "minInclusive": 0,
+            "attribute_Ccy": "[A-Z]{3,3}",
+            "notes": "Amount with mandatory Ccy attribute. Currency must be active (not historic). Used for IntrBkSttlmAmt."
+        },
+        "ActiveOrHistoricCurrencyAndAmount": {
+            "type": "decimal",
+            "fractionDigits": 5,
+            "totalDigits": 18,
+            "minInclusive": 0,
+            "attribute_Ccy": "[A-Z]{3,3}",
+            "notes": "Amount with mandatory Ccy attribute. Currency may be historic. Used for InstdAmt, ChrgsInf/Amt."
+        },
+        "BaseOneRate": {
+            "type": "decimal",
+            "fractionDigits": 10,
+            "totalDigits": 11,
+            "notes": "Exchange rate with up to 10 decimal places, total digits 11. Used for XchgRate and PreAgrdXchgRate."
+        },
+        "DecimalNumber": {
+            "type": "decimal",
+            "fractionDigits": 17,
+            "totalDigits": 18,
+            "notes": "High-precision decimal for control sums and counts."
+        },
+        "Max15NumericText": {
+            "type": "regex",
+            "pattern": "[0-9]{1,15}",
+            "example": "1",
+            "notes": "1 to 15 numeric digits. Used for NbOfTxs, DtldNbOfTxs."
+        },
+        "ReqdExctnDt": {
+            "type": "DateAndDateTime2Choice",
+            "choice": ["Dt (ISODate)", "DtTm (ISODateTime)"],
+            "example_dt": "2026-06-03",
+            "example_dttm": "2026-06-03T09:00:00+00:00",
+            "notes": "pain.001 PmtInf/ReqdExctnDt accepts EITHER a plain date (<Dt>) OR a datetime (<DtTm>). Must be today or future. AI should use <Dt> form by default."
+        },
+        "OrgnlMsgNmId": {
+            "type": "Max35Text",
+            "max_length": 35,
+            "example": "pacs.008.001.08",
+            "notes": "Original message name identifier in status/return/cancellation messages. Must exactly match the MsgDefIdr of the original payment."
+        },
+        "StsId": {
+            "type": "Max35Text",
+            "max_length": 35,
+            "example": "STSID-001",
+            "notes": "Optional status identifier in pacs.002 TxInfAndSts. Used to uniquely identify this status entry."
+        },
+        "CxlId": {
+            "type": "Max35Text",
+            "max_length": 35,
+            "example": "CXL-001",
+            "notes": "Cancellation ID within camt.056 TxInf block."
+        },
+        "AssgnmtId": {
+            "type": "Max35Text",
+            "max_length": 35,
+            "example": "ASSGNMT-001",
+            "notes": "Assignment identifier in camt.055/056. Must be unique. AI can generate a dated reference."
         }
     },
     "date_fix_rules": {
@@ -490,12 +658,349 @@
         "MISSING_EXPECTED_ELEMENT": {
             "root_cause": "An element is missing that the XSD expects. The error will say 'One of the following elements is expected: [Tag]' or 'This element is not expected. Expected is...'.",
             "fix": "Extract the missing tag name from the error message and insert it into the parent element using the tag_templates section. Always insert in XSD element order (see tag_insertion_order)."
+        },
+        "IBAN_COUNTRY_BIC_COUNTRY_MISMATCH": {
+            "root_cause": "IBAN country prefix (chars 1–2) does not match the BIC country code (chars 5–6) of the corresponding DbtrAgt or CdtrAgt. Example: IBAN DE89… with CdtrAgt CHASUS33XXX (US bank).",
+            "fix": "MANUAL REVIEW REQUIRED. AI cannot determine which is authoritative — the IBAN or the BIC — without business context. The operator must verify the beneficiary bank details. Replace the mismatched party with consistent IBAN+BIC from the same country.",
+            "requires_human_review": true,
+            "ai_cannot_fix_reason": "No deterministic way to choose between correcting the IBAN country or the BIC country without original transaction context."
+        },
+        "CORRESPONDENT_ROUTING_LOOP": {
+            "root_cause": "IntrmyAgt1, IntrmyAgt2, or IntrmyAgt3 BICFI equals InstgAgt or InstdAgt BICFI, creating a circular routing chain.",
+            "fix": "MANUAL REVIEW REQUIRED. Remove or replace the redundant intermediary agent. AI cannot determine the correct correspondent banking chain without payment routing knowledge.",
+            "requires_human_review": true,
+            "ai_cannot_fix_reason": "Correct correspondent chain depends on bilateral agreements and payment routing rules unknown to AI."
+        },
+        "CLRSYSMMBID_FORMAT": {
+            "root_cause": "ClrSysMmbId/MmbId format is invalid for the declared clearing system. Format rules: US ABA (USABA) = exactly 9 digits; UK sort code (GBDSC) = exactly 6 digits; DE bank code (BLZDE) = exactly 8 digits.",
+            "fix": "Identify the ClrSys/Cd value in the parent FinInstnId. Then apply the correct format: USABA → 9 digits, GBDSC → 6 digits, BLZDE → 8 digits. If ClrSys/Cd is missing, add it before fixing MmbId.",
+            "requires_human_review": false,
+            "do_not": "Do NOT use a BICFI dummy when ClrSysMmbId is intentionally used (e.g., for domestic ACH routing)."
+        },
+        "CLRSYSMMBID_BICFI_COEXIST": {
+            "root_cause": "BICFI and ClrSysMmbId are both present inside the same FinInstnId. ISO 20022 XSD and CBPR+ require use of only ONE identification method.",
+            "fix": "Remove ClrSysMmbId (and its parent ClrSys block) when BICFI is present, as BICFI is the preferred CBPR+ identifier. Alternatively remove BICFI if the message is a domestic payment using clearing system identification.",
+            "do_not": "Do NOT keep both — XSD schema will reject the message."
+        },
+        "BTCHBOOKG_STTLMDT_MISMATCH": {
+            "root_cause": "BtchBookg=true is set in GrpHdr but CdtTrfTxInf blocks have different IntrBkSttlmDt values. When batch booking is active, all transactions must settle on the same date.",
+            "fix": "MANUAL REVIEW REQUIRED. Determine the intended settlement date (earliest or latest) from the operator. Then update all IntrBkSttlmDt values to the same date. AI cannot determine the correct date without business intent.",
+            "requires_human_review": true,
+            "ai_cannot_fix_reason": "Cannot determine if the batch should settle earliest, latest, or a specific date without operator instruction."
+        },
+        "PACS009_COVE_MISSING_UNDERLYING": {
+            "root_cause": "pacs.009 has SttlmMtd=COVE but the required UndrlygCstmrCdtTrf block is absent. CBPR+ COV variant mandates a complete underlying customer credit transfer.",
+            "fix": "MANUAL REVIEW REQUIRED. AI cannot generate a valid UndrlygCstmrCdtTrf block from scratch — it requires the original customer payment details (Dbtr, Cdtr, amounts, RemittanceInfo) that only the originating bank knows. The operator must supply the underlying customer payment data.",
+            "requires_human_review": true,
+            "ai_cannot_fix_reason": "UndrlygCstmrCdtTrf content (debtor/creditor names, accounts, remittance) is business data that cannot be invented by AI."
+        },
+        "RETURN_AMOUNT_EXCEEDS_ORIGINAL": {
+            "root_cause": "pacs.004 TtlRtrdIntrBkSttlmAmt exceeds the IntrBkSttlmAmt of the original payment. A return cannot exceed the original transaction amount.",
+            "fix": "MANUAL REVIEW REQUIRED. Obtain the original IntrBkSttlmAmt from the original pacs.008 or pacs.009 message. Set TtlRtrdIntrBkSttlmAmt to a value ≤ the original amount (minus applicable charges if partial return).",
+            "requires_human_review": true,
+            "ai_cannot_fix_reason": "AI has no access to the original message to determine the maximum allowable return amount."
+        },
+        "ORGNL_MSG_UNRESOLVABLE": {
+            "root_cause": "OrgnlMsgId, OrgnlEndToEndId, or OrgnlUETR in a return/cancellation/status message does not reference a known original message. The originator system cannot match the payment.",
+            "fix": "MANUAL REVIEW REQUIRED. Verify the OrgnlMsgId and OrgnlUETR by looking up the original payment in the bank's payment tracking system. AI cannot cross-reference messages across sessions.",
+            "requires_human_review": true,
+            "ai_cannot_fix_reason": "Cross-message reference validation requires access to a payment ledger or message archive — not available to AI."
+        },
+        "MANDATE_INFO_MISSING": {
+            "root_cause": "pain.008 DrctDbtTx/MndtRltdInf is absent or invalid. Direct debit mandates require MndtId (pre-assigned mandate reference) and DtOfSgntr (date mandate was signed). These cannot be invented.",
+            "fix": "MANUAL REVIEW REQUIRED. The MndtId must come from the creditor's mandate management system. AI cannot generate a valid mandate reference. Contact the creditor to obtain the correct MndtId and DtOfSgntr.",
+            "requires_human_review": true,
+            "ai_cannot_fix_reason": "Mandate data is externally assigned by the creditor; AI has no access to mandate registry."
+        },
+        "STTLMTMINDCTN_EXCLUSIVE": {
+            "root_cause": "SttlmTmIndctn contains both CdtDtTm and DbtDtTm, or neither. Exactly one must be present. CdtDtTm applies to the credit leg; DbtDtTm applies to the debit leg.",
+            "fix": "Determine from context which leg the timing applies to. For pacs.008 (credit transfer), use CdtDtTm. For pacs.003 (direct debit), use DbtDtTm. Remove the incorrect element. If both are absent, insert the appropriate one using the settlement time from CLS window rules.",
+            "requires_human_review": false,
+            "do_not": "Do NOT include both CdtDtTm and DbtDtTm in the same SttlmTmIndctn block."
+        },
+        "PACS010_NBTXS_WRONG_LEVEL": {
+            "root_cause": "pacs.010 NbOfTxs in GrpHdr counts the number of CdtInstr blocks, NOT the total DrctDbtTxInf elements across all CdtInstr blocks. Miscounting is a common error in bulk pacs.010 generation.",
+            "fix": "Count only the CdtInstr elements directly under FIDrctDbt. Set NbOfTxs to that count. Do NOT count the DrctDbtTxInf inside each CdtInstr.",
+            "requires_human_review": false,
+            "example": "1 CdtInstr with 3 DrctDbtTxInf → NbOfTxs=1, not 3."
+        },
+        "RMTINF_STRD_USTRD_BOTH": {
+            "root_cause": "RmtInf contains both Strd (structured) and Ustrd (unstructured) remittance blocks. XSD allows one or the other, not both.",
+            "fix": "Remove Ustrd if Strd is present (structured data is preferred). Remove Strd if only free-text remittance is available. Never keep both.",
+            "do_not": "Do NOT keep both Strd and Ustrd — most receiving banks will reject or truncate the message.",
+            "preferred": "Strd when a reference number is available; Ustrd for free-text invoice descriptions."
+        },
+        "CAMT05X_BALANCE_MISMATCH": {
+            "root_cause": "In camt.052/053/054, the sum of Ntry amounts does not reconcile with the difference between opening and closing Balance values. Indicates missing entries or wrong amounts.",
+            "fix": "MANUAL REVIEW REQUIRED. Recalculate the expected balance: closing balance = opening balance ± sum of all credited/debited Ntry amounts. AI cannot know the correct account balance without external account data.",
+            "requires_human_review": true,
+            "ai_cannot_fix_reason": "Correct balance reconciliation requires access to the bank's account ledger."
+        },
+        "SEPA_REACHABILITY_VIOLATION": {
+            "root_cause": "The creditor's IBAN country code is not a SEPA reachability country (e.g., US, IN, SG, CN, JP, AU). SEPA payments require both debtor and creditor IBANs to be from SEPA member countries.",
+            "fix": "MANUAL REVIEW REQUIRED. If the payment is genuinely cross-border (non-SEPA), change the message type from pain.001 SEPA to pacs.008 cross-border. If it should be SEPA, correct the creditor IBAN to a valid SEPA country IBAN.",
+            "requires_human_review": true,
+            "sepa_countries": ["AD","AT","BE","BG","CH","CY","CZ","DE","DK","EE","ES","FI","FR","GB","GI","GR","HR","HU","IE","IS","IT","LI","LT","LU","LV","MC","MT","NL","NO","PL","PT","RO","SE","SI","SK","SM","VA"],
+            "ai_cannot_fix_reason": "AI cannot change the payment type or generate a valid SEPA IBAN for a non-SEPA beneficiary."
+        },
+        "DUPLICATE_UETR_CROSS_BATCH": {
+            "root_cause": "Two or more messages in the same bulk generation batch share the same UETR value. UETR must be globally unique per SWIFT transaction.",
+            "fix": "For each duplicate, generate a new UUID v4. The auto-fixer handles one message at a time and cannot detect cross-message UETR collisions in a batch. Validate the full batch output for UETR uniqueness after generation.",
+            "requires_human_review": false,
+            "do_not": "Do NOT copy the UETR from one message to another. Each transaction must have its own freshly generated UUID v4."
+        },
+        "XCHGRATE_PRECISION_INSUFFICIENT": {
+            "root_cause": "XchgRate value has insufficient decimal precision. Forex rates typically require 5–6 decimal places (e.g., 1.23456). A value of '1.0' is accepted by XSD but will be rejected by many bank systems as imprecise.",
+            "fix": "Use a realistic exchange rate with at least 4 decimal places. For testing use '1.0000'. For actual FX transactions, the exchange rate must come from the payment originator's FX system — AI cannot supply a real market rate.",
+            "requires_human_review": false,
+            "do_not": "Do NOT use '1.0' for cross-currency transactions sent to production systems."
+        },
+        "PACS002_REJECTION_CODE_SEMANTIC": {
+            "root_cause": "TxSts=RJCT is present but StsRsnInf/Rsn/Cd (e.g., AC01=account closed) does not semantically match the actual rejection reason. Using a dummy code in production causes downstream confusion.",
+            "fix": "MANUAL REVIEW REQUIRED for production messages. For testing, AC01 is acceptable. For production: consult the actual rejection notification from the receiving bank and use the correct ISO 20022 reason code. Common codes: AC01 (closed), AC04 (invalid account), AM04 (insufficient funds), BE01 (party mismatch), LEGL (legal decision).",
+            "requires_human_review": true,
+            "ai_cannot_fix_reason": "Correct rejection reason code is specific to the actual failure — AI cannot know why the payment was really rejected.",
+            "common_reason_codes": {
+                "AC01": "Account closed",
+                "AC04": "Account number invalid",
+                "AC06": "Account blocked",
+                "AM04": "Insufficient funds",
+                "AM05": "Duplicate payment",
+                "BE01": "Inconsistent with end customer",
+                "CUST": "Requested by customer",
+                "DUPL": "Duplicate payment",
+                "LEGL": "Legal decision",
+                "MD01": "No mandate",
+                "MS02": "Refused by end customer",
+                "NARR": "Narrative reason (use AddtlInf)"
+            }
+        },
+        "MT_FIELD72_AMBIGUOUS_NARRATIVE": {
+            "root_cause": "MT field 72 contains multiple mixed /code/ lines (e.g., /BNF/, /ACC/, /INS/, /RFB/, /ROC/) that cannot be unambiguously mapped to a single MX element. The conversion engine must interpret intent.",
+            "fix": "MANUAL REVIEW REQUIRED for MT→MX conversion. Map each /code/ as follows: /BNF/ → InstrForCdtrAgt/InstrInf (beneficiary instruction); /ACC/ → CdtrAcct/Id/Othr; /INS/ → IntrmyAgt1; /RFB/ → RmtInf/Strd/CdtrRefInf; /ROC/ → GrpHdr reference. When ambiguous, place content in RmtInf/Ustrd and flag for review.",
+            "requires_human_review": true,
+            "ai_cannot_fix_reason": "MT field 72 is a free-format narrative field; correct MX mapping depends on the sending bank's conventions."
+        },
+        "SANCTIONS_REAL_TIME_CHECK": {
+            "root_cause": "A party (Dbtr, Cdtr, intermediary) may appear on OFAC/EU/UN/HMT sanctions lists that are updated daily. Static BIC-based check is insufficient for production compliance.",
+            "fix": "MANUAL REVIEW REQUIRED for production. The validator's static BIC list check is for testing only. Before processing any live payment, run parties through your institution's real-time sanctions screening system (e.g., Fircosoft, Oracle FCCM, NICE Actimize).",
+            "requires_human_review": true,
+            "ai_cannot_fix_reason": "Sanctions lists change daily. AI has a static snapshot and cannot perform real-time lookups."
+        },
+        "INSTRFORCDTRAGT_INCOMPATIBLE_CODES": {
+            "root_cause": "InstrForCdtrAgt/Cd contains instruction codes that are mutually exclusive or that contradict other message fields. Example: HOLD (hold payment) combined with PHOB (phone beneficiary) is operationally contradictory.",
+            "fix": "MANUAL REVIEW REQUIRED. Verify the intended instruction with the originating bank. Remove contradictory instructions. Only one instruction code block per InstrForCdtrAgt element is recommended.",
+            "requires_human_review": true,
+            "valid_codes": ["CHQB","HOLD","PHOB","TELB","SDVA","INTC","CORT","REPA"],
+            "ai_cannot_fix_reason": "Instruction code semantics depend on the bilateral agreement between correspondent banks."
+        },
+        "BUSMSGENVLP_INVALID_NAMESPACE": {
+            "root_cause": "The message is wrapped in a <BusMsgEnvlp> element with namespace 'urn:swift:xsd:envelope'. This is a SWIFT proprietary Business Message Envelope format that is NOT part of the ISO 20022 standard. ISO 20022 messages must begin with either: (a) <Document> as the root, or (b) <AppHdr> followed immediately by <Document> as two sibling root elements. The BusMsgEnvlp wrapper prevents namespace-aware XSD validation from resolving the correct ISO 20022 schema.",
+            "fix": "MANUAL REVIEW REQUIRED. Remove the outer <BusMsgEnvlp> wrapper and restructure the message so AppHdr and Document are the top-level elements. See structural_fix_guide below.",
+            "requires_human_review": true,
+            "ai_cannot_fix_reason": "Stripping BusMsgEnvlp requires understanding the full envelope structure, re-rooting namespace declarations, and correcting the Document element placement. The payload may also be structurally malformed (e.g. Document content nested inside AppHdr instead of alongside it). This is an architectural restructure, not a field-level fix.",
+            "structural_fix_guide": {
+                "problem_pattern": "<BusMsgEnvlp xmlns='urn:swift:xsd:envelope'><AppHdr>...<Document_content_here></AppHdr></BusMsgEnvlp>",
+                "correct_structure": "<?xml version='1.0'?><AppHdr xmlns='urn:iso:std:iso:20022:tech:xsd:head.001.001.02'>...</AppHdr><Document xmlns='urn:iso:std:iso:20022:tech:xsd:{msg_type}'>...</Document>",
+                "steps": [
+                    "1. Remove the opening <BusMsgEnvlp> and closing </BusMsgEnvlp> tags",
+                    "2. Ensure AppHdr is a standalone root element with its own xmlns declaration",
+                    "3. Move the Document payload (e.g. <CstmrDrctDbtInitn>) OUT of AppHdr and into its own <Document> element",
+                    "4. Set Document xmlns to match the correct message type namespace (e.g. urn:iso:std:iso:20022:tech:xsd:pain.008.001.08)",
+                    "5. Ensure AppHdr contains the mandatory CBPR+ fields: Fr, To, BizMsgIdr, MsgDefIdr, BizSvc, CreDt"
+                ],
+                "known_pitfall": "When CstmrDrctDbtInitn (or any message root) is nested inside AppHdr, it is invisible to the XSD validator and produces misleading 'element not expected' errors on the AppHdr children. The fix is to extract it entirely into a sibling Document element."
+            },
+            "detection_hint": "Trigger this error when: (a) the XML root element local-name is 'BusMsgEnvlp', OR (b) the root namespace is 'urn:swift:xsd:envelope', OR (c) a message-specific root element (CstmrDrctDbtInitn, FIToFICstmrCdtTrf, etc.) appears as a direct child of AppHdr rather than Document.",
+            "example_bad_xml": "<BusMsgEnvlp xmlns='urn:swift:xsd:envelope'><AppHdr xmlns='urn:iso:std:iso:20022:tech:xsd:head.001.001.02'>...<CstmrDrctDbtInitn>...</CstmrDrctDbtInitn></AppHdr></BusMsgEnvlp>",
+            "example_good_xml": "<AppHdr xmlns='urn:iso:std:iso:20022:tech:xsd:head.001.001.02'>...</AppHdr><Document xmlns='urn:iso:std:iso:20022:tech:xsd:pain.008.001.08'><CstmrDrctDbtInitn>...</CstmrDrctDbtInitn></Document>"
+        },
+        "DOCUMENT_NESTED_IN_APPHDR": {
+            "root_cause": "A message-specific root element (e.g. CstmrDrctDbtInitn, FIToFICstmrCdtTrf, FinInstnCdtTrf, FIToFIPmtStsRpt, CstmrCdtTrfInitn, etc.) appears as a child of AppHdr instead of being inside a standalone <Document> element. This is structurally invalid — AppHdr and Document must be siblings, not parent/child.",
+            "fix": "MANUAL REVIEW REQUIRED. The message-specific root element must be extracted from AppHdr and placed inside its own <Document xmlns='urn:iso:std:iso:20022:tech:xsd:{msg_type}'> element that is a sibling to AppHdr.",
+            "requires_human_review": true,
+            "ai_cannot_fix_reason": "Re-rooting the Document content requires knowing the correct message type namespace, confirming all namespace declarations are transferred, and verifying no AppHdr-specific content was accidentally mixed into the Document block. This is a structural rewrite that the AI cannot perform without risk of data loss or corruption.",
+            "message_root_elements": {
+                "pain.001": "CstmrCdtTrfInitn",
+                "pain.002": "CstmrPmtStsRpt",
+                "pain.008": "CstmrDrctDbtInitn",
+                "pacs.002": "FIToFIPmtStsRpt",
+                "pacs.003": "FIToFICstmrDrctDbt",
+                "pacs.004": "PmtRtr",
+                "pacs.008": "FIToFICstmrCdtTrf",
+                "pacs.009": "FinInstnCdtTrf",
+                "pacs.010": "FIDrctDbt",
+                "camt.052": "BkToCstmrAcctRpt",
+                "camt.053": "BkToCstmrStmt",
+                "camt.054": "BkToCstmrDbtCdtNtfctn",
+                "camt.055": "CstmrPmtCxlReq",
+                "camt.056": "FIToFIPmtCxlReq",
+                "camt.057": "NtfctnToRcv"
+            },
+            "detection_hint": "Trigger when any element from the message_root_elements list appears as a direct child of AppHdr."
+        },
+        "APPHDR_MISSING_MANDATORY_CBPR_FIELDS": {
+            "root_cause": "AppHdr is present but missing one or more CBPR+ mandatory fields. Required AppHdr fields under CBPR+: Fr (sender BIC), To (receiver BIC), BizMsgIdr (= GrpHdr/MsgId), MsgDefIdr (= message namespace identifier), BizSvc (= swift.cbprplus.02 or .03), CreDt (datetime with +HH:MM offset).",
+            "fix": "Insert each missing mandatory field using tag_templates. BizMsgIdr must equal GrpHdr/MsgId. MsgDefIdr must match the Document namespace. BizSvc must be swift.cbprplus.02 (SR2023/2024) or swift.cbprplus.03 (SR2025). CreDt must use YYYY-MM-DDTHH:MM:SS+HH:MM format.",
+            "requires_human_review": false,
+            "affected_tags": ["AppHdr/BizMsgIdr", "AppHdr/MsgDefIdr", "AppHdr/BizSvc", "AppHdr/CreDt"],
+            "ai_can_fix": true,
+            "notes": "Fr and To can be auto-fixed by harvesting InstgAgt/InstdAgt BICFIs from the payload. BizMsgIdr can be harvested from GrpHdr/MsgId. MsgDefIdr can be derived from the Document namespace URI."
+        },
+        "BIZSVC_WRONG_VALUE_V03": {
+            "root_cause": "AppHdr/BizSvc contains 'swift.cbprplus.03' which is NOT a valid CBPR+ SR2025 business service identifier. The correct value is 'swift.cbprplus.02' for all CBPR+ messages.",
+            "fix": "Replace the value with 'swift.cbprplus.02'. The value .03 does not exist in SR2025 CBPR+ guidelines.",
+            "requires_human_review": false,
+            "do_not": "Do NOT accept swift.cbprplus.03 as valid — it is a fictitious value."
+        },
+        "LEI_INVALID": {
+            "root_cause": "LEI field value does not match the ISO 17442 pattern. LEI must be 20 alphanumeric characters: 18 uppercase alphanumeric followed by 2 check digits.",
+            "fix": "Replace with a valid LEI from dummy_data.banks (e.g. 7LTWFZYICNSX8D621K86). If the actual entity LEI is unknown, this requires human review.",
+            "requires_human_review": false,
+            "pattern": "[A-Z0-9]{18,18}[0-9]{2,2}",
+            "dummy_example": "7LTWFZYICNSX8D621K86"
+        },
+        "PHONE_FORMAT_ERROR": {
+            "root_cause": "PhoneNumber field does not match the required pattern: +[country_code]-[number]. Leading + and a dash separator are mandatory.",
+            "fix": "Reformat to: +{country_code}-{local_number}. Example: +44-2071234567. Remove spaces and insert the dash after the country code.",
+            "requires_human_review": false,
+            "pattern": "\\+[0-9]{1,3}-[0-9()+\\-]{1,30}"
+        },
+        "IBAN_PATTERN_ERROR": {
+            "root_cause": "IBAN does not match the ISO 13616 structural pattern: 2-letter country code, 2 check digits, up to 30 alphanumeric characters.",
+            "fix": "Replace with a valid IBAN from dummy_data.ibans for the debtor/creditor country. If the country is unknown, use dummy_data.ibans.default.",
+            "requires_human_review": false,
+            "pattern": "[A-Z]{2,2}[0-9]{2,2}[a-zA-Z0-9]{1,30}",
+            "max_length": 34,
+            "min_length": 5
+        },
+        "AMOUNT_NEGATIVE": {
+            "root_cause": "An amount field (IntrBkSttlmAmt, InstdAmt, ChrgsInf/Amt) contains a negative value. All amounts in ISO 20022 must be zero or positive (minInclusive=0).",
+            "fix": "Replace the negative value with its absolute value. If the credit/debit direction needs to be indicated, use the CreditDebitCode element (CRDT/DBIT) on the enclosing element rather than a negative amount.",
+            "requires_human_review": false
+        },
+        "AMOUNT_PRECISION_EXCEEDED": {
+            "root_cause": "Amount has more than 5 fractional digits, exceeding the XSD fractionDigits=5 constraint on ActiveCurrencyAndAmount and ActiveOrHistoricCurrencyAndAmount.",
+            "fix": "Round the amount to a maximum of 5 decimal places. For example, 1000.123456 becomes 1000.12346.",
+            "requires_human_review": false
+        },
+        "PACS002_MISSING_ORGNLMSGID": {
+            "root_cause": "pacs.002 OrgnlGrpInfAndSts is present but OrgnlMsgId is absent. OrgnlMsgId is mandatory (minOccurs=1) inside OriginalGroupHeader.",
+            "fix": "Insert <OrgnlMsgId>{original message ID}</OrgnlMsgId> as the first child of OrgnlGrpInfAndSts. Harvest from the original pacs.008/009 MsgId if available; else use dummy_data.ids.OrgnlMsgId.",
+            "requires_human_review": false
+        },
+        "PACS002_MISSING_ORGNLMSGNMID": {
+            "root_cause": "pacs.002 OrgnlGrpInfAndSts is present but OrgnlMsgNmId is absent. OrgnlMsgNmId is mandatory (minOccurs=1).",
+            "fix": "Insert <OrgnlMsgNmId>pacs.008.001.08</OrgnlMsgNmId> (or the appropriate original message name) as the second child of OrgnlGrpInfAndSts.",
+            "requires_human_review": false,
+            "notes": "OrgnlMsgNmId identifies the message family of the original payment (e.g., pacs.008.001.08, pain.001.001.09)."
+        },
+        "CAMT055_ASSGNMT_MISSING": {
+            "root_cause": "camt.055 CustomerPaymentCancellationRequest is missing the mandatory Assgnmt block. Both Assgnmt and Undrlyg are mandatory at the top level.",
+            "fix": "Insert the Assgnmt block using tag_templates.Assgnmt. The Assgnmt must contain Id, Assgnr (assigner), Assgne (assignee), and CreDtTm.",
+            "requires_human_review": false
+        },
+        "PAIN001_REQD_EXCTN_DT_TYPE": {
+            "root_cause": "pain.001 PmtInf/ReqdExctnDt is structured incorrectly. The field is a DateAndDateTime2Choice — it requires EITHER a child <Dt> element (for an ISODate) OR a child <DtTm> element (for ISODateTime), not a bare date value directly inside ReqdExctnDt.",
+            "fix": "If supplying a date-only value: wrap as <ReqdExctnDt><Dt>YYYY-MM-DD</Dt></ReqdExctnDt>. If supplying a datetime: wrap as <ReqdExctnDt><DtTm>YYYY-MM-DDTHH:MM:SS+HH:MM</DtTm></ReqdExctnDt>. Default to <Dt> form for simplicity.",
+            "requires_human_review": false
+        },
+        "PAIN001_PMTINF_MISSING_PMTINFID": {
+            "root_cause": "pain.001 PmtInf block is missing the mandatory PmtInfId element (minOccurs=1).",
+            "fix": "Insert <PmtInfId>PMT-INF-{date}-001</PmtInfId> as the first child of PmtInf.",
+            "requires_human_review": false
+        },
+        "PAIN001_PMTINF_MISSING_PMTMTD": {
+            "root_cause": "pain.001 PmtInf/PmtMtd is missing. PmtMtd is mandatory (minOccurs=1) in PaymentInstruction. Valid values: CHK (cheque), TRF (credit transfer), TRA (transfer advice).",
+            "fix": "Insert <PmtMtd>TRF</PmtMtd> as the second child of PmtInf (after PmtInfId). TRF is the standard CBPR+ credit transfer method.",
+            "requires_human_review": false
+        },
+        "PAIN001_GRPHDR_MISSING_INITGPTY": {
+            "root_cause": "pain.001 GrpHdr/InitgPty is missing. InitgPty (Initiating Party) is mandatory (minOccurs=1) in GroupHeader114.",
+            "fix": "Insert <InitgPty><Nm>{debtor name}</InitgPty></Nm> inside GrpHdr, after NbOfTxs/CtrlSum. Harvest debtor name from PmtInf/Dbtr/Nm if present.",
+            "requires_human_review": false
+        },
+        "PACS009_COVE_UNDERLYING_INCOMPLETE": {
+            "root_cause": "pacs.009 COV (COVE settlement method) UndrlygCstmrCdtTrf block exists but is missing mandatory fields: Dbtr (mandatory), DbtrAgt (mandatory), CdtrAgt (mandatory), and Cdtr (mandatory).",
+            "fix": "MANUAL REVIEW REQUIRED. The underlying customer credit transfer fields must come from the original customer payment instruction. AI cannot fabricate customer details.",
+            "requires_human_review": true,
+            "ai_cannot_fix_reason": "Underlying customer payment data is business-critical and cannot be invented — it must match the actual original customer instruction."
+        },
+        "FXAGRD_RATE_MISSING": {
+            "root_cause": "pacs.008/009 CurrencyExchange26 (AgrdRate) block is present but mandatory PreAgrdXchgRate is absent. PreAgrdXchgRate is minOccurs=1 inside CurrencyExchange26.",
+            "fix": "Insert <PreAgrdXchgRate>1.0</PreAgrdXchgRate> inside AgrdRate. For production, use the actual pre-agreed FX rate from the originator's FX system.",
+            "requires_human_review": false,
+            "notes": "AgrdRate is used when an FX conversion has been pre-agreed. PreAgrdXchgRate is always mandatory inside this block."
+        },
+        "ADDTL_DATETIME_INVALID": {
+            "root_cause": "pacs.008 CdtTrfTxInf/AddtlDtTm (AdditionalDateTime1) contains invalid datetime fields. All three child elements (AccptncDtTm, PoolgAdjstmntDt, XpryDtTm) are optional but must be valid ISO dates/datetimes when present.",
+            "fix": "For AccptncDtTm and XpryDtTm: use CBPR+ datetime format YYYY-MM-DDTHH:MM:SS+HH:MM. For PoolgAdjstmntDt: use ISO date YYYY-MM-DD. Apply the PAST_DATE_ERROR fix if the value is in the past.",
+            "requires_human_review": false
+        },
+        "CAMT056_ASSGNMT_CREATDTTM_INVALID": {
+            "root_cause": "camt.056 Assgnmt/CreDtTm is missing or has invalid format. CreDtTm is mandatory inside the Assignment block.",
+            "fix": "Insert <CreDtTm>{current datetime YYYY-MM-DDTHH:MM:SS+HH:MM}</CreDtTm> as the last child of Assgnmt. Use CBPR+ offset format, no Z suffix.",
+            "requires_human_review": false
+        },
+        "CAMT057_NTF_MISSING_ID": {
+            "root_cause": "camt.057 Ntfctn/Id is missing. The notification ID is mandatory (minOccurs=1) in BankToCustomerDebitCreditNotificationV08.",
+            "fix": "Insert <Id>NTFCTN-{date}-001</Id> as the first child of Ntfctn.",
+            "requires_human_review": false
+        },
+        "CAMT057_ITM_MISSING_ID": {
+            "root_cause": "camt.057 Ntfctn/Itm is missing the mandatory Id element.",
+            "fix": "Insert <Id>ITM-001</Id> as the first child of the Itm block.",
+            "requires_human_review": false
+        },
+        "CAMT057_ITM_MISSING_AMT": {
+            "root_cause": "camt.057 Ntfctn/Itm is missing the mandatory Amt element.",
+            "fix": "Insert <Amt Ccy=\"{CCY}\">{AMOUNT}</Amt> inside Itm. Harvest currency from the associated account currency or use dummy_data.amounts.default.",
+            "requires_human_review": false
+        },
+        "PACS003_DIRECTDEBIT_MISSING_MNDTID": {
+            "root_cause": "pacs.003 DrctDbtTxInf/DrctDbtTx/MndtRltdInf/MndtId is absent. MndtId is mandatory for direct debit transactions.",
+            "fix": "MANUAL REVIEW REQUIRED. MndtId must reference a pre-agreed mandate. AI cannot generate a valid mandate ID. Contact the creditor for the correct mandate reference.",
+            "requires_human_review": true,
+            "ai_cannot_fix_reason": "Mandate ID must come from the creditor's mandate registry."
+        },
+        "PAIN008_REQDCOLLTNDT_PAST": {
+            "root_cause": "pain.008 PmtInf/ReqdColltnDt is in the past. Direct debit collection dates must be today or in the future.",
+            "fix": "Replace with today's date in YYYY-MM-DD format.",
+            "requires_human_review": false
+        },
+        "PACS010_CDTID_MISSING": {
+            "root_cause": "pacs.010 CdtInstr/CdtId is missing. CdtId is mandatory (minOccurs=1) in the credit instruction block.",
+            "fix": "Insert <CdtId>CDT-{date}-001</CdtId> as the first child of CdtInstr.",
+            "requires_human_review": false
+        },
+        "SEQUENCE_ORDER_VIOLATION": {
+            "root_cause": "An element appears out of XSD-mandated sequence order. ISO 20022 uses xs:sequence which is strictly ordered. XML validators will reject out-of-order elements.",
+            "fix": "Reorder the elements according to the tag_insertion_order map for the parent element. For example in CdtTrfTxInf: PmtId MUST precede IntrBkSttlmAmt, ChrgBr MUST precede InstgAgt, Dbtr MUST precede DbtrAcct.",
+            "requires_human_review": false
+        },
+        "MAX_OCCURRENCE_EXCEEDED": {
+            "root_cause": "An element appears more times than the XSD maxOccurs allows. Examples: RgltryRptg has maxOccurs=10 in pacs.008; MemoFld has maxOccurs=2 in pain.001 cheque data.",
+            "fix": "Remove excess occurrences beyond the declared maxOccurs value. Keep the most relevant entries.",
+            "requires_human_review": false
+        },
+        "ADDRTYPE_INVALID": {
+            "root_cause": "PstlAdr/AdrTp/Cd contains an invalid AddressType code. Valid values are: ADDR, PBOX, HOME, BIZZ, MLTO, DLVY.",
+            "fix": "Replace with a valid code. Default to ADDR for standard postal addresses.",
+            "requires_human_review": false,
+            "valid_values": ["ADDR", "PBOX", "HOME", "BIZZ", "MLTO", "DLVY"]
+        },
+        "CLEARINGCHANNEL_INVALID": {
+            "root_cause": "PmtTpInf/ClrChanl contains an invalid ClearingChannel2Code. Valid values are: RTGS, RTNS, MPNS, BOOK.",
+            "fix": "Replace with a valid code. RTGS is standard for high-value interbank payments.",
+            "requires_human_review": false,
+            "valid_values": ["RTGS", "RTNS", "MPNS", "BOOK"]
         }
     },
     "tag_templates": {
         "_doc": "Exact XML structure for each tag, by message type. The AI MUST use the message-specific variant when available; fall back to 'default' only when no message match. Placeholders ($VAR) get resolved by either harvesting from the live XML or pulling from dummy_data.",
         "UETR": {
-            "default": "<UETR>$UETR</UETR>"
+            "default": "<UETR>$UETR</UETR>",
+            "_note": "The $UETR placeholder resolves to a freshly generated UUID v4 (str(uuid.uuid4())) — never to a static value. Mandatory in pacs.008, pacs.009, pacs.003, pacs.010. Insert inside PmtId after EndToEndId. See payment_id_coexistence.rules.PMTID_REQUIRES_UETR_CBPRPLUS."
         },
         "MsgId": {
             "default": "<MsgId>$MSG_ID</MsgId>"
@@ -506,25 +1011,45 @@
         },
         "MsgDefIdr": {
             "pacs.008": "<MsgDefIdr>pacs.008.001.08</MsgDefIdr>",
+            "pacs.008.001.13": "<MsgDefIdr>pacs.008.001.13</MsgDefIdr>",
             "pacs.009": "<MsgDefIdr>pacs.009.001.08</MsgDefIdr>",
+            "pacs.009.001.12": "<MsgDefIdr>pacs.009.001.12</MsgDefIdr>",
             "pacs.002": "<MsgDefIdr>pacs.002.001.10</MsgDefIdr>",
+            "pacs.002.001.12": "<MsgDefIdr>pacs.002.001.12</MsgDefIdr>",
             "pacs.003": "<MsgDefIdr>pacs.003.001.08</MsgDefIdr>",
+            "pacs.003.001.11": "<MsgDefIdr>pacs.003.001.11</MsgDefIdr>",
             "pacs.004": "<MsgDefIdr>pacs.004.001.09</MsgDefIdr>",
             "pacs.007": "<MsgDefIdr>pacs.007.001.10</MsgDefIdr>",
+            "pacs.010": "<MsgDefIdr>pacs.010.001.06</MsgDefIdr>",
             "pacs.028": "<MsgDefIdr>pacs.028.001.04</MsgDefIdr>",
             "pain.001": "<MsgDefIdr>pain.001.001.09</MsgDefIdr>",
+            "pain.001.001.12": "<MsgDefIdr>pain.001.001.12</MsgDefIdr>",
             "pain.002": "<MsgDefIdr>pain.002.001.10</MsgDefIdr>",
+            "pain.002.001.14": "<MsgDefIdr>pain.002.001.14</MsgDefIdr>",
             "pain.008": "<MsgDefIdr>pain.008.001.08</MsgDefIdr>",
+            "pain.008.001.11": "<MsgDefIdr>pain.008.001.11</MsgDefIdr>",
             "camt.052": "<MsgDefIdr>camt.052.001.08</MsgDefIdr>",
+            "camt.052.001.13": "<MsgDefIdr>camt.052.001.13</MsgDefIdr>",
             "camt.053": "<MsgDefIdr>camt.053.001.08</MsgDefIdr>",
+            "camt.053.001.13": "<MsgDefIdr>camt.053.001.13</MsgDefIdr>",
             "camt.054": "<MsgDefIdr>camt.054.001.08</MsgDefIdr>",
+            "camt.054.001.13": "<MsgDefIdr>camt.054.001.13</MsgDefIdr>",
             "camt.055": "<MsgDefIdr>camt.055.001.08</MsgDefIdr>",
+            "camt.055.001.12": "<MsgDefIdr>camt.055.001.12</MsgDefIdr>",
             "camt.056": "<MsgDefIdr>camt.056.001.09</MsgDefIdr>",
+            "camt.056.001.11": "<MsgDefIdr>camt.056.001.11</MsgDefIdr>",
             "camt.057": "<MsgDefIdr>camt.057.001.08</MsgDefIdr>",
             "camt.058": "<MsgDefIdr>camt.058.001.08</MsgDefIdr>"
         },
         "BizSvc": {
-            "default": "<BizSvc>swift.cbprplus.02</BizSvc>"
+            "default": "<BizSvc>swift.cbprplus.02</BizSvc>",
+            "camt.057": "<BizSvc>swift.cbprplus.02</BizSvc>",
+            "camt.052": "<BizSvc>swift.cbprplus.02</BizSvc>",
+            "camt.053": "<BizSvc>swift.cbprplus.02</BizSvc>",
+            "camt.054": "<BizSvc>swift.cbprplus.02</BizSvc>",
+            "camt.055": "<BizSvc>swift.cbprplus.02</BizSvc>",
+            "camt.056": "<BizSvc>swift.cbprplus.02</BizSvc>",
+            "_note": "All message types in this implementation use 'swift.cbprplus.02'. The auto_fix_rule CBPR_R8_CAMT057_BIZSVC enforces this for camt.057 specifically. Never generate 'swift.cbprplus.03' — it triggers CBPR_R8 failures in the bulk generator."
         },
         "Prty": {
             "default": "<Prty>NORM</Prty>"
@@ -577,19 +1102,21 @@
             "default": "<FwdgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></FwdgAgt>"
         },
         "Dbtr": {
-            "pacs.008": "<Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr>",
+            "pacs.008": "<Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><TwnNm>$DBTR_CITY</TwnNm><Ctry>$DBTR_CTRY</Ctry><AdrLine>$DBTR_ADDR</AdrLine></PstlAdr></Dbtr>",
             "pacs.009": "<Dbtr><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></Dbtr>",
-            "pain.001": "<Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr><Id><OrgId><AnyBIC>$DBTR_BICFI</AnyBIC></OrgId></Id></Dbtr>",
+            "pacs.010": "<Dbtr><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></Dbtr>",
+            "pain.001": "<Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><TwnNm>$DBTR_CITY</TwnNm><Ctry>$DBTR_CTRY</Ctry><AdrLine>$DBTR_ADDR</AdrLine></PstlAdr><Id><OrgId><AnyBIC>$DBTR_BICFI</AnyBIC></OrgId></Id></Dbtr>",
             "default": "<Dbtr><Nm>$DBTR_NM</Nm></Dbtr>",
-            "pain.008": "<Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr>",
+            "pain.008": "<Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><TwnNm>$DBTR_CITY</TwnNm><Ctry>$DBTR_CTRY</Ctry><AdrLine>$DBTR_ADDR</AdrLine></PstlAdr></Dbtr>",
             "pain.002": "<Dbtr><Nm>$DBTR_NM</Nm></Dbtr>"
         },
         "Cdtr": {
-            "pacs.008": "<Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr>",
+            "pacs.008": "<Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><TwnNm>$CDTR_CITY</TwnNm><Ctry>$CDTR_CTRY</Ctry><AdrLine>$CDTR_ADDR</AdrLine></PstlAdr></Cdtr>",
             "pacs.009": "<Cdtr><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></Cdtr>",
-            "pain.001": "<Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr>",
+            "pacs.010": "<Cdtr><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></Cdtr>",
+            "pain.001": "<Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><TwnNm>$CDTR_CITY</TwnNm><Ctry>$CDTR_CTRY</Ctry><AdrLine>$CDTR_ADDR</AdrLine></PstlAdr></Cdtr>",
             "default": "<Cdtr><Nm>$CDTR_NM</Nm></Cdtr>",
-            "pain.008": "<Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr>",
+            "pain.008": "<Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><TwnNm>$CDTR_CITY</TwnNm><Ctry>$CDTR_CTRY</Ctry><AdrLine>$CDTR_ADDR</AdrLine></PstlAdr></Cdtr>",
             "pain.002": "<Cdtr><Nm>$CDTR_NM</Nm></Cdtr>"
         },
         "UltmtDbtr": {
@@ -613,7 +1140,7 @@
             "default": "<CdtrAgtAcct><Id><Othr><Id>$ACCOUNT_ID</Id></Othr></Id></CdtrAgtAcct>"
         },
         "PstlAdr": {
-            "default": "<PstlAdr><AdrLine>$ADDR</AdrLine><Ctry>$CTRY</Ctry></PstlAdr>"
+            "default": "<PstlAdr><TwnNm>$CITY</TwnNm><Ctry>$CTRY</Ctry><AdrLine>$ADDR</AdrLine></PstlAdr>"
         },
         "Ctry": {
             "default": "<Ctry>$CTRY</Ctry>"
@@ -623,6 +1150,12 @@
         },
         "TwnNm": {
             "default": "<TwnNm>$CITY</TwnNm>"
+        },
+        "PmtMtd": {
+            "pain.001": "<PmtMtd>TRF</PmtMtd>",
+            "pain.008": "<PmtMtd>DD</PmtMtd>",
+            "default": "<PmtMtd>TRF</PmtMtd>",
+            "_note": "TRF = credit transfer (pain.001); DD = direct debit (pain.008). Using TRF in a pain.008 fails the PmtMtd codelist."
         },
         "PstCd": {
             "default": "<PstCd>$POSTCODE</PstCd>"
@@ -712,19 +1245,19 @@
             "pain.002": "<TxInfAndSts><OrgnlEndToEndId>$E2E_ID</OrgnlEndToEndId><TxSts>ACCP</TxSts></TxInfAndSts>"
         },
         "CdtTrfTxInf": {
-            "pacs.008": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId><IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt><IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt><ChrgBr>SLEV</ChrgBr><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf>",
+            "pacs.008": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId><IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt><IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt><ChrgBr>SLEV</ChrgBr><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><TwnNm>$DBTR_CITY</TwnNm><Ctry>$DBTR_CTRY</Ctry><AdrLine>$DBTR_ADDR</AdrLine></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><TwnNm>$CDTR_CITY</TwnNm><Ctry>$CDTR_CTRY</Ctry><AdrLine>$CDTR_ADDR</AdrLine></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf>",
             "pacs.009": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId><IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt><IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt><ChrgBr>SLEV</ChrgBr><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt><Dbtr><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></Dbtr><Cdtr><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></Cdtr></CdtTrfTxInf>",
-            "pain.001": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><Amt><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt></Amt><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf>"
+            "pain.001": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><Amt><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt></Amt><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><TwnNm>$CDTR_CITY</TwnNm><Ctry>$CDTR_CTRY</Ctry><AdrLine>$CDTR_ADDR</AdrLine></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf>"
         },
         "InitgPty": {
             "default": "<InitgPty><Nm>$DBTR_NM</Nm></InitgPty>"
         },
         "PmtInf": {
-            "pain.001": "<PmtInf><PmtInfId>PMT-INF-001</PmtInfId><PmtMtd>TRF</PmtMtd><ReqdExctnDt><Dt>$STTLM_DT</Dt></ReqdExctnDt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><ChrgBr>SLEV</ChrgBr><CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><Amt><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt></Amt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf></PmtInf>",
-            "pain.008": "<PmtInf><PmtInfId>PMT-INF-001</PmtInfId><PmtMtd>DD</PmtMtd><ReqdColltnDt>$STTLM_DT</ReqdColltnDt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><ChrgBr>SLEV</ChrgBr><DrctDbtTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct></DrctDbtTxInf></PmtInf>"
+            "pain.001": "<PmtInf><PmtInfId>PMT-INF-001</PmtInfId><PmtMtd>TRF</PmtMtd><ReqdExctnDt><Dt>$STTLM_DT</Dt></ReqdExctnDt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><TwnNm>$DBTR_CITY</TwnNm><Ctry>$DBTR_CTRY</Ctry><AdrLine>$DBTR_ADDR</AdrLine></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><ChrgBr>SLEV</ChrgBr><CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><Amt><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt></Amt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><TwnNm>$CDTR_CITY</TwnNm><Ctry>$CDTR_CTRY</Ctry><AdrLine>$CDTR_ADDR</AdrLine></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf></PmtInf>",
+            "pain.008": "<PmtInf><PmtInfId>PMT-INF-001</PmtInfId><PmtMtd>DD</PmtMtd><ReqdColltnDt>$STTLM_DT</ReqdColltnDt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><TwnNm>$CDTR_CITY</TwnNm><Ctry>$CDTR_CTRY</Ctry><AdrLine>$CDTR_ADDR</AdrLine></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><ChrgBr>SLEV</ChrgBr><DrctDbtTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><TwnNm>$DBTR_CITY</TwnNm><Ctry>$DBTR_CTRY</Ctry><AdrLine>$DBTR_ADDR</AdrLine></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct></DrctDbtTxInf></PmtInf>"
         },
         "DrctDbtTxInf": {
-            "pain.008": "<DrctDbtTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct></DrctDbtTxInf>",
+            "pain.008": "<DrctDbtTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><TwnNm>$DBTR_CITY</TwnNm><Ctry>$DBTR_CTRY</Ctry><AdrLine>$DBTR_ADDR</AdrLine></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct></DrctDbtTxInf>",
             "pacs.010": "<DrctDbtTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><UETR>$UETR</UETR></PmtId><IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt><Dbtr><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></Dbtr><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt></DrctDbtTxInf>"
         },
         "CdtInstr": {
@@ -764,6 +1297,91 @@
         },
         "OrgnlPmtInfAndSts": {
             "pain.002": "<OrgnlPmtInfAndSts><OrgnlPmtInfId>$ORIG_MSG_ID</OrgnlPmtInfId><TxInfAndSts><OrgnlEndToEndId>$E2E_ID</OrgnlEndToEndId><TxSts>ACCP</TxSts></TxInfAndSts></OrgnlPmtInfAndSts>"
+        },
+        "SttlmTmIndctn": {
+            "pacs.008": "<SttlmTmIndctn><CdtDtTm>$CRE_DT_TM</CdtDtTm></SttlmTmIndctn>",
+            "pacs.003": "<SttlmTmIndctn><DbtDtTm>$CRE_DT_TM</DbtDtTm></SttlmTmIndctn>",
+            "_note": "Must contain EITHER CdtDtTm (credit transfer) OR DbtDtTm (direct debit) — NEVER both. Format: CBPR+ offset datetime, no Z, no milliseconds."
+        },
+        "ClrSysMmbId": {
+            "default": "<ClrSysMmbId><ClrSysId><Cd>$CLRSYS_CD</Cd></ClrSysId><MmbId>$MMBID</MmbId></ClrSysMmbId>",
+            "_note": "Cannot coexist with BICFI in the same FinInstnId. $CLRSYS_CD: USABA (US, 9 digits), GBDSC (UK, 6 digits), BLZDE (DE, 8 digits). Use only when BICFI is unavailable."
+        },
+        "MndtRltdInf": {
+            "pain.008": "<MndtRltdInf><MndtId>$MNDT_ID</MndtId><DtOfSgntr>$STTLM_DT</DtOfSgntr></MndtRltdInf>",
+            "_note": "MndtId MUST reference a pre-agreed mandate from the creditor's mandate registry. AI CANNOT generate a valid MndtId — this requires human input from the creditor."
+        },
+        "UndrlygCstmrCdtTrf": {
+            "pacs.009": "<UndrlygCstmrCdtTrf><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><TwnNm>$DBTR_CITY</TwnNm><Ctry>$DBTR_CTRY</Ctry><AdrLine>$DBTR_ADDR</AdrLine></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><TwnNm>$CDTR_CITY</TwnNm><Ctry>$CDTR_CTRY</Ctry><AdrLine>$CDTR_ADDR</AdrLine></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct><RmtInf><Ustrd>$RMT_INFO</Ustrd></RmtInf></UndrlygCstmrCdtTrf>",
+            "_note": "COV variant only (SttlmMtd=COVE). REQUIRES real customer payment data — Dbtr/Cdtr names, IBANs, and remittance info must match the original customer instruction. AI CANNOT invent these values for production use; dummy data only acceptable for testing."
+        },
+        "InstrForCdtrAgt": {
+            "default": "<InstrForCdtrAgt><Cd>$INSTR_CD</Cd><InstrInf>$INSTR_INFO</InstrInf></InstrForCdtrAgt>",
+            "_note": "Valid Cd values: CHQB, HOLD, PHOB, TELB, SDVA, INTC, CORT, REPA. HOLD + PHOB are mutually contradictory — do not combine. Never include more than 2 InstrForCdtrAgt blocks."
+        },
+        "RgltryRptg": {
+            "default": "<RgltryRptg><DbtCdtRptgInd>DEBT</DbtCdtRptgInd><Authrty><Nm>$AUTHRTY_NM</Nm><Ctry>$CTRY</Ctry></Authrty><Dtls><Cd>$RGLTY_CD</Cd><Inf>$RGLTY_INFO</Inf></Dtls></RgltryRptg>",
+            "_note": "Jurisdiction-specific. US FinCEN: use code 'CRED' with Inf field. EU AML Directive: specific codes per country. AI CANNOT generate compliant regulatory reporting content — human compliance review required."
+        },
+        "BtchBookg": {
+            "default": "<BtchBookg>false</BtchBookg>",
+            "_note": "When true, all CdtTrfTxInf in this message must share the same IntrBkSttlmDt. AI fix: default to false unless operator explicitly requests batch booking."
+        },
+        "RtrRsnInf": {
+            "pacs.004": "<RtrRsnInf><Rsn><Cd>FOCR</Cd></Rsn><AddtlInf>Payment returned at request of ordering customer</AddtlInf></RtrRsnInf>",
+            "_note": "Common return reason codes: FOCR (by ordering customer), AC01 (account closed), AM04 (insufficient funds), MD01 (no mandate). Use semantically correct code for production — not dummy."
+        },
+        "ReqdExctnDt": {
+            "pain.001": "<ReqdExctnDt><Dt>$STTLM_DT</Dt></ReqdExctnDt>",
+            "_note": "pain.001 PmtInf/ReqdExctnDt is a DateAndDateTime2Choice — must contain either <Dt> (ISODate) or <DtTm> (ISODateTime). The <Dt> form is preferred. $STTLM_DT resolves to today's date."
+        },
+        "AddtlDtTm": {
+            "pacs.008": "<AddtlDtTm><XpryDtTm>$CRE_DT_TM</XpryDtTm></AddtlDtTm>",
+            "_note": "pacs.008 optional AdditionalDateTime1 block. All three child elements (AccptncDtTm, PoolgAdjstmntDt, XpryDtTm) are optional. Include only when needed."
+        },
+        "AgrdRate": {
+            "pacs.008": "<AgrdRate><PreAgrdXchgRate>1.00000</PreAgrdXchgRate></AgrdRate>",
+            "pacs.009": "<AgrdRate><PreAgrdXchgRate>1.00000</PreAgrdXchgRate></AgrdRate>",
+            "_note": "Pre-agreed exchange rate block. PreAgrdXchgRate is mandatory inside AgrdRate. Use only when a pre-agreed FX deal exists."
+        },
+        "UndrlygAllcn": {
+            "pacs.009": "<UndrlygAllcn><Amt Ccy=\"$CCY\">$AMOUNT</Amt></UndrlygAllcn>",
+            "_note": "pacs.009 transaction allocation block. Optional repeating element. Used when settlement amount is allocated across multiple underlying payments."
+        },
+        "PmtSgntr": {
+            "pacs.008": "<PmtSgntr><Sgntr>$BASE64_SIGNATURE</Sgntr></PmtSgntr>",
+            "_note": "Optional cryptographic signature for ILP/SHA-256. CryptographicKey1Choice: use ILPV4 (hex) or Sgntr (base64). AI cannot generate a valid cryptographic signature — human/system must supply this."
+        },
+        "Assgnmt": {
+            "camt.055": "<Assgnmt><Id>ASSGNMT-001</Id><Assgnr><Pty><Nm>$INSTG_NM</Nm></Pty></Assgnr><Assgne><Pty><Nm>$INSTD_NM</Nm></Pty></Assgne><CreDtTm>$CRE_DT_TM</CreDtTm></Assgnmt>",
+            "camt.056": "<Assgnmt><Id>ASSGNMT-001</Id><Assgnr><Agt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></Agt></Assgnr><Assgne><Agt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></Agt></Assgne><CreDtTm>$CRE_DT_TM</CreDtTm></Assgnmt>"
+        },
+        "Undrlyg": {
+            "camt.055": "<Undrlyg><TxInf><OrgnlEndToEndId>$E2E_ID</OrgnlEndToEndId><OrgnlUETR>$UETR</OrgnlUETR><CxlRsnInf><Rsn><Cd>DUPL</Cd></Rsn></CxlRsnInf></TxInf></Undrlyg>",
+            "camt.056": "<Undrlyg><TxInf><OrgnlUETR>$UETR</OrgnlUETR><CxlRsnInf><Rsn><Cd>DUPL</Cd></Rsn></CxlRsnInf></TxInf></Undrlyg>"
+        },
+        "OrgnlGrpInfAndSts": {
+            "pacs.002": "<OrgnlGrpInfAndSts><OrgnlMsgId>$ORIG_MSG_ID</OrgnlMsgId><OrgnlMsgNmId>pacs.008.001.08</OrgnlMsgNmId><GrpSts>RJCT</GrpSts></OrgnlGrpInfAndSts>",
+            "pain.002": "<OrgnlGrpInfAndSts><OrgnlMsgId>$ORIG_MSG_ID</OrgnlMsgId><OrgnlMsgNmId>pain.001.001.09</OrgnlMsgNmId></OrgnlGrpInfAndSts>",
+            "_note": "OrgnlMsgId and OrgnlMsgNmId are both mandatory. OrgnlMsgNmId must match the message family of the original (e.g. pacs.008.001.08)."
+        },
+        "TtlRtrdIntrBkSttlmAmt": {
+            "pacs.004": "<TtlRtrdIntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</TtlRtrdIntrBkSttlmAmt>",
+            "_note": "pacs.004 GrpHdr mandatory field. Must NOT exceed the IntrBkSttlmAmt of the original payment. Currency must match the original. AI cannot verify the amount ceiling without original message context."
+        },
+        "RtrInf": {
+            "pacs.004": "<RtrInf><MsgId>$MSG_ID</MsgId><OrgnlMsgInf><MsgId>$ORIG_MSG_ID</MsgId><MsgNmId>pacs.008.001.08</MsgNmId></OrgnlMsgInf></RtrInf>",
+            "_note": "pacs.004 return information block referencing the original payment."
+        },
+        "InitgPty": {
+            "pain.001": "<InitgPty><Nm>$DBTR_NM</Nm></InitgPty>",
+            "pain.008": "<InitgPty><Nm>$DBTR_NM</Nm></InitgPty>",
+            "default": "<InitgPty><Nm>$DBTR_NM</Nm></InitgPty>",
+            "_note": "InitgPty in pain.001/pain.008 GrpHdr is mandatory. Harvest debtor name from PmtInf/Dbtr/Nm."
+        },
+        "PmtId_pain001": {
+            "pain.001": "<PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId>",
+            "_note": "pain.001 PmtId uses PaymentIdentification6 which has InstrId (optional) and EndToEndId (mandatory). UETR is also optional but allowed."
         }
     },
     "tag_insertion_order": {
@@ -798,17 +1416,18 @@
             "MsgId",
             "CreDtTm",
             "InstgAgt",
-            "InstdAgt"
+            "InstdAgt",
+            "OrgnlBizQry"
         ],
         "GrpHdr_pain001": [
             "MsgId",
             "CreDtTm",
-            "AuthstnInd",
-            "InitnSrc",
+            "Authstn",
             "NbOfTxs",
             "CtrlSum",
             "InitgPty",
-            "FwdgAgt"
+            "FwdgAgt",
+            "InitnSrc"
         ],
         "CdtTrfTxInf_pacs008": [
             "PmtId",
@@ -818,16 +1437,20 @@
             "SttlmPrty",
             "SttlmTmIndctn",
             "SttlmTmReq",
-            "AccptncDtTm",
-            "PoolgAdjstmntDt",
+            "AddtlDtTm",
             "InstdAmt",
             "XchgRate",
+            "AgrdRate",
             "ChrgBr",
             "ChrgsInf",
             "MndtRltdInf",
+            "PmtSgntr",
             "PrvsInstgAgt1",
+            "PrvsInstgAgt1Acct",
             "PrvsInstgAgt2",
+            "PrvsInstgAgt2Acct",
             "PrvsInstgAgt3",
+            "PrvsInstgAgt3Acct",
             "InstgAgt",
             "InstdAgt",
             "IntrmyAgt1",
@@ -853,7 +1476,8 @@
             "RgltryRptg",
             "Tax",
             "RltdRmtInf",
-            "RmtInf"
+            "RmtInf",
+            "SplmtryData"
         ],
         "CdtTrfTxInf_pacs009": [
             "PmtId",
@@ -863,13 +1487,14 @@
             "SttlmPrty",
             "SttlmTmIndctn",
             "SttlmTmReq",
-            "InstdAmt",
-            "XchgRate",
-            "ChrgBr",
-            "ChrgsInf",
+            "XpryDtTm",
+            "PmtSgntr",
             "PrvsInstgAgt1",
+            "PrvsInstgAgt1Acct",
             "PrvsInstgAgt2",
+            "PrvsInstgAgt2Acct",
             "PrvsInstgAgt3",
+            "PrvsInstgAgt3Acct",
             "InstgAgt",
             "InstdAgt",
             "IntrmyAgt1",
@@ -878,6 +1503,7 @@
             "IntrmyAgt2Acct",
             "IntrmyAgt3",
             "IntrmyAgt3Acct",
+            "UltmtDbtr",
             "Dbtr",
             "DbtrAcct",
             "DbtrAgt",
@@ -886,10 +1512,15 @@
             "CdtrAgtAcct",
             "Cdtr",
             "CdtrAcct",
+            "UltmtCdtr",
             "InstrForCdtrAgt",
             "InstrForNxtAgt",
             "Purp",
-            "RmtInf"
+            "RmtInf",
+            "UndrlygAllcn",
+            "UndrlygCstmrCdtTrf",
+            "UndrlygFICdtTrf",
+            "SplmtryData"
         ],
         "PmtId": [
             "InstrId",
@@ -1183,6 +1814,119 @@
             "AcctSvcrRef",
             "ClrSysRef",
             "OrgnlTxRef"
+        ],
+        "TxInfAndSts_pacs002": [
+            "StsId",
+            "OrgnlGrpInf",
+            "OrgnlInstrId",
+            "OrgnlEndToEndId",
+            "OrgnlTxId",
+            "OrgnlUETR",
+            "TxSts",
+            "StsRsnInf",
+            "ChrgsInf",
+            "AccptncDtTm",
+            "FctvIntrBkSttlmDt",
+            "AcctSvcrRef",
+            "ClrSysRef",
+            "InstgAgt",
+            "InstdAgt",
+            "OrgnlTxRef",
+            "SplmtryData"
+        ],
+        "PmtInf_pain001": [
+            "PmtInfId",
+            "PmtMtd",
+            "ReqdAdvcTp",
+            "BtchBookg",
+            "NbOfTxs",
+            "CtrlSum",
+            "PmtTpInf",
+            "ReqdExctnDt",
+            "PoolgAdjstmntDt",
+            "Dbtr",
+            "DbtrAcct",
+            "DbtrAgt",
+            "DbtrAgtAcct",
+            "InstrForDbtrAgt",
+            "UltmtDbtr",
+            "ChrgBr",
+            "ChrgsAcct",
+            "ChrgsAcctAgt",
+            "CdtTrfTxInf"
+        ],
+        "OriginalGroupHeader_pacs002": [
+            "OrgnlMsgId",
+            "OrgnlMsgNmId",
+            "OrgnlCreDtTm",
+            "OrgnlNbOfTxs",
+            "OrgnlCtrlSum",
+            "GrpSts",
+            "StsRsnInf",
+            "NbOfTxsPerSts"
+        ],
+        "CxlRsnInf": [
+            "Orgtr",
+            "Rsn",
+            "AddtlInf"
+        ],
+        "Assgnmt_camt055": [
+            "Id",
+            "Assgnr",
+            "Assgne",
+            "CreDtTm"
+        ],
+        "Undrlyg_camt055": [
+            "GrpHdr",
+            "OrgnlPmtInfAndCxl",
+            "TxInf",
+            "SplmtryData"
+        ],
+        "CdtTrfTxInf_pacs003": [
+            "PmtId",
+            "PmtTpInf",
+            "IntrBkSttlmAmt",
+            "IntrBkSttlmDt",
+            "SttlmPrty",
+            "SttlmTmIndctn",
+            "SttlmTmReq",
+            "InstdAmt",
+            "XchgRate",
+            "ChrgBr",
+            "ChrgsInf",
+            "PrvsInstgAgt1",
+            "PrvsInstgAgt1Acct",
+            "PrvsInstgAgt2",
+            "PrvsInstgAgt2Acct",
+            "PrvsInstgAgt3",
+            "PrvsInstgAgt3Acct",
+            "InstgAgt",
+            "InstdAgt",
+            "IntrmyAgt1",
+            "IntrmyAgt1Acct",
+            "IntrmyAgt2",
+            "IntrmyAgt2Acct",
+            "IntrmyAgt3",
+            "IntrmyAgt3Acct",
+            "UltmtDbtr",
+            "InitgPty",
+            "Dbtr",
+            "DbtrAcct",
+            "DbtrAgt",
+            "DbtrAgtAcct",
+            "CdtrAgt",
+            "CdtrAgtAcct",
+            "Cdtr",
+            "CdtrAcct",
+            "UltmtCdtr",
+            "InstrForCdtrAgt",
+            "InstrForNxtAgt",
+            "Purp",
+            "RgltryRptg",
+            "Tax",
+            "RltdRmtInf",
+            "RmtInf",
+            "SplmtryData"
         ]
     },
     "dependencies": {
@@ -1241,6 +1985,32 @@
                     "pacs.009"
                 ],
                 "fix_action": "Harvest the InstdAgt BICFI from the transaction block and set AppHdr/To to match."
+            },
+            {
+                "id": "APPHDR_FR_EQ_ASSGNR",
+                "fields": [
+                    "AppHdr.Fr.FIId.FinInstnId.BICFI",
+                    "Document.*.Assgnmt.Assgnr.Agt.FinInstnId.BICFI"
+                ],
+                "description": "AppHdr/Fr BICFI must equal Assgnmt/Assgnr/Agt BICFI in cancellation messages (when CpyDplct not COPY/CODU).",
+                "applies_to": [
+                    "camt.056",
+                    "camt.055"
+                ],
+                "fix_action": "Harvest the Assgnr Agt BICFI from the Assignment block and set AppHdr/Fr to match."
+            },
+            {
+                "id": "APPHDR_TO_EQ_ASSGNE",
+                "fields": [
+                    "AppHdr.To.FIId.FinInstnId.BICFI",
+                    "Document.*.Assgnmt.Assgne.Agt.FinInstnId.BICFI"
+                ],
+                "description": "AppHdr/To BICFI must equal Assgnmt/Assgne/Agt BICFI in cancellation messages (when CpyDplct not COPY/CODU).",
+                "applies_to": [
+                    "camt.056",
+                    "camt.055"
+                ],
+                "fix_action": "Harvest the Assgne Agt BICFI from the Assignment block and set AppHdr/To to match."
             },
             {
                 "id": "NBOFTXS_EQ_TX_COUNT",
@@ -1378,6 +2148,48 @@
                 "description": "AppHdr/To (the receiver) is mandatory in the Business Application Header. If absent, insert it after Fr.",
                 "error_code": "APPHDR_TO_MISSING",
                 "fix_action": "Insert tag_templates.To with $INSTD_BICFI harvested from InstdAgt//BICFI; fall back to dummy_data.parties.instructed_agent.bicfi."
+            },
+            {
+                "id": "PACS009_COVE_REQUIRES_UNDERLYING",
+                "if": "message == 'pacs.009' and SttlmMtd == 'COVE'",
+                "then_required": [
+                    "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.UndrlygCstmrCdtTrf"
+                ],
+                "description": "pacs.009 COV variant: SttlmMtd=COVE requires a complete UndrlygCstmrCdtTrf block with Dbtr, Cdtr, DbtrAcct, CdtrAcct, and RmtInf.",
+                "error_code": "PACS009_COVE_MISSING_UNDERLYING",
+                "fix_action": "MANUAL_REVIEW_REQUIRED — UndrlygCstmrCdtTrf content must be supplied by the originating bank. AI cannot generate valid underlying customer data."
+            },
+            {
+                "id": "RMTINF_STRD_XOR_USTRD",
+                "if": "exists(RmtInf.Strd) and exists(RmtInf.Ustrd)",
+                "then_forbidden": [
+                    "The combination of RmtInf.Strd and RmtInf.Ustrd in the same block"
+                ],
+                "description": "RmtInf must contain either Strd (structured) OR Ustrd (unstructured), not both. XSD allows one or the other.",
+                "error_code": "RMTINF_STRD_USTRD_BOTH",
+                "fix_action": "Remove Ustrd when Strd is present. Remove Strd when only free-text is available. Preferred: Strd with CdtrRefInf when a reference number exists."
+            },
+            {
+                "id": "STTLMTMINDCTN_CRD_XOR_DBT",
+                "if": "exists(SttlmTmIndctn)",
+                "then_required_one_of": [
+                    "SttlmTmIndctn.CdtDtTm",
+                    "SttlmTmIndctn.DbtDtTm"
+                ],
+                "forbidden_both": true,
+                "description": "SttlmTmIndctn must contain exactly one of CdtDtTm (credit leg timing) or DbtDtTm (debit leg timing), never both and never neither.",
+                "error_code": "STTLMTMINDCTN_EXCLUSIVE",
+                "fix_action": "For credit transfers (pacs.008/009): use CdtDtTm. For direct debits (pacs.003): use DbtDtTm. Remove the incorrect element. Format: YYYY-MM-DDTHH:MM:SS+HH:MM (CBPR+ offset, no Z)."
+            },
+            {
+                "id": "BTCHBOOKG_SAME_STTLMDT",
+                "if": "BtchBookg == 'true'",
+                "then_required": [
+                    "All CdtTrfTxInf blocks must share the same IntrBkSttlmDt"
+                ],
+                "description": "When BtchBookg=true, all transactions in the batch settle as a single entry. All IntrBkSttlmDt values across CdtTrfTxInf blocks must be identical.",
+                "error_code": "BTCHBOOKG_STTLMDT_MISMATCH",
+                "fix_action": "MANUAL_REVIEW_REQUIRED — operator must choose a single IntrBkSttlmDt for all transactions. AI cannot determine the intended batch settlement date."
             }
         ],
         "exclusive": [
@@ -1432,6 +2244,285 @@
                     "DbtrAcct/Id/Othr"
                 ],
                 "description": "Account identifier must use either IBAN or Othr, not both."
+            },
+            {
+                "id": "CLRSYSMMBID_BICFI_EXCLUSIVE",
+                "if": "exists(FinInstnId.ClrSysMmbId)",
+                "forbidden": [
+                    "FinInstnId.BICFI"
+                ],
+                "description": "CBPR+ and ISO 20022 XSD: if ClrSysMmbId is used for agent identification, BICFI must NOT also be present inside the same FinInstnId. Choose one identification method only.",
+                "error_code": "CLRSYSMMBID_BICFI_COEXIST",
+                "fix_action": "Remove ClrSysMmbId (and parent ClrSys block) when BICFI is present — BICFI is the preferred CBPR+ identifier. Remove BICFI if domestic clearing system identification is intentional.",
+                "do_not": "Do NOT keep both — the XSD schema will reject the message."
+            },
+            {
+                "id": "CLRSYS_REQUIRED_WITH_MMBID",
+                "if": "exists(FinInstnId.ClrSysMmbId.MmbId)",
+                "then_required": [
+                    "FinInstnId.ClrSysMmbId.ClrSysId.Cd"
+                ],
+                "description": "When ClrSysMmbId is used, the parent ClrSysId/Cd must identify the clearing system (e.g., USABA, GBDSC, BLZDE). MmbId format is system-specific and invalid without knowing the system.",
+                "error_code": "CLRSYSMMBID_FORMAT",
+                "fix_action": "Add ClrSysId/Cd before validating MmbId format. Common codes: USABA (US ABA 9 digits), GBDSC (UK sort code 6 digits), BLZDE (DE 8 digits), CHBCC (CH 5 digits), CACPA (CA 9 digits)."
+            },
+            {
+                "id": "SEPA_REACHABILITY",
+                "if": "SvcLvl.Cd == 'SEPA'",
+                "then_required": [
+                    "Cdtr IBAN country must be SEPA member"
+                ],
+                "description": "SEPA payments (SvcLvl=SEPA) require the creditor's IBAN country to be a SEPA reachability country. Non-SEPA IBANs (US, IN, SG, etc.) will be rejected by the SEPA payment network.",
+                "error_code": "SEPA_REACHABILITY_VIOLATION",
+                "fix_action": "MANUAL_REVIEW_REQUIRED — if payment is genuinely cross-border, change SvcLvl from SEPA to the appropriate code (G002 for CBPR+). If truly SEPA, the creditor IBAN must be from a SEPA country."
+            },
+            {
+                "id": "CAMT056_ASSGNMT_MANDATORY",
+                "if": "message == 'camt.056'",
+                "then_required": ["Assgnmt"],
+                "description": "camt.056 FIToFIPaymentCancellationRequest: Assgnmt (Assignment) is mandatory at root level. Must contain Id, Assgnr, Assgne, CreDtTm.",
+                "error_code": "CAMT055_ASSGNMT_MISSING",
+                "fix_action": "Insert tag_templates.Assgnmt.camt056 before Undrlyg."
+            },
+            {
+                "id": "CAMT055_ASSGNMT_MANDATORY",
+                "if": "message == 'camt.055'",
+                "then_required": ["Assgnmt"],
+                "description": "camt.055 CustomerPaymentCancellationRequest: Assgnmt is mandatory. Must contain Id, Assgnr, Assgne, CreDtTm.",
+                "error_code": "CAMT055_ASSGNMT_MISSING",
+                "fix_action": "Insert tag_templates.Assgnmt.camt055 before Undrlyg."
+            },
+            {
+                "id": "PACS004_GRPHDR_REQUIRES_TTLRTRD",
+                "if": "message == 'pacs.004'",
+                "then_required": ["GrpHdr.TtlRtrdIntrBkSttlmAmt", "GrpHdr.IntrBkSttlmDt"],
+                "description": "pacs.004 GrpHdr requires TtlRtrdIntrBkSttlmAmt and IntrBkSttlmDt both at group header level.",
+                "fix_action": "TtlRtrdIntrBkSttlmAmt: use tag_templates.TtlRtrdIntrBkSttlmAmt — must not exceed original. IntrBkSttlmDt: use today's date."
+            },
+            {
+                "id": "PACS002_GRPHDR_NO_NBTXS",
+                "if": "message == 'pacs.002'",
+                "then_forbidden": ["GrpHdr.NbOfTxs"],
+                "description": "pacs.002 GroupHeader101 does NOT include NbOfTxs. The field exists only in GroupHeader131 (pacs.008) and similar. If present in pacs.002, it must be removed.",
+                "error_code": "SEQUENCE_ORDER_VIOLATION",
+                "fix_action": "Remove NbOfTxs from GrpHdr when message is pacs.002."
+            },
+            {
+                "id": "PAIN001_PMTINF_REQD_EXCTN_DT_CHOICE",
+                "if": "message == 'pain.001' and exists(PmtInf.ReqdExctnDt)",
+                "then_required_one_of": ["PmtInf.ReqdExctnDt.Dt", "PmtInf.ReqdExctnDt.DtTm"],
+                "description": "pain.001 PmtInf/ReqdExctnDt must contain EITHER <Dt> OR <DtTm> — it is a DateAndDateTime2Choice. A bare text content or missing child element is invalid.",
+                "error_code": "PAIN001_REQD_EXCTN_DT_TYPE",
+                "fix_action": "Wrap the date value inside <Dt>YYYY-MM-DD</Dt> as a child of ReqdExctnDt. Default to <Dt> form."
+            },
+            {
+                "id": "PACS009_UNDRLYGFICDT_PMTID_MANDATORY",
+                "if": "message == 'pacs.009' and exists(CdtTrfTxInf.UndrlygFICdtTrf)",
+                "then_required": ["CdtTrfTxInf.UndrlygFICdtTrf.PmtId", "CdtTrfTxInf.UndrlygFICdtTrf.IntrBkSttlmAmt", "CdtTrfTxInf.UndrlygFICdtTrf.Dbtr", "CdtTrfTxInf.UndrlygFICdtTrf.Cdtr"],
+                "description": "pacs.009 UndrlygFICdtTrf (CreditTransferTransaction69) has mandatory PmtId, IntrBkSttlmAmt, Dbtr, and Cdtr.",
+                "fix_action": "Populate mandatory fields inside UndrlygFICdtTrf from the outer CdtTrfTxInf block or dummy_data."
+            }
+        ]
+    },
+    "agent_account_coexistence": {
+        "_doc": "CBPR+ rule: an agent's account element can only exist when the corresponding agent element is present. If the account is present but the agent is missing, either insert the agent or remove the account. AI should insert the agent using dummy_data.banks.",
+        "rules": [
+            {
+                "id": "INTRMYAGT1ACCT_REQUIRES_INTRMYAGT1",
+                "if": "exists(IntrmyAgt1Acct)",
+                "then_required": ["IntrmyAgt1"],
+                "fix_action": "Insert IntrmyAgt1 using tag_templates.IntrmyAgt1 before IntrmyAgt1Acct, or remove IntrmyAgt1Acct if no intermediary is needed."
+            },
+            {
+                "id": "INTRMYAGT2ACCT_REQUIRES_INTRMYAGT2",
+                "if": "exists(IntrmyAgt2Acct)",
+                "then_required": ["IntrmyAgt2"],
+                "fix_action": "Insert IntrmyAgt2 before IntrmyAgt2Acct."
+            },
+            {
+                "id": "INTRMYAGT3ACCT_REQUIRES_INTRMYAGT3",
+                "if": "exists(IntrmyAgt3Acct)",
+                "then_required": ["IntrmyAgt3"],
+                "fix_action": "Insert IntrmyAgt3 before IntrmyAgt3Acct."
+            },
+            {
+                "id": "DBTRAGACCT_REQUIRES_DBTRAGT",
+                "if": "exists(DbtrAgtAcct)",
+                "then_required": ["DbtrAgt"],
+                "fix_action": "Insert DbtrAgt using tag_templates.DbtrAgt before DbtrAgtAcct."
+            },
+            {
+                "id": "CDTRAGACCT_REQUIRES_CDTRAGT",
+                "if": "exists(CdtrAgtAcct)",
+                "then_required": ["CdtrAgt"],
+                "fix_action": "Insert CdtrAgt using tag_templates.CdtrAgt before CdtrAgtAcct."
+            },
+            {
+                "id": "INSTGRMBRSMNT_ACCT_REQUIRES_AGT",
+                "if": "exists(SttlmInf.InstgRmbrsmntAgtAcct)",
+                "then_required": ["SttlmInf.InstgRmbrsmntAgt"],
+                "fix_action": "Insert InstgRmbrsmntAgt with BICFI from dummy_data.banks before InstgRmbrsmntAgtAcct."
+            },
+            {
+                "id": "INSTDRMBRSMNT_ACCT_REQUIRES_AGT",
+                "if": "exists(SttlmInf.InstdRmbrsmntAgtAcct)",
+                "then_required": ["SttlmInf.InstdRmbrsmntAgt"],
+                "fix_action": "Insert InstdRmbrsmntAgt with BICFI from dummy_data.banks before InstdRmbrsmntAgtAcct."
+            }
+        ]
+    },
+    "party_coexistence": {
+        "_doc": "Cross-party presence rules. Ultimate parties presuppose their base party. If UltmtDbtr is present, Dbtr must also be present (and vice versa for Cdtr). AI should insert the missing base party.",
+        "rules": [
+            {
+                "id": "ULTMTDBTR_REQUIRES_DBTR",
+                "if": "exists(UltmtDbtr)",
+                "then_required": ["Dbtr"],
+                "applies_to": ["pacs.008", "pain.001", "pain.008"],
+                "fix_action": "Insert Dbtr block using tag_templates.Dbtr before UltmtDbtr in the transaction block."
+            },
+            {
+                "id": "ULTMTCDTR_REQUIRES_CDTR",
+                "if": "exists(UltmtCdtr)",
+                "then_required": ["Cdtr"],
+                "applies_to": ["pacs.008", "pain.001"],
+                "fix_action": "Insert Cdtr block using tag_templates.Cdtr after CdtrAgt but before UltmtCdtr."
+            },
+            {
+                "id": "DBTR_REQUIRES_DBTRAGT_IN_PACS008",
+                "if": "message == 'pacs.008' and exists(Dbtr)",
+                "then_required": ["DbtrAgt"],
+                "fix_action": "Insert DbtrAgt using tag_templates.DbtrAgt. The debtor's bank is required in pacs.008 customer credit transfers."
+            },
+            {
+                "id": "DBTR_REQUIRES_DBTRACCT_IN_PACS008",
+                "if": "message == 'pacs.008' and exists(Dbtr)",
+                "then_required": ["DbtrAcct"],
+                "fix_action": "Insert DbtrAcct using tag_templates.DbtrAcct with IBAN from dummy_data.ibans matching the debtor's country."
+            }
+        ]
+    },
+    "payment_id_coexistence": {
+        "_doc": "PmtId child element requirements. EndToEndId is always mandatory. UETR is mandatory for CBPR+ pacs.008, pacs.009, pacs.003, pacs.010. TxId is mandatory for pacs.008 and pacs.009.",
+        "uetr_generation_rule": {
+            "_doc": "CRITICAL: UETR MUST be generated using uuid.uuid4() at fix time — NEVER use a static/hardcoded value. The fix engine calls _inject_fresh_uetrs() automatically on all templates. The KB dummy_data.ids.UETR is for documentation only and MUST NOT be reused across transactions.",
+            "algorithm": "uuid4",
+            "python_call": "str(uuid.uuid4())",
+            "format": "[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",
+            "uniqueness": "Each UETR must be unique globally. Never copy a UETR from one message to another."
+        },
+        "rules": [
+            {
+                "id": "PMTID_REQUIRES_E2EID",
+                "if": "exists(PmtId)",
+                "then_required": ["PmtId.EndToEndId"],
+                "applies_to": ["all"],
+                "fix_action": "Insert <EndToEndId>E2E-{date}-001</EndToEndId> as the first child of PmtId. Use dummy_data.ids.EndToEndId format."
+            },
+            {
+                "id": "PMTID_REQUIRES_UETR_CBPRPLUS",
+                "if": "exists(PmtId) and message in ['pacs.008', 'pacs.009', 'pacs.003', 'pacs.010']",
+                "then_required": ["PmtId.UETR"],
+                "applies_to": ["pacs.008", "pacs.009", "pacs.003", "pacs.010"],
+                "fix_action": "Generate a fresh UUID v4 via uuid.uuid4() and insert <UETR>{uuid}</UETR> inside PmtId after EndToEndId. NEVER reuse a static UUID.",
+                "error_code": "MISSING_UETR"
+            },
+            {
+                "id": "PMTID_REQUIRES_TXID_PACS008_009",
+                "if": "exists(PmtId) and message in ['pacs.008', 'pacs.009']",
+                "then_required": ["PmtId.TxId"],
+                "applies_to": ["pacs.008", "pacs.009"],
+                "fix_action": "Insert <TxId>TXN-{date}-001</TxId> after EndToEndId but before UETR inside PmtId."
+            }
+        ]
+    },
+    "charges_coexistence": {
+        "_doc": "ChrgsInf element coexistence rules. When charges are declared, both amount and agent must be present.",
+        "rules": [
+            {
+                "id": "CHRGSINF_REQUIRES_AMT_AND_AGT",
+                "if": "exists(ChrgsInf)",
+                "then_required": ["ChrgsInf.Amt", "ChrgsInf.Agt"],
+                "fix_action": "If ChrgsInf.Amt is missing: insert <Amt Ccy=\"{IntrBkSttlmAmt.Ccy}\">0.00</Amt>. If ChrgsInf.Agt is missing: insert <Agt><FinInstnId><BICFI>{InstgAgt BICFI}</BICFI></FinInstnId></Agt>."
+            },
+            {
+                "id": "CHRGSINF_AMT_CCY_MATCHES_STTLM",
+                "if": "exists(ChrgsInf.Amt)",
+                "must_equal": "ChrgsInf.Amt[@Ccy] == IntrBkSttlmAmt[@Ccy]",
+                "fix_action": "Update ChrgsInf/Amt/@Ccy to match IntrBkSttlmAmt/@Ccy.",
+                "error_code": "CHRGSINF_CCY_MISMATCH"
+            }
+        ]
+    },
+    "status_report_coexistence": {
+        "_doc": "pacs.002 status message element coexistence rules.",
+        "rules": [
+            {
+                "id": "TXSTS_REQUIRES_ORGNL_REFS",
+                "if": "exists(TxInfAndSts.TxSts)",
+                "then_required": ["TxInfAndSts.OrgnlEndToEndId"],
+                "applies_to": ["pacs.002"],
+                "fix_action": "Insert <OrgnlEndToEndId>{harvest from document or use dummy_data.ids.OrgnlEndToEndId}</OrgnlEndToEndId> as first child of TxInfAndSts."
+            },
+            {
+                "id": "RJCT_REQUIRES_STSRSNINF",
+                "if": "TxInfAndSts.TxSts == 'RJCT'",
+                "then_required": ["TxInfAndSts.StsRsnInf"],
+                "applies_to": ["pacs.002"],
+                "fix_action": "Insert StsRsnInf using tag_templates.StsRsnInf. For production, use the actual rejection reason code — not the dummy AC01.",
+                "error_code": "TXSTS_RJCT_REQUIRES_STSRSNINF"
+            },
+            {
+                "id": "ORGNLGRPINFANDSTS_REQUIRES_ORGNLMSGNMID",
+                "if": "exists(OrgnlGrpInfAndSts)",
+                "then_required": ["OrgnlGrpInfAndSts.OrgnlMsgId", "OrgnlGrpInfAndSts.OrgnlMsgNmId"],
+                "applies_to": ["pacs.002", "pain.002"],
+                "fix_action": "Insert OrgnlMsgId using dummy_data.ids.OrgnlMsgId. Insert OrgnlMsgNmId with the appropriate message name (e.g. pacs.008.001.08 for a pacs.008 original)."
+            }
+        ]
+    },
+    "cancellation_coexistence": {
+        "_doc": "camt.056 cancellation message element coexistence rules.",
+        "rules": [
+            {
+                "id": "CAMT056_UNDRLYG_REQUIRES_ORGNL_REF",
+                "if": "exists(Undrlyg.TxInf)",
+                "then_required_one_of": ["Undrlyg.TxInf.OrgnlUETR", "Undrlyg.TxInf.OrgnlMsgId"],
+                "applies_to": ["camt.056"],
+                "fix_action": "At minimum, insert <OrgnlUETR>{original payment UETR}</OrgnlUETR>. For testing use dummy_data.ids.UETR_alt1. For production, harvest from original message.",
+                "error_code": "ORGNL_MSG_UNRESOLVABLE"
+            },
+            {
+                "id": "CAMT056_REQUIRES_CXLRSNINF",
+                "if": "exists(Undrlyg.TxInf)",
+                "then_required": ["Undrlyg.TxInf.CxlRsnInf"],
+                "applies_to": ["camt.056"],
+                "fix_action": "Insert <CxlRsnInf><Rsn><Cd>DUPL</Cd></Rsn></CxlRsnInf>. Use DUPL for duplicate payment cancellations, AGNT for bank-initiated cancellations, CUST for customer request."
+            }
+        ]
+    },
+    "fininstnid_identification_options": {
+        "_doc": "A FinInstnId must use exactly ONE identification method: BICFI, ClrSysMmbId, LEI, or Nm+PstlAdr. Only BICFI or ClrSysMmbId are allowed without the other. If Nm is present without BICFI/ClrSysMmbId/LEI, PstlAdr is also required.",
+        "rules": [
+            {
+                "id": "FININSTNID_REQUIRES_AT_LEAST_ONE_ID",
+                "if": "exists(FinInstnId)",
+                "then_required_one_of": ["FinInstnId.BICFI", "FinInstnId.ClrSysMmbId", "FinInstnId.LEI", "FinInstnId.Nm"],
+                "fix_action": "Add BICFI from dummy_data.banks as the preferred identification method. BICFI is required under CBPR+ for all cross-border payments.",
+                "error_code": "EMPTY_FININSTNID"
+            },
+            {
+                "id": "FININSTNID_NM_REQUIRES_PSTLADR",
+                "if": "exists(FinInstnId.Nm) and not exists(FinInstnId.BICFI) and not exists(FinInstnId.ClrSysMmbId) and not exists(FinInstnId.LEI)",
+                "then_required": ["FinInstnId.PstlAdr"],
+                "fix_action": "Insert PstlAdr with at least TwnNm and Ctry inside FinInstnId when Nm is the only identifier (CBPR+ Agent Option 3)."
+            },
+            {
+                "id": "FININSTNID_CLRSYSMMBID_REQUIRES_NM_PSTLADR",
+                "if": "exists(FinInstnId.ClrSysMmbId) and not exists(FinInstnId.BICFI)",
+                "then_required": ["FinInstnId.Nm", "FinInstnId.PstlAdr"],
+                "applies_to": ["cross-border only"],
+                "fix_action": "When using ClrSysMmbId without BICFI in a cross-border message: add Nm and PstlAdr (CBPR+ Agent Option 2). For domestic-only messages this may be waived."
             }
         ]
     },
@@ -1533,6 +2624,72 @@
                 "fix_action": "coexist_or_remove",
                 "description": "Nm and PstlAdr must both be present; if the block also has BICFI, remove the lone one (exclusivity wins), else add the missing counterpart."
             }
+        ],
+        "value_replacement": [
+            {
+                "id": "CBPR_R8_CAMT057_BIZSVC",
+                "codes": ["CBPR_R8"],
+                "message_pattern": "BizSvc.*must be.*swift\\.cbprplus|AppHdr.*BizSvc.*swift\\.cbprplus",
+                "applies_to": ["camt.057"],
+                "element": "AppHdr/BizSvc",
+                "correct_value": "swift.cbprplus.02",
+                "fix_action": "set_value",
+                "description": "CBPR_R8 fires for camt.057 when BizSvc is wrong. The correct value for camt.057 in this implementation is always 'swift.cbprplus.02'. Set BizSvc to this value regardless of what the error message says the expected value should be.",
+                "priority": "HIGH"
+            },
+            {
+                "id": "BIZSVC_V03_TO_V02",
+                "codes": ["BIZSVC_WRONG_VALUE_V03", "CBPR_BIZ_SVC"],
+                "message_pattern": "swift\\.cbprplus\\.03.*not valid|wrong BizSvc version",
+                "element": "AppHdr/BizSvc",
+                "old_value": "swift.cbprplus.03",
+                "new_value": "swift.cbprplus.02",
+                "fix_action": "replace_value",
+                "description": "When the validator is configured for SR2023/SR2024 (pacs.008.001.08/09/10/11/12), replace swift.cbprplus.03 with swift.cbprplus.02. IMPORTANT: Do NOT apply for SR2025 documents (pacs.008.001.13+) — they REQUIRE swift.cbprplus.03.",
+                "version_note": "SR2023/SR2024 = .02, SR2025 = .03. Match BizSvc to the XSD version in the namespace URI."
+            },
+            {
+                "id": "BIZSVC_V02_TO_V03",
+                "codes": ["BIZSVC_WRONG_VALUE_V02", "CBPR_BIZ_SVC_SR2025"],
+                "message_pattern": "swift\\.cbprplus\\.02.*not valid.*sr2025|wrong BizSvc.*sr2025",
+                "element": "AppHdr/BizSvc",
+                "old_value": "swift.cbprplus.02",
+                "new_value": "swift.cbprplus.03",
+                "fix_action": "replace_value",
+                "description": "When the validator is configured for SR2025 (pacs.008.001.13, pacs.009.001.12, etc.), replace swift.cbprplus.02 with swift.cbprplus.03.",
+                "version_note": "SR2025 requires swift.cbprplus.03. Check the document namespace to determine the correct version."
+            },
+            {
+                "id": "ADDRTYPE_TO_ADDR",
+                "codes": ["ADDRTYPE_INVALID"],
+                "message_pattern": "AddressType.*invalid",
+                "element": "PstlAdr/AdrTp/Cd",
+                "allowed_values": ["ADDR", "PBOX", "HOME", "BIZZ", "MLTO", "DLVY"],
+                "default_replacement": "ADDR",
+                "fix_action": "replace_invalid_code",
+                "description": "Replace invalid AddressType code with ADDR (standard postal address)."
+            },
+            {
+                "id": "CLRCHANNL_TO_RTGS",
+                "codes": ["CLEARINGCHANNEL_INVALID"],
+                "message_pattern": "ClrChanl.*invalid",
+                "element": "PmtTpInf/ClrChanl",
+                "allowed_values": ["RTGS", "RTNS", "MPNS", "BOOK"],
+                "default_replacement": "RTGS",
+                "fix_action": "replace_invalid_code",
+                "description": "Replace invalid ClearingChannel code with RTGS (high-value real-time gross settlement)."
+            }
+        ],
+        "wrap_element": [
+            {
+                "id": "REQD_EXCTN_DT_WRAP",
+                "codes": ["PAIN001_REQD_EXCTN_DT_TYPE", "MISSING_EXPECTED_ELEMENT"],
+                "message_pattern": "ReqdExctnDt.*Dt.*expected|bare date inside ReqdExctnDt",
+                "element": "PmtInf/ReqdExctnDt",
+                "wrap_content_with": "Dt",
+                "fix_action": "wrap_content",
+                "description": "If ReqdExctnDt contains bare text (a date without a child Dt/DtTm element), wrap it: <ReqdExctnDt><Dt>{value}</Dt></ReqdExctnDt>."
+            }
         ]
     },
     "dummy_data": {
@@ -1544,9 +2701,11 @@
             "EndToEndId": "E2E-20260528-001",
             "TxId": "TXN-20260528-001",
             "ClrSysRef": "CLR-REF-20260528-001",
-            "UETR": "4a1a0945-5772-409a-83ba-240e666e0267",
-            "UETR_alt1": "b7f1c2d3-4e5a-4678-9012-abcdef123456",
-            "UETR_alt2": "c3d4e5f6-7890-4abc-bdef-012345678901",
+            "UETR": "GENERATE_FRESH_UUID4",
+            "_UETR_NOTE": "NEVER use a static UETR value. Always call str(uuid.uuid4()) at fix time. The fix engine's _inject_fresh_uetrs() handles this automatically for all _TEMPLATES entries.",
+            "UETR_alt1": "GENERATE_FRESH_UUID4",
+            "UETR_alt2": "GENERATE_FRESH_UUID4",
+            "_UETR_ALT_NOTE": "Alt UETRs are also always freshly generated — never hardcoded.",
             "OrgnlMsgId": "ORIG-MSG-20260527-001",
             "OrgnlEndToEndId": "ORIG-E2E-20260527-001",
             "OrgnlTxId": "ORIG-TXN-20260527-001"
@@ -1707,14 +2866,15 @@
         "ibans": {
             "DE": "DE89370400440532013000",
             "GB": "GB29NWBK60161331926819",
-            "US": "US64SVBKUS6S3300958879",
+            "US": "GB29NWBK60161331926819",
             "FR": "FR1420041010050500013M02606",
             "CH": "CH9300762011623852957",
-            "IN": "IN29SBIN0007589123456789",
-            "SG": "SG29DBSS0102052013000123",
-            "AU": "AU46WPAC6102312345678901",
-            "CA": "CA07ROYCCAT200161234567890",
-            "JP": "JP1234567890123456789012",
+            "IN": "DE89370400440532013000",
+            "SG": "FR1420041010050500013M02606",
+            "AU": "ES9121000418450200051332",
+            "CA": "NL91ABNA0417164300",
+            "JP": "BE68539007547034",
+            "_note": "US/IN/SG/AU/CA/JP are NOT IBAN-scheme countries; these point to valid IBANs from real IBAN countries so the fixer's fallback never emits an invalid (checksum/country) IBAN. Real accounts in these countries use <Othr>, not <IBAN>.",
             "NL": "NL91ABNA0417164300",
             "AT": "AT611904300234573201",
             "ES": "ES9121000418450200051332",
@@ -1792,7 +2952,7 @@
                 "city": "New York",
                 "postal": "10005",
                 "country": "US",
-                "iban": "US64SVBKUS6S3300958879",
+                "iban": "GB82WEST12345698765432",
                 "bicfi": "CHASUS33XXX"
             },
             "instructing_agent": {
@@ -1949,7 +3109,11 @@
         "_doc": "Maps tag_templates $VARIABLES to harvest/default actions. Applied in order: 1) harvest_from_xml, 2) dummy_data path, 3) constant default.",
         "$UETR": {
             "harvest_from_xml": "UETR",
-            "dummy": "ids.UETR"
+            "dummy": "GENERATE_FRESH_UUID4",
+            "_note": "CRITICAL: UETR is NEVER a static dummy. If no existing UETR can be harvested from the live XML, generate a new UUID v4 via str(uuid.uuid4()). The fix engine's _inject_fresh_uetrs() handles this automatically. Each transaction must have its own unique UETR.",
+            "algorithm": "uuid4",
+            "python_call": "str(uuid.uuid4())",
+            "format": "[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
         },
         "$MSG_ID": {
             "harvest_from_xml": "MsgId",
@@ -2035,6 +3199,14 @@
             "harvest_from_xml": "Cdtr//Ctry",
             "dummy": "parties.creditor.country"
         },
+        "$DBTR_CITY": {
+            "harvest_from_xml": "Dbtr//TwnNm",
+            "dummy": "parties.debtor.city"
+        },
+        "$CDTR_CITY": {
+            "harvest_from_xml": "Cdtr//TwnNm",
+            "dummy": "parties.creditor.city"
+        },
         "$ADDR": {
             "dummy": "parties.debtor.address"
         },
@@ -2109,7 +3281,6 @@
                 "CdtTrfTxInf.PmtId.UETR",
                 "CdtTrfTxInf.IntrBkSttlmAmt",
                 "CdtTrfTxInf.IntrBkSttlmDt",
-                "CdtTrfTxInf.ChrgBr",
                 "CdtTrfTxInf.InstgAgt",
                 "CdtTrfTxInf.InstdAgt"
             ],
@@ -2250,5 +3421,165 @@
             "If Nm is present, a PstlAdr must also be present in the same party block",
             "If PstlAdr is present, Nm must also be present in the same party block (for customer parties)"
         ]
+    },
+    "ai_cannot_fix": {
+        "_doc": "Definitive catalogue of scenarios where the AI fix engine CANNOT produce a correct automated fix. For each, the AI must return the error with fix_action='MANUAL_REVIEW_REQUIRED' and supply the human_guidance hint. No auto-fix should be attempted for these codes.",
+        "_version": "1.0",
+        "_added": "2026-06-02",
+        "scenarios": [
+            {
+                "error_code": "IBAN_COUNTRY_BIC_COUNTRY_MISMATCH",
+                "category": "Business / Reference Data",
+                "why_ai_cannot_fix": "AI cannot determine whether the IBAN or the BIC reflects the true payment routing intent. Only the message originator knows which is correct.",
+                "human_guidance": "Compare the IBAN country prefix (positions 1–2) with the BIC country code (positions 5–6 of the 8/11-char BIC). Correct whichever field is wrong based on the intended payment corridor.",
+                "detection_hint": "Trigger when IBAN chars 1-2 != BIC chars 5-6 within the same party block (Dbtr+DbtrAgt or Cdtr+CdtrAgt).",
+                "example": "DbtrAcct IBAN=DE89... but DbtrAgt BICFI=CHASUS33XXX (US bank) — Germany IBAN with US bank is suspicious."
+            },
+            {
+                "error_code": "CORRESPONDENT_ROUTING_LOOP",
+                "category": "Business / Routing",
+                "why_ai_cannot_fix": "Correct correspondent banking chain requires knowledge of bilateral correspondent agreements. AI cannot determine which intermediary is redundant.",
+                "human_guidance": "Remove the duplicate intermediary whose BICFI matches InstgAgt or InstdAgt. Verify the intended routing with the correspondent banking department.",
+                "detection_hint": "Trigger when IntrmyAgt1/2/3 BICFI == InstgAgt BICFI or == InstdAgt BICFI."
+            },
+            {
+                "error_code": "BTCHBOOKG_STTLMDT_MISMATCH",
+                "category": "Business / Batch Processing",
+                "why_ai_cannot_fix": "AI cannot determine whether to align all transactions to the earliest, latest, or a specific settlement date without operator instruction.",
+                "human_guidance": "Choose a single IntrBkSttlmDt for all transactions in the batch. Apply that date to every CdtTrfTxInf block. Common choice: earliest date in the batch to ensure all settle on time.",
+                "detection_hint": "Trigger when BtchBookg=true and count of distinct IntrBkSttlmDt values across CdtTrfTxInf > 1."
+            },
+            {
+                "error_code": "PACS009_COVE_MISSING_UNDERLYING",
+                "category": "Message Structure / COV Variant",
+                "why_ai_cannot_fix": "UndrlygCstmrCdtTrf requires the original customer payment details (names, IBANs, remittance). These are business data from the originating bank — not derivable from the cover payment alone.",
+                "human_guidance": "Retrieve the original customer credit transfer instruction (typically pain.001 or MT103) and extract: Dbtr/Nm, Dbtr/PstlAdr, DbtrAcct/IBAN, Cdtr/Nm, Cdtr/PstlAdr, CdtrAcct/IBAN, and RmtInf. Populate UndrlygCstmrCdtTrf with this data.",
+                "detection_hint": "Trigger when Document contains FIToFICstmrCdtTrf and SttlmMtd=COVE but no UndrlygCstmrCdtTrf child exists.",
+                "testing_only_workaround": "For test messages only: insert a dummy UndrlygCstmrCdtTrf using tag_templates.UndrlygCstmrCdtTrf with dummy_data values — clearly mark as TEST."
+            },
+            {
+                "error_code": "RETURN_AMOUNT_EXCEEDS_ORIGINAL",
+                "category": "Business / Payment Return",
+                "why_ai_cannot_fix": "The maximum returnable amount depends on the original payment, which may be in a separate session, database, or SWIFT archive. AI has no cross-message amount lookup.",
+                "human_guidance": "Look up the original pacs.008 or pacs.009 using the OrgnlUETR or OrgnlMsgId. Set TtlRtrdIntrBkSttlmAmt to the exact original IntrBkSttlmAmt (full return) or less (partial return, net of charges).",
+                "detection_hint": "Trigger when TtlRtrdIntrBkSttlmAmt is present in pacs.004 and cannot be cross-validated against a known original."
+            },
+            {
+                "error_code": "ORGNL_MSG_UNRESOLVABLE",
+                "category": "Cross-Message Integrity",
+                "why_ai_cannot_fix": "Verifying that OrgnlMsgId/OrgnlUETR refer to a real sent message requires a payment ledger or SWIFT message archive — not available to the AI engine.",
+                "human_guidance": "Search the payment archive for OrgnlMsgId or OrgnlUETR. Confirm the original message was sent and not already returned/cancelled before processing this return/cancellation.",
+                "detection_hint": "Trigger on pacs.004, camt.056, camt.055 when original references cannot be verified."
+            },
+            {
+                "error_code": "MANDATE_INFO_MISSING",
+                "category": "Business / Direct Debit",
+                "why_ai_cannot_fix": "Mandate IDs are assigned by the creditor's mandate management system and must reference a signed, pre-existing authorisation from the debtor. These cannot be generated by AI.",
+                "human_guidance": "Retrieve the MndtId from the creditor's mandate registry. DtOfSgntr must be the date the debtor signed the mandate — verify from the signed mandate form.",
+                "detection_hint": "Trigger on pain.008 when DrctDbtTx/MndtRltdInf is absent or MndtId is empty/dummy.",
+                "regulatory_note": "Under SEPA Direct Debit, using an invalid MndtId is a compliance violation and can result in R-transactions (MD01/MD07)."
+            },
+            {
+                "error_code": "CAMT05X_BALANCE_MISMATCH",
+                "category": "Statement / Reconciliation",
+                "why_ai_cannot_fix": "Correct statement balances require access to the bank's account ledger. The opening balance, closing balance, and all debit/credit entries must reconcile — AI cannot access account history.",
+                "human_guidance": "Recalculate: OpeningBalance + sum(credits) - sum(debits) = ClosingBalance. Correct whichever balance figure or Ntry amounts are wrong by referring to the actual account movements.",
+                "detection_hint": "Trigger on camt.052/053/054 when Bal types OPBD and CLBD are present and their difference != sum of Ntry/Amt."
+            },
+            {
+                "error_code": "SEPA_REACHABILITY_VIOLATION",
+                "category": "Network / Payment Routing",
+                "why_ai_cannot_fix": "SEPA reachability is a network rule — AI cannot change the payment to a non-SEPA corridor without understanding the operator's intent (is it truly a non-SEPA payment, or a data entry error?)",
+                "human_guidance": "If the payment is cross-border (non-SEPA): change SvcLvl from SEPA to G002 and use pacs.008 instead of pain.001. If it should be SEPA: correct the creditor IBAN to a SEPA country account.",
+                "sepa_member_countries_note": "SEPA includes 36 countries (EU27 + EEA + UK + CH + MC + SM + VA + GI). IBANs from non-SEPA countries (US, IN, SG, CN, JP, AU, etc.) cannot receive SEPA payments.",
+                "detection_hint": "Trigger when SvcLvl=SEPA and CdtrAcct IBAN chars 1-2 are not in the SEPA member country list."
+            },
+            {
+                "error_code": "PACS002_REJECTION_CODE_SEMANTIC",
+                "category": "Status Reporting / Semantic Correctness",
+                "why_ai_cannot_fix": "The correct rejection reason code (StsRsnInf/Rsn/Cd) reflects why the payment actually failed — information only the processing bank possesses. A dummy code (e.g., AC01) is structurally valid but semantically misleading.",
+                "human_guidance": "Use the rejection reason from the bank's payment processing system. See error_code_catalogue.PACS002_REJECTION_CODE_SEMANTIC.common_reason_codes for the ISO 20022 code list.",
+                "testing_note": "AC01 (account closed) is acceptable as a test dummy. For production, always use the actual rejection reason."
+            },
+            {
+                "error_code": "MT_FIELD72_AMBIGUOUS_NARRATIVE",
+                "category": "MT to MX Conversion",
+                "why_ai_cannot_fix": "MT field 72 is a legacy free-format field with bank-specific conventions. Multiple /code/ lines in the same field can map to different MX elements depending on the sending bank.",
+                "human_guidance": "Map each /code/ line manually: /BNF/=InstrForCdtrAgt or RmtInf; /ACC/=CdtrAcct; /INS/=IntrmyAgt1; /RFB/=RmtInf/Strd; /ROC/=GrpHdr reference. When ambiguous, preserve in RmtInf/Ustrd and document the decision.",
+                "detection_hint": "Trigger on MT103→pacs.008 conversion when tag 72 contains more than one /code/ line or uses non-standard codes."
+            },
+            {
+                "error_code": "SANCTIONS_REAL_TIME_CHECK",
+                "category": "Compliance / Sanctions",
+                "why_ai_cannot_fix": "OFAC, EU, UN, and HMT sanctions lists are updated daily. AI has a static BIC registry snapshot from OpenSanctions which is insufficient for production compliance screening.",
+                "human_guidance": "Before processing live payments: submit all party identifiers (BIC, LEI, name, country, IBAN) to your institution's real-time sanctions screening system. Do NOT rely solely on the validator's BIC check.",
+                "static_check_limitation": "The BIC_NOT_FOUND warning flags deregistered BICs but does NOT guarantee sanctions compliance."
+            },
+            {
+                "error_code": "INSTRFORCDTRAGT_INCOMPATIBLE_CODES",
+                "category": "Business / Instruction Codes",
+                "why_ai_cannot_fix": "Instruction code compatibility rules depend on bilateral agreements between correspondent banks and are not part of the ISO 20022 standard.",
+                "human_guidance": "Review the instruction codes against the receiving bank's service documentation. Remove contradictory codes (e.g., HOLD + PHOB). Confirm the instruction with the originating bank's correspondent team.",
+                "detection_hint": "Trigger when InstrForCdtrAgt contains HOLD combined with any other code, or when 3+ InstrForCdtrAgt blocks are present."
+            },
+            {
+                "error_code": "XCHGRATE_PRECISION_INSUFFICIENT",
+                "category": "FX / Amount Precision",
+                "why_ai_cannot_fix": "Real-time exchange rates cannot be generated by AI. The correct rate must come from the bank's FX trading system at the time of payment.",
+                "human_guidance": "Obtain the spot rate from your FX system. Use at minimum 4 decimal places (e.g., 1.2345). For CLS-settled currencies, use the rate from the CLS rate set on the settlement date.",
+                "testing_note": "For testing, '1.0000' is acceptable. Production messages must use actual market rates.",
+                "detection_hint": "Flag when XchgRate is '1.0' or '1' and InstdAmt.Ccy != IntrBkSttlmAmt.Ccy (genuine cross-currency transaction, not just a trivial rate)."
+            },
+            {
+                "error_code": "BUSMSGENVLP_INVALID_NAMESPACE",
+                "category": "Document Structure / Envelope Format",
+                "why_ai_cannot_fix": "The BusMsgEnvlp wrapper with namespace 'urn:swift:xsd:envelope' is a SWIFT proprietary envelope that wraps the ISO 20022 payload. Removing it requires: (1) stripping the outer element, (2) re-rooting namespace declarations from BusMsgEnvlp onto the child AppHdr/Document, (3) extracting and repositioning the Document payload if it was incorrectly nested inside AppHdr. This is a structural rewrite — not a field-level fix — and carries a high risk of namespace or data corruption if done incorrectly by AI.",
+                "human_guidance": "Restructure the XML manually: remove <BusMsgEnvlp> and </BusMsgEnvlp>, then ensure the result has AppHdr and Document as separate sibling root elements. If the message body (e.g. CstmrDrctDbtInitn) is nested inside AppHdr, move it into a separate <Document xmlns='urn:iso:std:iso:20022:tech:xsd:{msg_type}'> element.",
+                "correct_structure": "<?xml version='1.0'?><AppHdr xmlns='urn:iso:std:iso:20022:tech:xsd:head.001.001.02'>...</AppHdr><Document xmlns='urn:iso:std:iso:20022:tech:xsd:pain.008.001.08'><CstmrDrctDbtInitn>...</CstmrDrctDbtInitn></Document>",
+                "detection_hint": "Trigger when root element local-name is 'BusMsgEnvlp' OR root namespace URI contains 'swift:xsd:envelope'.",
+                "real_example": {
+                    "problem": "Root is <BusMsgEnvlp xmlns='urn:swift:xsd:envelope'> wrapping <AppHdr> which itself incorrectly contains <CstmrDrctDbtInitn>",
+                    "error_message": "The namespace 'urn:swift:xsd:envelope' does not match the ISO 20022 standard format. Use the correct URN format (e.g. urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08)",
+                    "secondary_errors": [
+                        "AppHdr is missing BizMsgIdr, MsgDefIdr, BizSvc, CreDt",
+                        "CstmrDrctDbtInitn is nested inside AppHdr instead of in a <Document> element",
+                        "The To element and CstmrDrctDbtInitn appear as children of AppHdr — mixed structural error from the envelope format"
+                    ]
+                }
+            },
+            {
+                "error_code": "DOCUMENT_NESTED_IN_APPHDR",
+                "category": "Document Structure / Namespace",
+                "why_ai_cannot_fix": "A message-specific root element (e.g. CstmrDrctDbtInitn, FIToFICstmrCdtTrf) appearing inside AppHdr is a fundamental structural error. Moving it out requires: determining the correct Document namespace, transferring namespace declarations, and ensuring no AppHdr elements are accidentally included. AI cannot perform this safely without risking data loss.",
+                "human_guidance": "Cut the message root element (e.g. <CstmrDrctDbtInitn>...</CstmrDrctDbtInitn>) from inside AppHdr. Paste it inside a new <Document xmlns='urn:iso:std:iso:20022:tech:xsd:pain.008.001.08'> element placed AFTER the closing </AppHdr> tag.",
+                "detection_hint": "Trigger when CstmrDrctDbtInitn, FIToFICstmrCdtTrf, FinInstnCdtTrf, FIToFIPmtStsRpt, CstmrCdtTrfInitn, FIToFICstmrDrctDbt, PmtRtr, FIDrctDbt, BkToCstmrAcctRpt, BkToCstmrStmt, BkToCstmrDbtCdtNtfctn, CstmrPmtCxlReq, FIToFIPmtCxlReq, or NtfctnToRcv appears as a direct child of AppHdr.",
+                "note": "This error often co-occurs with BUSMSGENVLP_INVALID_NAMESPACE. Fix the envelope structure first, then check whether the Document was correctly separated from AppHdr."
+            }
+        ],
+        "auto_fix_boundary_rules": {
+            "_doc": "These rules define the boundary between what the AI fix engine can and cannot handle. Engine must check these before attempting any fix.",
+            "CAN_AUTO_FIX": [
+                "Date format errors (CBPR_DATETIME_Z_FORBIDDEN, CBPR_DATETIME_MILLISECONDS, PAST_DATE_ERROR)",
+                "Missing mandatory structural elements with known templates (MISSING_MANDATORY_FIELD, APPHDR_FR_MISSING, APPHDR_TO_MISSING)",
+                "Value format errors with codelist (CHRGBR_INVALID, SCHEMENAME_INVALID, INVALID_CHARSETS)",
+                "BIC/IBAN format errors where a dummy value is acceptable (UETR_FORMAT_ERROR, IBAN_INVALID, INVALID_BICFI)",
+                "Cross-field equality fixes where both values are present (BIZMSGIDR_EQ_GRPHDR_MSGID, APPHDR_FR_NEQ_INSTGAGT)",
+                "Counter corrections where the count is computable (NBOFTXS_MISMATCH, CTRL_SUM_MISMATCH)",
+                "Element ordering fixes (XSD sequence violations)",
+                "Duplicate element removal (DUPLICATE_TAG)",
+                "BICFI exclusivity fixes (BICFI_EXCLUSIVE — remove Nm and PstlAdr)",
+                "Intermediary ordering (IntrmyAgt2 without IntrmyAgt1 — insert IntrmyAgt1)"
+            ],
+            "CANNOT_AUTO_FIX": [
+                "Any scenario listed in ai_cannot_fix.scenarios",
+                "Any fix requiring knowledge of a different message (cross-message references)",
+                "Any fix requiring real-time external data (exchange rates, sanctions, balance)",
+                "Any fix requiring business intent determination (which field is wrong when two contradict)",
+                "Any fix involving mandate data, regulatory reporting, or compliance decisions",
+                "Any fix where the correct value must come from a bank system (ledger, archive, FX system)",
+                "BUSMSGENVLP_INVALID_NAMESPACE — removing BusMsgEnvlp wrapper and restructuring the document envelope",
+                "DOCUMENT_NESTED_IN_APPHDR — extracting a message root element from inside AppHdr into a sibling Document element"
+            ]
+        }
     }
 }
