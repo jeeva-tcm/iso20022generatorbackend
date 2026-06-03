@@ -880,9 +880,12 @@
             "requires_human_review": false
         },
         "AMOUNT_PRECISION_EXCEEDED": {
-            "root_cause": "Amount has more than 5 fractional digits, exceeding the XSD fractionDigits=5 constraint on ActiveCurrencyAndAmount and ActiveOrHistoricCurrencyAndAmount.",
-            "fix": "Round the amount to a maximum of 5 decimal places. For example, 1000.123456 becomes 1000.12346.",
-            "requires_human_review": false
+            "root_cause": "Amount field has more than 5 fractional digits, violating XSD fractionDigits=5 on ActiveCurrencyAndAmount / ActiveOrHistoricCurrencyAndAmount. Applies to all ISO 20022 message types: pacs.008/009/003/010, pain.001/002/008, camt.052/053/054/055/056/057.",
+            "fix": "Round the existing amount to the ISO 4217 standard precision for the currency (e.g. 2 for EUR/USD/GBP, 0 for JPY, 3 for KWD), capped at 5 decimal places. Always preserve the original numeric value — round it, do NOT replace it with a dummy. Example: EUR 444911.1234567 → 444911.12. The AI fixer reads currency precision from currency.json and repairs in-place.",
+            "requires_human_review": false,
+            "applies_to": ["pacs.008", "pacs.009", "pacs.003", "pacs.010", "pain.001", "pain.002", "pain.008", "camt.052", "camt.053", "camt.054", "camt.055", "camt.056", "camt.057"],
+            "affected_elements": ["IntrBkSttlmAmt", "InstdAmt", "Amt", "ChrgsInf/Amt", "TtlIntrBkSttlmAmt", "TtlRtrdIntrBkSttlmAmt", "EqvtAmt", "RetrdInstdAmt", "XchgRate/AgrdRate"],
+            "do_not": "Do NOT replace the amount with a dummy value (1000.00) or borrow the amount from another transaction. Always repair the existing numeric value by rounding."
         },
         "PACS002_MISSING_ORGNLMSGID": {
             "root_cause": "pacs.002 OrgnlGrpInfAndSts is present but OrgnlMsgId is absent. OrgnlMsgId is mandatory (minOccurs=1) inside OriginalGroupHeader.",
@@ -1289,8 +1292,17 @@
             "camt.056": "<TxInf><OrgnlUETR>$UETR</OrgnlUETR><CxlRsnInf><Rsn><Cd>DUPL</Cd></Rsn></CxlRsnInf></TxInf>"
         },
         "Case": {
-            "camt.056": "<Case><Id>CASE-001</Id></Case>",
+            "camt.056": "<Case><Id>CASE-001</Id><Cretr><Pty><Nm>Case Creator</Nm><PstlAdr><StrtNm>Main Street</StrtNm><BldgNb>1</BldgNb><TwnNm>Amsterdam</TwnNm><Ctry>NL</Ctry></PstlAdr></Pty></Cretr></Case>",
             "default": "<Case><Id>CASE-001</Id></Case>"
+        },
+        "Cretr": {
+            "camt.056": "<Cretr><Pty><Nm>Case Creator</Nm><PstlAdr><StrtNm>Main Street</StrtNm><BldgNb>1</BldgNb><TwnNm>Amsterdam</TwnNm><Ctry>NL</Ctry></PstlAdr></Pty></Cretr>",
+            "default": "<Cretr><Pty><Nm>Case Creator</Nm><PstlAdr><StrtNm>Main Street</StrtNm><BldgNb>1</BldgNb><TwnNm>Amsterdam</TwnNm><Ctry>NL</Ctry></PstlAdr></Pty></Cretr>",
+            "_note": "Cretr uses Pty (with mandatory Nm when AnyBIC/BICFI absent) or Agt. When no BICFI is available, Pty/Nm is mandatory per CBPR+ rules."
+        },
+        "Pty": {
+            "default": "<Pty><Nm>Party Name</Nm><PstlAdr><StrtNm>Main Street</StrtNm><BldgNb>1</BldgNb><TwnNm>Amsterdam</TwnNm><Ctry>NL</Ctry></PstlAdr></Pty>",
+            "_note": "Pty requires Nm when AnyBIC is absent. PstlAdr with at least TwnNm and Ctry is recommended."
         },
         "ReqdColltnDt": {
             "default": "<ReqdColltnDt>$STTLM_DT</ReqdColltnDt>"

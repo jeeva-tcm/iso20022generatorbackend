@@ -1126,20 +1126,13 @@ def _gen_pacs009(selected: set, idx: int, is_cov: bool = False, is_adv: bool = F
     uetr = scenario.uetr
     cre_dt = rng_datetime()
     sttlm_dt = rng_date(1)
-    if is_adv or is_cov:
-        sttlm_mtd = "COVE"
-    else:
-        sttlm_mtd = random.choice(SETTLEMENT_METHODS)
+    # SttlmMtd is restricted to the INDA/INGA enum here; COVE is not a valid
+    # value for this settlement-method field, so ADV/COV variants use it too.
+    sttlm_mtd = random.choice(SETTLEMENT_METHODS)
     amount = rng_amount(ccy)
 
     sttlm_inf = f"\t\t\t\t\t<SttlmMtd>{xe(sttlm_mtd)}</SttlmMtd>"
-    if sttlm_mtd == "COVE":
-        rmbrs_choice = random.choice(["instg", "instd", "both"])
-        if rmbrs_choice in ["instg", "both"]:
-            sttlm_inf += f"\n\t\t\t\t\t<InstgRmbrsmntAgt>\n\t\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t\t<BICFI>{xe(scenario.make_intermediary_agent().bic)}</BICFI>\n\t\t\t\t\t\t</FinInstnId>\n\t\t\t\t\t</InstgRmbrsmntAgt>"
-        if rmbrs_choice in ["instd", "both"]:
-            sttlm_inf += f"\n\t\t\t\t\t<InstdRmbrsmntAgt>\n\t\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t\t<BICFI>{xe(scenario.make_intermediary_agent().bic)}</BICFI>\n\t\t\t\t\t\t</FinInstnId>\n\t\t\t\t\t</InstdRmbrsmntAgt>"
-    elif sttlm_mtd in ["INDA", "INGA"] and random.random() < 0.5:
+    if sttlm_mtd in ["INDA", "INGA"] and random.random() < 0.5:
         sttlm_inf += f"\n\t\t\t\t\t<SttlmAcct>\n\t\t\t\t\t\t<Id>\n\t\t\t\t\t\t\t<IBAN>{xe(scenario.debtor.iban)}</IBAN>\n\t\t\t\t\t\t</Id>\n\t\t\t\t\t</SttlmAcct>"
 
     tx = ""
@@ -1826,7 +1819,7 @@ def _gen_camt057(selected: set, idx: int) -> str:
 {apphdr_fi(scenario.receiver_bic)}\t\t</To>
 \t\t<BizMsgIdr>{xe(biz_msg_id)}</BizMsgIdr>
 \t\t<MsgDefIdr>camt.057.001.06</MsgDefIdr>
-\t\t<BizSvc>swift.cbprplus.02</BizSvc>
+\t\t<BizSvc>swift.cbprplus.03</BizSvc>
 \t\t<CreDt>{cre_dt}</CreDt>
 \t</AppHdr>
 \t<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.057.001.06">
