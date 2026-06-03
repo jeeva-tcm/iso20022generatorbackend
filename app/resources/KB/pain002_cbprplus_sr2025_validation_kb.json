@@ -1,0 +1,1140 @@
+{
+    "domain": "SWIFT MX CBPR+ pain.002.001.10",
+    "version": "SR2025",
+    "last_updated": "2026-06-01",
+    "purpose": "Context KB for pain.002.001.10 CustomerPaymentStatusReport auto-fixing. For each XML tag: datatype, mandatory, errors, possible_fixes.",
+    "reference_documents": [
+        "ISO 20022 pain.002.001.10 CustomerPaymentStatusReport schema",
+        "SWIFT CBPR+ Usage Guidelines SR2025"
+    ],
+    "iso_20022_rules": {
+        "R1_OrgnlGroupInformation": "OrgnlGrpInfAndSts is mandatory and must reference the original message via OrgnlMsgId and OrgnlMsgNmId.",
+        "R2_StatusReasonOnReject": "If a transaction or group status is RJCT, the corresponding StsRsnInf (status reason) should be present to explain the rejection.",
+        "R3_ExternalPaymentTransactionStatus": "GrpSts, PmtInfSts and TxSts values must be valid ExternalPaymentGroupStatus / ExternalPaymentTransactionStatus codes.",
+        "R4_OriginalIdentification": "OrgnlInstrId, OrgnlEndToEndId, OrgnlTxId and OrgnlUETR must be copied unchanged from the original (reported) message.",
+        "R5_StatusReasonCode": "StsRsnInf/Rsn/Cd must be a valid ExternalStatusReason1Code (e.g. AC01, AM04, MS03) or NARR when free-text is supplied in AddtlInf.",
+        "R6_PartialAcceptance": "GrpSts = PART (partially accepted) requires per-transaction TxSts to be populated so accepted and rejected items are distinguishable.",
+        "R7_OriginalMessageNameIdentifier": "OrgnlMsgNmId identifies the reported message type (e.g. pain.001.001.09) and must be a valid ISO 20022 message identifier.",
+        "XSD_BICFIPattern": "BICFIDec2014Identifier: [A-Z0-9]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})? — applies to AppHdr/Fr, AppHdr/To and all FinInstnId/BICFI in the status report.",
+        "XSD_AmountConstraints": "ActiveOrHistoricCurrencyAndAmount (used in ChrgsInf/Amt in TxInfAndSts): fractionDigits=5, totalDigits=18, minInclusive=0. Ccy attribute required.",
+        "XSD_StatusCodeNARR_AddtlInf": "ISO 20022 base rule (R16 in pacs.002): If StsRsnInf/Rsn/Cd = NARR, then AddtlInf MUST be present in the same StsRsnInf block.",
+        "XSD_V14Changes_pain002": "pain.002.001.14 (latest XSD) vs 001.10: TxInfAndSts/ChrgsInf removed (was optional in 001.10, removed in 001.14). TxInfAndSts/AccptncDtTm removed. TxInfAndSts/AcctSvcrRef removed. OrgnlTxRef added at TxInfAndSts level with full original transaction details."
+    },
+    "cbpr_plus_formal_rules": [
+        "AppHdr/BizSvc must be 'swift.cbprplus.02' for the status report exchange under CBPR+ SR2025.",
+        "AppHdr/MsgDefIdr must equal 'pain.002.001.10' and match the Document namespace.",
+        "AppHdr/BizMsgIdr must equal Document/CstmrPmtStsRpt/GrpHdr/MsgId.",
+        "AppHdr/CreDt and all ISODateTime fields must use YYYY-MM-DDTHH:MM:SS+HH:MM; the 'Z' suffix and milliseconds are forbidden.",
+        "AppHdr/Fr and AppHdr/To must carry valid BIC8 or BIC11 (ISO 9362) identifiers when exchanged on the SWIFT network.",
+        "GrpSts, PmtInfSts and TxSts must use codes from the ExternalPaymentGroupStatus / ExternalPaymentTransactionStatus lists.",
+        "If TxSts = RJCT (or PmtInfSts = RJCT / GrpSts = RJCT) then at least one StsRsnInf with Rsn/Cd must be present.",
+        "OrgnlUETR, when present, must be a valid lowercase UUID v4 and must match the UETR of the original transaction.",
+        "All proprietary/text fields are limited to the FIN-X character set; accented characters must be transliterated to ASCII.",
+        "StsRsnInf/Rsn/Cd must be a valid ExternalStatusReason1Code; use NARR with AddtlInf when no specific code applies."
+    ],
+    "tags": [
+        {
+            "tag": "AppHdr",
+            "xml_element": "AppHdr",
+            "xpath": "/AppHdr",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "description": "Business Application Header V02. Mandatory for all CBPR+ messages including pain.002 status reports.",
+            "errors": [
+                {
+                    "error_id": "APPHDR_MISSING",
+                    "error_code": "SCHEMA_ERR",
+                    "severity": "Fatal",
+                    "description": "AppHdr element is absent; CBPR+ mandates BusinessApplicationHeaderV02.",
+                    "affected_tags": [
+                        "AppHdr"
+                    ],
+                    "possible_fixes": [
+                        "Insert a complete <AppHdr> block before the <Document> element.",
+                        "Ensure AppHdr contains Fr, To, BizMsgIdr, MsgDefIdr, BizSvc and CreDt."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "AppHdr/Fr",
+            "xml_element": "Fr",
+            "xpath": "/AppHdr/Fr",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "BICFI",
+            "description": "Sending MessagingEndpoint. Must contain a BIC8 or BIC11 when exchanged on SWIFT.",
+            "errors": [
+                {
+                    "error_id": "APPHDR_FR_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "Fr element is absent from AppHdr.",
+                    "affected_tags": [
+                        "AppHdr/Fr"
+                    ],
+                    "possible_fixes": [
+                        "Insert <Fr><FIId><FinInstnId><BICFI>{sender_BICFI}</BICFI></FinInstnId></FIId></Fr> inside AppHdr.",
+                        "Use the BIC of the institution issuing the status report."
+                    ]
+                },
+                {
+                    "error_id": "APPHDR_FR_INVALID_BIC",
+                    "error_code": "INVALID_BICFI",
+                    "severity": "Fatal",
+                    "description": "AppHdr/Fr contains an invalid or malformed BIC.",
+                    "affected_tags": [
+                        "AppHdr/Fr/FIId/FinInstnId/BICFI"
+                    ],
+                    "possible_fixes": [
+                        "Replace with a valid BICFI: 8 or 11 uppercase alphanumeric characters per ISO 9362.",
+                        "Pattern: [A-Z]{6}[A-Z2-9][A-NP-Z0-9]([A-Z0-9]{3})?",
+                        "Example valid BIC: DEUTDEFFXXX"
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "AppHdr/To",
+            "xml_element": "To",
+            "xpath": "/AppHdr/To",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "BICFI",
+            "description": "Receiving MessagingEndpoint. Must contain a BIC8 or BIC11 on SWIFT.",
+            "errors": [
+                {
+                    "error_id": "APPHDR_TO_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "To element is absent from AppHdr.",
+                    "affected_tags": [
+                        "AppHdr/To"
+                    ],
+                    "possible_fixes": [
+                        "Insert <To><FIId><FinInstnId><BICFI>{receiver_BICFI}</BICFI></FinInstnId></FIId></To> inside AppHdr.",
+                        "Use the BIC of the institution that receives the status report (typically the original instructing party)."
+                    ]
+                },
+                {
+                    "error_id": "APPHDR_TO_INVALID_BIC",
+                    "error_code": "INVALID_BICFI",
+                    "severity": "Fatal",
+                    "description": "AppHdr/To contains an invalid or malformed BIC.",
+                    "affected_tags": [
+                        "AppHdr/To/FIId/FinInstnId/BICFI"
+                    ],
+                    "possible_fixes": [
+                        "Replace with a valid BICFI: 8 or 11 uppercase alphanumeric characters per ISO 9362.",
+                        "Pattern: [A-Z]{6}[A-Z2-9][A-NP-Z0-9]([A-Z0-9]{3})?"
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "AppHdr/BizMsgIdr",
+            "xml_element": "BizMsgIdr",
+            "xpath": "/AppHdr/BizMsgIdr",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Unique identifier of the Business Message. Must equal Document/CstmrPmtStsRpt/GrpHdr/MsgId.",
+            "errors": [
+                {
+                    "error_id": "BIZMSGIDR_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "BizMsgIdr is absent from AppHdr.",
+                    "affected_tags": [
+                        "AppHdr/BizMsgIdr"
+                    ],
+                    "possible_fixes": [
+                        "Copy the value of GrpHdr/MsgId and insert as <BizMsgIdr>{MsgId_value}</BizMsgIdr>.",
+                        "If MsgId is also absent, generate a unique Max35Text value (e.g. STS-20260601-001)."
+                    ]
+                },
+                {
+                    "error_id": "BIZMSGIDR_NEQ_MSGID",
+                    "error_code": "BIZMSGIDR_EQ_GRPHDR_MSGID",
+                    "severity": "Fatal",
+                    "description": "AppHdr/BizMsgIdr does not equal Document/CstmrPmtStsRpt/GrpHdr/MsgId.",
+                    "affected_tags": [
+                        "AppHdr/BizMsgIdr",
+                        "GrpHdr/MsgId"
+                    ],
+                    "possible_fixes": [
+                        "Read GrpHdr/MsgId and set BizMsgIdr to the same value.",
+                        "If BizMsgIdr is the source of truth, update GrpHdr/MsgId to match.",
+                        "Never invent a new value — always harvest from the other field."
+                    ]
+                },
+                {
+                    "error_id": "BIZMSGIDR_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Fatal",
+                    "description": "BizMsgIdr exceeds 35 characters.",
+                    "affected_tags": [
+                        "AppHdr/BizMsgIdr"
+                    ],
+                    "possible_fixes": [
+                        "Truncate the value to a maximum of 35 characters.",
+                        "Synchronize the truncated value back to GrpHdr/MsgId."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "AppHdr/MsgDefIdr",
+            "xml_element": "MsgDefIdr",
+            "xpath": "/AppHdr/MsgDefIdr",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "Max35Text",
+            "expected_value": "pain.002.001.10",
+            "description": "Message Definition Identifier. Must exactly match the Document namespace identifier.",
+            "errors": [
+                {
+                    "error_id": "MSGDEFIDR_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "MsgDefIdr is absent from AppHdr.",
+                    "affected_tags": [
+                        "AppHdr/MsgDefIdr"
+                    ],
+                    "possible_fixes": [
+                        "Insert <MsgDefIdr>pain.002.001.10</MsgDefIdr> inside AppHdr."
+                    ]
+                },
+                {
+                    "error_id": "MSGDEFIDR_MISMATCH",
+                    "error_code": "MSGDEFIDR_MISMATCH",
+                    "severity": "Fatal",
+                    "description": "AppHdr/MsgDefIdr does not match the Document xmlns namespace identifier.",
+                    "affected_tags": [
+                        "AppHdr/MsgDefIdr"
+                    ],
+                    "possible_fixes": [
+                        "Read the xmlns attribute from the Document root (e.g. urn:iso:std:iso:20022:tech:xsd:pain.002.001.10).",
+                        "Set MsgDefIdr to 'pain.002.001.10' with no trailing spaces or version mismatch."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "AppHdr/BizSvc",
+            "xml_element": "BizSvc",
+            "xpath": "/AppHdr/BizSvc",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "Max35Text",
+            "expected_value": "swift.cbprplus.02",
+            "description": "Business Service identifier. Must be 'swift.cbprplus.02' for the CBPR+ status report exchange.",
+            "errors": [
+                {
+                    "error_id": "BIZSVC_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "BizSvc is absent; it is mandatory under CBPR+ SR2025.",
+                    "affected_tags": [
+                        "AppHdr/BizSvc"
+                    ],
+                    "possible_fixes": [
+                        "Insert <BizSvc>swift.cbprplus.02</BizSvc> inside AppHdr."
+                    ]
+                },
+                {
+                    "error_id": "BIZSVC_WRONG_VALUE",
+                    "error_code": "SCHEMENAME_INVALID",
+                    "severity": "Fatal",
+                    "description": "BizSvc contains an incorrect value.",
+                    "affected_tags": [
+                        "AppHdr/BizSvc"
+                    ],
+                    "possible_fixes": [
+                        "Replace value with 'swift.cbprplus.02' for the CBPR+ status report service."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "AppHdr/CreDt",
+            "xml_element": "CreDt",
+            "xpath": "/AppHdr/CreDt",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "ISODateTime",
+            "description": "Creation date/time of the Business Message. Must use YYYY-MM-DDTHH:MM:SS+HH:MM; Z suffix and milliseconds forbidden under CBPR+.",
+            "errors": [
+                {
+                    "error_id": "CREDT_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "AppHdr/CreDt is absent.",
+                    "affected_tags": [
+                        "AppHdr/CreDt"
+                    ],
+                    "possible_fixes": [
+                        "Insert <CreDt>{current datetime as YYYY-MM-DDTHH:MM:SS+00:00}</CreDt> inside AppHdr."
+                    ]
+                },
+                {
+                    "error_id": "CREDT_Z_SUFFIX",
+                    "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+                    "severity": "Fatal",
+                    "description": "AppHdr/CreDt uses 'Z' suffix which is forbidden under CBPR+.",
+                    "affected_tags": [
+                        "AppHdr/CreDt"
+                    ],
+                    "possible_fixes": [
+                        "Replace trailing 'Z' with '+00:00'. Example: 2026-06-01T10:00:00Z -> 2026-06-01T10:00:00+00:00."
+                    ]
+                },
+                {
+                    "error_id": "CREDT_NO_TIMEZONE",
+                    "error_code": "CBPR_DATETIME_NO_TIMEZONE",
+                    "severity": "Fatal",
+                    "description": "AppHdr/CreDt has no timezone offset.",
+                    "affected_tags": [
+                        "AppHdr/CreDt"
+                    ],
+                    "possible_fixes": [
+                        "Append a UTC offset. Example: 2026-06-01T10:00:00 -> 2026-06-01T10:00:00+00:00."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "GrpHdr/MsgId",
+            "xml_element": "MsgId",
+            "xpath": "/Document/CstmrPmtStsRpt/GrpHdr/MsgId",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Unique identifier of the status report message assigned by the reporting party. Must equal AppHdr/BizMsgIdr. No spaces.",
+            "errors": [
+                {
+                    "error_id": "MSGID_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "GrpHdr/MsgId is absent.",
+                    "affected_tags": [
+                        "GrpHdr/MsgId",
+                        "AppHdr/BizMsgIdr"
+                    ],
+                    "possible_fixes": [
+                        "Insert <MsgId>{unique identifier up to 35 chars}</MsgId> as first child of GrpHdr.",
+                        "Use format STS-YYYYMMDD-NNN (e.g. STS-20260601-001).",
+                        "Ensure the same value is in AppHdr/BizMsgIdr."
+                    ]
+                },
+                {
+                    "error_id": "MSGID_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Fatal",
+                    "description": "GrpHdr/MsgId exceeds 35 characters.",
+                    "affected_tags": [
+                        "GrpHdr/MsgId"
+                    ],
+                    "possible_fixes": [
+                        "Truncate to maximum 35 characters preserving a meaningful prefix.",
+                        "Synchronize truncated value to AppHdr/BizMsgIdr."
+                    ]
+                },
+                {
+                    "error_id": "MSGID_INVALID_CHARS",
+                    "error_code": "INVALID_CHARSETS",
+                    "severity": "Fatal",
+                    "description": "MsgId contains characters outside the FIN-X character set or contains spaces.",
+                    "affected_tags": [
+                        "GrpHdr/MsgId"
+                    ],
+                    "possible_fixes": [
+                        "Remove spaces from MsgId.",
+                        "Replace special/accented characters with ASCII equivalents.",
+                        "Allowed: A-Z a-z 0-9 / - ? : ( ) . , ' + (no leading or trailing spaces)."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "GrpHdr/CreDtTm",
+            "xml_element": "CreDtTm",
+            "xpath": "/Document/CstmrPmtStsRpt/GrpHdr/CreDtTm",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "ISODateTime",
+            "description": "Creation date and time of the status report. Format: YYYY-MM-DDTHH:MM:SS+HH:MM. Z suffix and milliseconds forbidden under CBPR+.",
+            "errors": [
+                {
+                    "error_id": "CREDTTM_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "GrpHdr/CreDtTm is absent.",
+                    "affected_tags": [
+                        "GrpHdr/CreDtTm"
+                    ],
+                    "possible_fixes": [
+                        "Insert <CreDtTm>{current datetime as YYYY-MM-DDTHH:MM:SS+00:00}</CreDtTm>."
+                    ]
+                },
+                {
+                    "error_id": "CREDTTM_Z_SUFFIX",
+                    "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+                    "severity": "Fatal",
+                    "description": "CreDtTm uses 'Z' suffix; forbidden under CBPR+.",
+                    "affected_tags": [
+                        "GrpHdr/CreDtTm"
+                    ],
+                    "possible_fixes": [
+                        "Replace 'Z' with '+00:00'. Example: 2026-06-01T10:00:00Z -> 2026-06-01T10:00:00+00:00."
+                    ]
+                },
+                {
+                    "error_id": "CREDTTM_NO_TIMEZONE",
+                    "error_code": "CBPR_DATETIME_NO_TIMEZONE",
+                    "severity": "Fatal",
+                    "description": "CreDtTm has no timezone offset; forbidden under CBPR+.",
+                    "affected_tags": [
+                        "GrpHdr/CreDtTm"
+                    ],
+                    "possible_fixes": [
+                        "Append a UTC offset. Example: 2026-06-01T10:00:00 -> 2026-06-01T10:00:00+00:00."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "OrgnlGrpInfAndSts/OrgnlMsgId",
+            "xml_element": "OrgnlMsgId",
+            "xpath": "/Document/CstmrPmtStsRpt/OrgnlGrpInfAndSts/OrgnlMsgId",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Identifier of the original (reported) message, copied unchanged from GrpHdr/MsgId of the original pain.001/pacs message.",
+            "errors": [
+                {
+                    "error_id": "ORGNLMSGID_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "OrgnlMsgId is absent from OrgnlGrpInfAndSts.",
+                    "affected_tags": [
+                        "OrgnlGrpInfAndSts/OrgnlMsgId"
+                    ],
+                    "possible_fixes": [
+                        "Insert <OrgnlMsgId>{original message MsgId}</OrgnlMsgId> copied from the reported message GrpHdr/MsgId.",
+                        "Harvest the value from the original message being acknowledged; do not invent."
+                    ]
+                },
+                {
+                    "error_id": "ORGNLMSGID_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Fatal",
+                    "description": "OrgnlMsgId exceeds 35 characters.",
+                    "affected_tags": [
+                        "OrgnlGrpInfAndSts/OrgnlMsgId"
+                    ],
+                    "possible_fixes": [
+                        "Truncate to 35 characters; the value must still match the original message identifier."
+                    ]
+                }
+            ],
+            "expected_value": "ORIG-MSG-20260601-001"
+        },
+        {
+            "tag": "OrgnlGrpInfAndSts/OrgnlMsgNmId",
+            "xml_element": "OrgnlMsgNmId",
+            "xpath": "/Document/CstmrPmtStsRpt/OrgnlGrpInfAndSts/OrgnlMsgNmId",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Message name identifier of the original (reported) message, e.g. pain.001.001.09. Identifies the message type being acknowledged.",
+            "errors": [
+                {
+                    "error_id": "ORGNLMSGNMID_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "OrgnlMsgNmId is absent from OrgnlGrpInfAndSts.",
+                    "affected_tags": [
+                        "OrgnlGrpInfAndSts/OrgnlMsgNmId"
+                    ],
+                    "possible_fixes": [
+                        "Insert <OrgnlMsgNmId>pain.001.001.09</OrgnlMsgNmId> with the identifier of the original reported message.",
+                        "Use the exact message identifier of the instrument being acknowledged (e.g. pain.001.001.09)."
+                    ]
+                },
+                {
+                    "error_id": "ORGNLMSGNMID_INVALID",
+                    "error_code": "SCHEMENAME_INVALID",
+                    "severity": "Error",
+                    "description": "OrgnlMsgNmId is not a recognised ISO 20022 message identifier.",
+                    "affected_tags": [
+                        "OrgnlGrpInfAndSts/OrgnlMsgNmId"
+                    ],
+                    "possible_fixes": [
+                        "Replace with a valid ISO 20022 message identifier, e.g. pain.001.001.09.",
+                        "Ensure the format is <namespace>.<number>.<variant>.<version>."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "OrgnlGrpInfAndSts/OrgnlCreDtTm",
+            "xml_element": "OrgnlCreDtTm",
+            "xpath": "/Document/CstmrPmtStsRpt/OrgnlGrpInfAndSts/OrgnlCreDtTm",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "ISODateTime",
+            "description": "Creation date/time of the original (reported) message, copied unchanged. Optional. Z suffix and milliseconds forbidden under CBPR+.",
+            "errors": [
+                {
+                    "error_id": "ORGNLCREDTTM_Z_SUFFIX",
+                    "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+                    "severity": "Error",
+                    "description": "OrgnlCreDtTm uses 'Z' suffix which is forbidden under CBPR+.",
+                    "affected_tags": [
+                        "OrgnlGrpInfAndSts/OrgnlCreDtTm"
+                    ],
+                    "possible_fixes": [
+                        "Replace trailing 'Z' with '+00:00'. Example: 2026-05-30T09:00:00Z -> 2026-05-30T09:00:00+00:00."
+                    ]
+                },
+                {
+                    "error_id": "ORGNLCREDTTM_NO_TIMEZONE",
+                    "error_code": "CBPR_DATETIME_NO_TIMEZONE",
+                    "severity": "Error",
+                    "description": "OrgnlCreDtTm has no timezone offset.",
+                    "affected_tags": [
+                        "OrgnlGrpInfAndSts/OrgnlCreDtTm"
+                    ],
+                    "possible_fixes": [
+                        "Append a UTC offset matching the original message. Example: 2026-05-30T09:00:00 -> 2026-05-30T09:00:00+00:00."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "OrgnlGrpInfAndSts/GrpSts",
+            "xml_element": "GrpSts",
+            "xpath": "/Document/CstmrPmtStsRpt/OrgnlGrpInfAndSts/GrpSts",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "Max4Text",
+            "valid_values": [
+                "ACCP",
+                "ACSC",
+                "ACSP",
+                "ACWC",
+                "ACWP",
+                "PART",
+                "PDNG",
+                "RJCT",
+                "RCVD"
+            ],
+            "description": "Group-level status of the original message (ExternalPaymentGroupStatus). PART indicates partial acceptance and requires per-transaction TxSts.",
+            "errors": [
+                {
+                    "error_id": "GRPSTS_INVALID_CODE",
+                    "error_code": "CODELIST_INVALID",
+                    "severity": "Error",
+                    "description": "GrpSts contains a value not in the ExternalPaymentGroupStatus codelist.",
+                    "affected_tags": [
+                        "OrgnlGrpInfAndSts/GrpSts"
+                    ],
+                    "possible_fixes": [
+                        "Replace with one of: ACCP, ACSC, ACSP, ACWC, ACWP, PART, PDNG, RJCT, RCVD.",
+                        "Use RJCT for full rejection, ACCP for technically accepted, PART for partial acceptance."
+                    ]
+                },
+                {
+                    "error_id": "GRPSTS_RJCT_NO_REASON",
+                    "error_code": "MISSING_EXPECTED_ELEMENT",
+                    "severity": "Error",
+                    "description": "GrpSts = RJCT but no StsRsnInf is present to explain the group-level rejection.",
+                    "affected_tags": [
+                        "OrgnlGrpInfAndSts/GrpSts",
+                        "OrgnlGrpInfAndSts/StsRsnInf"
+                    ],
+                    "possible_fixes": [
+                        "Insert <StsRsnInf><Rsn><Cd>{reason code}</Cd></Rsn></StsRsnInf> under OrgnlGrpInfAndSts.",
+                        "Use a valid ExternalStatusReason1Code (e.g. AC01, AM04, MS03) or NARR with AddtlInf."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "OrgnlGrpInfAndSts/StsRsnInf/Rsn/Cd",
+            "xml_element": "Cd",
+            "xpath": "/Document/CstmrPmtStsRpt/OrgnlGrpInfAndSts/StsRsnInf/Rsn/Cd",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "Max4Text",
+            "valid_values": [
+                "AC01",
+                "AC04",
+                "AC06",
+                "AG01",
+                "AM04",
+                "AM05",
+                "BE01",
+                "CUST",
+                "DT01",
+                "MS03",
+                "RR01",
+                "RR02",
+                "RR03",
+                "RR04",
+                "NARR"
+            ],
+            "description": "Group-level status reason code (ExternalStatusReason1Code). Use NARR with AddtlInf when no specific code applies.",
+            "errors": [
+                {
+                    "error_id": "GRP_STSRSN_CD_INVALID",
+                    "error_code": "CODELIST_INVALID",
+                    "severity": "Error",
+                    "description": "Group-level StsRsnInf/Rsn/Cd is not a valid ExternalStatusReason1Code.",
+                    "affected_tags": [
+                        "OrgnlGrpInfAndSts/StsRsnInf/Rsn/Cd"
+                    ],
+                    "possible_fixes": [
+                        "Replace with a valid ExternalStatusReason1Code (e.g. AC01, AM04, MS03).",
+                        "Use NARR and place free-text explanation in StsRsnInf/AddtlInf when no code fits."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "OrgnlPmtInfAndSts/OrgnlPmtInfId",
+            "xml_element": "OrgnlPmtInfId",
+            "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/OrgnlPmtInfId",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Identifier of the original PaymentInformation block being reported, copied unchanged from the original message PmtInf/PmtInfId. Mandatory when OrgnlPmtInfAndSts is present.",
+            "errors": [
+                {
+                    "error_id": "ORGNLPMTINFID_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "OrgnlPmtInfId is absent from OrgnlPmtInfAndSts.",
+                    "affected_tags": [
+                        "OrgnlPmtInfAndSts/OrgnlPmtInfId"
+                    ],
+                    "possible_fixes": [
+                        "Insert <OrgnlPmtInfId>{original PmtInfId}</OrgnlPmtInfId> copied from the reported message.",
+                        "Harvest the value from the original PaymentInformation block; do not invent."
+                    ]
+                },
+                {
+                    "error_id": "ORGNLPMTINFID_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Fatal",
+                    "description": "OrgnlPmtInfId exceeds 35 characters.",
+                    "affected_tags": [
+                        "OrgnlPmtInfAndSts/OrgnlPmtInfId"
+                    ],
+                    "possible_fixes": [
+                        "Truncate to 35 characters; value must still match the original PmtInfId."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "OrgnlPmtInfAndSts/PmtInfSts",
+            "xml_element": "PmtInfSts",
+            "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/PmtInfSts",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "Max4Text",
+            "valid_values": [
+                "ACCP",
+                "ACSC",
+                "ACSP",
+                "ACWC",
+                "ACWP",
+                "PART",
+                "PDNG",
+                "RJCT",
+                "RCVD"
+            ],
+            "description": "Status of the original PaymentInformation block (ExternalPaymentGroupStatus). PART requires per-transaction TxSts.",
+            "errors": [
+                {
+                    "error_id": "PMTINFSTS_INVALID_CODE",
+                    "error_code": "CODELIST_INVALID",
+                    "severity": "Error",
+                    "description": "PmtInfSts contains a value not in the ExternalPaymentGroupStatus codelist.",
+                    "affected_tags": [
+                        "OrgnlPmtInfAndSts/PmtInfSts"
+                    ],
+                    "possible_fixes": [
+                        "Replace with one of: ACCP, ACSC, ACSP, ACWC, ACWP, PART, PDNG, RJCT, RCVD."
+                    ]
+                },
+                {
+                    "error_id": "PMTINFSTS_RJCT_NO_REASON",
+                    "error_code": "MISSING_EXPECTED_ELEMENT",
+                    "severity": "Error",
+                    "description": "PmtInfSts = RJCT but no StsRsnInf is present at PaymentInformation level.",
+                    "affected_tags": [
+                        "OrgnlPmtInfAndSts/PmtInfSts",
+                        "OrgnlPmtInfAndSts/StsRsnInf"
+                    ],
+                    "possible_fixes": [
+                        "Insert a StsRsnInf block with a valid Rsn/Cd to explain the rejection.",
+                        "Use NARR with AddtlInf when no specific reason code applies."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsId",
+            "xml_element": "StsId",
+            "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsId",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Unique identifier assigned by the reporting party to the status of this transaction. Optional.",
+            "errors": [
+                {
+                    "error_id": "STSID_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Error",
+                    "description": "StsId exceeds 35 characters.",
+                    "affected_tags": [
+                        "OrgnlPmtInfAndSts/TxInfAndSts/StsId"
+                    ],
+                    "possible_fixes": [
+                        "Truncate StsId to a maximum of 35 characters preserving uniqueness."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlInstrId",
+            "xml_element": "OrgnlInstrId",
+            "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/OrgnlInstrId",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Original instruction identification copied unchanged from the original transaction PmtId/InstrId. Optional.",
+            "errors": [
+                {
+                    "error_id": "ORGNLINSTRID_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Error",
+                    "description": "OrgnlInstrId exceeds 35 characters.",
+                    "affected_tags": [
+                        "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlInstrId"
+                    ],
+                    "possible_fixes": [
+                        "Truncate to 35 characters; value must still match the original PmtId/InstrId."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlEndToEndId",
+            "xml_element": "OrgnlEndToEndId",
+            "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/OrgnlEndToEndId",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Original end-to-end identification copied unchanged from the original transaction PmtId/EndToEndId. Optional but strongly recommended for reconciliation.",
+            "errors": [
+                {
+                    "error_id": "ORGNLENDTOENDID_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Error",
+                    "description": "OrgnlEndToEndId exceeds 35 characters.",
+                    "affected_tags": [
+                        "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlEndToEndId"
+                    ],
+                    "possible_fixes": [
+                        "Truncate to 35 characters; value must still match the original PmtId/EndToEndId."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlTxId",
+            "xml_element": "OrgnlTxId",
+            "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/OrgnlTxId",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Original transaction identification copied unchanged from the original transaction PmtId/TxId. Optional.",
+            "errors": [
+                {
+                    "error_id": "ORGNLTXID_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Error",
+                    "description": "OrgnlTxId exceeds 35 characters.",
+                    "affected_tags": [
+                        "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlTxId"
+                    ],
+                    "possible_fixes": [
+                        "Truncate to 35 characters; value must still match the original PmtId/TxId."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlUETR",
+            "xml_element": "OrgnlUETR",
+            "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/OrgnlUETR",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "UUIDv4Identifier",
+            "max_length": 36,
+            "description": "Original Unique End-to-End Transaction Reference (UUID v4) copied unchanged from the original transaction PmtId/UETR. Lowercase hex.",
+            "errors": [
+                {
+                    "error_id": "ORGNLUETR_FORMAT_ERROR",
+                    "error_code": "UETR_FORMAT_ERROR",
+                    "severity": "Error",
+                    "description": "OrgnlUETR is not a valid UUID v4 (wrong format, uppercase, wrong version digit, or invalid variant).",
+                    "affected_tags": [
+                        "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlUETR"
+                    ],
+                    "possible_fixes": [
+                        "Ensure OrgnlUETR is lowercase hex in format xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx (y in 8,9,a,b).",
+                        "Convert any uppercase hex characters to lowercase.",
+                        "The value must match the UETR of the original transaction; do not regenerate."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "OrgnlPmtInfAndSts/TxInfAndSts/TxSts",
+            "xml_element": "TxSts",
+            "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/TxSts",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "Max4Text",
+            "valid_values": [
+                "ACCP",
+                "ACSC",
+                "ACSP",
+                "ACWC",
+                "ACWP",
+                "PDNG",
+                "RJCT",
+                "RCVD"
+            ],
+            "description": "Transaction-level status (ExternalPaymentTransactionStatus). If RJCT, at least one StsRsnInf with Rsn/Cd is mandatory.",
+            "errors": [
+                {
+                    "error_id": "TXSTS_INVALID_CODE",
+                    "error_code": "CODELIST_INVALID",
+                    "severity": "Error",
+                    "description": "TxSts contains a value not in the ExternalPaymentTransactionStatus codelist.",
+                    "affected_tags": [
+                        "OrgnlPmtInfAndSts/TxInfAndSts/TxSts"
+                    ],
+                    "possible_fixes": [
+                        "Replace with one of: ACCP, ACSC, ACSP, ACWC, ACWP, PDNG, RJCT, RCVD.",
+                        "Use RJCT for a rejected transaction and ACSP for accepted-settlement-in-process."
+                    ]
+                },
+                {
+                    "error_id": "TXSTS_RJCT_NO_REASON",
+                    "error_code": "MISSING_EXPECTED_ELEMENT",
+                    "severity": "Error",
+                    "description": "TxSts = RJCT but no StsRsnInf is present to explain the transaction rejection.",
+                    "affected_tags": [
+                        "OrgnlPmtInfAndSts/TxInfAndSts/TxSts",
+                        "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf"
+                    ],
+                    "possible_fixes": [
+                        "Insert <StsRsnInf><Rsn><Cd>{reason code}</Cd></Rsn></StsRsnInf> under TxInfAndSts.",
+                        "Use a valid ExternalStatusReason1Code (e.g. AC01, AM04, MS03) or NARR with AddtlInf."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr",
+            "xml_element": "Orgtr",
+            "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "description": "Party that issued the status reason (originator of the rejection/status). Identified by Nm and/or Id. Optional.",
+            "errors": [
+                {
+                    "error_id": "STSRSN_ORGTR_EMPTY",
+                    "error_code": "MISSING_EXPECTED_ELEMENT",
+                    "severity": "Warning",
+                    "description": "StsRsnInf/Orgtr is present but contains neither Nm nor Id.",
+                    "affected_tags": [
+                        "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr"
+                    ],
+                    "possible_fixes": [
+                        "Populate <Orgtr><Nm>{originator name}</Nm></Orgtr> or provide an Id, or remove the empty Orgtr block."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Rsn/Cd",
+            "xml_element": "Cd",
+            "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Rsn/Cd",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "Max4Text",
+            "valid_values": [
+                "AC01",
+                "AC04",
+                "AC06",
+                "AG01",
+                "AG02",
+                "AM04",
+                "AM05",
+                "BE01",
+                "CUST",
+                "DT01",
+                "MS03",
+                "RC01",
+                "RR01",
+                "RR02",
+                "RR03",
+                "RR04",
+                "NARR"
+            ],
+            "description": "Transaction-level status reason code (ExternalStatusReason1Code). Mandatory within StsRsnInf when TxSts = RJCT. Use NARR with AddtlInf when no specific code applies.",
+            "errors": [
+                {
+                    "error_id": "TX_STSRSN_CD_INVALID",
+                    "error_code": "CODELIST_INVALID",
+                    "severity": "Error",
+                    "description": "Transaction-level StsRsnInf/Rsn/Cd is not a valid ExternalStatusReason1Code.",
+                    "affected_tags": [
+                        "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Rsn/Cd"
+                    ],
+                    "possible_fixes": [
+                        "Replace with a valid ExternalStatusReason1Code (e.g. AC01 incorrect account, AM04 insufficient funds, MS03 reason not specified).",
+                        "Use NARR and place free-text explanation in StsRsnInf/AddtlInf when no code fits."
+                    ]
+                },
+                {
+                    "error_id": "TX_STSRSN_CD_MISSING_ON_RJCT",
+                    "error_code": "MISSING_EXPECTED_ELEMENT",
+                    "severity": "Error",
+                    "description": "StsRsnInf is present for a rejected transaction but Rsn/Cd is missing.",
+                    "affected_tags": [
+                        "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Rsn/Cd",
+                        "OrgnlPmtInfAndSts/TxInfAndSts/TxSts"
+                    ],
+                    "possible_fixes": [
+                        "Insert <Rsn><Cd>{ExternalStatusReason1Code}</Cd></Rsn> inside StsRsnInf.",
+                        "Default to MS03 (reason not specified) or NARR with AddtlInf if the precise reason is unknown."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/AddtlInf",
+            "xml_element": "AddtlInf",
+            "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/AddtlInf",
+            "occurrence": "[0..n]",
+            "mandatory": false,
+            "datatype": "Max105Text",
+            "max_length": 105,
+            "description": "Free-text additional information about the status reason. Required in practice when Rsn/Cd = NARR. Each occurrence max 105 characters.",
+            "errors": [
+                {
+                    "error_id": "ADDTLINF_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Warning",
+                    "description": "StsRsnInf/AddtlInf exceeds 105 characters per occurrence.",
+                    "affected_tags": [
+                        "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/AddtlInf"
+                    ],
+                    "possible_fixes": [
+                        "Truncate each AddtlInf occurrence to 105 characters.",
+                        "Split long explanations across multiple AddtlInf occurrences (each max 105 chars)."
+                    ]
+                },
+                {
+                    "error_id": "ADDTLINF_INVALID_CHARS",
+                    "error_code": "INVALID_CHARSETS",
+                    "severity": "Warning",
+                    "description": "AddtlInf contains characters outside the permitted character set.",
+                    "affected_tags": [
+                        "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/AddtlInf"
+                    ],
+                    "possible_fixes": [
+                        "Transliterate accented/special characters to ASCII equivalents.",
+                        "Remove control characters and disallowed symbols."
+                    ]
+                }
+            ]
+        }
+    ],
+    "cross_tag_dependency_rules": [
+        {
+            "rule_id": "DEP_001",
+            "rule": "AppHdr/BizMsgIdr must equal Document/CstmrPmtStsRpt/GrpHdr/MsgId",
+            "affected_tags": [
+                "AppHdr/BizMsgIdr",
+                "GrpHdr/MsgId"
+            ],
+            "fix": "Harvest GrpHdr/MsgId and set BizMsgIdr to match (or vice versa); never invent a new value."
+        },
+        {
+            "rule_id": "DEP_002",
+            "rule": "AppHdr/MsgDefIdr must equal 'pain.002.001.10' and match the Document namespace",
+            "affected_tags": [
+                "AppHdr/MsgDefIdr"
+            ],
+            "fix": "Set MsgDefIdr to pain.002.001.10 derived from the Document xmlns."
+        },
+        {
+            "rule_id": "DEP_003",
+            "rule": "If TxSts = RJCT then at least one StsRsnInf with Rsn/Cd MUST be present for that transaction",
+            "affected_tags": [
+                "OrgnlPmtInfAndSts/TxInfAndSts/TxSts",
+                "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Rsn/Cd"
+            ],
+            "fix": "Insert a StsRsnInf/Rsn/Cd (e.g. MS03 or NARR with AddtlInf) when TxSts = RJCT."
+        },
+        {
+            "rule_id": "DEP_004",
+            "rule": "If GrpSts = RJCT then a group-level StsRsnInf with Rsn/Cd should be present",
+            "affected_tags": [
+                "OrgnlGrpInfAndSts/GrpSts",
+                "OrgnlGrpInfAndSts/StsRsnInf/Rsn/Cd"
+            ],
+            "fix": "Insert a StsRsnInf/Rsn/Cd under OrgnlGrpInfAndSts when GrpSts = RJCT."
+        },
+        {
+            "rule_id": "DEP_005",
+            "rule": "If PmtInfSts = RJCT then a StsRsnInf with Rsn/Cd should be present at PaymentInformation level",
+            "affected_tags": [
+                "OrgnlPmtInfAndSts/PmtInfSts",
+                "OrgnlPmtInfAndSts/StsRsnInf"
+            ],
+            "fix": "Insert a StsRsnInf block under OrgnlPmtInfAndSts when PmtInfSts = RJCT."
+        },
+        {
+            "rule_id": "DEP_006",
+            "rule": "GrpSts / PmtInfSts / TxSts must all be valid ExternalPaymentGroupStatus / ExternalPaymentTransactionStatus codes",
+            "affected_tags": [
+                "OrgnlGrpInfAndSts/GrpSts",
+                "OrgnlPmtInfAndSts/PmtInfSts",
+                "OrgnlPmtInfAndSts/TxInfAndSts/TxSts"
+            ],
+            "fix": "Replace any out-of-list status with a valid code (ACCP, ACSC, ACSP, ACWC, ACWP, PART, PDNG, RJCT, RCVD)."
+        },
+        {
+            "rule_id": "DEP_007",
+            "rule": "OrgnlMsgNmId identifies the reported message type and must be a valid ISO 20022 message identifier (e.g. pain.001.001.09)",
+            "affected_tags": [
+                "OrgnlGrpInfAndSts/OrgnlMsgNmId"
+            ],
+            "fix": "Set OrgnlMsgNmId to the identifier of the original reported message."
+        },
+        {
+            "rule_id": "DEP_008",
+            "rule": "If GrpSts = PART (partial acceptance) then per-transaction TxSts must be populated so accepted and rejected items are distinguishable",
+            "affected_tags": [
+                "OrgnlGrpInfAndSts/GrpSts",
+                "OrgnlPmtInfAndSts/TxInfAndSts/TxSts"
+            ],
+            "fix": "Populate TxSts on each TxInfAndSts when GrpSts/PmtInfSts = PART."
+        },
+        {
+            "rule_id": "DEP_009",
+            "rule": "OrgnlInstrId / OrgnlEndToEndId / OrgnlTxId / OrgnlUETR must be copied unchanged from the original (reported) transaction",
+            "affected_tags": [
+                "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlInstrId",
+                "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlEndToEndId",
+                "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlTxId",
+                "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlUETR"
+            ],
+            "fix": "Harvest each original identifier from the reported message; do not regenerate."
+        }
+    ],
+    "tag_insertion_order": {
+        "AppHdr": [
+            "Fr",
+            "To",
+            "BizMsgIdr",
+            "MsgDefIdr",
+            "BizSvc",
+            "CreDt",
+            "CpyDplct",
+            "PssblDplct",
+            "Prty",
+            "Sgntr",
+            "Rltd"
+        ],
+        "GrpHdr": [
+            "MsgId",
+            "CreDtTm",
+            "InitgPty",
+            "FwdgAgt",
+            "DbtrAgt",
+            "CdtrAgt"
+        ],
+        "OrgnlGrpInfAndSts": [
+            "OrgnlMsgId",
+            "OrgnlMsgNmId",
+            "OrgnlCreDtTm",
+            "OrgnlNbOfTxs",
+            "OrgnlCtrlSum",
+            "GrpSts",
+            "StsRsnInf",
+            "NbOfTxsPerSts"
+        ],
+        "OrgnlPmtInfAndSts": [
+            "OrgnlPmtInfId",
+            "OrgnlNbOfTxs",
+            "OrgnlCtrlSum",
+            "PmtInfSts",
+            "StsRsnInf",
+            "NbOfTxsPerSts",
+            "TxInfAndSts"
+        ],
+        "TxInfAndSts": [
+            "StsId",
+            "OrgnlInstrId",
+            "OrgnlEndToEndId",
+            "OrgnlTxId",
+            "OrgnlUETR",
+            "TxSts",
+            "StsRsnInf",
+            "ChrgsInf",
+            "AccptncDtTm",
+            "AcctSvcrRef",
+            "ClrSysRef",
+            "OrgnlTxRef"
+        ],
+        "StsRsnInf": [
+            "Orgtr",
+            "Rsn",
+            "AddtlInf"
+        ],
+        "Rsn": [
+            "Cd",
+            "Prtry"
+        ]
+    },
+    "schema_mapping_notes": {
+        "root_element": "Document/CstmrPmtStsRpt is the root; the message type is CustomerPaymentStatusReportV10.",
+        "msg_def_idr": "AppHdr/MsgDefIdr = pain.002.001.10 and must match the Document xmlns urn:iso:std:iso:20022:tech:xsd:pain.002.001.10.",
+        "biz_svc": "AppHdr/BizSvc = swift.cbprplus.02 for the CBPR+ status report exchange under SR2025.",
+        "original_group": "OrgnlGrpInfAndSts references the reported message via OrgnlMsgId (original GrpHdr/MsgId) and OrgnlMsgNmId (original message identifier, e.g. pain.001.001.09).",
+        "status_codelists": "GrpSts/PmtInfSts use ExternalPaymentGroupStatus; TxSts uses ExternalPaymentTransactionStatus; StsRsnInf/Rsn/Cd uses ExternalStatusReason1Code.",
+        "datetime_format": "All ISODateTime fields (AppHdr/CreDt, GrpHdr/CreDtTm, OrgnlCreDtTm) use YYYY-MM-DDTHH:MM:SS+HH:MM; Z suffix and milliseconds are forbidden under CBPR+.",
+        "reject_reason_dependency": "A RJCT status at group, payment-information or transaction level requires a corresponding StsRsnInf with Rsn/Cd."
+    }
+}

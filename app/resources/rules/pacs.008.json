@@ -12,6 +12,19 @@
         "fix": "Add a valid UUID v4 to <PmtId><UETR> (e.g., 4a1a0945-5772-409a-83ba-240e666e0267)."
     },
     {
+        "rule_id": "PACS008_PMTID_REQUIRED",
+        "description": "CBPR+: InstrId and TxId are mandatory in pacs.008 PmtId (XSD declares them optional).",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtId)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtId.InstrId",
+            "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtId.TxId"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "InstrId and TxId are mandatory in pacs.008 PmtId under CBPR+.",
+        "fix": "Add <InstrId> and <TxId> inside <PmtId> (Max16Text / Max35Text identifiers)."
+    },
+    {
         "rule_id": "PACS008_DBTR_REQUIRED",
         "description": "CBPR+: Debtor is mandatory in pacs.008.",
         "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf)",
@@ -273,14 +286,38 @@
     {
         "rule_id": "CBPR_R8",
         "name": "CBPR_Business_Service_Usage_TextualRule",
-        "description": "BizSvc must have the value 'swift.cbprplus.02' for pacs.008.",
+        "description": "BizSvc must have the value 'swift.cbprplus.02' for pacs.008 (CBPR+).",
         "selector": "AppHdr.BizSvc",
         "type": "expression",
         "expression": "VALUE == 'swift.cbprplus.02'",
         "severity": "ERROR",
         "layer": 3,
-        "errorMessage": "AppHdr <BizSvc> must be 'swift.cbprplus.02' for pacs.008.",
+        "errorMessage": "AppHdr <BizSvc> must be 'swift.cbprplus.02' for pacs.008 (CBPR+).",
         "fix": "Set <BizSvc>swift.cbprplus.02</BizSvc> in AppHdr."
+    },
+    {
+        "rule_id": "CBPR_P8_STTLMMTD",
+        "name": "CBPR_Settlement_Method_pacs008",
+        "description": "For pacs.008 (CBPR+) the settlement method must be INDA or INGA; CLRG/COVE are not used for FI-to-FI customer credit transfer.",
+        "selector": ".*\\.SttlmInf\\.SttlmMtd$",
+        "type": "expression",
+        "expression": "VALUE in ['INDA', 'INGA']",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "The value of <SttlmMtd> is not valid. It must be one of the following values : INDA, INGA.",
+        "fix": "Set <SttlmMtd> to INDA or INGA (CBPR+ pacs.008 does not use CLRG/COVE)."
+    },
+    {
+        "rule_id": "CBPR_P8_NO_CLRSYS",
+        "name": "CBPR_ClrSys_Forbidden_pacs008",
+        "description": "pacs.008 (CBPR+) SettlementInstruction must not contain ClrSys; settlement is via INDA/INGA, identified by SttlmAcct.",
+        "selector": ".*\\.SttlmInf\\.ClrSys\\.Cd$",
+        "type": "expression",
+        "expression": "False",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "The element 'ClrSys' is not expected here. Either it is not allowed in this specification, or another mandatory element is missing before this one. One of the following elements is expected : 'SttlmAcct'.",
+        "fix": "Remove <ClrSys> from <SttlmInf> (CBPR+ pacs.008 uses INDA/INGA settlement, not a clearing system)."
     },
     {
         "rule_id": "CBPR_R9",

@@ -35,6 +35,11 @@ class Layer3Mixin:
     # files on every validation was ~35ms of avoidable work per call.
     _rules_cache: Dict[str, List[Dict[str, Any]]] = {}
 
+    @classmethod
+    def clear_rules_cache(cls) -> None:
+        """Flush the rules cache so updated JSON rule files are reloaded."""
+        cls._rules_cache.clear()
+
     def _load_all_rules(self, message_type: str) -> List[Dict[str, Any]]:
         """
         Loads global rules + family rules + message-specific rules.
@@ -369,6 +374,18 @@ class Layer3Mixin:
                                 msg = f"Invalid Purpose Code '{value}'."
                                 fix = (f"'{value}' is not a valid ISO 20022 Purpose Code. "
                                        f"Use a standard code such as SALA, RENT, SUPP, CORT, PENS, BONU, TRAD, LOAN, TAXS, etc.")
+                            elif list_name == "clearing_system":
+                                msg = f"Invalid clearing system code '{value}' in <{field_name}>."
+                                fix = (f"'{value}' is not a valid ExternalCashClearingSystem1Code. "
+                                       f"Use a recognised code such as 'TGT' (TARGET2), 'EBA', 'RTP', 'STG', or 'CHP'.")
+                            elif list_name == "account_type":
+                                msg = f"Invalid cash account type code '{value}' in <{field_name}>."
+                                fix = (f"'{value}' is not a valid ExternalCashAccountType1Code. "
+                                       f"Use a code such as 'CACC' (Current), 'CASH', 'LOAN', or 'COMM'.")
+                            elif list_name == "local_instrument":
+                                msg = f"Invalid local instrument code '{value}' in <{field_name}>."
+                                fix = (f"'{value}' is not a valid local instrument code. "
+                                       f"Use a code such as 'CORE', 'INST', 'B2B', or 'COR1'.")
                             else:
                                 msg = f"Field '{field_name}' contains invalid code '{value}'."
                                 fix = f"Value '{value}' is not a valid code for this field. Please check the ISO 20022 standard for permitted values."
@@ -598,16 +615,21 @@ class Layer3Mixin:
             # 1. Find Header BIC
             h_key = f"AppHdr.{header_role}.FIId.FinInstnId.BICFI"
             h_val = data.get(h_key)
-            
-            # 2. Find Document BIC (Search anywhere in message)
+
+            # 2. Find Document BIC — try direct path first, then with Agt intermediary
+            # (camt.056 Assgnr/Assgne have an extra Agt level: Assgnr.Agt.FinInstnId.BICFI)
             d_val = None
             d_key = None
-            suffix = f".{doc_role}.FinInstnId.BICFI"
-            
-            for k, v in data.items():
-                if k.endswith(suffix):
-                    d_val = v
-                    d_key = k
+            for suffix in [
+                f".{doc_role}.FinInstnId.BICFI",
+                f".{doc_role}.Agt.FinInstnId.BICFI",
+            ]:
+                for k, v in data.items():
+                    if k.endswith(suffix):
+                        d_val = v
+                        d_key = k
+                        break
+                if d_val is not None:
                     break
             
             # If either is missing, we can't compare

@@ -1,0 +1,1240 @@
+{
+    "domain": "SWIFT MX CBPR+ camt.056.001.08 / camt.056.001.11",
+    "version": "SR2025",
+    "last_updated": "2026-06-03",
+    "xsd_version": "camt.056.001.11",
+    "xsd_namespace": "urn:iso:std:iso:20022:tech:xsd:camt.056.001.11",
+    "purpose": "Context KB for camt.056.001.08 FIToFIPaymentCancellationRequest auto-fixing. For each XML tag: datatype, mandatory, errors, possible_fixes.",
+    "reference_documents": [
+        "ISO 20022 camt.056.001.08 FIToFIPaymentCancellationRequest schema",
+        "SWIFT CBPR+ Usage Guidelines SR2025"
+    ],
+    "iso_20022_rules": {
+        "AssignerAssigneeMandatory": "Assignment/Assgnr and Assignment/Assgne are both mandatory; a cancellation request must identify both the assigner and assignee.",
+        "AssignmentIdMandatory": "Assignment/Id is mandatory and uniquely identifies the cancellation assignment.",
+        "AssignmentDateTimeMandatory": "Assignment/CreDtTm is mandatory and records when the cancellation assignment was created.",
+        "UnderlyingTxInfMandatory": "At least one Undrlyg/TxInf occurrence must be present; each occurrence carries one cancellation request for one underlying payment.",
+        "CancellationReasonMandatory": "Each Undrlyg/TxInf must contain at least one CxlRsnInf occurrence describing why the cancellation is requested.",
+        "OriginalIdentificationRequired": "Each Undrlyg/TxInf must identify the original payment via OrgnlUETR, OrgnlTxId, OrgnlInstrId or OrgnlEndToEndId so the cancellation is processable.",
+        "ControlDataConsistency": "If CtrlData/NbOfTxs is present it must equal the number of Undrlyg/TxInf occurrences; if CtrlData/CtrlSum is present it must equal the sum of OrgnlIntrBkSttlmAmt values.",
+        "ReasonCodeOrProprietary": "CxlRsnInf/Rsn is a choice between Cd (ExternalCancellationReason1Code) and Prtry (Max35Text); exactly one may be present."
+    },
+    "cbpr_plus_formal_rules": [
+        "AppHdr (BusinessApplicationHeaderV02) is mandatory for all CBPR+ messages and must precede the Document element.",
+        "AppHdr/MsgDefIdr must equal 'camt.056.001.08' and match the Document xmlns namespace identifier.",
+        "AppHdr/BizSvc must be 'swift.cbprplus.02' for camt.056 under CBPR+ SR2025.",
+        "AppHdr/Fr and AppHdr/To must contain a valid BIC8 or BIC11 (BICFI) when exchanged on the SWIFT network.",
+        "All DateTime fields (AppHdr/CreDt, Assgnmt/CreDtTm) must use YYYY-MM-DDTHH:MM:SS+HH:MM format; the 'Z' suffix and milliseconds are forbidden.",
+        "Each Undrlyg/TxInf SHOULD carry OrgnlUETR (UUID v4) to unambiguously identify the cancelled payment; OrgnlTxId is the fallback identifier.",
+        "Assignment/Assgnr and Assignment/Assgne must each resolve to an agent (Agt/FinInstnId/BICFI) or party; for FI cancellation both are normally agents.",
+        "CxlRsnInf/Rsn/Cd must be a valid ExternalCancellationReason code (e.g. DUPL, TECH, FRAD, CUST, AGNT, CURR, UPAY).",
+        "All text fields are limited to the FIN-X (SWIFT) character set; accented or non-permitted characters are not allowed.",
+        "CBPR+ permits a single underlying transaction per camt.056 message; multiple Undrlyg/TxInf occurrences should be split into separate messages.",
+        "AddtlInf is limited to Max105Text per occurrence and may repeat.",
+        "Original message identification (OrgnlGrpInf/OrgnlMsgId and OrgnlMsgNmId) should reference the camt/pacs message being cancelled.",
+        "XSD_BICFIPattern: BICFIDec2014Identifier [A-Z0-9]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})? — applies to Assgnr/Agt/FinInstnId/BICFI, Assgne/Agt/FinInstnId/BICFI, AppHdr/Fr, AppHdr/To.",
+        "XSD_DateTimeFormat: ISODateTime used for Assgnmt/CreDtTm and AppHdr/CreDt — must be CBPR+ format YYYY-MM-DDTHH:MM:SS+HH:MM. No Z, no milliseconds.",
+        "XSD_V11_Changes: camt.056.001.11 vs 001.08 — FIToFIPaymentCancellationRequestV11 root. Added SplmtryData at message level. Assgnmt/Assgnr and Assgnmt/Assgne now accept either Agt (agent) OR Pty (party) — previously only Agt. TxInf sequence updated: CxlId, Case, OrgnlGrpInf, OrgnlInstrId, OrgnlEndToEndId, OrgnlTxId, OrgnlUETR, OrgnlClrSysRef (NEW), OrgnlIntrBkSttlmAmt, OrgnlIntrBkSttlmDt, CxlRsnInf, OrgnlTxRef, SplmtryData.",
+        "XSD_NewElement_OrgnlClrSysRef: camt.056.001.11 TxInf adds OrgnlClrSysRef (original clearing system reference) as an optional identifier for the cancelled transaction. Use when the original payment was identified by clearing system reference rather than UETR/TxId."
+    ],
+    "tags": [
+        {
+            "tag": "AppHdr",
+            "xml_element": "AppHdr",
+            "xpath": "/AppHdr",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "description": "Business Application Header V02. Mandatory for all CBPR+ messages and wraps the camt.056 Document.",
+            "errors": [
+                {
+                    "error_id": "APPHDR_MISSING",
+                    "error_code": "SCHEMA_ERR",
+                    "severity": "Fatal",
+                    "description": "AppHdr element is absent; CBPR+ mandates BusinessApplicationHeaderV02.",
+                    "affected_tags": [
+                        "AppHdr"
+                    ],
+                    "possible_fixes": [
+                        "Insert a complete <AppHdr> block before the <Document> element.",
+                        "Ensure AppHdr contains Fr, To, BizMsgIdr, MsgDefIdr, BizSvc and CreDt."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "AppHdr/Fr",
+            "xml_element": "Fr",
+            "xpath": "/AppHdr/Fr",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "BICFI",
+            "description": "Sending MessagingEndpoint. Must contain a valid BIC8 or BIC11 when exchanged on SWIFT; normally the assigner agent BIC.",
+            "errors": [
+                {
+                    "error_id": "APPHDR_FR_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "Fr element is absent from AppHdr.",
+                    "affected_tags": [
+                        "AppHdr/Fr"
+                    ],
+                    "possible_fixes": [
+                        "Insert <Fr><FIId><FinInstnId><BICFI>{Assgnr_BICFI}</BICFI></FinInstnId></FIId></Fr> inside AppHdr.",
+                        "Harvest the BICFI from Assgnmt/Assgnr/Agt/FinInstnId/BICFI."
+                    ]
+                },
+                {
+                    "error_id": "APPHDR_FR_INVALID_BIC",
+                    "error_code": "INVALID_BICFI",
+                    "severity": "Fatal",
+                    "description": "AppHdr/Fr contains an invalid or malformed BIC.",
+                    "affected_tags": [
+                        "AppHdr/Fr/FIId/FinInstnId/BICFI"
+                    ],
+                    "possible_fixes": [
+                        "Replace with a valid BICFI: 8 or 11 uppercase alphanumeric characters following ISO 9362.",
+                        "Pattern: [A-Z]{6}[A-Z2-9][A-NP-Z0-9]([A-Z0-9]{3})?",
+                        "Example valid BIC: DEUTDEFFXXX"
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "AppHdr/To",
+            "xml_element": "To",
+            "xpath": "/AppHdr/To",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "BICFI",
+            "description": "Receiving MessagingEndpoint. Must contain a valid BIC8 or BIC11 on SWIFT; normally the assignee agent BIC.",
+            "errors": [
+                {
+                    "error_id": "APPHDR_TO_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "To element is absent from AppHdr.",
+                    "affected_tags": [
+                        "AppHdr/To"
+                    ],
+                    "possible_fixes": [
+                        "Insert <To><FIId><FinInstnId><BICFI>{Assgne_BICFI}</BICFI></FinInstnId></FIId></To> inside AppHdr.",
+                        "Harvest the BICFI from Assgnmt/Assgne/Agt/FinInstnId/BICFI."
+                    ]
+                },
+                {
+                    "error_id": "APPHDR_TO_INVALID_BIC",
+                    "error_code": "INVALID_BICFI",
+                    "severity": "Fatal",
+                    "description": "AppHdr/To contains an invalid or malformed BIC.",
+                    "affected_tags": [
+                        "AppHdr/To/FIId/FinInstnId/BICFI"
+                    ],
+                    "possible_fixes": [
+                        "Replace with a valid BICFI: 8 or 11 uppercase alphanumeric characters following ISO 9362.",
+                        "Pattern: [A-Z]{6}[A-Z2-9][A-NP-Z0-9]([A-Z0-9]{3})?"
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "AppHdr/BizMsgIdr",
+            "xml_element": "BizMsgIdr",
+            "xpath": "/AppHdr/BizMsgIdr",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Unique identifier of the Business Message assigned by the sender. For camt.056 it should equal Assgnmt/Id.",
+            "errors": [
+                {
+                    "error_id": "BIZMSGIDR_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "BizMsgIdr is absent from AppHdr.",
+                    "affected_tags": [
+                        "AppHdr/BizMsgIdr"
+                    ],
+                    "possible_fixes": [
+                        "Copy the value of Assgnmt/Id and insert as <BizMsgIdr>{Assgnmt_Id}</BizMsgIdr>.",
+                        "If Assgnmt/Id is also absent, generate a unique Max35Text value (e.g. CXL-YYYYMMDD-001)."
+                    ]
+                },
+                {
+                    "error_id": "BIZMSGIDR_EQ_ASSGNMT_ID",
+                    "error_code": "BIZMSGIDR_EQ_GRPHDR_MSGID",
+                    "severity": "Warning",
+                    "description": "AppHdr/BizMsgIdr does not equal Document/FIToFIPmtCxlReq/Assgnmt/Id.",
+                    "affected_tags": [
+                        "AppHdr/BizMsgIdr",
+                        "Assgnmt/Id"
+                    ],
+                    "possible_fixes": [
+                        "Read Assgnmt/Id and set BizMsgIdr to the same value.",
+                        "If BizMsgIdr is authoritative, update Assgnmt/Id to match."
+                    ]
+                },
+                {
+                    "error_id": "BIZMSGIDR_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Fatal",
+                    "description": "BizMsgIdr exceeds 35 characters.",
+                    "affected_tags": [
+                        "AppHdr/BizMsgIdr"
+                    ],
+                    "possible_fixes": [
+                        "Truncate the value to a maximum of 35 characters preserving a meaningful unique prefix."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "Assgnmt/MsgId",
+            "xml_element": "MsgId",
+            "xpath": "/Document/FIToFIPmtCxlReq/Assgnmt/Id",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Unique identifier of the assignment (Assgnmt/Id). Max 35 characters.",
+            "errors": [
+                {
+                    "error_id": "MSGID_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "Assgnmt/Id is absent.",
+                    "affected_tags": [
+                        "Assgnmt/Id"
+                    ],
+                    "possible_fixes": [
+                        "Add <Id>UNIQUE-ASSIGNMENT-ID</Id> inside <Assgnmt>.",
+                        "Generate a Max35Text identifier such as 'CXLREQ-YYYYMMDD-001'."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "AppHdr/MsgDefIdr",
+            "xml_element": "MsgDefIdr",
+            "xpath": "/AppHdr/MsgDefIdr",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "Max35Text",
+            "expected_value": "camt.056.001.08",
+            "description": "Message Definition Identifier. Must exactly match the Document namespace identifier and equal 'camt.056.001.08'.",
+            "errors": [
+                {
+                    "error_id": "MSGDEFIDR_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "MsgDefIdr is absent from AppHdr.",
+                    "affected_tags": [
+                        "AppHdr/MsgDefIdr"
+                    ],
+                    "possible_fixes": [
+                        "Insert <MsgDefIdr>camt.056.001.08</MsgDefIdr> inside AppHdr."
+                    ]
+                },
+                {
+                    "error_id": "MSGDEFIDR_MISMATCH",
+                    "error_code": "MSGDEFIDR_MISMATCH",
+                    "severity": "Fatal",
+                    "description": "AppHdr/MsgDefIdr does not match the Document xmlns namespace identifier (camt.056.001.08).",
+                    "affected_tags": [
+                        "AppHdr/MsgDefIdr"
+                    ],
+                    "possible_fixes": [
+                        "Read the xmlns attribute from the Document root element (urn:iso:std:iso:20022:tech:xsd:camt.056.001.08).",
+                        "Set MsgDefIdr to 'camt.056.001.08' with no trailing spaces or version mismatch."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "AppHdr/BizSvc",
+            "xml_element": "BizSvc",
+            "xpath": "/AppHdr/BizSvc",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "Max35Text",
+            "expected_value": "swift.cbprplus.02",
+            "description": "Business Service identifier. For camt.056 under CBPR+ SR2025 it must be 'swift.cbprplus.02'.",
+            "errors": [
+                {
+                    "error_id": "BIZSVC_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "BizSvc is absent; it is mandatory under CBPR+ SR2025.",
+                    "affected_tags": [
+                        "AppHdr/BizSvc"
+                    ],
+                    "possible_fixes": [
+                        "Insert <BizSvc>swift.cbprplus.02</BizSvc> inside AppHdr."
+                    ]
+                },
+                {
+                    "error_id": "BIZSVC_WRONG_VALUE",
+                    "error_code": "SCHEMENAME_INVALID",
+                    "severity": "Error",
+                    "description": "BizSvc contains an incorrect value for camt.056 CBPR+.",
+                    "affected_tags": [
+                        "AppHdr/BizSvc"
+                    ],
+                    "possible_fixes": [
+                        "Replace value with 'swift.cbprplus.02' as mandated for camt.056 under CBPR+ SR2025."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "AppHdr/CreDt",
+            "xml_element": "CreDt",
+            "xpath": "/AppHdr/CreDt",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "ISODateTime",
+            "description": "Creation date/time of the Business Message. Must use YYYY-MM-DDTHH:MM:SS+HH:MM format; the 'Z' suffix and milliseconds are forbidden under CBPR+.",
+            "errors": [
+                {
+                    "error_id": "CREDT_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "AppHdr/CreDt is absent.",
+                    "affected_tags": [
+                        "AppHdr/CreDt"
+                    ],
+                    "possible_fixes": [
+                        "Insert <CreDt>{current datetime in YYYY-MM-DDTHH:MM:SS+00:00 format}</CreDt> inside AppHdr."
+                    ]
+                },
+                {
+                    "error_id": "CREDT_Z_SUFFIX",
+                    "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+                    "severity": "Fatal",
+                    "description": "AppHdr/CreDt uses 'Z' suffix which is forbidden under CBPR+.",
+                    "affected_tags": [
+                        "AppHdr/CreDt"
+                    ],
+                    "possible_fixes": [
+                        "Replace trailing 'Z' with '+00:00'. Example: 2026-06-01T10:00:00Z -> 2026-06-01T10:00:00+00:00."
+                    ]
+                },
+                {
+                    "error_id": "CREDT_NO_TIMEZONE",
+                    "error_code": "CBPR_DATETIME_NO_TIMEZONE",
+                    "severity": "Fatal",
+                    "description": "AppHdr/CreDt has no timezone offset; CBPR+ requires an explicit +HH:MM offset.",
+                    "affected_tags": [
+                        "AppHdr/CreDt"
+                    ],
+                    "possible_fixes": [
+                        "Append a timezone offset. Example: 2026-06-01T10:00:00 -> 2026-06-01T10:00:00+00:00."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "Assgnmt/Id",
+            "xml_element": "Id",
+            "xpath": "/Document/FIToFIPmtCxlReq/Assgnmt/Id",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Unique identification of the cancellation assignment, assigned by the assigner. Should equal AppHdr/BizMsgIdr.",
+            "errors": [
+                {
+                    "error_id": "ASSGNMT_ID_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "Assgnmt/Id is absent.",
+                    "affected_tags": [
+                        "Assgnmt/Id"
+                    ],
+                    "possible_fixes": [
+                        "Insert <Id>{unique identifier up to 35 chars}</Id> as first child of Assgnmt.",
+                        "Use the value of AppHdr/BizMsgIdr, or generate format CXL-YYYYMMDD-NNN."
+                    ]
+                },
+                {
+                    "error_id": "ASSGNMT_ID_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Fatal",
+                    "description": "Assgnmt/Id exceeds 35 characters.",
+                    "affected_tags": [
+                        "Assgnmt/Id"
+                    ],
+                    "possible_fixes": [
+                        "Truncate to a maximum of 35 characters preserving the unique prefix.",
+                        "Synchronize the truncated value to AppHdr/BizMsgIdr."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "Assgnmt/Assgnr",
+            "xml_element": "Assgnr",
+            "xpath": "/Document/FIToFIPmtCxlReq/Assgnmt/Assgnr",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "description": "Party or agent assigning the cancellation case to the assignee. Choice of Agt (BranchAndFinancialInstitutionIdentification) or Pty; for FI cancellations Agt/FinInstnId/BICFI is used.",
+            "errors": [
+                {
+                    "error_id": "ASSGNR_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "Assgnmt/Assgnr is absent; the assigner is mandatory.",
+                    "affected_tags": [
+                        "Assgnmt/Assgnr"
+                    ],
+                    "possible_fixes": [
+                        "Insert <Assgnr><Agt><FinInstnId><BICFI>{assigner_BICFI}</BICFI></FinInstnId></Agt></Assgnr> inside Assgnmt.",
+                        "Harvest the BICFI from AppHdr/Fr if the assigner is the sending institution."
+                    ]
+                },
+                {
+                    "error_id": "ASSGNR_INVALID_BIC",
+                    "error_code": "INVALID_BICFI",
+                    "severity": "Fatal",
+                    "description": "Assgnmt/Assgnr/Agt/FinInstnId/BICFI is invalid or malformed.",
+                    "affected_tags": [
+                        "Assgnmt/Assgnr/Agt/FinInstnId/BICFI"
+                    ],
+                    "possible_fixes": [
+                        "Replace with a valid BICFI (8 or 11 uppercase alphanumeric characters, ISO 9362).",
+                        "Pattern: [A-Z]{6}[A-Z2-9][A-NP-Z0-9]([A-Z0-9]{3})?"
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "Assgnmt/Assgne",
+            "xml_element": "Assgne",
+            "xpath": "/Document/FIToFIPmtCxlReq/Assgnmt/Assgne",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "description": "Party or agent to which the cancellation case is assigned. Choice of Agt (BranchAndFinancialInstitutionIdentification) or Pty; for FI cancellations Agt/FinInstnId/BICFI is used.",
+            "errors": [
+                {
+                    "error_id": "ASSGNE_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "Assgnmt/Assgne is absent; the assignee is mandatory.",
+                    "affected_tags": [
+                        "Assgnmt/Assgne"
+                    ],
+                    "possible_fixes": [
+                        "Insert <Assgne><Agt><FinInstnId><BICFI>{assignee_BICFI}</BICFI></FinInstnId></Agt></Assgne> inside Assgnmt.",
+                        "Harvest the BICFI from AppHdr/To if the assignee is the receiving institution."
+                    ]
+                },
+                {
+                    "error_id": "ASSGNE_INVALID_BIC",
+                    "error_code": "INVALID_BICFI",
+                    "severity": "Fatal",
+                    "description": "Assgnmt/Assgne/Agt/FinInstnId/BICFI is invalid or malformed.",
+                    "affected_tags": [
+                        "Assgnmt/Assgne/Agt/FinInstnId/BICFI"
+                    ],
+                    "possible_fixes": [
+                        "Replace with a valid BICFI (8 or 11 uppercase alphanumeric characters, ISO 9362).",
+                        "Pattern: [A-Z]{6}[A-Z2-9][A-NP-Z0-9]([A-Z0-9]{3})?"
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "Assgnmt/CreDtTm",
+            "xml_element": "CreDtTm",
+            "xpath": "/Document/FIToFIPmtCxlReq/Assgnmt/CreDtTm",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "datatype": "ISODateTime",
+            "description": "Date and time the cancellation assignment was created. Format YYYY-MM-DDTHH:MM:SS+HH:MM; 'Z' suffix and milliseconds forbidden under CBPR+.",
+            "errors": [
+                {
+                    "error_id": "ASSGNMT_CREDTTM_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "Assgnmt/CreDtTm is absent.",
+                    "affected_tags": [
+                        "Assgnmt/CreDtTm"
+                    ],
+                    "possible_fixes": [
+                        "Insert <CreDtTm>{current datetime as YYYY-MM-DDTHH:MM:SS+00:00}</CreDtTm> inside Assgnmt."
+                    ]
+                },
+                {
+                    "error_id": "ASSGNMT_CREDTTM_Z_SUFFIX",
+                    "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+                    "severity": "Fatal",
+                    "description": "Assgnmt/CreDtTm uses 'Z' suffix; forbidden under CBPR+.",
+                    "affected_tags": [
+                        "Assgnmt/CreDtTm"
+                    ],
+                    "possible_fixes": [
+                        "Replace 'Z' with '+00:00'. Example: 2026-06-01T10:00:00Z -> 2026-06-01T10:00:00+00:00."
+                    ]
+                },
+                {
+                    "error_id": "ASSGNMT_CREDTTM_NO_TIMEZONE",
+                    "error_code": "CBPR_DATETIME_NO_TIMEZONE",
+                    "severity": "Fatal",
+                    "description": "Assgnmt/CreDtTm has no timezone offset; CBPR+ requires an explicit +HH:MM offset.",
+                    "affected_tags": [
+                        "Assgnmt/CreDtTm"
+                    ],
+                    "possible_fixes": [
+                        "Append a timezone offset. Example: 2026-06-01T10:00:00 -> 2026-06-01T10:00:00+00:00."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "Case/Id",
+            "xml_element": "Id",
+            "xpath": "/Document/FIToFIPmtCxlReq/Case/Id",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Identification of the investigation case linked to the cancellation request. Optional; present when the cancellation is tracked as a case.",
+            "errors": [
+                {
+                    "error_id": "CASE_ID_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Error",
+                    "description": "Case/Id exceeds 35 characters.",
+                    "affected_tags": [
+                        "Case/Id"
+                    ],
+                    "possible_fixes": [
+                        "Truncate Case/Id to a maximum of 35 characters."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "Case/Cretr",
+            "xml_element": "Cretr",
+            "xpath": "/Document/FIToFIPmtCxlReq/Case/Cretr",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "description": "Party that created the investigation case. Mandatory only when the Case block is present (Case requires both Id and Cretr).",
+            "errors": [
+                {
+                    "error_id": "CASE_CRETR_MISSING_WHEN_CASE",
+                    "error_code": "MISSING_EXPECTED_ELEMENT",
+                    "severity": "Error",
+                    "description": "Case block is present but Cretr is absent; a Case requires both Id and Cretr.",
+                    "affected_tags": [
+                        "Case/Cretr",
+                        "Case/Id"
+                    ],
+                    "possible_fixes": [
+                        "Insert <Cretr><Agt><FinInstnId><BICFI>{creator_BICFI}</BICFI></FinInstnId></Agt></Cretr> inside Case.",
+                        "Alternatively remove the whole Case block if no investigation case applies."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "CtrlData/NbOfTxs",
+            "xml_element": "NbOfTxs",
+            "xpath": "/Document/FIToFIPmtCxlReq/CtrlData/NbOfTxs",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "Max15NumericText",
+            "max_length": 15,
+            "description": "Number of individual cancellation transactions. If present, must equal the count of Undrlyg/TxInf occurrences. CBPR+ allows a single underlying transaction (value = 1).",
+            "errors": [
+                {
+                    "error_id": "CTRLDATA_NBOFTXS_MISMATCH",
+                    "error_code": "NBOFTXS_MISMATCH",
+                    "severity": "Error",
+                    "description": "CtrlData/NbOfTxs does not equal the actual number of Undrlyg/TxInf occurrences.",
+                    "affected_tags": [
+                        "CtrlData/NbOfTxs",
+                        "Undrlyg/TxInf"
+                    ],
+                    "possible_fixes": [
+                        "Count all Undrlyg/TxInf occurrences and set NbOfTxs to that count.",
+                        "For CBPR+ single-transaction messages, ensure NbOfTxs = 1."
+                    ]
+                },
+                {
+                    "error_id": "CTRLDATA_NBOFTXS_NON_NUMERIC",
+                    "error_code": "CODELIST_INVALID",
+                    "severity": "Error",
+                    "description": "CtrlData/NbOfTxs contains non-numeric characters.",
+                    "affected_tags": [
+                        "CtrlData/NbOfTxs"
+                    ],
+                    "possible_fixes": [
+                        "Replace with a numeric integer string (max 15 digits). Example: '1'."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "CtrlData/CtrlSum",
+            "xml_element": "CtrlSum",
+            "xpath": "/Document/FIToFIPmtCxlReq/CtrlData/CtrlSum",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "DecimalNumber",
+            "description": "Total of all individual amounts being cancelled. If present, must equal the sum of all Undrlyg/TxInf/OrgnlIntrBkSttlmAmt values.",
+            "errors": [
+                {
+                    "error_id": "CTRLDATA_CTRLSUM_MISMATCH",
+                    "error_code": "CTRL_SUM_MISMATCH",
+                    "severity": "Error",
+                    "description": "CtrlData/CtrlSum does not equal the sum of all OrgnlIntrBkSttlmAmt values.",
+                    "affected_tags": [
+                        "CtrlData/CtrlSum",
+                        "Undrlyg/TxInf/OrgnlIntrBkSttlmAmt"
+                    ],
+                    "possible_fixes": [
+                        "Sum all OrgnlIntrBkSttlmAmt values and set CtrlSum to the result.",
+                        "For a single underlying transaction, CtrlSum should equal that OrgnlIntrBkSttlmAmt.",
+                        "Remove CtrlSum if it is not required, to avoid a mismatch."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "Undrlyg/TxInf",
+            "xml_element": "TxInf",
+            "xpath": "/Document/FIToFIPmtCxlReq/Undrlyg/TxInf",
+            "occurrence": "[1..n]",
+            "mandatory": true,
+            "description": "Transaction information for the underlying payment to cancel. At least one occurrence is mandatory. Each occurrence SHOULD carry OrgnlUETR or OrgnlTxId and at least one CxlRsnInf.",
+            "errors": [
+                {
+                    "error_id": "TXINF_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "No Undrlyg/TxInf occurrence is present; at least one is mandatory.",
+                    "affected_tags": [
+                        "Undrlyg/TxInf"
+                    ],
+                    "possible_fixes": [
+                        "Insert at least one <TxInf> block inside <Undrlyg> identifying the original payment.",
+                        "Include OrgnlUETR (or OrgnlTxId) and at least one CxlRsnInf."
+                    ]
+                },
+                {
+                    "error_id": "TXINF_NO_ORIGINAL_ID",
+                    "error_code": "MISSING_EXPECTED_ELEMENT",
+                    "severity": "Error",
+                    "description": "Undrlyg/TxInf carries no original payment identifier (OrgnlUETR, OrgnlTxId, OrgnlInstrId or OrgnlEndToEndId); the cancellation is not processable.",
+                    "affected_tags": [
+                        "Undrlyg/TxInf/OrgnlUETR",
+                        "Undrlyg/TxInf/OrgnlTxId"
+                    ],
+                    "possible_fixes": [
+                        "Insert <OrgnlUETR>{UUID v4 of the cancelled payment}</OrgnlUETR> inside TxInf.",
+                        "Alternatively insert <OrgnlTxId>{original transaction id}</OrgnlTxId>."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "Undrlyg/TxInf/CxlId",
+            "xml_element": "CxlId",
+            "xpath": "/Document/FIToFIPmtCxlReq/Undrlyg/TxInf/CxlId",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Identification of the cancellation request assigned by the assigner. Optional but recommended for tracking.",
+            "errors": [
+                {
+                    "error_id": "CXLID_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Error",
+                    "description": "CxlId exceeds 35 characters.",
+                    "affected_tags": [
+                        "Undrlyg/TxInf/CxlId"
+                    ],
+                    "possible_fixes": [
+                        "Truncate CxlId to a maximum of 35 characters preserving the unique prefix."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "Undrlyg/TxInf/OrgnlGrpInf/OrgnlMsgId",
+            "xml_element": "OrgnlMsgId",
+            "xpath": "/Document/FIToFIPmtCxlReq/Undrlyg/TxInf/OrgnlGrpInf/OrgnlMsgId",
+            "occurrence": "[1..1]",
+            "mandatory": false,
+            "note": "Mandatory within OrgnlGrpInf when the OrgnlGrpInf block is present.",
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Original message identification (GrpHdr/MsgId) of the message that contained the payment being cancelled.",
+            "errors": [
+                {
+                    "error_id": "ORGNLMSGID_MISSING_WHEN_GRPINF",
+                    "error_code": "MISSING_EXPECTED_ELEMENT",
+                    "severity": "Error",
+                    "description": "OrgnlGrpInf block is present but OrgnlMsgId is absent; it is mandatory within OrgnlGrpInf.",
+                    "affected_tags": [
+                        "Undrlyg/TxInf/OrgnlGrpInf/OrgnlMsgId"
+                    ],
+                    "possible_fixes": [
+                        "Insert <OrgnlMsgId>{MsgId of the original payment message}</OrgnlMsgId> as first child of OrgnlGrpInf.",
+                        "Remove the OrgnlGrpInf block entirely if the original message id is unknown and identification is by OrgnlUETR."
+                    ]
+                },
+                {
+                    "error_id": "ORGNLMSGID_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Error",
+                    "description": "OrgnlMsgId exceeds 35 characters.",
+                    "affected_tags": [
+                        "Undrlyg/TxInf/OrgnlGrpInf/OrgnlMsgId"
+                    ],
+                    "possible_fixes": [
+                        "Truncate OrgnlMsgId to a maximum of 35 characters."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "Undrlyg/TxInf/OrgnlGrpInf/OrgnlMsgNmId",
+            "xml_element": "OrgnlMsgNmId",
+            "xpath": "/Document/FIToFIPmtCxlReq/Undrlyg/TxInf/OrgnlGrpInf/OrgnlMsgNmId",
+            "occurrence": "[1..1]",
+            "mandatory": false,
+            "note": "Mandatory within OrgnlGrpInf when the OrgnlGrpInf block is present.",
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Message name identifier (MsgDefIdr) of the original payment message being cancelled, e.g. pacs.008.001.08 or pacs.009.001.08.",
+            "errors": [
+                {
+                    "error_id": "ORGNLMSGNMID_MISSING_WHEN_GRPINF",
+                    "error_code": "MISSING_EXPECTED_ELEMENT",
+                    "severity": "Error",
+                    "description": "OrgnlGrpInf block is present but OrgnlMsgNmId is absent; it is mandatory within OrgnlGrpInf.",
+                    "affected_tags": [
+                        "Undrlyg/TxInf/OrgnlGrpInf/OrgnlMsgNmId"
+                    ],
+                    "possible_fixes": [
+                        "Insert <OrgnlMsgNmId>{original message type e.g. pacs.008.001.08}</OrgnlMsgNmId> inside OrgnlGrpInf.",
+                        "Use the MsgDefIdr of the original payment (e.g. pacs.008.001.08, pacs.009.001.08)."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "Undrlyg/TxInf/OrgnlInstrId",
+            "xml_element": "OrgnlInstrId",
+            "xpath": "/Document/FIToFIPmtCxlReq/Undrlyg/TxInf/OrgnlInstrId",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Original instruction identification (PmtId/InstrId) of the payment being cancelled.",
+            "errors": [
+                {
+                    "error_id": "ORGNLINSTRID_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Error",
+                    "description": "OrgnlInstrId exceeds 35 characters.",
+                    "affected_tags": [
+                        "Undrlyg/TxInf/OrgnlInstrId"
+                    ],
+                    "possible_fixes": [
+                        "Truncate OrgnlInstrId to a maximum of 35 characters to match the original instruction id."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "Undrlyg/TxInf/OrgnlEndToEndId",
+            "xml_element": "OrgnlEndToEndId",
+            "xpath": "/Document/FIToFIPmtCxlReq/Undrlyg/TxInf/OrgnlEndToEndId",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Original end-to-end identification (PmtId/EndToEndId) of the payment being cancelled.",
+            "errors": [
+                {
+                    "error_id": "ORGNLENDTOENDID_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Error",
+                    "description": "OrgnlEndToEndId exceeds 35 characters.",
+                    "affected_tags": [
+                        "Undrlyg/TxInf/OrgnlEndToEndId"
+                    ],
+                    "possible_fixes": [
+                        "Truncate OrgnlEndToEndId to a maximum of 35 characters to match the original end-to-end id."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "Undrlyg/TxInf/OrgnlTxId",
+            "xml_element": "OrgnlTxId",
+            "xpath": "/Document/FIToFIPmtCxlReq/Undrlyg/TxInf/OrgnlTxId",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Original transaction identification (PmtId/TxId) of the payment being cancelled. Primary fallback identifier when OrgnlUETR is absent.",
+            "errors": [
+                {
+                    "error_id": "ORGNLTXID_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Error",
+                    "description": "OrgnlTxId exceeds 35 characters.",
+                    "affected_tags": [
+                        "Undrlyg/TxInf/OrgnlTxId"
+                    ],
+                    "possible_fixes": [
+                        "Truncate OrgnlTxId to a maximum of 35 characters to match the original transaction id."
+                    ]
+                },
+                {
+                    "error_id": "ORGNLTXID_MISSING_AND_NO_UETR",
+                    "error_code": "MISSING_EXPECTED_ELEMENT",
+                    "severity": "Warning",
+                    "description": "Neither OrgnlTxId nor OrgnlUETR is present; the cancellation cannot be reliably matched to the original payment.",
+                    "affected_tags": [
+                        "Undrlyg/TxInf/OrgnlTxId",
+                        "Undrlyg/TxInf/OrgnlUETR"
+                    ],
+                    "possible_fixes": [
+                        "Insert <OrgnlUETR>{UUID v4 of original payment}</OrgnlUETR> (preferred), or <OrgnlTxId>{original transaction id}</OrgnlTxId>."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "Undrlyg/TxInf/OrgnlUETR",
+            "xml_element": "OrgnlUETR",
+            "xpath": "/Document/FIToFIPmtCxlReq/Undrlyg/TxInf/OrgnlUETR",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "UUIDv4Identifier",
+            "length": 36,
+            "pattern": "[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",
+            "description": "Original UETR of the payment being cancelled. UUID v4 format. Strongly recommended under CBPR+ to unambiguously identify the cancelled payment.",
+            "errors": [
+                {
+                    "error_id": "ORGNLUETR_FORMAT_ERROR",
+                    "error_code": "UETR_FORMAT_ERROR",
+                    "severity": "Error",
+                    "description": "OrgnlUETR is not a valid UUID v4 (wrong format, uppercase, wrong version digit, or invalid variant).",
+                    "affected_tags": [
+                        "Undrlyg/TxInf/OrgnlUETR"
+                    ],
+                    "possible_fixes": [
+                        "Ensure OrgnlUETR is lowercase hex in format xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx (y in 8,9,a,b).",
+                        "The 13th character (version) must be '4'; total length must be exactly 36 characters including hyphens.",
+                        "Convert any uppercase hex characters to lowercase."
+                    ]
+                },
+                {
+                    "error_id": "ORGNLUETR_RECOMMENDED_MISSING",
+                    "error_code": "MISSING_EXPECTED_ELEMENT",
+                    "severity": "Warning",
+                    "description": "OrgnlUETR is absent; CBPR+ strongly recommends carrying the original UETR to identify the cancelled payment.",
+                    "affected_tags": [
+                        "Undrlyg/TxInf/OrgnlUETR"
+                    ],
+                    "possible_fixes": [
+                        "Insert <OrgnlUETR>{UUID v4 of the original payment}</OrgnlUETR> inside TxInf.",
+                        "If the UETR is genuinely unavailable, ensure OrgnlTxId is provided instead."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "Undrlyg/TxInf/OrgnlIntrBkSttlmAmt",
+            "xml_element": "OrgnlIntrBkSttlmAmt",
+            "xpath": "/Document/FIToFIPmtCxlReq/Undrlyg/TxInf/OrgnlIntrBkSttlmAmt",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "ActiveCurrencyAndAmount",
+            "description": "Original interbank settlement amount with currency attribute (Ccy) of the payment being cancelled. Used for matching and CtrlSum reconciliation.",
+            "errors": [
+                {
+                    "error_id": "ORGNLINTRBKSTTLMAMT_MISSING_CCY",
+                    "error_code": "CODELIST_INVALID",
+                    "severity": "Error",
+                    "description": "OrgnlIntrBkSttlmAmt is present but the Ccy attribute is missing.",
+                    "affected_tags": [
+                        "Undrlyg/TxInf/OrgnlIntrBkSttlmAmt"
+                    ],
+                    "possible_fixes": [
+                        "Add the Ccy attribute with a valid ISO 4217 3-letter currency code.",
+                        "Example: <OrgnlIntrBkSttlmAmt Ccy=\"EUR\">{amount}</OrgnlIntrBkSttlmAmt>"
+                    ]
+                },
+                {
+                    "error_id": "ORGNLINTRBKSTTLMAMT_INVALID_CCY",
+                    "error_code": "CODELIST_INVALID",
+                    "severity": "Error",
+                    "description": "OrgnlIntrBkSttlmAmt Ccy attribute is not a valid ISO 4217 currency code.",
+                    "affected_tags": [
+                        "Undrlyg/TxInf/OrgnlIntrBkSttlmAmt"
+                    ],
+                    "possible_fixes": [
+                        "Replace Ccy with a valid 3-letter ISO 4217 code (e.g. USD, EUR, GBP, JPY).",
+                        "Ensure the amount and currency match the original payment being cancelled."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "Undrlyg/TxInf/OrgnlIntrBkSttlmDt",
+            "xml_element": "OrgnlIntrBkSttlmDt",
+            "xpath": "/Document/FIToFIPmtCxlReq/Undrlyg/TxInf/OrgnlIntrBkSttlmDt",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "ISODate",
+            "description": "Original interbank settlement date (ISO 8601 YYYY-MM-DD) of the payment being cancelled.",
+            "errors": [
+                {
+                    "error_id": "ORGNLINTRBKSTTLMDT_WRONG_FORMAT",
+                    "error_code": "CBPR_DATETIME_NO_TIMEZONE",
+                    "severity": "Error",
+                    "description": "OrgnlIntrBkSttlmDt is not in date-only YYYY-MM-DD format (e.g. includes a time component, Z suffix, or slashes).",
+                    "affected_tags": [
+                        "Undrlyg/TxInf/OrgnlIntrBkSttlmDt"
+                    ],
+                    "possible_fixes": [
+                        "Use date-only format YYYY-MM-DD with no time component. Example: 2026-05-30.",
+                        "Remove any time, 'Z' suffix or timezone offset from the date value."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "Undrlyg/TxInf/CxlRsnInf",
+            "xml_element": "CxlRsnInf",
+            "xpath": "/Document/FIToFIPmtCxlReq/Undrlyg/TxInf/CxlRsnInf",
+            "occurrence": "[1..n]",
+            "mandatory": true,
+            "description": "Cancellation reason information. At least one occurrence is mandatory per TxInf; contains optional Orgtr, optional Rsn (Cd or Prtry) and optional AddtlInf.",
+            "errors": [
+                {
+                    "error_id": "CXLRSNINF_MISSING",
+                    "error_code": "MISSING_MANDATORY_FIELD",
+                    "severity": "Fatal",
+                    "description": "No CxlRsnInf occurrence is present in Undrlyg/TxInf; at least one is mandatory.",
+                    "affected_tags": [
+                        "Undrlyg/TxInf/CxlRsnInf"
+                    ],
+                    "possible_fixes": [
+                        "Insert at least one <CxlRsnInf><Rsn><Cd>DUPL</Cd></Rsn></CxlRsnInf> inside TxInf.",
+                        "Choose the reason code that matches the cancellation cause (e.g. DUPL, FRAD, TECH, CUST)."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "Undrlyg/TxInf/CxlRsnInf/Orgtr",
+            "xml_element": "Orgtr",
+            "xpath": "/Document/FIToFIPmtCxlReq/Undrlyg/TxInf/CxlRsnInf/Orgtr",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "description": "Party that originated the cancellation request. Optional; identifies the entity requesting the cancellation (agent or party).",
+            "errors": [
+                {
+                    "error_id": "ORGTR_INVALID_BIC",
+                    "error_code": "INVALID_BICFI",
+                    "severity": "Warning",
+                    "description": "CxlRsnInf/Orgtr identifies an agent whose BICFI is invalid or malformed.",
+                    "affected_tags": [
+                        "Undrlyg/TxInf/CxlRsnInf/Orgtr"
+                    ],
+                    "possible_fixes": [
+                        "Replace the originator BICFI with a valid ISO 9362 BIC (8 or 11 uppercase alphanumeric characters).",
+                        "Alternatively identify the originator by Nm and PstlAdr instead of a BIC."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "Undrlyg/TxInf/CxlRsnInf/Rsn/Cd",
+            "xml_element": "Cd",
+            "xpath": "/Document/FIToFIPmtCxlReq/Undrlyg/TxInf/CxlRsnInf/Rsn/Cd",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "ExternalCancellationReason1Code",
+            "max_length": 4,
+            "valid_values": [
+                "DUPL",
+                "TECH",
+                "FRAD",
+                "CUST",
+                "AGNT",
+                "CURR",
+                "UPAY",
+                "CUTA",
+                "AM09",
+                "AC03"
+            ],
+            "description": "Cancellation reason code from the ExternalCancellationReason code set. Mutually exclusive with Prtry. DUPL=duplicate, TECH=technical, FRAD=fraud, CUST=requested by customer, AGNT=requested by agent, CURR=incorrect currency, UPAY=undue payment.",
+            "errors": [
+                {
+                    "error_id": "RSN_CD_INVALID",
+                    "error_code": "CODELIST_INVALID",
+                    "severity": "Error",
+                    "description": "CxlRsnInf/Rsn/Cd contains a value not in the ExternalCancellationReason code set.",
+                    "affected_tags": [
+                        "Undrlyg/TxInf/CxlRsnInf/Rsn/Cd"
+                    ],
+                    "possible_fixes": [
+                        "Replace with a valid cancellation reason code: DUPL, TECH, FRAD, CUST, AGNT, CURR or UPAY.",
+                        "If the reason is not in the external code set, move the value into Rsn/Prtry instead."
+                    ]
+                },
+                {
+                    "error_id": "RSN_CD_AND_PRTRY",
+                    "error_code": "CODELIST_INVALID",
+                    "severity": "Error",
+                    "description": "Both Rsn/Cd and Rsn/Prtry are present; Rsn is a choice and only one may be used.",
+                    "affected_tags": [
+                        "Undrlyg/TxInf/CxlRsnInf/Rsn/Cd",
+                        "Undrlyg/TxInf/CxlRsnInf/Rsn/Prtry"
+                    ],
+                    "possible_fixes": [
+                        "Keep either Rsn/Cd (preferred, from the code set) or Rsn/Prtry and remove the other.",
+                        "Prefer the standard Cd value when an equivalent code exists."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "Undrlyg/TxInf/CxlRsnInf/Rsn/Prtry",
+            "xml_element": "Prtry",
+            "xpath": "/Document/FIToFIPmtCxlReq/Undrlyg/TxInf/CxlRsnInf/Rsn/Prtry",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "datatype": "Max35Text",
+            "max_length": 35,
+            "description": "Proprietary cancellation reason used when no suitable external code exists. Mutually exclusive with Rsn/Cd.",
+            "errors": [
+                {
+                    "error_id": "RSN_PRTRY_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Error",
+                    "description": "CxlRsnInf/Rsn/Prtry exceeds 35 characters.",
+                    "affected_tags": [
+                        "Undrlyg/TxInf/CxlRsnInf/Rsn/Prtry"
+                    ],
+                    "possible_fixes": [
+                        "Truncate Rsn/Prtry to a maximum of 35 characters.",
+                        "Where possible, replace with a standard Rsn/Cd value instead of a proprietary reason."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "Undrlyg/TxInf/CxlRsnInf/AddtlInf",
+            "xml_element": "AddtlInf",
+            "xpath": "/Document/FIToFIPmtCxlReq/Undrlyg/TxInf/CxlRsnInf/AddtlInf",
+            "occurrence": "[0..n]",
+            "mandatory": false,
+            "datatype": "Max105Text",
+            "max_length": 105,
+            "description": "Further details on the cancellation reason. May repeat; each occurrence limited to 105 characters and the FIN-X character set.",
+            "errors": [
+                {
+                    "error_id": "ADDTLINF_TOO_LONG",
+                    "error_code": "ID_LENGTH_ERROR",
+                    "severity": "Error",
+                    "description": "An AddtlInf occurrence exceeds 105 characters.",
+                    "affected_tags": [
+                        "Undrlyg/TxInf/CxlRsnInf/AddtlInf"
+                    ],
+                    "possible_fixes": [
+                        "Truncate the AddtlInf value to a maximum of 105 characters.",
+                        "Split overflowing text into an additional AddtlInf occurrence."
+                    ]
+                },
+                {
+                    "error_id": "ADDTLINF_INVALID_CHARS",
+                    "error_code": "INVALID_CHARSETS",
+                    "severity": "Error",
+                    "description": "AddtlInf contains characters outside the permitted FIN-X / SWIFT character set.",
+                    "affected_tags": [
+                        "Undrlyg/TxInf/CxlRsnInf/AddtlInf"
+                    ],
+                    "possible_fixes": [
+                        "Replace accented or non-permitted characters with ASCII equivalents.",
+                        "Encode '<' as '&lt;' and '>' as '&gt;' where used in text."
+                    ]
+                }
+            ]
+        }
+    ],
+    "cross_tag_dependency_rules": [
+        {
+            "rule_id": "DEP_001",
+            "rule": "AppHdr/BizMsgIdr should equal Document/FIToFIPmtCxlReq/Assgnmt/Id",
+            "affected_tags": [
+                "AppHdr/BizMsgIdr",
+                "Assgnmt/Id"
+            ],
+            "fix": "Harvest Assgnmt/Id and set BizMsgIdr to the same value, or vice versa."
+        },
+        {
+            "rule_id": "DEP_002",
+            "rule": "AppHdr/MsgDefIdr must equal 'camt.056.001.08' and match the Document namespace",
+            "affected_tags": [
+                "AppHdr/MsgDefIdr"
+            ],
+            "fix": "Set MsgDefIdr to camt.056.001.08, matching the Document xmlns identifier."
+        },
+        {
+            "rule_id": "DEP_003",
+            "rule": "Assgnmt must contain both Assgnr and Assgne",
+            "affected_tags": [
+                "Assgnmt/Assgnr",
+                "Assgnmt/Assgne"
+            ],
+            "fix": "Insert the missing Assgnr or Assgne agent block; harvest BICs from AppHdr/Fr and AppHdr/To respectively."
+        },
+        {
+            "rule_id": "DEP_004",
+            "rule": "Each Undrlyg/TxInf SHOULD carry OrgnlUETR or OrgnlTxId so the cancellation is processable",
+            "affected_tags": [
+                "Undrlyg/TxInf/OrgnlUETR",
+                "Undrlyg/TxInf/OrgnlTxId"
+            ],
+            "fix": "Insert OrgnlUETR (preferred) or OrgnlTxId identifying the original payment."
+        },
+        {
+            "rule_id": "DEP_005",
+            "rule": "Each Undrlyg/TxInf must contain at least one CxlRsnInf",
+            "affected_tags": [
+                "Undrlyg/TxInf/CxlRsnInf"
+            ],
+            "fix": "Insert at least one CxlRsnInf with a Rsn/Cd value (e.g. DUPL)."
+        },
+        {
+            "rule_id": "DEP_006",
+            "rule": "CtrlData/NbOfTxs must equal the count of Undrlyg/TxInf occurrences when present",
+            "affected_tags": [
+                "CtrlData/NbOfTxs",
+                "Undrlyg/TxInf"
+            ],
+            "fix": "Count Undrlyg/TxInf occurrences and update NbOfTxs."
+        },
+        {
+            "rule_id": "DEP_007",
+            "rule": "CtrlData/CtrlSum must equal the sum of all OrgnlIntrBkSttlmAmt values when present",
+            "affected_tags": [
+                "CtrlData/CtrlSum",
+                "Undrlyg/TxInf/OrgnlIntrBkSttlmAmt"
+            ],
+            "fix": "Sum the OrgnlIntrBkSttlmAmt values and update CtrlSum, or remove CtrlSum."
+        },
+        {
+            "rule_id": "DEP_008",
+            "rule": "CxlRsnInf/Rsn is a choice: Cd and Prtry are mutually exclusive",
+            "affected_tags": [
+                "Undrlyg/TxInf/CxlRsnInf/Rsn/Cd",
+                "Undrlyg/TxInf/CxlRsnInf/Rsn/Prtry"
+            ],
+            "fix": "Keep only one of Cd or Prtry; prefer the standard Cd value."
+        },
+        {
+            "rule_id": "DEP_009",
+            "rule": "OrgnlGrpInf, when present, must contain both OrgnlMsgId and OrgnlMsgNmId",
+            "affected_tags": [
+                "Undrlyg/TxInf/OrgnlGrpInf/OrgnlMsgId",
+                "Undrlyg/TxInf/OrgnlGrpInf/OrgnlMsgNmId"
+            ],
+            "fix": "Add the missing OrgnlMsgId or OrgnlMsgNmId, or remove the OrgnlGrpInf block entirely."
+        },
+        {
+            "rule_id": "DEP_010",
+            "rule": "Case, when present, must contain both Id and Cretr",
+            "affected_tags": [
+                "Case/Id",
+                "Case/Cretr"
+            ],
+            "fix": "Add the missing Case/Id or Case/Cretr, or remove the whole Case block."
+        }
+    ],
+    "tag_insertion_order": {
+        "AppHdr": [
+            "Fr",
+            "To",
+            "BizMsgIdr",
+            "MsgDefIdr",
+            "BizSvc",
+            "CreDt",
+            "CpyDplct",
+            "PssblDplct",
+            "Prty",
+            "Sgntr",
+            "Rltd"
+        ],
+        "Assgnmt": [
+            "Id",
+            "Assgnr",
+            "Assgne",
+            "CreDtTm"
+        ],
+        "Case": [
+            "Id",
+            "Cretr",
+            "ReopCaseIndctn"
+        ],
+        "CtrlData": [
+            "NbOfTxs",
+            "CtrlSum"
+        ],
+        "Undrlyg": [
+            "OrgnlGrpInfAndCxl",
+            "TxInf"
+        ],
+        "TxInf": [
+            "CxlId",
+            "Case",
+            "OrgnlGrpInf",
+            "OrgnlInstrId",
+            "OrgnlEndToEndId",
+            "OrgnlTxId",
+            "OrgnlUETR",
+            "OrgnlClrSysRef",
+            "OrgnlIntrBkSttlmAmt",
+            "OrgnlIntrBkSttlmDt",
+            "Assgnr",
+            "Assgne",
+            "CxlRsnInf",
+            "OrgnlTxRef",
+            "SplmtryData"
+        ],
+        "OrgnlGrpInf": [
+            "OrgnlMsgId",
+            "OrgnlMsgNmId",
+            "OrgnlCreDtTm"
+        ],
+        "CxlRsnInf": [
+            "Orgtr",
+            "Rsn",
+            "AddtlInf"
+        ],
+        "Rsn": [
+            "Cd",
+            "Prtry"
+        ]
+    },
+    "schema_mapping_notes": {
+        "root_element": "camt.056.001.08 root is /Document/FIToFIPmtCxlReq (FIToFIPaymentCancellationRequestV08).",
+        "assignment_block": "Assgnmt (Assignment) replaces the GrpHdr concept of payment messages: it carries Id, Assgnr, Assgne and CreDtTm and is mandatory [1..1].",
+        "underlying_block": "Undrlyg (UnderlyingTransaction4) is [1..n]; each contains TxInf [1..n] (PaymentTransaction106) referencing the original payment to cancel.",
+        "original_identification": "Original payment identifiers (OrgnlInstrId, OrgnlEndToEndId, OrgnlTxId, OrgnlUETR) mirror the pacs.008/pacs.009 PmtId elements (InstrId, EndToEndId, TxId, UETR).",
+        "reason_codeset": "CxlRsnInf/Rsn/Cd uses the ExternalCancellationReason1Code external code set (e.g. DUPL, TECH, FRAD, CUST, AGNT, CURR, UPAY); Prtry is the proprietary fallback.",
+        "bizsvc_value": "For camt.056 under CBPR+ SR2025 the AppHdr/BizSvc value is 'swift.cbprplus.02'.",
+        "control_data": "CtrlData (NbOfTxs, CtrlSum) is optional [0..1]; when present it must reconcile with the Undrlyg/TxInf occurrences and OrgnlIntrBkSttlmAmt values."
+    }
+}

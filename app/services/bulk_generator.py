@@ -1826,7 +1826,7 @@ def _gen_camt057(selected: set, idx: int) -> str:
 {apphdr_fi(scenario.receiver_bic)}\t\t</To>
 \t\t<BizMsgIdr>{xe(biz_msg_id)}</BizMsgIdr>
 \t\t<MsgDefIdr>camt.057.001.06</MsgDefIdr>
-\t\t<BizSvc>swift.cbprplus.03</BizSvc>
+\t\t<BizSvc>swift.cbprplus.02</BizSvc>
 \t\t<CreDt>{cre_dt}</CreDt>
 \t</AppHdr>
 \t<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.057.001.06">

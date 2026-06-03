@@ -1164,12 +1164,11 @@
       "occurrence": "[1..1]",
       "mandatory": true,
       "valid_values": [
-        "SLEV",
         "SHAR",
         "CRED",
         "DEBT"
       ],
-      "preferred": "SLEV",
+      "preferred": "SHAR",
       "description": "Charge bearer for the cover interbank leg. Specifies who bears the interbank charges. SLEV = follow service level (CBPR+ default). Must be consistent with UndrlygCstmrCdtTrf/ChrgBr.",
       "errors": [
         {
@@ -1181,7 +1180,7 @@
             "CdtTrfTxInf/ChrgBr"
           ],
           "possible_fixes": [
-            "Insert <ChrgBr>SLEV</ChrgBr> in CdtTrfTxInf (CBPR+ default).",
+            "Insert <ChrgBr>SHAR</ChrgBr> in CdtTrfTxInf.",
             "Position ChrgBr after XchgRate/InstdAmt and before ChrgsInf per XSD element order."
           ]
         },
@@ -1194,8 +1193,8 @@
             "CdtTrfTxInf/ChrgBr"
           ],
           "possible_fixes": [
-            "Replace with one of: SLEV, SHAR, CRED, DEBT.",
-            "Default CBPR+ value is SLEV."
+            "Replace with one of: SHAR, CRED, DEBT.",
+            "Default value is SHAR (SLEV disallowed by policy)."
           ]
         },
         {
@@ -1209,7 +1208,7 @@
           ],
           "possible_fixes": [
             "Insert a ChrgsInf block with Amt and Agt elements when ChrgBr = CRED.",
-            "Alternatively change ChrgBr to SLEV to avoid the requirement."
+            "Alternatively change ChrgBr to SHAR to avoid the requirement."
           ]
         }
       ]
@@ -1805,7 +1804,6 @@
       "occurrence": "[1..1]",
       "mandatory": true,
       "valid_values": [
-        "SLEV",
         "SHAR",
         "CRED",
         "DEBT"
@@ -1822,7 +1820,7 @@
           ],
           "possible_fixes": [
             "Map pacs.008/CdtTrfTxInf/ChrgBr to UndrlygCstmrCdtTrf/ChrgBr.",
-            "Insert <ChrgBr>SLEV</ChrgBr> if originating value is unavailable."
+            "Insert <ChrgBr>SHAR</ChrgBr> if originating value is unavailable."
           ]
         },
         {
@@ -1834,7 +1832,7 @@
             "CdtTrfTxInf/UndrlygCstmrCdtTrf/ChrgBr"
           ],
           "possible_fixes": [
-            "Replace with one of: SLEV, SHAR, CRED, DEBT."
+            "Replace with one of: SHAR, CRED, DEBT."
           ]
         }
       ]
