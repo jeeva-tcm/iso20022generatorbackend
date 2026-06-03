@@ -204,14 +204,13 @@
         "ChrgBr": {
             "type": "codelist",
             "codelist": "charge_bearer",
-            "preferred": "SLEV",
+            "preferred": "SHAR",
             "valid": [
-                "SLEV",
                 "SHAR",
                 "CRED",
                 "DEBT"
             ],
-            "notes": "CBPR+ default = SLEV."
+            "notes": "SLEV disallowed by policy; default = SHAR."
         },
         "SttlmMtd": {
             "type": "codelist",
@@ -597,7 +596,7 @@
         },
         "CHRGBR_INVALID": {
             "root_cause": "ChrgBr value is not in allowed codelist.",
-            "fix": "Replace with 'SLEV' (CBPR+ default)."
+            "fix": "Replace with 'SHAR'."
         },
         "CHRGSINF_CCY_MISMATCH": {
             "root_cause": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
@@ -1179,7 +1178,7 @@
             "default": "<XchgRate>1.0</XchgRate>"
         },
         "ChrgBr": {
-            "default": "<ChrgBr>SLEV</ChrgBr>"
+            "default": "<ChrgBr>SHAR</ChrgBr>"
         },
         "ChrgsInf": {
             "default": "<ChrgsInf><Amt Ccy=\"$CCY\">0.00</Amt><Agt><FinInstnId><BICFI>$CHRG_BICFI</BICFI></FinInstnId></Agt></ChrgsInf>"
@@ -1251,6 +1250,9 @@
             "pacs.008": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId><IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt><IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt><ChrgBr>SLEV</ChrgBr><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><TwnNm>$DBTR_CITY</TwnNm><Ctry>$DBTR_CTRY</Ctry><AdrLine>$DBTR_ADDR</AdrLine></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><TwnNm>$CDTR_CITY</TwnNm><Ctry>$CDTR_CTRY</Ctry><AdrLine>$CDTR_ADDR</AdrLine></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf>",
             "pacs.009": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId><IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt><IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt><ChrgBr>SLEV</ChrgBr><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt><Dbtr><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></Dbtr><Cdtr><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></Cdtr></CdtTrfTxInf>",
             "pain.001": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><Amt><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt></Amt><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><TwnNm>$CDTR_CITY</TwnNm><Ctry>$CDTR_CTRY</Ctry><AdrLine>$CDTR_ADDR</AdrLine></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf>"
+            "pacs.008": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId><IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt><IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt><ChrgBr>SHAR</ChrgBr><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf>",
+            "pacs.009": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId><IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt><IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt><ChrgBr>SHAR</ChrgBr><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt><Dbtr><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></Dbtr><Cdtr><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></Cdtr></CdtTrfTxInf>",
+            "pain.001": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><Amt><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt></Amt><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf>"
         },
         "InitgPty": {
             "default": "<InitgPty><Nm>$DBTR_NM</Nm></InitgPty>"
@@ -1258,6 +1260,8 @@
         "PmtInf": {
             "pain.001": "<PmtInf><PmtInfId>PMT-INF-001</PmtInfId><PmtMtd>TRF</PmtMtd><ReqdExctnDt><Dt>$STTLM_DT</Dt></ReqdExctnDt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><TwnNm>$DBTR_CITY</TwnNm><Ctry>$DBTR_CTRY</Ctry><AdrLine>$DBTR_ADDR</AdrLine></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><ChrgBr>SLEV</ChrgBr><CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><Amt><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt></Amt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><TwnNm>$CDTR_CITY</TwnNm><Ctry>$CDTR_CTRY</Ctry><AdrLine>$CDTR_ADDR</AdrLine></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf></PmtInf>",
             "pain.008": "<PmtInf><PmtInfId>PMT-INF-001</PmtInfId><PmtMtd>DD</PmtMtd><ReqdColltnDt>$STTLM_DT</ReqdColltnDt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><TwnNm>$CDTR_CITY</TwnNm><Ctry>$CDTR_CTRY</Ctry><AdrLine>$CDTR_ADDR</AdrLine></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><ChrgBr>SLEV</ChrgBr><DrctDbtTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><TwnNm>$DBTR_CITY</TwnNm><Ctry>$DBTR_CTRY</Ctry><AdrLine>$DBTR_ADDR</AdrLine></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct></DrctDbtTxInf></PmtInf>"
+            "pain.001": "<PmtInf><PmtInfId>PMT-INF-001</PmtInfId><PmtMtd>TRF</PmtMtd><ReqdExctnDt><Dt>$STTLM_DT</Dt></ReqdExctnDt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><ChrgBr>SHAR</ChrgBr><CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><Amt><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt></Amt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf></PmtInf>",
+            "pain.008": "<PmtInf><PmtInfId>PMT-INF-001</PmtInfId><PmtMtd>DD</PmtMtd><ReqdColltnDt>$STTLM_DT</ReqdColltnDt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><ChrgBr>SHAR</ChrgBr><DrctDbtTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct></DrctDbtTxInf></PmtInf>"
         },
         "DrctDbtTxInf": {
             "pain.008": "<DrctDbtTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><TwnNm>$DBTR_CITY</TwnNm><Ctry>$DBTR_CTRY</Ctry><AdrLine>$DBTR_ADDR</AdrLine></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct></DrctDbtTxInf>",
@@ -2540,7 +2544,58 @@
     },
     "auto_fix_rules": {
         "_doc": "Declarative repair rules the AI Fix engine reads to auto-fix structural/business validation issues across ALL ISO 20022 message types. Matched by error code OR message regex; the engine applies the named fix_action and revalidates. Add new rules here — no code change required.",
+        "reposition": [
+            {
+                "id": "WRONG_LEVEL_ELEMENT",
+                "codes": ["SCHEMA_VAL", "SCHEMA_ERROR"],
+                "message_pattern": "is not expected at this position",
+                "fix_action": "wrap_into_allowed_container",
+                "description": "An element is at the wrong hierarchy level (not a valid child of its parent) but one of the parent's child containers allows it per the XSD. The engine moves the element (preserving its value) into that container, builds the container's template children, and reorders both levels to the XSD sequence. Resolved dynamically from the XSD type map — works for all message types.",
+                "examples": [
+                    "FinInstnId/Ctry -> FinInstnId/PstlAdr/Ctry (Ctry is not a direct child of FinInstnId; PstlAdr allows it)",
+                    "Cdtr/Ctry -> Cdtr/PstlAdr/Ctry"
+                ]
+            }
+        ],
+        "duplicate": [
+            {
+                "id": "DUPLICATE_ELEMENT",
+                "codes": ["DUPLICATE_TAG", "DUPLICATE_ELEMENT"],
+                "message_pattern": "duplicate (tag|element)",
+                "fix_action": "remove_extra_keep_first",
+                "description": "An element appears more than once where the schema allows it once (e.g. two <BICFI> in one FinInstnId). Keep the first valid (non-empty) occurrence; remove the rest. Also triggered when a sequence error names an element that already appears earlier in the same parent."
+            }
+        ],
+        "enumeration": [
+            {
+                "id": "SETTLEMENT_METHOD",
+                "codes": [],
+                "message_pattern": "must be one of",
+                "elements": ["SttlmMtd"],
+                "valid_values": ["INDA", "INGA", "COVE", "CLRG"],
+                "preferred": "INGA",
+                "fix_action": "replace_with_valid",
+                "description": "Replace an invalid enumeration value with a schema-valid one. The allowed set is read from the validator message ('must be one of: A, B'); `preferred` is used when it is in that set, else the first listed value. pacs.009 GrpHdr/SttlmMtd allows only INDA/INGA (COVE forbidden there)."
+            }
+        ],
         "predecessor": [
+            {
+                "id": "PRVS_INSTG_CHAIN_3",
+                "codes": [],
+                "message_pattern": "PreviousInstructingAgent3 is present.*PreviousInstructingAgent2 must be present",
+                "element": "PrvsInstgAgt3",
+                "requires": "PrvsInstgAgt2",
+                "fix_action": "insert_predecessor",
+                "description": "pacs.009 COV: if PrvsInstgAgt3 is present, PrvsInstgAgt2 must be present (validator uses long name PreviousInstructingAgent3/2)."
+            },
+            {
+                "id": "PRVS_INSTG_CHAIN_2",
+                "codes": [],
+                "message_pattern": "PreviousInstructingAgent2 is present.*PreviousInstructingAgent1 must be present",
+                "element": "PrvsInstgAgt2",
+                "requires": "PrvsInstgAgt1",
+                "fix_action": "insert_predecessor"
+            },
             {
                 "id": "INTRMY_ORDER_1",
                 "codes": [
@@ -2704,6 +2759,35 @@
             }
         ]
     },
+        ]
+    },
+
+    "country_repair": {
+        "_doc": "ISO 3166-1 alpha-2 country-code repair for <Ctry>/<CtryOfRes>/<CtryOfBirth>. A value is valid only if it is in resources/codelists/country.json (250 codes) — NOT merely two uppercase letters (e.g. 'UK' and 'UN' match [A-Z]{2} but are NOT valid ISO codes; the ISO code for the United Kingdom is 'GB'). For an invalid/empty value the engine resolves, in order: (1) alias map below, (2) a valid country code harvested from elsewhere in the document, (3) `default`. Applies to AppHdr (head.001) and all business messages.",
+        "default": "GB",
+        "aliases": {
+            "UK": "GB", "UKK": "GB", "GBR": "GB", "GREATBRITAIN": "GB", "UNITEDKINGDOM": "GB",
+            "ENGLAND": "GB", "SCOTLAND": "GB", "WALES": "GB", "NORTHERNIRELAND": "GB",
+            "USA": "US", "UNITEDSTATES": "US", "UNITEDSTATESOFAMERICA": "US", "AMERICA": "US",
+            "UAE": "AE", "UNITEDARABEMIRATES": "AE",
+            "DEU": "DE", "GERMANY": "DE", "GER": "DE",
+            "FRA": "FR", "FRANCE": "FR",
+            "IND": "IN", "INDIA": "IN",
+            "CHN": "CN", "CHINA": "CN",
+            "JPN": "JP", "JAPAN": "JP",
+            "CHE": "CH", "SWITZERLAND": "CH",
+            "NLD": "NL", "NETHERLANDS": "NL", "HOLLAND": "NL",
+            "ESP": "ES", "SPAIN": "ES",
+            "ITA": "IT", "ITALY": "IT",
+            "CAN": "CA", "CANADA": "CA",
+            "AUS": "AU", "AUSTRALIA": "AU",
+            "SGP": "SG", "SINGAPORE": "SG",
+            "IRL": "IE", "IRELAND": "IE",
+            "BEL": "BE", "BELGIUM": "BE",
+            "LUX": "LU", "LUXEMBOURG": "LU"
+        }
+    },
+
     "dummy_data": {
         "_doc": "High-quality reusable sample values. AI should harvest from the live document first and only fall back to this dictionary when the document has no matching value.",
         "ids": {
@@ -2994,7 +3078,7 @@
             }
         },
         "codes": {
-            "ChrgBr": "SLEV",
+            "ChrgBr": "SHAR",
             "SttlmMtd": "INGA",
             "InstrPrty": "NORM",
             "SttlmPrty": "NORM",

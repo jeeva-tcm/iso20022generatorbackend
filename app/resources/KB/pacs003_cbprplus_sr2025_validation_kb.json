@@ -1224,12 +1224,11 @@
       "occurrence": "[1..1]",
       "mandatory": true,
       "valid_values": [
-        "SLEV",
         "SHAR",
         "CRED",
         "DEBT"
       ],
-      "preferred": "SLEV",
+      "preferred": "SHAR",
       "description": "Charge bearer. Specifies who bears the charges. SLEV = follow service level (CBPR+ default).",
       "errors": [
         {
@@ -1241,7 +1240,7 @@
             "DrctDbtTxInf/ChrgBr"
           ],
           "possible_fixes": [
-            "Insert <ChrgBr>SLEV</ChrgBr> in DrctDbtTxInf (CBPR+ default).",
+            "Insert <ChrgBr>SHAR</ChrgBr> in DrctDbtTxInf.",
             "Position ChrgBr after XchgRate/InstdAmt and before ChrgsInf per XSD element order."
           ]
         },
@@ -1254,8 +1253,8 @@
             "DrctDbtTxInf/ChrgBr"
           ],
           "possible_fixes": [
-            "Replace with one of: SLEV, SHAR, CRED, DEBT.",
-            "Default CBPR+ value is SLEV."
+            "Replace with one of: SHAR, CRED, DEBT.",
+            "Default value is SHAR (SLEV disallowed by policy)."
           ]
         },
         {
@@ -1269,7 +1268,7 @@
           ],
           "possible_fixes": [
             "Insert a ChrgsInf block with Amt and Agt elements when ChrgBr = CRED.",
-            "Alternatively change ChrgBr to SLEV to avoid the requirement."
+            "Alternatively change ChrgBr to SHAR to avoid the requirement."
           ]
         }
       ]

@@ -943,12 +943,11 @@
             "mandatory": false,
             "datatype": "ChargeBearerType1Code",
             "valid_values": [
-                "SLEV",
                 "SHAR",
                 "CRED",
                 "DEBT"
             ],
-            "preferred": "SLEV",
+            "preferred": "SHAR",
             "description": "Charge Bearer. Specifies who bears the charges. SLEV (follow service level) is typical for SEPA direct debits.",
             "errors": [
                 {
@@ -960,8 +959,8 @@
                         "PmtInf/ChrgBr"
                     ],
                     "possible_fixes": [
-                        "Replace with one of SLEV, SHAR, CRED, DEBT.",
-                        "Use SLEV for SEPA direct debits."
+                        "Replace with one of SHAR, CRED, DEBT.",
+                        "Use SHAR (SLEV disallowed by policy)."
                     ]
                 }
             ]

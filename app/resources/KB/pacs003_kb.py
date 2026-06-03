@@ -950,8 +950,8 @@ kb = {
       "xpath": "/Document/FIToFICstmrDrctDbt/DrctDbtTxInf/ChrgBr",
       "occurrence": "[1..1]",
       "mandatory": True,
-      "valid_values": ["SLEV", "SHAR", "CRED", "DEBT"],
-      "preferred": "SLEV",
+      "valid_values": ["SHAR", "CRED", "DEBT"],
+      "preferred": "SHAR",
       "description": "Charge bearer. Specifies who bears the charges. SLEV = follow service level (CBPR+ default).",
       "errors": [
         {
@@ -961,7 +961,7 @@ kb = {
           "description": "ChrgBr is absent from DrctDbtTxInf.",
           "affected_tags": ["DrctDbtTxInf/ChrgBr"],
           "possible_fixes": [
-            "Insert <ChrgBr>SLEV</ChrgBr> in DrctDbtTxInf (CBPR+ default).",
+            "Insert <ChrgBr>SHAR</ChrgBr> in DrctDbtTxInf.",
             "Position ChrgBr after XchgRate/InstdAmt and before ChrgsInf per XSD element order."
           ]
         },
@@ -972,8 +972,8 @@ kb = {
           "description": "ChrgBr contains an invalid code.",
           "affected_tags": ["DrctDbtTxInf/ChrgBr"],
           "possible_fixes": [
-            "Replace with one of: SLEV, SHAR, CRED, DEBT.",
-            "Default CBPR+ value is SLEV."
+            "Replace with one of: SHAR, CRED, DEBT.",
+            "Default value is SHAR (SLEV disallowed by policy)."
           ]
         },
         {
@@ -984,7 +984,7 @@ kb = {
           "affected_tags": ["DrctDbtTxInf/ChrgBr", "DrctDbtTxInf/ChrgsInf"],
           "possible_fixes": [
             "Insert a ChrgsInf block with Amt and Agt elements when ChrgBr = CRED.",
-            "Alternatively change ChrgBr to SLEV to avoid the requirement."
+            "Alternatively change ChrgBr to SHAR to avoid the requirement."
           ]
         }
       ]
