@@ -758,7 +758,7 @@ def _kb_tag_template(tag_name: str, msg_type: str) -> Optional[str]:
     return result
 
 
-def _kb_field_constraint(tag_name: str) -> Dict[str, Any]:
+def _kb_field_constraint(tag_name: str, parent_tag: Optional[str] = None) -> Dict[str, Any]:
     """
     Return the field_constraints entry for a tag, or a derived one.
 
@@ -768,6 +768,11 @@ def _kb_field_constraint(tag_name: str) -> Dict[str, Any]:
       *DtTm       → DateTime type
       *Id (Max35) → Max35Text
     """
+    if tag_name == "Cd" and parent_tag == "Sts":
+        direct = _kb_get("field_constraints.Sts", None)
+        if isinstance(direct, dict) and direct:
+            return direct
+
     direct = _kb_get(f"field_constraints.{tag_name}", None)
     if isinstance(direct, dict) and direct:
         return direct
@@ -2180,7 +2185,7 @@ class FixSuggester:
 
     # ── Smart value extraction from rules data ────────────────────────────────
 
-    def _extract_value_from_hint(self, tag_name: str, fix_hint: str) -> Optional[str]:
+    def _extract_value_from_hint(self, tag_name: str, fix_hint: str, parent_tag: Optional[str] = None) -> Optional[str]:
         """
         Extract a concrete value from the fix_hint using the rules and codelists.
         Returns a plain string value (not XML), or None if not found.
@@ -2188,6 +2193,7 @@ class FixSuggester:
         if not fix_hint:
             return None
         tag_l = tag_name.lower()
+        parent_l = parent_tag.lower() if parent_tag else ""
 
         # 1. Explicit quoted value in hint like 'SLEV' or "INGA"
         val_m = re.search(r"['\"]([A-Z0-9]{2,11})['\"]", fix_hint)
@@ -2196,7 +2202,7 @@ class FixSuggester:
             # Validate against known codelists
             for cl_name in ("charge_bearer", "service_level", "local_instrument",
                              "status_code", "purpose_code", "return_reason",
-                             "cancellation_reason", "ctgyPurp", "purp"):
+                             "cancellation_reason", "ctgyPurp", "purp", "entry_status"):
                 codes = _codelist_codes(cl_name)
                 if codes and candidate in codes:
                     return candidate
@@ -2227,6 +2233,13 @@ class FixSuggester:
         if tag_l in ("txsts", "grpsts"):
             codes = _codelist_codes("status_code")
             return codes[0] if codes else "ACCP"
+
+        if tag_l == "cd" and (parent_l == "sts" or "status" in fix_hint.lower() or "sts" in fix_hint.lower() or "entrystatus" in fix_hint.lower()):
+            codes = _codelist_codes("entry_status")
+            for preferred in ("BOOK", "PDNG", "INFO", "FUTR"):
+                if preferred in codes:
+                    return preferred
+            return codes[0] if codes else "BOOK"
 
         if tag_l in ("rsn", "cd") and ("reason" in fix_hint.lower() or "rjct" in fix_hint.lower()):
             codes = _codelist_codes("return_reason")
@@ -2353,7 +2366,8 @@ class FixSuggester:
                 return el
 
             # Try extracting a smart value from the hint
-            smart_val = self._extract_value_from_hint(tag_name, fix_hint)
+            parent_tag = etree.QName(existing_parent.tag).localname if existing_parent is not None and isinstance(existing_parent.tag, str) else None
+            smart_val = self._extract_value_from_hint(tag_name, fix_hint, parent_tag)
             if smart_val is not None:
                 tag = f"{{{ns}}}{tag_name}" if ns else tag_name
                 el = etree.Element(tag)
@@ -4561,6 +4575,11 @@ class FixSuggester:
         xpath             = self._xpath_of(el)
         msg_l             = msg.lower()
         el_local          = etree.QName(el.tag).localname
+        try:
+            _parent = el.getparent()
+            parent_local = etree.QName(_parent.tag).localname if _parent is not None and isinstance(_parent.tag, str) else None
+        except Exception:
+            parent_local = None
 
         # ── GUARD: never write text into an element-only (complex) container ──
         # _fix_value repairs LEAF text. A complex container (CdtrAcct, DbtrAgt,
@@ -4713,8 +4732,8 @@ class FixSuggester:
             el_local.endswith("Nb")
             or el_local in {"ElctrncSeqNb", "LglSeqNb", "NbOfTxs", "TtlNbOfTxs",
                             "PgNb", "NbOfDays", "Qty", "Nb"}
-            or (isinstance(_kb_field_constraint(el_local), dict)
-                and _kb_field_constraint(el_local).get("type") in ("Number", "Numeric15", "Quantity"))
+            or (isinstance(_kb_field_constraint(el_local, parent_local), dict)
+                and _kb_field_constraint(el_local, parent_local).get("type") in ("Number", "Numeric15", "Quantity"))
         )
         if not list(el) and el.text and (
                 ("number" in msg_l and "type" in msg_l)
@@ -4722,7 +4741,7 @@ class FixSuggester:
                     ("invalid value", "invalid", "not a valid", "number", "format", "type", "expected")))):
             _cur = el.text.strip()
             if not re.match(r"^-?\d+(\.\d+)?$", _cur):
-                _con = _kb_field_constraint(el_local)
+                _con = _kb_field_constraint(el_local, parent_local)
                 _ex = _con.get("example") if isinstance(_con, dict) else None
                 _new = str(_ex) if (_ex and re.match(r"^-?\d+(\.\d+)?$", str(_ex))) else "1"
                 el_copy = self._copy(el)
@@ -4812,7 +4831,7 @@ class FixSuggester:
         # Constrained types like Currency (^[A-Z]{3}$), Country, BICFI, IBAN
         # must NOT be truncated — "150" is not a valid currency code.
         if not list(el) and el.text:
-            _con_t = _kb_field_constraint(el_local)
+            _con_t = _kb_field_constraint(el_local, parent_local)
             _ctype_t = _con_t.get("type", "") if isinstance(_con_t, dict) else ""
             _is_maxtext_only = _ctype_t.startswith("Max") and "Text" in _ctype_t
             if _is_maxtext_only:
@@ -4829,7 +4848,7 @@ class FixSuggester:
         # Retained for explicit "Field X has an invalid length" messages that
         # reach this point without a KB constraint (e.g. unknown tags).
         if ("length" in msg_l) and (not list(el)) and el.text:
-            con = _kb_field_constraint(el_local)
+            con = _kb_field_constraint(el_local, parent_local)
             max_len = con.get("max_length") if isinstance(con, dict) else None
             cur = el.text.strip()
             if isinstance(max_len, int) and len(cur) > max_len:
@@ -4954,7 +4973,7 @@ class FixSuggester:
         # Amt=`EU`, MsgId=`X` * 50, BICFI=`CREDITMM` (too short).
         if not list(el) and el.text:
             current_text = (el.text or "").strip()
-            constraint = _kb_field_constraint(el_local)
+            constraint = _kb_field_constraint(el_local, parent_local)
 
             # 1. Constraint violation → regenerate
             if constraint and self._violates_constraint(current_text, constraint):
@@ -4993,7 +5012,7 @@ class FixSuggester:
             # valid value with the INVALID value quoted in the error message —
             # e.g. extracting 'UETR' from "...required format for 'UETR'" and
             # writing it back into <UETR>, which corrupts an already-fixed UUID.
-            con = _kb_field_constraint(el_local)
+            con = _kb_field_constraint(el_local, parent_local)
             is_format_con = (
                 isinstance(con, dict)
                 and con.get("type") != "codelist"
@@ -5072,7 +5091,7 @@ class FixSuggester:
             el_local = etree.QName(el.tag).localname
 
             # ── KB-preferred value: highest priority for codelist tags ────────
-            kb_constraint = _kb_field_constraint(el_local)
+            kb_constraint = _kb_field_constraint(el_local, parent_local)
             kb_preferred  = kb_constraint.get("preferred") if isinstance(kb_constraint, dict) else None
             kb_valid      = kb_constraint.get("valid", [])  if isinstance(kb_constraint, dict) else []
             if kb_preferred:
@@ -5100,11 +5119,13 @@ class FixSuggester:
                 "Cd":        None,  # context-dependent — try multiple
             }
             cl_name = codelist_map.get(el_local)
+            if not cl_name and el_local == "Cd" and parent_local == "Sts":
+                cl_name = "entry_status"
 
             if cl_name:
                 # 1. Use _extract_value_from_hint — it has tag-specific preferred
                 #    values (e.g. SLEV for ChrgBr) before falling back to list order
-                smart = self._extract_value_from_hint(el_local, fix_hint + " " + msg)
+                smart = self._extract_value_from_hint(el_local, fix_hint + " " + msg, parent_local)
                 if smart:
                     el_copy = self._copy(el)
                     el_copy.text = smart
@@ -5176,7 +5197,7 @@ class FixSuggester:
         def _usable_candidate(val: str) -> bool:
             if not val or val == el_local:
                 return False
-            con = _kb_field_constraint(el_local)
+            con = _kb_field_constraint(el_local, parent_local)
             return not (isinstance(con, dict) and con and self._violates_constraint(val, con))
 
         # ── Hint contains a direct value (short, no XML) ──────────────────────
@@ -5189,7 +5210,7 @@ class FixSuggester:
 
         # ── Smart value from hint using codelists ─────────────────────────────
         smart_val = self._extract_value_from_hint(
-            etree.QName(el.tag).localname, fix_hint + " " + msg
+            etree.QName(el.tag).localname, fix_hint + " " + msg, parent_local
         )
         if smart_val and not list(el) and _usable_candidate(smart_val):
             el_copy = self._copy(el)
@@ -5317,7 +5338,12 @@ class FixSuggester:
 
         # ── KB field constraints: include length/type/example for the target ──
         if target_tag:
-            constraint = _kb_field_constraint(target_tag)
+            parent_tag = ""
+            if xpath and target_tag == "Cd":
+                m_parent = re.search(r'/([A-Za-z][A-Za-z0-9]*)(?:\[\d+\])?/[A-Za-z][A-Za-z0-9]*(?:\[\d+\])?$', xpath)
+                if m_parent:
+                    parent_tag = m_parent.group(1)
+            constraint = _kb_field_constraint(target_tag, parent_tag)
             if constraint:
                 bits = []
                 if constraint.get("type"):       bits.append(f"type={constraint['type']}")
@@ -5353,6 +5379,7 @@ class FixSuggester:
             ("return_reason",       "Valid return reason codes"),
             ("cancellation_reason", "Valid cancellation reason codes"),
             ("purpose_code",        "Valid purpose codes"),
+            ("entry_status",        "Valid Sts/Cd codes"),
         ]:
             if any(kw in msg_l for kw in (cl_name.replace("_", ""), cl_name.split("_")[0],
                                            label.lower().split()[1].lower())):
