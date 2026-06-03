@@ -145,6 +145,8 @@ def _kb_folder_name(msg_type: str, xml: str = "") -> Optional[str]:
                 else "pacs009_cbprplus_sr2025_validation_kb.json")
     if msg_type.startswith("pacs.003"):
         return "pacs003_cbprplus_sr2025_validation_kb.json"
+    if msg_type.startswith("pacs.004"):
+        return "pacs004_cbprplus_sr2025_validation_kb.json"
     return None
 
 
@@ -724,6 +726,9 @@ class _XsdTypeMap:
                         info["children"].append({"name": cn, "type": ct_,
                                                   "min": el.get("minOccurs", "1"),
                                                   "max": el.get("maxOccurs", "1")})
+                        # Record choice children too, so type_of_path can traverse
+                        # through a choice (e.g. AppHdr/Fr is Party44Choice → FIId).
+                        self.local_type[(tn, cn)] = ct_
             sc = ct.find(f"{{{XS}}}simpleContent/{{{XS}}}extension")
             if sc is not None:
                 info["kind"] = "simpleContent"
@@ -1854,6 +1859,14 @@ class FixSuggester:
             # Invalid XML — only the LLM can help
             return self._llm_fallback("/", xml[:500], code, msg, fix_hint)
 
+        # ── Duplicate element → keep the first valid occurrence, remove extras ─
+        # Runs before the ordering/insert guards so a duplicate (e.g. a second
+        # <BICFI>, which the schema reports as "not expected here") is removed
+        # rather than mis-repaired by inserting the other expected siblings.
+        dup_fix = self._try_remove_duplicate(root, code, msg)
+        if dup_fix is not None:
+            return dup_fix
+
         # ── Route: missing mandatory AppHdr field (validator completeness scan) ─
         # The header completeness scan emits one clean "/AppHdr/<Tag>" issue per
         # missing mandatory BAH field. The normal missing-child flow can't place
@@ -1903,6 +1916,14 @@ class FixSuggester:
             # That is a safe INSERT, not a risky reorder — try it before
             # declining. Falls through to the low-confidence no-op when no
             # missing mandatory element can be confidently identified/built.
+            # Wrong-level element (no expected list) → move it into the schema
+            # container that actually allows it (e.g. FinInstnId/Ctry → PstlAdr).
+            repositioned = self._try_reposition_element(
+                root, xml, code, msg, _detect_msg_type(xml)
+            )
+            if repositioned is not None:
+                return repositioned
+
             inserted = self._try_insert_missing_sibling(root, xml, code, msg, fix_hint)
             if inserted is not None:
                 return inserted
@@ -1912,6 +1933,11 @@ class FixSuggester:
             )
             if seq_fix is not None:
                 return seq_fix
+            # Schema-level exclusivity (e.g. "<Nm> is not expected" while BICFI is
+            # present) → remove the forbidden sibling(s) per the KB rules.
+            dep_fix = self._try_dependency_fix(root, path, code, msg, _detect_msg_type(xml), None)
+            if dep_fix is not None:
+                return dep_fix
             _target_xpath = path if (path and path != "/") else self._xpath_of(root)
             _frag = ""
             try:
@@ -2386,6 +2412,12 @@ class FixSuggester:
             if valid and value not in valid:
                 return True
             return False
+        # ISO code types must be a real code, not merely regex-shaped. 'UK'/'UN'
+        # match [A-Z]{2} but are not valid ISO 3166 country codes (UK → GB).
+        if ctype == "Country":
+            codes = _codelist_codes("country")
+            if codes:
+                return value.upper() not in codes
         # Regex constraint
         pattern = self._CONSTRAINT_REGEX.get(ctype)
         if pattern and not re.match(pattern, value):
@@ -2398,6 +2430,37 @@ class FixSuggester:
         if isinstance(min_len, int) and len(value) < min_len:
             return True
         return False
+
+    def _repair_country(self, el: Optional[etree._Element], cur_txt: str,
+                        root: Optional[etree._Element]) -> str:
+        """Return a valid ISO 3166-1 alpha-2 country code for an invalid/empty
+        <Ctry>. Resolution order (KB-driven, country_repair in ai_knowledge_base):
+          1. keep the current value if it is already a valid code;
+          2. alias/name/typo map (UK/UNITEDKINGDOM → GB, USA → US, …);
+          3. leading letters if they already form a valid code (GBR → GB);
+          4. a valid country code harvested from elsewhere in the document;
+          5. the KB `default` (e.g. GB).
+        """
+        codes = set(_codelist_codes("country"))
+        cur = (cur_txt or "").strip().upper()
+        if cur and (not codes or cur in codes):
+            return cur
+        key = re.sub(r"[^A-Z]", "", cur)
+        aliases = _kb_get("country_repair.aliases", {}) or {}
+        if key in aliases and (not codes or aliases[key] in codes):
+            return aliases[key]
+        if len(key) >= 2 and key[:2] in codes:
+            return key[:2]
+        if root is not None:
+            for o in root.iter():
+                if (isinstance(o.tag, str)
+                        and etree.QName(o.tag).localname in ("Ctry", "CtryOfRes", "CtryOfBirth")
+                        and o is not el and o.text):
+                    t = o.text.strip().upper()
+                    if t in codes:
+                        return t
+        default = _kb_get("country_repair.default", "GB")
+        return default if (not codes or default in codes) else "GB"
 
     def _regenerate_value(self, tag_name: str, el: etree._Element,
                            constraint: dict, fix_hint: str, msg: str) -> Optional[str]:
@@ -2470,7 +2533,7 @@ class FixSuggester:
         if ctype == "Currency":
             return "USD"
         if ctype == "Country":
-            return "US"
+            return self._repair_country(el, cur_txt, root)
         if ctype == "Amount":
             return (_kb_get("dummy_data.amounts.default") or
                     _enterprise_shared("dummy_data.amounts.default") or "1000.00")
@@ -2522,6 +2585,154 @@ class FixSuggester:
             parts.append(etree.QName(cur.tag).localname)
             cur = cur.getparent()
         return list(reversed(parts))
+
+    def _try_reposition_element(self, root: etree._Element, xml: str, code: str,
+                                msg: str, msg_type: str) -> Optional[FixSuggestion]:
+        """Repair a "not expected at this position" error with NO expected-list
+        when the offending element sits at the WRONG hierarchy level — i.e. it is
+        not a valid child of its parent, but one of the parent's child containers
+        DOES allow it per the XSD. The element is moved into that container
+        (built with its template children), preserving the original value, and
+        both levels are reordered to the XSD sequence.
+
+        Example: <FinInstnId><Ctry>GB</Ctry></FinInstnId> → Ctry is invalid
+        directly under FinInstnId, but FinInstnId/PstlAdr allows Ctry, so it
+        becomes <FinInstnId><PstlAdr>…<Ctry>GB</Ctry></PstlAdr></FinInstnId>.
+        Schema-generic (uses the XSD type map), works for all message types.
+        """
+        m = re.search(r"element '([^']+)' is not (?:expected|allowed)", msg, re.I)
+        if not m:
+            return None
+        # If the validator supplied an expected list, the dedicated sequence/
+        # sibling handlers own it — only act on the no-list (pure position) case.
+        if re.search(r"following element", msg, re.I):
+            return None
+        offending = m.group(1).split('}')[-1].split(':')[-1].strip().strip("':\" ")
+        if not offending:
+            return None
+
+        line_hint = getattr(self, "_line_hint", None)
+        matches = [el for el in root.iter()
+                   if isinstance(el.tag, str) and etree.QName(el.tag).localname == offending]
+        if not matches:
+            return None
+        off_el = (matches[0] if line_hint is None
+                  else min(matches, key=lambda e: abs((e.sourceline or 0) - line_hint)))
+        parent = off_el.getparent()
+        if parent is None:
+            return None
+
+        parent_path = self._local_name_path(parent)
+        ns = etree.QName(parent.tag).namespace or ""
+        in_apphdr = "AppHdr" in parent_path
+        xsd_path = (self._get_apphdr_xsd_path(xml) if in_apphdr else self._get_xsd_path(xml))
+        tmap = _XsdTypeMap.get(xsd_path) if xsd_path else None
+        if not tmap:
+            return None
+        parent_type = tmap.type_of_path(parent_path)
+        if not parent_type:
+            return None
+        parent_children = tmap.type_info.get(parent_type, {}).get("children", [])
+        valid_names = [c["name"] for c in parent_children]
+        if offending in valid_names:
+            return None  # genuinely a valid child → ordering case, not wrong-level
+
+        def local(t) -> str:
+            return etree.QName(t).localname if isinstance(t, str) else ""
+
+        # Find the parent's child container whose type ALLOWS the offending element.
+        for c in parent_children:
+            gtype = c.get("type", "")
+            gnames = [g["name"] for g in tmap.type_info.get(gtype, {}).get("children", [])]
+            if offending not in gnames:
+                continue
+            wrapper_name = c["name"]
+            parent_copy = self._copy(parent)
+            copy_off = next((ch for ch in parent_copy if local(ch.tag) == offending), None)
+            if copy_off is None:
+                return None
+            parent_copy.remove(copy_off)
+            gorder = [g["name"] for g in tmap.type_info.get(gtype, {}).get("children", [])]
+            wrapper = next((ch for ch in parent_copy if local(ch.tag) == wrapper_name), None)
+            if wrapper is None:
+                wrapper = self._build_child(wrapper_name, "", ns, tmap,
+                                            path_parts=parent_path + [wrapper_name],
+                                            root=root, msg_type=msg_type)
+                if wrapper is None:
+                    wrapper = etree.Element(f"{{{ns}}}{wrapper_name}" if ns else wrapper_name)
+                # Replace any placeholder occurrence of the same tag with the real one.
+                for ch in list(wrapper):
+                    if local(ch.tag) == offending:
+                        wrapper.remove(ch)
+                wrapper.append(copy_off)
+                self._reorder_children(wrapper, gorder)
+                parent_copy.append(wrapper)
+            else:
+                for ch in list(wrapper):
+                    if local(ch.tag) == offending:
+                        wrapper.remove(ch)
+                wrapper.append(copy_off)
+                self._reorder_children(wrapper, gorder)
+            self._reorder_children(parent_copy, valid_names)
+            return FixSuggestion(self._xpath_of(parent), self._serialize(parent),
+                                 self._serialize(parent_copy), code, msg, "high")
+        return None
+
+    def _try_remove_duplicate(self, root: etree._Element, code: str,
+                              msg: str) -> Optional[FixSuggestion]:
+        """Resolve duplicate-element errors (rules: auto_fix_rules.duplicate).
+
+        Handles both the explicit "Duplicate tag detected: <BICFI>" error and a
+        sequence error that names an element already present earlier in the same
+        parent (e.g. a second <BICFI> reported as "not expected here"). Keeps the
+        first valid (non-empty) occurrence and removes the extras. Schema-generic.
+        """
+        rules = _kb_get("auto_fix_rules.duplicate", []) or []
+        msg_l = msg.lower()
+        is_dup = any(code in (r.get("codes") or [])
+                     or (r.get("message_pattern") and re.search(r["message_pattern"], msg, re.I))
+                     for r in rules) or ("duplicate" in msg_l)
+
+        # Identify the duplicated tag name from the message. Prefer an explicit
+        # <Tag> (e.g. "Duplicate tag detected: <BICFI>"), then a quoted element
+        # name from a sequence error ("element 'BICFI' is not expected here").
+        tag = None
+        m = re.search(r"<(\w+)\s*/?>", msg)
+        if m:
+            tag = m.group(1)
+        if tag is None:
+            m2 = re.search(r"element '([^']+)' is not expected here", msg, re.I)
+            if m2:
+                tag = m2.group(1).strip().strip("':\" ")
+        if tag is None and is_dup:
+            m3 = re.search(r"duplicate (?:tag|element)\s*[:\-]?\s*['\"]?(\w+)", msg, re.I)
+            if m3 and m3.group(1).lower() not in ("tag", "element", "detected"):
+                tag = m3.group(1)
+        if tag is None:
+            return None
+
+        def local(t) -> str:
+            return etree.QName(t).localname if isinstance(t, str) else ""
+
+        # Find a parent that actually holds more than one child with this name.
+        for parent in root.iter():
+            dups = [c for c in parent if isinstance(c.tag, str) and local(c.tag) == tag]
+            if len(dups) <= 1:
+                continue
+            # Only act on a sequence "not expected" message if it's truly a
+            # duplicate (handled by the len check above); the explicit duplicate
+            # message always proceeds.
+            if not (is_dup or len(dups) > 1):
+                continue
+            parent_copy = self._copy(parent)
+            copy_dups = [c for c in parent_copy if isinstance(c.tag, str) and local(c.tag) == tag]
+            keep = next((c for c in copy_dups if (c.text or "").strip() or len(c)), copy_dups[0])
+            for c in copy_dups:
+                if c is not keep:
+                    parent_copy.remove(c)
+            return FixSuggestion(self._xpath_of(parent), self._serialize(parent),
+                                 self._serialize(parent_copy), code, msg, "high")
+        return None
 
     def _try_sequence_fix(self, root: etree._Element, xml: str, code: str,
                           msg: str, ns: str, msg_type: str,
@@ -2586,6 +2797,12 @@ class FixSuggester:
         #    reorder to the XSD sequence. ──────────────────────────────────────
         if offending not in expected:
             cand = self._closest_expected(offending, expected)
+            # The validator's expected list is only the elements valid at THIS
+            # position (e.g. just 'Othr'); a misnamed element like <BIC> should
+            # map to <BICFI>, which may not be in that slice. Fall back to the
+            # parent's full XSD child set so BIC→BICFI still resolves.
+            if not cand and order:
+                cand = self._closest_expected(offending, order)
             if cand:
                 off_idx = list(parent).index(off_el)
                 parent_copy = self._copy(parent)
@@ -2612,6 +2829,20 @@ class FixSuggester:
 
         to_add = [e for e in expected if e not in existing and is_mandatory(e)]
         if not to_add:
+            # Case 3: no mandatory element is missing → this is a pure ordering
+            # violation. Reorder the parent's existing children to the XSD
+            # sequence (safe, schema-driven). Decline only if order is unknown or
+            # already correct.
+            if order:
+                current = [etree.QName(c.tag).localname for c in parent
+                           if isinstance(c.tag, str)]
+                desired = sorted(current,
+                                 key=lambda n: order.index(n) if n in order else len(order))
+                if current != desired:
+                    parent_copy = self._copy(parent)
+                    self._reorder_children(parent_copy, order)
+                    return FixSuggestion(xpath, original_fragment,
+                                         self._serialize(parent_copy), code, msg, "high")
             return None
 
         parent_copy = self._copy(parent)
@@ -2686,6 +2917,30 @@ class FixSuggester:
             return elems[0]
         return min(elems, key=lambda e: abs((e.sourceline or 0) - line_hint))
 
+    # Full ISO 20022 element names → their XML tag stems (validator messages
+    # sometimes use the long names). Used to normalise dependency-rule wording.
+    _ISO_NAME_TO_TAG = {
+        "PreviousInstructingAgent": "PrvsInstgAgt",
+        "IntermediaryAgent": "IntrmyAgt",
+        "InstructingAgent": "InstgAgt",
+        "InstructedAgent": "InstdAgt",
+        "InstructingReimbursementAgent": "InstgRmbrsmntAgt",
+        "InstructedReimbursementAgent": "InstdRmbrsmntAgt",
+        "ThirdReimbursementAgent": "ThrdRmbrsmntAgt",
+    }
+
+    def _iso_tag(self, name: Optional[str]) -> Optional[str]:
+        """Map a (possibly long-form, numbered) ISO element name to its XML tag,
+        e.g. 'PreviousInstructingAgent3' → 'PrvsInstgAgt3'. Unknown names pass
+        through unchanged (already a tag)."""
+        if not name:
+            return name
+        m = re.match(r"([A-Za-z]+?)(\d*)$", name)
+        if not m:
+            return name
+        base, num = m.group(1), m.group(2)
+        return self._ISO_NAME_TO_TAG.get(base, base) + num
+
     def _fix_missing_predecessor(self, root: etree._Element, xml: str, code: str,
                                  msg: str, msg_type: str) -> Optional[FixSuggestion]:
         """Repair "X cannot exist without Y" ordering rules (e.g. L3_INTRMY_ORDER:
@@ -2707,12 +2962,22 @@ class FixSuggester:
             m = re.search(r"['\"<]?(\w+)['\">]?\s+cannot exist without\s+['\"<]?(\w+)", msg, re.I)
             if m:
                 x_tag, y_tag = m.group(1), m.group(2)
+        # 2b. "If X is present, then Y must be present" (dependency-chain wording,
+        #     often with full ISO names like PreviousInstructingAgent3).
+        if not (x_tag and y_tag):
+            mb = re.search(r"if\s+([\w]+)\s+is present\s*,?\s*then\s+([\w]+)\s+must be present",
+                           msg, re.I)
+            if mb:
+                x_tag, y_tag = mb.group(1), mb.group(2)
         # 3. Code fallback
         if not (x_tag and y_tag):
             if code == "L3_INTRMY_ORDER_1":
                 x_tag, y_tag = "IntrmyAgt2", "IntrmyAgt1"
             elif code == "L3_INTRMY_ORDER_2":
                 x_tag, y_tag = "IntrmyAgt3", "IntrmyAgt2"
+        # Normalise full ISO element names to their XML tags (PreviousInstructingAgent3
+        # → PrvsInstgAgt3, IntermediaryAgent2 → IntrmyAgt2, …).
+        x_tag, y_tag = self._iso_tag(x_tag), self._iso_tag(y_tag)
         if not (x_tag and y_tag):
             return None
 
@@ -2788,6 +3053,15 @@ class FixSuggester:
                 or ("bicfi is present" in msg_l and "not allowed" in msg_l)))
         is_name_addr   = (coex_rule is not None) \
             or (code in ("NAME_ADDRESS_COEXISTENCE", "DEP_014") or "present together" in msg_l)
+        # Schema-level manifestation of BICFI exclusivity: a forbidden sibling
+        # (Nm/PstlAdr) reported by the XSD as "not expected" while BICFI/AnyBIC is
+        # present in the same block (e.g. "The element 'Nm' is not expected here.
+        # No child element is expected at this point."). Target-finding below
+        # only acts when such a block actually exists, so this is safe.
+        if (not (is_bicfi_excl or is_anybic_excl or is_name_addr)
+                and re.search(r"element '(Nm|PstlAdr|CtryOfRes|CtrySubDvsn)' is not expected", msg, re.I)
+                and not re.search(r"following element", msg, re.I)):
+            is_bicfi_excl = True
         if not (is_bicfi_excl or is_anybic_excl or is_name_addr):
             return None
 
@@ -2923,6 +3197,51 @@ class FixSuggester:
         xpath             = self._xpath_of(el)
         msg_l             = msg.lower()
         el_local          = etree.QName(el.tag).localname
+
+        # ── Country code (ISO 3166-1 alpha-2) repair ─────────────────────────
+        # Handles empty, malformed, or non-ISO <Ctry> values uniformly (the
+        # generic constraint path skips empty elements). Validates against the
+        # real 250-code list — never emits a regex-shaped-but-invalid code such
+        # as 'UK'/'UN'. Works for AppHdr (head.001) and all business messages.
+        if el_local in ("Ctry", "CtryOfRes", "CtryOfBirth") and not list(el):
+            cur = (el.text or "").strip()
+            codes = _codelist_codes("country")
+            if codes and cur.upper() not in codes:
+                try:
+                    root_doc = el.getroottree().getroot()
+                except Exception:
+                    root_doc = None
+                new_val = self._repair_country(el, cur, root_doc)
+                if new_val and new_val != cur:
+                    el_copy = self._copy(el)
+                    el_copy.text = new_val
+                    return FixSuggestion(xpath, original_fragment,
+                                         self._serialize(el_copy), code, msg, "high")
+
+        # ── Enumeration repair: value not in the allowed set ─────────────────
+        # "The value 'COVE' is not valid. It must be one of the following values:
+        # INDA, INGA." → parse the allowed set from the message and replace with
+        # the KB-preferred value (auto_fix_rules.enumeration) or the first listed.
+        if not list(el):
+            m_enum = re.search(r"(?:must be one of|one of the following)(?:\s+the following)?"
+                               r"(?:\s+values)?\s*:?\s*(.+)$", msg, re.I | re.S)
+            if m_enum:
+                allowed = [v.strip().strip("'\".") for v in re.split(r"[,/]| or ", m_enum.group(1))
+                           if re.match(r"^[A-Za-z0-9]{1,12}$", v.strip().strip("'\". "))]
+                cur = (el.text or "").strip()
+                if allowed and cur not in allowed:
+                    preferred = None
+                    for r in (_kb_get("auto_fix_rules.enumeration", []) or []):
+                        if el_local in (r.get("elements") or []):
+                            p = r.get("preferred")
+                            if p in allowed:
+                                preferred = p
+                            break
+                    new_val = preferred or allowed[0]
+                    el_copy = self._copy(el)
+                    el_copy.text = new_val
+                    return FixSuggestion(xpath, original_fragment,
+                                         self._serialize(el_copy), code, msg, "high")
 
         # ── Length overflow → shorten the value to the KB/schema max_length ───
         # Highest-priority, deterministic fix for "Field X has an invalid length"
