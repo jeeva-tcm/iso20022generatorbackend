@@ -1078,8 +1078,7 @@
             "valid_values": [
                 "DEBT",
                 "CRED",
-                "SHAR",
-                "SLEV"
+                "SHAR"
             ],
             "description": "Charge bearer specifying who bears the transaction charges. SLEV = following service level.",
             "errors": [
@@ -1092,8 +1091,8 @@
                         "PmtInf/ChrgBr"
                     ],
                     "possible_fixes": [
-                        "Replace with one of: DEBT, CRED, SHAR, SLEV.",
-                        "Use SLEV when following the agreed service level."
+                        "Replace with one of: DEBT, CRED, SHAR.",
+                        "Use SHAR (SLEV disallowed by policy)."
                     ]
                 }
             ]

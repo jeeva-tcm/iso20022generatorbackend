@@ -180,14 +180,13 @@
         "ChrgBr": {
             "type": "codelist",
             "codelist": "charge_bearer",
-            "preferred": "SLEV",
+            "preferred": "SHAR",
             "valid": [
-                "SLEV",
                 "SHAR",
                 "CRED",
                 "DEBT"
             ],
-            "notes": "CBPR+ default = SLEV."
+            "notes": "SLEV disallowed by policy; default = SHAR."
         },
         "SttlmMtd": {
             "type": "codelist",
@@ -429,7 +428,7 @@
         },
         "CHRGBR_INVALID": {
             "root_cause": "ChrgBr value is not in allowed codelist.",
-            "fix": "Replace with 'SLEV' (CBPR+ default)."
+            "fix": "Replace with 'SHAR'."
         },
         "CHRGSINF_CCY_MISMATCH": {
             "root_cause": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
@@ -643,7 +642,7 @@
             "default": "<XchgRate>1.0</XchgRate>"
         },
         "ChrgBr": {
-            "default": "<ChrgBr>SLEV</ChrgBr>"
+            "default": "<ChrgBr>SHAR</ChrgBr>"
         },
         "ChrgsInf": {
             "default": "<ChrgsInf><Amt Ccy=\"$CCY\">0.00</Amt><Agt><FinInstnId><BICFI>$CHRG_BICFI</BICFI></FinInstnId></Agt></ChrgsInf>"
@@ -712,16 +711,16 @@
             "pain.002": "<TxInfAndSts><OrgnlEndToEndId>$E2E_ID</OrgnlEndToEndId><TxSts>ACCP</TxSts></TxInfAndSts>"
         },
         "CdtTrfTxInf": {
-            "pacs.008": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId><IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt><IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt><ChrgBr>SLEV</ChrgBr><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf>",
-            "pacs.009": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId><IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt><IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt><ChrgBr>SLEV</ChrgBr><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt><Dbtr><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></Dbtr><Cdtr><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></Cdtr></CdtTrfTxInf>",
+            "pacs.008": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId><IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt><IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt><ChrgBr>SHAR</ChrgBr><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf>",
+            "pacs.009": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId><IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt><IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt><ChrgBr>SHAR</ChrgBr><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt><Dbtr><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></Dbtr><Cdtr><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></Cdtr></CdtTrfTxInf>",
             "pain.001": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><Amt><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt></Amt><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf>"
         },
         "InitgPty": {
             "default": "<InitgPty><Nm>$DBTR_NM</Nm></InitgPty>"
         },
         "PmtInf": {
-            "pain.001": "<PmtInf><PmtInfId>PMT-INF-001</PmtInfId><PmtMtd>TRF</PmtMtd><ReqdExctnDt><Dt>$STTLM_DT</Dt></ReqdExctnDt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><ChrgBr>SLEV</ChrgBr><CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><Amt><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt></Amt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf></PmtInf>",
-            "pain.008": "<PmtInf><PmtInfId>PMT-INF-001</PmtInfId><PmtMtd>DD</PmtMtd><ReqdColltnDt>$STTLM_DT</ReqdColltnDt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><ChrgBr>SLEV</ChrgBr><DrctDbtTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct></DrctDbtTxInf></PmtInf>"
+            "pain.001": "<PmtInf><PmtInfId>PMT-INF-001</PmtInfId><PmtMtd>TRF</PmtMtd><ReqdExctnDt><Dt>$STTLM_DT</Dt></ReqdExctnDt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><ChrgBr>SHAR</ChrgBr><CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><Amt><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt></Amt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf></PmtInf>",
+            "pain.008": "<PmtInf><PmtInfId>PMT-INF-001</PmtInfId><PmtMtd>DD</PmtMtd><ReqdColltnDt>$STTLM_DT</ReqdColltnDt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><ChrgBr>SHAR</ChrgBr><DrctDbtTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct></DrctDbtTxInf></PmtInf>"
         },
         "DrctDbtTxInf": {
             "pain.008": "<DrctDbtTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId><InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct></DrctDbtTxInf>",
@@ -1822,7 +1821,7 @@
             }
         },
         "codes": {
-            "ChrgBr": "SLEV",
+            "ChrgBr": "SHAR",
             "SttlmMtd": "INGA",
             "InstrPrty": "NORM",
             "SttlmPrty": "NORM",

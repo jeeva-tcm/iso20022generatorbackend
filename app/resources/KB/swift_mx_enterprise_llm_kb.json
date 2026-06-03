@@ -406,7 +406,7 @@
         }
       },
       "codes": {
-        "ChrgBr": "SLEV",
+        "ChrgBr": "SHAR",
         "SttlmMtd": "INGA",
         "InstrPrty": "NORM",
         "SttlmPrty": "NORM",
@@ -840,14 +840,13 @@
         "ChrgBr": {
           "type": "codelist",
           "codelist": "charge_bearer",
-          "preferred": "SLEV",
+          "preferred": "SHAR",
           "valid": [
-            "SLEV",
             "SHAR",
             "CRED",
             "DEBT"
           ],
-          "notes": "CBPR+ default = SLEV."
+          "notes": "SLEV disallowed by policy; default = SHAR."
         },
         "SttlmMtd": {
           "type": "codelist",
@@ -1160,7 +1159,7 @@
         },
         "CHRGBR_INVALID": {
           "root_cause": "ChrgBr value is not in allowed codelist.",
-          "fix": "Replace with 'SLEV' (CBPR+ default)."
+          "fix": "Replace with 'SHAR'."
         },
         "CHRGSINF_CCY_MISMATCH": {
           "root_cause": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
@@ -1261,7 +1260,7 @@
         "InstdAmt": "<InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt>",
         "EqvtAmt": "<EqvtAmt><Amt Ccy=\"$CCY\">$AMOUNT</Amt><CcyOfTrf>$CCY</CcyOfTrf></EqvtAmt>",
         "XchgRate": "<XchgRate>1.0</XchgRate>",
-        "ChrgBr": "<ChrgBr>SLEV</ChrgBr>",
+        "ChrgBr": "<ChrgBr>SHAR</ChrgBr>",
         "ChrgsInf": "<ChrgsInf><Amt Ccy=\"$CCY\">0.00</Amt><Agt><FinInstnId><BICFI>$CHRG_BICFI</BICFI></FinInstnId></Agt></ChrgsInf>",
         "PmtTpInf": "<PmtTpInf><SvcLvl><Cd>SEPA</Cd></SvcLvl><InstrPrty>NORM</InstrPrty></PmtTpInf>",
         "SvcLvl": "<SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl>",
@@ -1277,7 +1276,7 @@
         "NbOfTxs": "<NbOfTxs>1</NbOfTxs>",
         "CtrlSum": "<CtrlSum>$AMOUNT</CtrlSum>",
         "StsRsnInf": "<StsRsnInf><Rsn><Cd>NARR</Cd></Rsn><AddtlInf>See additional information</AddtlInf></StsRsnInf>",
-        "CdtTrfTxInf": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId><IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt><IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt><ChrgBr>SLEV</ChrgBr><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf>"
+        "CdtTrfTxInf": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId><IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt><IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt><ChrgBr>SHAR</ChrgBr><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt><Dbtr><Nm>$DBTR_NM</Nm><PstlAdr><AdrLine>$DBTR_ADDR</AdrLine><Ctry>$DBTR_CTRY</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>$DBTR_IBAN</IBAN></Id></DbtrAcct><DbtrAgt><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></DbtrAgt><CdtrAgt><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></CdtrAgt><Cdtr><Nm>$CDTR_NM</Nm><PstlAdr><AdrLine>$CDTR_ADDR</AdrLine><Ctry>$CDTR_CTRY</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>$CDTR_IBAN</IBAN></Id></CdtrAcct></CdtTrfTxInf>"
       },
       "tag_insertion_order": {
         "GrpHdr_pacs008": [
@@ -1420,7 +1419,7 @@
       },
       "dummy_defaults": {
         "currency": "USD",
-        "charge_bearer": "SLEV",
+        "charge_bearer": "SHAR",
         "settlement_method": "INGA",
         "instruction_priority": "NORM"
       }
@@ -1608,14 +1607,13 @@
         "ChrgBr": {
           "type": "codelist",
           "codelist": "charge_bearer",
-          "preferred": "SLEV",
+          "preferred": "SHAR",
           "valid": [
-            "SLEV",
             "SHAR",
             "CRED",
             "DEBT"
           ],
-          "notes": "CBPR+ default = SLEV."
+          "notes": "SLEV disallowed by policy; default = SHAR."
         },
         "SttlmMtd": {
           "type": "codelist",
@@ -1899,7 +1897,7 @@
         },
         "CHRGBR_INVALID": {
           "root_cause": "ChrgBr value is not in allowed codelist.",
-          "fix": "Replace with 'SLEV' (CBPR+ default)."
+          "fix": "Replace with 'SHAR'."
         },
         "CHRGSINF_CCY_MISMATCH": {
           "root_cause": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
@@ -2000,7 +1998,7 @@
         "InstdAmt": "<InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt>",
         "EqvtAmt": "<EqvtAmt><Amt Ccy=\"$CCY\">$AMOUNT</Amt><CcyOfTrf>$CCY</CcyOfTrf></EqvtAmt>",
         "XchgRate": "<XchgRate>1.0</XchgRate>",
-        "ChrgBr": "<ChrgBr>SLEV</ChrgBr>",
+        "ChrgBr": "<ChrgBr>SHAR</ChrgBr>",
         "ChrgsInf": "<ChrgsInf><Amt Ccy=\"$CCY\">0.00</Amt><Agt><FinInstnId><BICFI>$CHRG_BICFI</BICFI></FinInstnId></Agt></ChrgsInf>",
         "PmtTpInf": "<PmtTpInf><SvcLvl><Cd>G002</Cd></SvcLvl><InstrPrty>NORM</InstrPrty></PmtTpInf>",
         "SvcLvl": "<SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl>",
@@ -2016,7 +2014,7 @@
         "NbOfTxs": "<NbOfTxs>1</NbOfTxs>",
         "CtrlSum": "<CtrlSum>$AMOUNT</CtrlSum>",
         "StsRsnInf": "<StsRsnInf><Rsn><Cd>NARR</Cd></Rsn><AddtlInf>See additional information</AddtlInf></StsRsnInf>",
-        "CdtTrfTxInf": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId><IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt><IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt><ChrgBr>SLEV</ChrgBr><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt><Dbtr><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></Dbtr><Cdtr><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></Cdtr></CdtTrfTxInf>"
+        "CdtTrfTxInf": "<CdtTrfTxInf><PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId><IntrBkSttlmAmt Ccy=\"$CCY\">$AMOUNT</IntrBkSttlmAmt><IntrBkSttlmDt>$STTLM_DT</IntrBkSttlmDt><ChrgBr>SHAR</ChrgBr><InstgAgt><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></InstgAgt><InstdAgt><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></InstdAgt><Dbtr><FinInstnId><BICFI>$DBTR_BICFI</BICFI></FinInstnId></Dbtr><Cdtr><FinInstnId><BICFI>$CDTR_BICFI</BICFI></FinInstnId></Cdtr></CdtTrfTxInf>"
       },
       "tag_insertion_order": {
         "GrpHdr_pacs009": [
@@ -2134,7 +2132,7 @@
       },
       "dummy_defaults": {
         "currency": "USD",
-        "charge_bearer": "SLEV",
+        "charge_bearer": "SHAR",
         "settlement_method": "INGA",
         "instruction_priority": "NORM"
       }
@@ -2322,14 +2320,13 @@
         "ChrgBr": {
           "type": "codelist",
           "codelist": "charge_bearer",
-          "preferred": "SLEV",
+          "preferred": "SHAR",
           "valid": [
-            "SLEV",
             "SHAR",
             "CRED",
             "DEBT"
           ],
-          "notes": "CBPR+ default = SLEV."
+          "notes": "SLEV disallowed by policy; default = SHAR."
         },
         "SttlmMtd": {
           "type": "codelist",
@@ -2571,7 +2568,7 @@
         },
         "CHRGBR_INVALID": {
           "root_cause": "ChrgBr value is not in allowed codelist.",
-          "fix": "Replace with 'SLEV' (CBPR+ default)."
+          "fix": "Replace with 'SHAR'."
         },
         "CHRGSINF_CCY_MISMATCH": {
           "root_cause": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
@@ -2672,7 +2669,7 @@
         "InstdAmt": "<InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt>",
         "EqvtAmt": "<EqvtAmt><Amt Ccy=\"$CCY\">$AMOUNT</Amt><CcyOfTrf>$CCY</CcyOfTrf></EqvtAmt>",
         "XchgRate": "<XchgRate>1.0</XchgRate>",
-        "ChrgBr": "<ChrgBr>SLEV</ChrgBr>",
+        "ChrgBr": "<ChrgBr>SHAR</ChrgBr>",
         "ChrgsInf": "<ChrgsInf><Amt Ccy=\"$CCY\">0.00</Amt><Agt><FinInstnId><BICFI>$CHRG_BICFI</BICFI></FinInstnId></Agt></ChrgsInf>",
         "PmtTpInf": "<PmtTpInf><SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl></PmtTpInf>",
         "SvcLvl": "<SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl>",
@@ -2765,7 +2762,7 @@
       },
       "dummy_defaults": {
         "currency": "USD",
-        "charge_bearer": "SLEV",
+        "charge_bearer": "SHAR",
         "settlement_method": "INGA",
         "instruction_priority": "NORM"
       }
@@ -2953,14 +2950,13 @@
         "ChrgBr": {
           "type": "codelist",
           "codelist": "charge_bearer",
-          "preferred": "SLEV",
+          "preferred": "SHAR",
           "valid": [
-            "SLEV",
             "SHAR",
             "CRED",
             "DEBT"
           ],
-          "notes": "CBPR+ default = SLEV."
+          "notes": "SLEV disallowed by policy; default = SHAR."
         },
         "SttlmMtd": {
           "type": "codelist",
@@ -3173,7 +3169,7 @@
         },
         "CHRGBR_INVALID": {
           "root_cause": "ChrgBr value is not in allowed codelist.",
-          "fix": "Replace with 'SLEV' (CBPR+ default)."
+          "fix": "Replace with 'SHAR'."
         },
         "CHRGSINF_CCY_MISMATCH": {
           "root_cause": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
@@ -3274,7 +3270,7 @@
         "InstdAmt": "<InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt>",
         "EqvtAmt": "<EqvtAmt><Amt Ccy=\"$CCY\">$AMOUNT</Amt><CcyOfTrf>$CCY</CcyOfTrf></EqvtAmt>",
         "XchgRate": "<XchgRate>1.0</XchgRate>",
-        "ChrgBr": "<ChrgBr>SLEV</ChrgBr>",
+        "ChrgBr": "<ChrgBr>SHAR</ChrgBr>",
         "ChrgsInf": "<ChrgsInf><Amt Ccy=\"$CCY\">0.00</Amt><Agt><FinInstnId><BICFI>$CHRG_BICFI</BICFI></FinInstnId></Agt></ChrgsInf>",
         "PmtTpInf": "<PmtTpInf><SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl></PmtTpInf>",
         "SvcLvl": "<SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl>",
@@ -3358,7 +3354,7 @@
       },
       "dummy_defaults": {
         "currency": "USD",
-        "charge_bearer": "SLEV",
+        "charge_bearer": "SHAR",
         "settlement_method": "INGA",
         "instruction_priority": "NORM"
       }
@@ -3546,14 +3542,13 @@
         "ChrgBr": {
           "type": "codelist",
           "codelist": "charge_bearer",
-          "preferred": "SLEV",
+          "preferred": "SHAR",
           "valid": [
-            "SLEV",
             "SHAR",
             "CRED",
             "DEBT"
           ],
-          "notes": "CBPR+ default = SLEV."
+          "notes": "SLEV disallowed by policy; default = SHAR."
         },
         "SttlmMtd": {
           "type": "codelist",
@@ -3785,7 +3780,7 @@
         },
         "CHRGBR_INVALID": {
           "root_cause": "ChrgBr value is not in allowed codelist.",
-          "fix": "Replace with 'SLEV' (CBPR+ default)."
+          "fix": "Replace with 'SHAR'."
         },
         "CHRGSINF_CCY_MISMATCH": {
           "root_cause": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
@@ -3886,7 +3881,7 @@
         "InstdAmt": "<InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt>",
         "EqvtAmt": "<EqvtAmt><Amt Ccy=\"$CCY\">$AMOUNT</Amt><CcyOfTrf>$CCY</CcyOfTrf></EqvtAmt>",
         "XchgRate": "<XchgRate>1.0</XchgRate>",
-        "ChrgBr": "<ChrgBr>SLEV</ChrgBr>",
+        "ChrgBr": "<ChrgBr>SHAR</ChrgBr>",
         "ChrgsInf": "<ChrgsInf><Amt Ccy=\"$CCY\">0.00</Amt><Agt><FinInstnId><BICFI>$CHRG_BICFI</BICFI></FinInstnId></Agt></ChrgsInf>",
         "PmtTpInf": "<PmtTpInf><SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl></PmtTpInf>",
         "SvcLvl": "<SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl>",
@@ -3971,7 +3966,7 @@
       },
       "dummy_defaults": {
         "currency": "USD",
-        "charge_bearer": "SLEV",
+        "charge_bearer": "SHAR",
         "settlement_method": "INGA",
         "instruction_priority": "NORM"
       }
@@ -4159,14 +4154,13 @@
         "ChrgBr": {
           "type": "codelist",
           "codelist": "charge_bearer",
-          "preferred": "SLEV",
+          "preferred": "SHAR",
           "valid": [
-            "SLEV",
             "SHAR",
             "CRED",
             "DEBT"
           ],
-          "notes": "CBPR+ default = SLEV."
+          "notes": "SLEV disallowed by policy; default = SHAR."
         },
         "SttlmMtd": {
           "type": "codelist",
@@ -4379,7 +4373,7 @@
         },
         "CHRGBR_INVALID": {
           "root_cause": "ChrgBr value is not in allowed codelist.",
-          "fix": "Replace with 'SLEV' (CBPR+ default)."
+          "fix": "Replace with 'SHAR'."
         },
         "CHRGSINF_CCY_MISMATCH": {
           "root_cause": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
@@ -4480,7 +4474,7 @@
         "InstdAmt": "<InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt>",
         "EqvtAmt": "<EqvtAmt><Amt Ccy=\"$CCY\">$AMOUNT</Amt><CcyOfTrf>$CCY</CcyOfTrf></EqvtAmt>",
         "XchgRate": "<XchgRate>1.0</XchgRate>",
-        "ChrgBr": "<ChrgBr>SLEV</ChrgBr>",
+        "ChrgBr": "<ChrgBr>SHAR</ChrgBr>",
         "ChrgsInf": "<ChrgsInf><Amt Ccy=\"$CCY\">0.00</Amt><Agt><FinInstnId><BICFI>$CHRG_BICFI</BICFI></FinInstnId></Agt></ChrgsInf>",
         "PmtTpInf": "<PmtTpInf><SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl></PmtTpInf>",
         "SvcLvl": "<SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl>",
@@ -4564,7 +4558,7 @@
       },
       "dummy_defaults": {
         "currency": "USD",
-        "charge_bearer": "SLEV",
+        "charge_bearer": "SHAR",
         "settlement_method": "INGA",
         "instruction_priority": "NORM"
       }
@@ -4752,14 +4746,13 @@
         "ChrgBr": {
           "type": "codelist",
           "codelist": "charge_bearer",
-          "preferred": "SLEV",
+          "preferred": "SHAR",
           "valid": [
-            "SLEV",
             "SHAR",
             "CRED",
             "DEBT"
           ],
-          "notes": "CBPR+ default = SLEV."
+          "notes": "SLEV disallowed by policy; default = SHAR."
         },
         "SttlmMtd": {
           "type": "codelist",
@@ -4972,7 +4965,7 @@
         },
         "CHRGBR_INVALID": {
           "root_cause": "ChrgBr value is not in allowed codelist.",
-          "fix": "Replace with 'SLEV' (CBPR+ default)."
+          "fix": "Replace with 'SHAR'."
         },
         "CHRGSINF_CCY_MISMATCH": {
           "root_cause": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
@@ -5073,7 +5066,7 @@
         "InstdAmt": "<InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt>",
         "EqvtAmt": "<EqvtAmt><Amt Ccy=\"$CCY\">$AMOUNT</Amt><CcyOfTrf>$CCY</CcyOfTrf></EqvtAmt>",
         "XchgRate": "<XchgRate>1.0</XchgRate>",
-        "ChrgBr": "<ChrgBr>SLEV</ChrgBr>",
+        "ChrgBr": "<ChrgBr>SHAR</ChrgBr>",
         "ChrgsInf": "<ChrgsInf><Amt Ccy=\"$CCY\">0.00</Amt><Agt><FinInstnId><BICFI>$CHRG_BICFI</BICFI></FinInstnId></Agt></ChrgsInf>",
         "PmtTpInf": "<PmtTpInf><SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl></PmtTpInf>",
         "SvcLvl": "<SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl>",
@@ -5157,7 +5150,7 @@
       },
       "dummy_defaults": {
         "currency": "USD",
-        "charge_bearer": "SLEV",
+        "charge_bearer": "SHAR",
         "settlement_method": "INGA",
         "instruction_priority": "NORM"
       }
@@ -5345,14 +5338,13 @@
         "ChrgBr": {
           "type": "codelist",
           "codelist": "charge_bearer",
-          "preferred": "SLEV",
+          "preferred": "SHAR",
           "valid": [
-            "SLEV",
             "SHAR",
             "CRED",
             "DEBT"
           ],
-          "notes": "CBPR+ default = SLEV."
+          "notes": "SLEV disallowed by policy; default = SHAR."
         },
         "SttlmMtd": {
           "type": "codelist",
@@ -5584,7 +5576,7 @@
         },
         "CHRGBR_INVALID": {
           "root_cause": "ChrgBr value is not in allowed codelist.",
-          "fix": "Replace with 'SLEV' (CBPR+ default)."
+          "fix": "Replace with 'SHAR'."
         },
         "CHRGSINF_CCY_MISMATCH": {
           "root_cause": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
@@ -5685,7 +5677,7 @@
         "InstdAmt": "<InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt>",
         "EqvtAmt": "<EqvtAmt><Amt Ccy=\"$CCY\">$AMOUNT</Amt><CcyOfTrf>$CCY</CcyOfTrf></EqvtAmt>",
         "XchgRate": "<XchgRate>1.0</XchgRate>",
-        "ChrgBr": "<ChrgBr>SLEV</ChrgBr>",
+        "ChrgBr": "<ChrgBr>SHAR</ChrgBr>",
         "ChrgsInf": "<ChrgsInf><Amt Ccy=\"$CCY\">0.00</Amt><Agt><FinInstnId><BICFI>$CHRG_BICFI</BICFI></FinInstnId></Agt></ChrgsInf>",
         "PmtTpInf": "<PmtTpInf><SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl></PmtTpInf>",
         "SvcLvl": "<SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl>",
@@ -5780,7 +5772,7 @@
       },
       "dummy_defaults": {
         "currency": "USD",
-        "charge_bearer": "SLEV",
+        "charge_bearer": "SHAR",
         "settlement_method": "INGA",
         "instruction_priority": "NORM"
       }
@@ -5968,14 +5960,13 @@
         "ChrgBr": {
           "type": "codelist",
           "codelist": "charge_bearer",
-          "preferred": "SLEV",
+          "preferred": "SHAR",
           "valid": [
-            "SLEV",
             "SHAR",
             "CRED",
             "DEBT"
           ],
-          "notes": "CBPR+ default = SLEV."
+          "notes": "SLEV disallowed by policy; default = SHAR."
         },
         "SttlmMtd": {
           "type": "codelist",
@@ -6188,7 +6179,7 @@
         },
         "CHRGBR_INVALID": {
           "root_cause": "ChrgBr value is not in allowed codelist.",
-          "fix": "Replace with 'SLEV' (CBPR+ default)."
+          "fix": "Replace with 'SHAR'."
         },
         "CHRGSINF_CCY_MISMATCH": {
           "root_cause": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
@@ -6289,7 +6280,7 @@
         "InstdAmt": "<InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt>",
         "EqvtAmt": "<EqvtAmt><Amt Ccy=\"$CCY\">$AMOUNT</Amt><CcyOfTrf>$CCY</CcyOfTrf></EqvtAmt>",
         "XchgRate": "<XchgRate>1.0</XchgRate>",
-        "ChrgBr": "<ChrgBr>SLEV</ChrgBr>",
+        "ChrgBr": "<ChrgBr>SHAR</ChrgBr>",
         "ChrgsInf": "<ChrgsInf><Amt Ccy=\"$CCY\">0.00</Amt><Agt><FinInstnId><BICFI>$CHRG_BICFI</BICFI></FinInstnId></Agt></ChrgsInf>",
         "PmtTpInf": "<PmtTpInf><SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl></PmtTpInf>",
         "SvcLvl": "<SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl>",
@@ -6373,7 +6364,7 @@
       },
       "dummy_defaults": {
         "currency": "USD",
-        "charge_bearer": "SLEV",
+        "charge_bearer": "SHAR",
         "settlement_method": "INGA",
         "instruction_priority": "NORM"
       }
@@ -6561,14 +6552,13 @@
         "ChrgBr": {
           "type": "codelist",
           "codelist": "charge_bearer",
-          "preferred": "SLEV",
+          "preferred": "SHAR",
           "valid": [
-            "SLEV",
             "SHAR",
             "CRED",
             "DEBT"
           ],
-          "notes": "CBPR+ default = SLEV."
+          "notes": "SLEV disallowed by policy; default = SHAR."
         },
         "SttlmMtd": {
           "type": "codelist",
@@ -6781,7 +6771,7 @@
         },
         "CHRGBR_INVALID": {
           "root_cause": "ChrgBr value is not in allowed codelist.",
-          "fix": "Replace with 'SLEV' (CBPR+ default)."
+          "fix": "Replace with 'SHAR'."
         },
         "CHRGSINF_CCY_MISMATCH": {
           "root_cause": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
@@ -6882,7 +6872,7 @@
         "InstdAmt": "<InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt>",
         "EqvtAmt": "<EqvtAmt><Amt Ccy=\"$CCY\">$AMOUNT</Amt><CcyOfTrf>$CCY</CcyOfTrf></EqvtAmt>",
         "XchgRate": "<XchgRate>1.0</XchgRate>",
-        "ChrgBr": "<ChrgBr>SLEV</ChrgBr>",
+        "ChrgBr": "<ChrgBr>SHAR</ChrgBr>",
         "ChrgsInf": "<ChrgsInf><Amt Ccy=\"$CCY\">0.00</Amt><Agt><FinInstnId><BICFI>$CHRG_BICFI</BICFI></FinInstnId></Agt></ChrgsInf>",
         "PmtTpInf": "<PmtTpInf><SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl></PmtTpInf>",
         "SvcLvl": "<SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl>",
@@ -6966,7 +6956,7 @@
       },
       "dummy_defaults": {
         "currency": "USD",
-        "charge_bearer": "SLEV",
+        "charge_bearer": "SHAR",
         "settlement_method": "INGA",
         "instruction_priority": "NORM"
       }
@@ -7154,14 +7144,13 @@
         "ChrgBr": {
           "type": "codelist",
           "codelist": "charge_bearer",
-          "preferred": "SLEV",
+          "preferred": "SHAR",
           "valid": [
-            "SLEV",
             "SHAR",
             "CRED",
             "DEBT"
           ],
-          "notes": "CBPR+ default = SLEV."
+          "notes": "SLEV disallowed by policy; default = SHAR."
         },
         "SttlmMtd": {
           "type": "codelist",
@@ -7374,7 +7363,7 @@
         },
         "CHRGBR_INVALID": {
           "root_cause": "ChrgBr value is not in allowed codelist.",
-          "fix": "Replace with 'SLEV' (CBPR+ default)."
+          "fix": "Replace with 'SHAR'."
         },
         "CHRGSINF_CCY_MISMATCH": {
           "root_cause": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
@@ -7475,7 +7464,7 @@
         "InstdAmt": "<InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt>",
         "EqvtAmt": "<EqvtAmt><Amt Ccy=\"$CCY\">$AMOUNT</Amt><CcyOfTrf>$CCY</CcyOfTrf></EqvtAmt>",
         "XchgRate": "<XchgRate>1.0</XchgRate>",
-        "ChrgBr": "<ChrgBr>SLEV</ChrgBr>",
+        "ChrgBr": "<ChrgBr>SHAR</ChrgBr>",
         "ChrgsInf": "<ChrgsInf><Amt Ccy=\"$CCY\">0.00</Amt><Agt><FinInstnId><BICFI>$CHRG_BICFI</BICFI></FinInstnId></Agt></ChrgsInf>",
         "PmtTpInf": "<PmtTpInf><SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl></PmtTpInf>",
         "SvcLvl": "<SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl>",
@@ -7559,7 +7548,7 @@
       },
       "dummy_defaults": {
         "currency": "USD",
-        "charge_bearer": "SLEV",
+        "charge_bearer": "SHAR",
         "settlement_method": "INGA",
         "instruction_priority": "NORM"
       }
@@ -7747,14 +7736,13 @@
         "ChrgBr": {
           "type": "codelist",
           "codelist": "charge_bearer",
-          "preferred": "SLEV",
+          "preferred": "SHAR",
           "valid": [
-            "SLEV",
             "SHAR",
             "CRED",
             "DEBT"
           ],
-          "notes": "CBPR+ default = SLEV."
+          "notes": "SLEV disallowed by policy; default = SHAR."
         },
         "SttlmMtd": {
           "type": "codelist",
@@ -7986,7 +7974,7 @@
         },
         "CHRGBR_INVALID": {
           "root_cause": "ChrgBr value is not in allowed codelist.",
-          "fix": "Replace with 'SLEV' (CBPR+ default)."
+          "fix": "Replace with 'SHAR'."
         },
         "CHRGSINF_CCY_MISMATCH": {
           "root_cause": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
@@ -8087,7 +8075,7 @@
         "InstdAmt": "<InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt>",
         "EqvtAmt": "<EqvtAmt><Amt Ccy=\"$CCY\">$AMOUNT</Amt><CcyOfTrf>$CCY</CcyOfTrf></EqvtAmt>",
         "XchgRate": "<XchgRate>1.0</XchgRate>",
-        "ChrgBr": "<ChrgBr>SLEV</ChrgBr>",
+        "ChrgBr": "<ChrgBr>SHAR</ChrgBr>",
         "ChrgsInf": "<ChrgsInf><Amt Ccy=\"$CCY\">0.00</Amt><Agt><FinInstnId><BICFI>$CHRG_BICFI</BICFI></FinInstnId></Agt></ChrgsInf>",
         "PmtTpInf": "<PmtTpInf><SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl></PmtTpInf>",
         "SvcLvl": "<SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl>",
@@ -8171,7 +8159,7 @@
       },
       "dummy_defaults": {
         "currency": "USD",
-        "charge_bearer": "SLEV",
+        "charge_bearer": "SHAR",
         "settlement_method": "INGA",
         "instruction_priority": "NORM"
       }
@@ -8359,14 +8347,13 @@
         "ChrgBr": {
           "type": "codelist",
           "codelist": "charge_bearer",
-          "preferred": "SLEV",
+          "preferred": "SHAR",
           "valid": [
-            "SLEV",
             "SHAR",
             "CRED",
             "DEBT"
           ],
-          "notes": "CBPR+ default = SLEV."
+          "notes": "SLEV disallowed by policy; default = SHAR."
         },
         "SttlmMtd": {
           "type": "codelist",
@@ -8598,7 +8585,7 @@
         },
         "CHRGBR_INVALID": {
           "root_cause": "ChrgBr value is not in allowed codelist.",
-          "fix": "Replace with 'SLEV' (CBPR+ default)."
+          "fix": "Replace with 'SHAR'."
         },
         "CHRGSINF_CCY_MISMATCH": {
           "root_cause": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
@@ -8699,7 +8686,7 @@
         "InstdAmt": "<InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt>",
         "EqvtAmt": "<EqvtAmt><Amt Ccy=\"$CCY\">$AMOUNT</Amt><CcyOfTrf>$CCY</CcyOfTrf></EqvtAmt>",
         "XchgRate": "<XchgRate>1.0</XchgRate>",
-        "ChrgBr": "<ChrgBr>SLEV</ChrgBr>",
+        "ChrgBr": "<ChrgBr>SHAR</ChrgBr>",
         "ChrgsInf": "<ChrgsInf><Amt Ccy=\"$CCY\">0.00</Amt><Agt><FinInstnId><BICFI>$CHRG_BICFI</BICFI></FinInstnId></Agt></ChrgsInf>",
         "PmtTpInf": "<PmtTpInf><SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl></PmtTpInf>",
         "SvcLvl": "<SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl>",
@@ -8783,7 +8770,7 @@
       },
       "dummy_defaults": {
         "currency": "USD",
-        "charge_bearer": "SLEV",
+        "charge_bearer": "SHAR",
         "settlement_method": "INGA",
         "instruction_priority": "NORM"
       }
@@ -8971,14 +8958,13 @@
         "ChrgBr": {
           "type": "codelist",
           "codelist": "charge_bearer",
-          "preferred": "SLEV",
+          "preferred": "SHAR",
           "valid": [
-            "SLEV",
             "SHAR",
             "CRED",
             "DEBT"
           ],
-          "notes": "CBPR+ default = SLEV."
+          "notes": "SLEV disallowed by policy; default = SHAR."
         },
         "SttlmMtd": {
           "type": "codelist",
@@ -9191,7 +9177,7 @@
         },
         "CHRGBR_INVALID": {
           "root_cause": "ChrgBr value is not in allowed codelist.",
-          "fix": "Replace with 'SLEV' (CBPR+ default)."
+          "fix": "Replace with 'SHAR'."
         },
         "CHRGSINF_CCY_MISMATCH": {
           "root_cause": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
@@ -9292,7 +9278,7 @@
         "InstdAmt": "<InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt>",
         "EqvtAmt": "<EqvtAmt><Amt Ccy=\"$CCY\">$AMOUNT</Amt><CcyOfTrf>$CCY</CcyOfTrf></EqvtAmt>",
         "XchgRate": "<XchgRate>1.0</XchgRate>",
-        "ChrgBr": "<ChrgBr>SLEV</ChrgBr>",
+        "ChrgBr": "<ChrgBr>SHAR</ChrgBr>",
         "ChrgsInf": "<ChrgsInf><Amt Ccy=\"$CCY\">0.00</Amt><Agt><FinInstnId><BICFI>$CHRG_BICFI</BICFI></FinInstnId></Agt></ChrgsInf>",
         "PmtTpInf": "<PmtTpInf><SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl></PmtTpInf>",
         "SvcLvl": "<SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl>",
@@ -9376,7 +9362,7 @@
       },
       "dummy_defaults": {
         "currency": "USD",
-        "charge_bearer": "SLEV",
+        "charge_bearer": "SHAR",
         "settlement_method": "INGA",
         "instruction_priority": "NORM"
       }
@@ -9564,14 +9550,13 @@
         "ChrgBr": {
           "type": "codelist",
           "codelist": "charge_bearer",
-          "preferred": "SLEV",
+          "preferred": "SHAR",
           "valid": [
-            "SLEV",
             "SHAR",
             "CRED",
             "DEBT"
           ],
-          "notes": "CBPR+ default = SLEV."
+          "notes": "SLEV disallowed by policy; default = SHAR."
         },
         "SttlmMtd": {
           "type": "codelist",
@@ -9803,7 +9788,7 @@
         },
         "CHRGBR_INVALID": {
           "root_cause": "ChrgBr value is not in allowed codelist.",
-          "fix": "Replace with 'SLEV' (CBPR+ default)."
+          "fix": "Replace with 'SHAR'."
         },
         "CHRGSINF_CCY_MISMATCH": {
           "root_cause": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
@@ -9904,7 +9889,7 @@
         "InstdAmt": "<InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt>",
         "EqvtAmt": "<EqvtAmt><Amt Ccy=\"$CCY\">$AMOUNT</Amt><CcyOfTrf>$CCY</CcyOfTrf></EqvtAmt>",
         "XchgRate": "<XchgRate>1.0</XchgRate>",
-        "ChrgBr": "<ChrgBr>SLEV</ChrgBr>",
+        "ChrgBr": "<ChrgBr>SHAR</ChrgBr>",
         "ChrgsInf": "<ChrgsInf><Amt Ccy=\"$CCY\">0.00</Amt><Agt><FinInstnId><BICFI>$CHRG_BICFI</BICFI></FinInstnId></Agt></ChrgsInf>",
         "PmtTpInf": "<PmtTpInf><SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl></PmtTpInf>",
         "SvcLvl": "<SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl>",
@@ -9988,7 +9973,7 @@
       },
       "dummy_defaults": {
         "currency": "USD",
-        "charge_bearer": "SLEV",
+        "charge_bearer": "SHAR",
         "settlement_method": "INGA",
         "instruction_priority": "NORM"
       }
@@ -10176,14 +10161,13 @@
         "ChrgBr": {
           "type": "codelist",
           "codelist": "charge_bearer",
-          "preferred": "SLEV",
+          "preferred": "SHAR",
           "valid": [
-            "SLEV",
             "SHAR",
             "CRED",
             "DEBT"
           ],
-          "notes": "CBPR+ default = SLEV."
+          "notes": "SLEV disallowed by policy; default = SHAR."
         },
         "SttlmMtd": {
           "type": "codelist",
@@ -10396,7 +10380,7 @@
         },
         "CHRGBR_INVALID": {
           "root_cause": "ChrgBr value is not in allowed codelist.",
-          "fix": "Replace with 'SLEV' (CBPR+ default)."
+          "fix": "Replace with 'SHAR'."
         },
         "CHRGSINF_CCY_MISMATCH": {
           "root_cause": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
@@ -10497,7 +10481,7 @@
         "InstdAmt": "<InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt>",
         "EqvtAmt": "<EqvtAmt><Amt Ccy=\"$CCY\">$AMOUNT</Amt><CcyOfTrf>$CCY</CcyOfTrf></EqvtAmt>",
         "XchgRate": "<XchgRate>1.0</XchgRate>",
-        "ChrgBr": "<ChrgBr>SLEV</ChrgBr>",
+        "ChrgBr": "<ChrgBr>SHAR</ChrgBr>",
         "ChrgsInf": "<ChrgsInf><Amt Ccy=\"$CCY\">0.00</Amt><Agt><FinInstnId><BICFI>$CHRG_BICFI</BICFI></FinInstnId></Agt></ChrgsInf>",
         "PmtTpInf": "<PmtTpInf><SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl></PmtTpInf>",
         "SvcLvl": "<SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl>",
@@ -10581,7 +10565,7 @@
       },
       "dummy_defaults": {
         "currency": "USD",
-        "charge_bearer": "SLEV",
+        "charge_bearer": "SHAR",
         "settlement_method": "INGA",
         "instruction_priority": "NORM"
       }
@@ -10769,14 +10753,13 @@
         "ChrgBr": {
           "type": "codelist",
           "codelist": "charge_bearer",
-          "preferred": "SLEV",
+          "preferred": "SHAR",
           "valid": [
-            "SLEV",
             "SHAR",
             "CRED",
             "DEBT"
           ],
-          "notes": "CBPR+ default = SLEV."
+          "notes": "SLEV disallowed by policy; default = SHAR."
         },
         "SttlmMtd": {
           "type": "codelist",
@@ -10989,7 +10972,7 @@
         },
         "CHRGBR_INVALID": {
           "root_cause": "ChrgBr value is not in allowed codelist.",
-          "fix": "Replace with 'SLEV' (CBPR+ default)."
+          "fix": "Replace with 'SHAR'."
         },
         "CHRGSINF_CCY_MISMATCH": {
           "root_cause": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
@@ -11090,7 +11073,7 @@
         "InstdAmt": "<InstdAmt Ccy=\"$CCY\">$AMOUNT</InstdAmt>",
         "EqvtAmt": "<EqvtAmt><Amt Ccy=\"$CCY\">$AMOUNT</Amt><CcyOfTrf>$CCY</CcyOfTrf></EqvtAmt>",
         "XchgRate": "<XchgRate>1.0</XchgRate>",
-        "ChrgBr": "<ChrgBr>SLEV</ChrgBr>",
+        "ChrgBr": "<ChrgBr>SHAR</ChrgBr>",
         "ChrgsInf": "<ChrgsInf><Amt Ccy=\"$CCY\">0.00</Amt><Agt><FinInstnId><BICFI>$CHRG_BICFI</BICFI></FinInstnId></Agt></ChrgsInf>",
         "PmtTpInf": "<PmtTpInf><SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl></PmtTpInf>",
         "SvcLvl": "<SvcLvl><Cd>$SVC_LVL</Cd></SvcLvl>",
@@ -11174,7 +11157,7 @@
       },
       "dummy_defaults": {
         "currency": "USD",
-        "charge_bearer": "SLEV",
+        "charge_bearer": "SHAR",
         "settlement_method": "INGA",
         "instruction_priority": "NORM"
       }

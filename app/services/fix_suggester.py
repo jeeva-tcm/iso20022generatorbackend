@@ -441,6 +441,61 @@ def _enterprise_shared(path: str, default: Any = None) -> Any:
     return cur
 
 
+# ── Syntactic / Lexical Validation KB (cached) ────────────────────────────────
+# resources/KB/CBPRPlus_Syntactic_Lexical_Validation_KB.json is a companion
+# knowledge base for detecting and repairing SYNTACTIC errors (character encoding,
+# well-formedness, whitespace, numeric/date lexical form) that are checked BEFORE
+# schema/business validation can even run. It is loaded once and consulted by
+# the LLM fallback and any deterministic syntactic repair paths.
+
+_SYNTACTIC_KB_CACHE: Optional[Dict[str, Any]] = None
+
+
+def _load_syntactic_kb() -> Dict[str, Any]:
+    global _SYNTACTIC_KB_CACHE
+    if _SYNTACTIC_KB_CACHE is not None:
+        return _SYNTACTIC_KB_CACHE
+    path = os.path.normpath(os.path.join(
+        os.path.dirname(__file__), "..", "resources", "KB",
+        "CBPRPlus_Syntactic_Lexical_Validation_KB.json",
+    ))
+    try:
+        with open(path, "r", encoding="utf-8-sig") as f:
+            _SYNTACTIC_KB_CACHE = json.load(f)
+    except Exception as e:
+        logger.warning(f"[FixSuggester] Syntactic KB load failed: {e}")
+        _SYNTACTIC_KB_CACHE = {}
+    return _SYNTACTIC_KB_CACHE
+
+
+def _syntactic_kb_get(path: str, default: Any = None) -> Any:
+    """Walk a dotted path through the syntactic KB."""
+    cur: Any = _load_syntactic_kb()
+    for part in path.split("."):
+        if isinstance(cur, dict) and part in cur:
+            cur = cur[part]
+        else:
+            return default
+    return cur
+
+
+def _syntactic_error_codes() -> set:
+    """Return the set of error_codes defined in the syntactic KB's error_code_catalogue."""
+    catalogue = _syntactic_kb_get("error_code_catalogue", {})
+    if isinstance(catalogue, dict):
+        return set(catalogue.keys())
+    return set()
+
+
+def _syntactic_fix_hint(code: str) -> str:
+    """Return a one-line fix hint from the syntactic KB for a given error code."""
+    entry = _syntactic_kb_get(f"error_code_catalogue.{code}", {})
+    if isinstance(entry, dict):
+        return (entry.get("deterministic_fix") or entry.get("fix") or
+                entry.get("description") or "")
+    return ""
+
+
 def _kb_msg_family(msg_type: str) -> str:
     """Reduce 'pacs.008.001.08' → 'pacs.008'."""
     if not msg_type:
@@ -477,7 +532,8 @@ class _KBContext:
         Locate the per-message KB file for `family` (e.g. 'camt.054'), tolerating
         any filename convention:
           • exact  <family>.json            (e.g. pacs.008.json)
-          • descriptive  *<family>*.json     (e.g. CBPRPlus_camt.054.001.08_..._KB.json)
+          • dotted  *<family>*.json          (e.g. CBPRPlus_camt.054.001.08_..._KB.json)
+          • dotless *<familynodot>*.json      (e.g. pacs009_cbprplus_..._kb.json)
         The shared common KBs are never matched here.
         """
         if not family or not os.path.isdir(kb_dir):
@@ -485,11 +541,14 @@ class _KBContext:
         exact = os.path.join(kb_dir, f"{family}.json")
         if os.path.exists(exact):
             return exact
+        # Match either the dotted family ('pacs.009') or its dotless form
+        # ('pacs009'), since KB files use both naming conventions.
+        tokens = {family, family.replace(".", "")}
         cands = [
             fn for fn in os.listdir(kb_dir)
             if fn.endswith(".json")
             and fn not in cls._COMMON_KB_FILES
-            and family in fn
+            and any(tok in fn for tok in tokens)
         ]
         if cands:
             cands.sort(key=len)  # prefer the most specific/shortest match
@@ -508,13 +567,26 @@ class _KBContext:
         except Exception as e:
             logger.warning(f"[KBContext] Failed to load KB for {self.family}: {e}")
             return
-        for t in data.get("tags", []) or []:
+        # KB files come from several authors with slightly different shapes;
+        # coerce list-valued sections defensively (some store them as dicts).
+        def _as_list(v):
+            if isinstance(v, list):
+                return v
+            if isinstance(v, dict):
+                return list(v.values())
+            return []
+
+        for t in _as_list(data.get("tags")):
+            if not isinstance(t, dict):
+                continue
             leaf = t.get("xml_element") or (t.get("tag", "").split("/")[-1])
             # Tag-level enum allow-list (e.g. CdtDbtInd → [CRDT, DBIT]).
             vv = t.get("valid_values")
             if leaf and isinstance(vv, list) and vv and leaf not in self.valid_by_tag:
                 self.valid_by_tag[leaf] = [str(c) for c in vv]
-            for e in t.get("errors", []) or []:
+            for e in _as_list(t.get("errors")):
+                if not isinstance(e, dict):
+                    continue
                 rec = {
                     "error_id": e.get("error_id", ""),
                     "error_code": e.get("error_code", ""),
@@ -533,9 +605,9 @@ class _KBContext:
                 ev = e.get("valid_values")
                 if leaf and isinstance(ev, list) and ev and leaf not in self.valid_by_tag:
                     self.valid_by_tag[leaf] = [str(c) for c in ev]
-        self.dependency_rules = data.get("cross_tag_dependency_rules", []) or []
-        self.formal_rules = ((data.get("cbpr_plus_formal_rules", []) or [])
-                             + (data.get("iso_20022_rules", []) or []))
+        self.dependency_rules = _as_list(data.get("cross_tag_dependency_rules"))
+        self.formal_rules = (_as_list(data.get("cbpr_plus_formal_rules"))
+                             + _as_list(data.get("iso_20022_rules")))
 
     def _matching_records(self, code: str = "", leaf: str = "") -> list:
         """Records matching the issue's error_code first, then the element tag."""
@@ -680,8 +752,12 @@ def _kb_field_constraint(tag_name: str) -> Dict[str, Any]:
     # Suffix-based heuristics — return a synthesized constraint
     if tn.endswith("Amt") or tn == "Amt":
         return {"type": "Amount", "example": "1000.00"}
+    # AppHdr/CreDt is ISODateTime (dateTime), not ISODate — must be treated as
+    # DateTime so value fixes generate a full timestamp with timezone offset.
+    if tn == "CreDt":
+        return {"type": "DateTime", "example": "2026-05-27T10:00:00+00:00"}
     if tn.endswith("DtTm"):
-        return {"type": "DateTime", "example": "2026-05-27T10:00:00Z"}
+        return {"type": "DateTime", "example": "2026-05-27T10:00:00+00:00"}
     if tn.endswith("Dt") and len(tn) > 2:
         return {"type": "Date", "example": "2026-05-27"}
     if tn.endswith("BICFI") or tn == "BICFI" or tn.endswith("AnyBIC"):
@@ -908,7 +984,7 @@ _TEMPLATES: dict[str, str] = {
     "PstCd":          "<PstCd>10001</PstCd>",
     "StrtNm":         "<StrtNm>Main Street</StrtNm>",
     "BldgNb":         "<BldgNb>123</BldgNb>",
-    "ChrgBr":         "<ChrgBr>SLEV</ChrgBr>",
+    "ChrgBr":         "<ChrgBr>SHAR</ChrgBr>",
     "SttlmMtd":       "<SttlmMtd>INGA</SttlmMtd>",
     "NbOfTxs":        "<NbOfTxs>1</NbOfTxs>",
     "CtrlSum":        "<CtrlSum>1000.00</CtrlSum>",
@@ -1891,12 +1967,12 @@ class FixSuggester:
 
         # 2. Tag-specific codelist lookups
         if tag_l in ("chrgbr", "chargebearer"):
-            codes = _codelist_codes("charge_bearer")
-            # Prefer SLEV (most common for CBPR+)
-            for preferred in ("SLEV", "SHAR", "CRED", "DEBT"):
+            codes = [c for c in _codelist_codes("charge_bearer") if c != "SLEV"]
+            # SLEV is disallowed by policy — never suggest it; prefer SHAR.
+            for preferred in ("SHAR", "CRED", "DEBT"):
                 if preferred in codes:
                     return preferred
-            return codes[0] if codes else "SLEV"
+            return codes[0] if codes else "SHAR"
 
         if tag_l in ("svccd", "cd") and "svcl" in fix_hint.lower():
             codes = _codelist_codes("service_level")
@@ -2312,9 +2388,11 @@ class FixSuggester:
         # Try codelist-based defaults first
         if n in ("chrgbr",):
             codes = _codelist_codes("charge_bearer")
-            for p in ("SLEV", "SHAR"):
+            # SLEV is disallowed by policy — prefer SHAR, then other non-SLEV codes.
+            for p in ("SHAR", "CRED", "DEBT"):
                 if p in codes:
                     return p
+            return "SHAR"
         if n in ("sttlmmtd",):
             return "INGA"
         if n in ("instrprty",):
@@ -2436,6 +2514,32 @@ class FixSuggester:
                         if _res is not None:
                             return _res
 
+        # ── Route: SCHEMA_VAL "character content … element-only" ──────────────
+        # Triggered when stray characters (e.g. " ,.?"} ") are typed directly
+        # into the editor between or after element tags inside an element-only
+        # container (e.g. after </FIToFIPmtStsRpt> but before </Document>).
+        # The validator surfaces this as:
+        #   "Character content other than whitespace is not allowed because the
+        #    content type is 'element-only'."
+        # Fix: locate the named container, strip any non-whitespace text/tail
+        # nodes from all its direct children (and its own .text).
+        _eo_m = re.search(
+            r"(?:field|element)\s+'([^']+)'.*?content type is\s+'element-only'",
+            msg, re.I | re.S
+        )
+        if code in ("SCHEMA_VAL", "XML_SYNTAX", "WF_STRAY_TEXT_BETWEEN_ELEMENTS") and _eo_m:
+            _eo_fix = self._fix_stray_text_element_only(root, _eo_m.group(1), code, msg)
+            if _eo_fix is not None:
+                return _eo_fix
+
+        # Broader catch: even without a named element in the message, strip
+        # non-whitespace text/tail from any element-only container when the
+        # error fingerprint matches.
+        if code == "SCHEMA_VAL" and "element-only" in msg.lower() and "character content" in msg.lower():
+            _eo_fix2 = self._fix_stray_text_element_only(root, "", code, msg)
+            if _eo_fix2 is not None:
+                return _eo_fix2
+
         # ── Route: ADDR_CTRY_MISSING — Country missing from PstlAdr ─────────
         # Emitted with path=line_number (→ "/"), so normal path-walking fails.
         # We extract the party name from the message, locate the right PstlAdr,
@@ -2552,7 +2656,10 @@ class FixSuggester:
         # defined by the Business Application Header (head.001) schema, not the
         # Document message schema — pick the right one so AppHdr fixes are also
         # schema-driven (e.g. AppHdr/CreDt is ISODateTime, ordered Fr→To→…→CreDt).
-        targets_apphdr = path.replace("/", ".").strip(".").split(".")[:1] == ["AppHdr"]
+        # True when the path targets any element inside AppHdr (direct or wrapped in
+        # an envelope like /BusMsgEnvlp/AppHdr/CreDt).  The old check only matched
+        # paths that started with AppHdr itself and missed the envelope-wrapped form.
+        targets_apphdr = "AppHdr" in [p for p in path.replace("/", ".").split(".") if p]
         xsd_path  = (self._get_apphdr_xsd_path(xml) if targets_apphdr
                      else self._get_xsd_path(xml))
         tmap      = _XsdTypeMap.get(xsd_path) if xsd_path else None
@@ -3447,6 +3554,107 @@ class FixSuggester:
             cur = cur.getparent()
         return list(reversed(parts))
 
+    # ── Stray-text / element-only fix ────────────────────────────────────────
+
+    def _fix_stray_text_element_only(
+        self,
+        root: etree._Element,
+        container_name: str,
+        code: str,
+        msg: str,
+    ) -> Optional[FixSuggestion]:
+        """
+        Strip non-whitespace text/tail nodes from every element-only container
+        that has stray character content, causing SCHEMA_VAL "Character content
+        other than whitespace is not allowed because the content type is
+        'element-only'".
+
+        A stray text node can appear in two places inside an element-only
+        container `<Parent>…</Parent>`:
+          1.  Parent.text      — text directly after <Parent> before first child
+          2.  child.tail       — text after </child> and before the next sibling
+                                 or </Parent>
+
+        Both are stripped (set to None or a single whitespace) so the document
+        remains well-formed and the schema error disappears.
+
+        `container_name` is the local-name extracted from the error message
+        ("Field 'Document'" → "Document"). When empty, ALL element-only
+        containers in the tree are scanned (broader recovery path).
+        """
+        lh = getattr(self, "_line_hint", None)
+
+        def _has_stray(el: etree._Element) -> bool:
+            """Return True when el carries non-whitespace text/tail on itself or any child tail."""
+            if el.text and el.text.strip():
+                return True
+            for child in el:
+                if isinstance(child.tag, str) and child.tail and child.tail.strip():
+                    return True
+            return False
+
+        def _strip_stray(el_copy: etree._Element) -> bool:
+            """In-place strip of non-whitespace text/tail; return True if changed."""
+            changed = False
+            if el_copy.text and el_copy.text.strip():
+                el_copy.text = None
+                changed = True
+            for child in el_copy:
+                if isinstance(child.tag, str) and child.tail and child.tail.strip():
+                    child.tail = None
+                    changed = True
+            return changed
+
+        # Collect candidates: named container first, else all element-only containers.
+        # "Element-only" heuristic: any element with at least one child element and
+        # no meaningful text of its own (or a name we KNOW is element-only).
+        _EO_NAMES = {
+            "Document", "BusMsgEnvlp", "AppHdr", "GrpHdr", "SttlmInf",
+            "FIToFICstmrCdtTrf", "FIToFIPmtStsRpt", "FIToFICustomerCreditTransfer",
+            "FICdtTrf", "CdtTrfTxInf", "TxInfAndSts", "FIToFIPmtStsRpt",
+            "OrgnlGrpInfAndSts", "OrgnlPmtInfAndSts", "PmtInf",
+            "DrctDbtTxInf", "Ntfctn", "Itm", "Assgnmt", "Undrlyg", "TxInf",
+            "CdtInstr", "DrctDbtTxInf", "Strd", "RfrdDocInf",
+        }
+        candidates: list[etree._Element] = []
+        for el in root.iter():
+            if not isinstance(el.tag, str):
+                continue
+            local = etree.QName(el.tag).localname
+            if container_name:
+                if local != container_name:
+                    continue
+            else:
+                # Broad scan: only elements with child elements (element-only pattern)
+                has_child_els = any(isinstance(c.tag, str) for c in el)
+                if not has_child_els:
+                    continue
+                if local not in _EO_NAMES and not local.endswith(("Inf", "Rpt", "Hdr", "Tx", "Sts")):
+                    continue
+            if _has_stray(el):
+                candidates.append(el)
+
+        if not candidates:
+            return None
+
+        # Pick the line-nearest candidate when lh is available.
+        target = (min(candidates, key=lambda e: abs((e.sourceline or 0) - lh))
+                  if lh is not None else candidates[0])
+
+        original_fragment = self._serialize(target)
+        target_copy = self._copy(target)
+        if not _strip_stray(target_copy):
+            return None
+
+        return FixSuggestion(
+            xpath=self._xpath_of(target),
+            original_fragment=original_fragment,
+            fragment_xml=self._serialize(target_copy),
+            issue_code=code,
+            issue_message=msg,
+            confidence="high",
+        )
+
     def _try_sequence_fix(self, root: etree._Element, xml: str, code: str,
                           msg: str, ns: str, msg_type: str,
                           rules_idx: Optional["_RulesIndex"]) -> Optional[FixSuggestion]:
@@ -3946,6 +4154,28 @@ class FixSuggester:
         msg_l             = msg.lower()
         el_local          = etree.QName(el.tag).localname
 
+        # ── HEADER_VAL / CBPR_DATETIME_NO_TIMEZONE on AppHdr datetime fields ────
+        # When the AppHdr carries a datetime field (CreDt, CreDtTm) with a
+        # completely invalid value (e.g. "with", "with+00:00", a bare date), or
+        # when HEADER_VAL fires because the value doesn't match the ISODateTime
+        # pattern, generate a fresh UTC datetime regardless of what the field
+        # constraint suffix-heuristic says.  CreDt in head.001 is ALWAYS a
+        # dateTime (not a date), so we must not produce a date-only string.
+        _is_apphdr_dt_field = el_local in ("CreDt", "CreDtTm") and not list(el)
+        _is_hdr_val = code in ("HEADER_VAL", "CBPR_DATETIME_NO_TIMEZONE",
+                                "CBPR_DATETIME_Z_FORBIDDEN", "CBPR_DATETIME_MILLISECONDS",
+                                "PAST_DATE_ERROR")
+        if _is_apphdr_dt_field and _is_hdr_val:
+            import datetime as _dt_mod
+            _cur = (el.text or "").strip()
+            _valid_dt = re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+\-]\d{2}:\d{2}$", _cur)
+            if not _valid_dt:
+                _now = _dt_mod.datetime.now(_dt_mod.timezone.utc)
+                el_copy = self._copy(el)
+                el_copy.text = _now.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+                return FixSuggestion(xpath, original_fragment,
+                                     self._serialize(el_copy), code, msg, "high")
+
         # ── BizSvc → variant-aware CBPR+ business service value ───────────────
         # A wrong value like 'swift.cbprplus.02' on a pacs.009 is a perfectly
         # valid Max35Text, so the generic constraint check below never flags it —
@@ -4198,8 +4428,18 @@ class FixSuggester:
                 elif code == "CBPR_DATETIME_MILLISECONDS":
                     new_val = re.sub(r"\.\d+", "", (el.text or ""))
                 elif code == "CBPR_DATETIME_NO_TIMEZONE":
-                    txt = (el.text or "")
-                    new_val = txt if ("+" in txt or "-" in txt[-6:]) else txt + "+00:00"
+                    txt = (el.text or "").strip()
+                    # ISO datetime WITHOUT timezone — append +00:00
+                    _iso_dt_no_tz  = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$"
+                    # ISO datetime WITH a valid explicit offset — leave unchanged
+                    _iso_dt_with_tz = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?[+\-]\d{2}:\d{2}$"
+                    if re.match(_iso_dt_no_tz, txt):
+                        new_val = re.sub(r"\.\d+", "", txt) + "+00:00"
+                    elif re.match(_iso_dt_with_tz, txt):
+                        new_val = txt  # already has a valid explicit offset
+                    else:
+                        # Value is not a valid ISO datetime at all — generate a fresh one
+                        new_val = now.strftime("%Y-%m-%dT%H:%M:%S+00:00")
                 else:
                     new_val = el.text
 
@@ -4513,6 +4753,43 @@ class FixSuggester:
             m = re.search(r'/([A-Za-z][A-Za-z0-9]*)(?:\[\d+\])?$', xpath)
             if m:
                 target_tag = m.group(1)
+
+        # ── Syntactic / Lexical KB: extra context for syntactic error codes ──────
+        # When the error code appears in the syntactic KB's error_code_catalogue,
+        # surface its field_class policy and deterministic fix so the LLM is guided
+        # by the lexical KB rather than inventing a fix. This covers codes like
+        # WF_UNESCAPED_AMPERSAND, NUMERIC_THOUSANDS_SEP, DATETIME_SPACE_SEPARATOR,
+        # INVISIBLE_CHAR, etc. that the global business KB does NOT catalogue.
+        try:
+            syn_kb = _load_syntactic_kb()
+            syn_catalogue = syn_kb.get("error_code_catalogue", {})
+            if isinstance(syn_catalogue, dict) and code in syn_catalogue:
+                entry = syn_catalogue[code]
+                bits = []
+                if entry.get("root_cause"):
+                    bits.append(f"root_cause: {entry['root_cause']}")
+                if entry.get("fix"):
+                    bits.append(f"fix: {entry['fix']}")
+                if entry.get("do_not"):
+                    bits.append(f"do_not: {entry['do_not']}")
+                if bits:
+                    context_lines.append("Syntactic/Lexical KB:\n" + "\n".join(f"  {b}" for b in bits))
+            else:
+                # Code not in catalogue — surface the scope/pipeline guidance so the
+                # LLM knows to apply syntactic repairs before business-rule fixes.
+                scope = syn_kb.get("scope_and_precedence", {})
+                owns = scope.get("this_kb_owns", [])
+                pipeline = scope.get("fix_pipeline_order", [])
+                if owns or pipeline:
+                    lines = [f"  - {o}" for o in owns[:4]]
+                    if pipeline:
+                        lines += [f"  {p}" for p in pipeline[:3]]
+                    context_lines.append(
+                        "Syntactic/Lexical KB (apply BEFORE schema/business fixes):\n"
+                        + "\n".join(lines)
+                    )
+        except Exception as _e:
+            logger.debug(f"[FixSuggester] Syntactic KB context failed: {_e}")
 
         # ── Per-message KB STRUCTURE (resources/KB/<msg>.json) ────────────────
         # "Check the KB before fixing": hand the model the authoritative shape of
