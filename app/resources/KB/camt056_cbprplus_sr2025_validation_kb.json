@@ -538,6 +538,56 @@
             ]
         },
         {
+            "tag": "Case/Cretr/Pty",
+            "xml_element": "Pty",
+            "xpath": "/Document/FIToFIPmtCxlReq/Case/Cretr/Pty",
+            "occurrence": "[1..1]",
+            "mandatory": true,
+            "description": "Party identification of the case creator. Must contain at least Nm (name) and PstlAdr (postal address with Ctry). An empty <Pty/> self-closing tag is not valid.",
+            "errors": [
+                {
+                    "error_id": "CASE_CRETR_PTY_EMPTY",
+                    "error_code": "MISSING_EXPECTED_ELEMENT",
+                    "severity": "Error",
+                    "description": "Case/Cretr/Pty is present but empty (<Pty/> or <Pty></Pty>). ISO 20022 requires at least Nm and PstlAdr to identify the case creator.",
+                    "affected_tags": [
+                        "Case/Cretr/Pty",
+                        "Case/Cretr/Pty/Nm",
+                        "Case/Cretr/Pty/PstlAdr"
+                    ],
+                    "possible_fixes": [
+                        "Replace <Pty/> with a fully populated <Pty> block containing <Nm> and <PstlAdr>:\n<Pty>\n  <Nm>uyrudfkfiudfihiugog</Nm>\n  <PstlAdr>\n    <StrtNm>Allen Street</StrtNm>\n    <BldgNb>849</BldgNb>\n    <TwnNm>White City</TwnNm>\n    <Ctry>NO</Ctry>\n  </PstlAdr>\n</Pty>",
+                        "Ensure <Ctry> contains a valid ISO 3166-1 alpha-2 country code (e.g. NO, US, GB).",
+                        "If the party is a financial institution, use <Cretr><Agt><FinInstnId><BICFI>CREDNOKKXXX</BICFI></FinInstnId></Agt></Cretr> instead."
+                    ]
+                },
+                {
+                    "error_id": "CASE_CRETR_PTY_NM_MISSING",
+                    "error_code": "MISSING_EXPECTED_ELEMENT",
+                    "severity": "Error",
+                    "description": "Case/Cretr/Pty is missing <Nm>. CBPR+ requires Name and Postal Address to coexist.",
+                    "affected_tags": [
+                        "Case/Cretr/Pty/Nm"
+                    ],
+                    "possible_fixes": [
+                        "Add <Nm>{party_name}</Nm> inside <Pty>. Maximum 140 characters (Max140Text)."
+                    ]
+                },
+                {
+                    "error_id": "CASE_CRETR_PTY_PSTLADR_MISSING",
+                    "error_code": "MISSING_EXPECTED_ELEMENT",
+                    "severity": "Error",
+                    "description": "Case/Cretr/Pty has <Nm> but is missing <PstlAdr>. CBPR+ requires Name and Postal Address to coexist.",
+                    "affected_tags": [
+                        "Case/Cretr/Pty/PstlAdr"
+                    ],
+                    "possible_fixes": [
+                        "Add <PstlAdr> containing at minimum <Ctry> (ISO 2-letter country code). Include <StrtNm>, <BldgNb>, <TwnNm> for a complete address."
+                    ]
+                }
+            ]
+        },
+        {
             "tag": "CtrlData/NbOfTxs",
             "xml_element": "NbOfTxs",
             "xpath": "/Document/FIToFIPmtCxlReq/CtrlData/NbOfTxs",

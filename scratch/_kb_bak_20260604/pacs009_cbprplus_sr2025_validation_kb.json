@@ -1,40 +1,198 @@
 {
-  "domain": "SWIFT MX CBPR+ pacs.009.001.08 ADV",
-  "message_variant": "FinancialInstitutionCreditTransfer Advice (ADV)",
+  "domain": "SWIFT MX CBPR+ pacs.009.001.08 / pacs.009.001.12",
   "version": "SR2025",
-  "last_updated": "2026-06-04",
-  "purpose": "Context KB for pacs.009 ADV FinancialInstitutionCreditTransfer (Advice) validation and transformation. For each XML tag: possible errors, affected tags, and all possible fixes. Based on CBPR+ SR2025 Usage Guideline (pacs.009.001.08 ADV) and SWIFT MX Enterprise KB.",
+  "last_updated": "2026-06-03",
+  "xsd_version": "pacs.009.001.12",
+  "xsd_namespace": "urn:iso:std:iso:20022:tech:xsd:pacs.009.001.12",
+  "purpose": "Context KB for pacs.009 FinancialInstitutionCreditTransfer validation. For each XML tag: possible errors, affected tags, and all possible fixes. Based on CBPR+ SR2025 Usage Guideline (pacs.009.001.08) and SWIFT MX Enterprise KB.",
   "reference_documents": [
-    "CBPRPlus-pacs.009.001.08_FinancialInstitutionCreditTransfer ADV CBPRPlus SR2025 (Combined), 21 March 2025",
+    "CBPRPlus-pacs.009.001.08_FinancialInstitutionCreditTransfer CBPRPlus SR2025 (Combined), 21 March 2025",
     "SWIFT MX Enterprise LLM KB v2.0"
   ],
-  "iso_20022_rules": {
-    "RelatedPresentWhenCopyDupl": "If CopyDuplicate is present, Related MUST be present.",
-    "InstructedAgentRule": "If GrpHdr/InstdAgt is present, then CdtTrfTxInf/InstdAgt is not allowed.",
-    "InstructingAgentRule": "If GrpHdr/InstgAgt is present, then CdtTrfTxInf/InstgAgt is not allowed.",
-    "TotalInterbankSettlementAmountRule": "If GrpHdr/TtlIntrBkSttlmAmt is present, all CdtTrfTxInf/IntrBkSttlmAmt must use the same currency.",
-    "TotalInterbankSettlementAmountAndSumRule": "If GrpHdr/TtlIntrBkSttlmAmt is present, it must equal the sum of all CdtTrfTxInf/IntrBkSttlmAmt.",
-    "GroupHeaderInterbankSettlementDateRule": "If GrpHdr/IntrBkSttlmDt is present, CdtTrfTxInf/IntrBkSttlmDt is not allowed.",
-    "TransactionInterbankSettlementDateRule": "If GrpHdr/IntrBkSttlmDt is not present, CdtTrfTxInf/IntrBkSttlmDt MUST be present.",
-    "PaymentTypeInformationRule": "If GrpHdr/PmtTpInf is present, CdtTrfTxInf/PmtTpInf is not allowed.",
-    "NumberOfTransactionsAndCreditTransfersRule": "GrpHdr/NbOfTxs must equal the number of CdtTrfTxInf occurrences.",
-    "UnderlyingCustomerCreditTransferRule": "When the FI credit transfer advises an underlying customer payment, CdtTrfTxInf/UndrlygCstmrCdtTrf carries the original CreditTransferTransaction reference and its parties.",
-    "FinancialInstitutionPartyRule": "In pacs.009, Dbtr and Cdtr are financial institutions identified by BranchAndFinancialInstitutionIdentification6/FinInstnId; customer Nm/PstlAdr-only identification is not permitted at FI level."
-  },
+  "iso_20022_rules": [
+    {
+      "rule_id": "R1",
+      "name": "RelatedPresentWhenCopyDupl",
+      "description": "If CopyDuplicate is present, Related MUST be present.",
+      "error_code": "H00001",
+      "severity": "Warning",
+      "error_text": "Element Related is missing"
+    },
+    {
+      "rule_id": "R4",
+      "name": "InstructedAgentRule",
+      "description": "If GrpHdr/InstdAgt is present, then CdtTrfTxInf/InstdAgt is not allowed.",
+      "error_code": "X00008",
+      "severity": "Fatal",
+      "error_text": "Invalid message content for instructed agent."
+    },
+    {
+      "rule_id": "R5",
+      "name": "InstructingAgentRule",
+      "description": "If GrpHdr/InstgAgt is present, then CdtTrfTxInf/InstgAgt is not allowed.",
+      "error_code": "X00007",
+      "severity": "Fatal",
+      "error_text": "Invalid message content for instructing agent."
+    },
+    {
+      "rule_id": "R6",
+      "name": "TotalInterbankSettlementAmountRule",
+      "description": "If GrpHdr/TtlIntrBkSttlmAmt is present, all CdtTrfTxInf/IntrBkSttlmAmt must use the same currency.",
+      "error_code": "X00042",
+      "severity": "Fatal"
+    },
+    {
+      "rule_id": "R7",
+      "name": "TotalInterbankSettlementAmountAndSumRule",
+      "description": "If GrpHdr/TtlIntrBkSttlmAmt is present, it must equal the sum of all CdtTrfTxInf/IntrBkSttlmAmt.",
+      "error_code": "X00043",
+      "severity": "Fatal"
+    },
+    {
+      "rule_id": "R8",
+      "name": "GroupHeaderInterbankSettlementDateRule",
+      "description": "If GrpHdr/IntrBkSttlmDt is present, CdtTrfTxInf/IntrBkSttlmDt is not allowed.",
+      "error_code": "X00045",
+      "severity": "Fatal"
+    },
+    {
+      "rule_id": "R9",
+      "name": "TransactionInterbankSettlementDateRule",
+      "description": "If GrpHdr/IntrBkSttlmDt is not present, CdtTrfTxInf/IntrBkSttlmDt MUST be present.",
+      "error_code": "X00290",
+      "severity": "Fatal"
+    },
+    {
+      "rule_id": "R10",
+      "name": "PaymentTypeInformationRule",
+      "description": "If GrpHdr/PmtTpInf is present, CdtTrfTxInf/PmtTpInf is not allowed.",
+      "error_code": "X00009",
+      "severity": "Fatal"
+    },
+    {
+      "rule_id": "R11",
+      "name": "NumberOfTransactionsAndCreditTransfersRule",
+      "description": "GrpHdr/NbOfTxs must equal the number of CdtTrfTxInf occurrences.",
+      "error_code": "X00062",
+      "severity": "Fatal"
+    },
+    {
+      "rule_id": "R12",
+      "name": "AmountPositiveRule",
+      "description": "IntrBkSttlmAmt must be >= 0 (minInclusive=0), max 5 fractional digits, max 18 total digits. ActiveCurrencyAndAmount from XSD pacs.009.001.12.",
+      "error_code": "AMOUNT_NEGATIVE",
+      "severity": "Fatal",
+      "xsd_source": "ActiveCurrencyAndAmount_SimpleType"
+    },
+    {
+      "rule_id": "R13",
+      "name": "BICFIFormatRule",
+      "description": "All BICFI values must match pattern [A-Z0-9]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?. In pacs.009, Dbtr and Cdtr are BranchAndFinancialInstitutionIdentification8 (FI type) — their identification is via FinInstnId/BICFI, NOT via PartyIdentification or customer fields.",
+      "error_code": "INVALID_BICFI",
+      "severity": "Fatal",
+      "xsd_source": "BICFIDec2014Identifier",
+      "pacs009_specific_note": "pacs.009 Dbtr and Cdtr are FI type (BranchAndFinancialInstitutionIdentification8). Customer-style fields (Nm as a person, Id/OrgId, PrvtId) must NOT be used in Dbtr or Cdtr."
+    },
+    {
+      "rule_id": "R14",
+      "name": "LEIFormatRule",
+      "description": "LEI fields must match pattern [A-Z0-9]{18}[0-9]{2} (exactly 20 chars). Used in BranchData5/LEI and FinancialInstitutionIdentification23/LEI.",
+      "error_code": "LEI_INVALID",
+      "severity": "Fatal",
+      "xsd_source": "LEIIdentifier"
+    },
+    {
+      "rule_id": "R15",
+      "name": "UUIDv4FormatRule",
+      "description": "UETR must match [a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}.",
+      "error_code": "UETR_FORMAT_ERROR",
+      "severity": "Fatal",
+      "xsd_source": "UUIDv4Identifier"
+    },
+    {
+      "rule_id": "R16",
+      "name": "ChrgBrCBPRRequiredRule",
+      "description": "ChrgBr is NOT in the base ISO 20022 XSD for pacs.009 (CreditTransferTransaction67 and CreditTransferTransaction69 have no ChargeBearerType element). ChrgBr in pacs.009 is a CBPR+ guideline requirement added via usage rules, not via schema. When present, it must be SLEV. Value DEBT/CRED/SHAR are not used for FI-to-FI payments.",
+      "error_code": "CHRGBR_INVALID",
+      "severity": "Warning",
+      "xsd_source": "CreditTransferTransaction67 — no ChargeBearerType1Code element",
+      "cbpr_source": "CBPR+ Usage Guideline recommends SLEV for FI transfers",
+      "ai_fix": "If ChrgBr is present and invalid: replace with SLEV. If ChrgBr is absent: do not insert — it is not structurally mandatory per XSD."
+    },
+    {
+      "rule_id": "R17",
+      "name": "UndrlygFICdtTrfRule",
+      "description": "pacs.009.001.12 introduces a new optional element UndrlygFICdtTrf (CreditTransferTransaction69) alongside the existing UndrlygCstmrCdtTrf. This represents an underlying FI credit transfer (e.g., bank-to-bank cover for another FI transfer). When UndrlygFICdtTrf is present, PmtId, IntrBkSttlmAmt, Dbtr, and Cdtr are mandatory inside it.",
+      "error_code": "PACS009_UNDRLYGFICDT_PMTID_MANDATORY",
+      "severity": "Fatal",
+      "xsd_source": "CreditTransferTransaction69 — pacs.009.001.12 only",
+      "ai_fix": "When UndrlygFICdtTrf exists but mandatory fields are missing, populate them from the outer CdtTrfTxInf values or dummy_data. ONLY one of UndrlygCstmrCdtTrf or UndrlygFICdtTrf should be present at a time."
+    },
+    {
+      "rule_id": "R18",
+      "name": "XpryDtTmFormatRule",
+      "description": "pacs.009.001.12 GrpHdr has optional XpryDtTm (expiry datetime). When present, must use CBPR+ offset datetime format: YYYY-MM-DDTHH:MM:SS+HH:MM. No Z, no milliseconds.",
+      "error_code": "XPRYDTTM_FORMAT_INVALID",
+      "severity": "Fatal",
+      "xsd_source": "GroupHeader in pacs.009.001.12"
+    }
+  ],
   "cbpr_plus_formal_rules": [
-    "AppHdr/Priority must equal CdtTrfTxInf/PmtTpInf/InstrPrty when both are present.",
-    "AppHdr/Fr BIC must match InstgAgt BIC and AppHdr/To BIC must match InstdAgt BIC, except when CpyDplct = COPY or CODU.",
-    "AppHdr/Fr BIC must match InstgAgt BIC and AppHdr/To BIC must match InstdAgt BIC when CpyDplct is absent.",
-    "If BICFI is present inside FinInstnId, then Nm and PstlAdr are NOT allowed in the same FinInstnId block.",
-    "If Nm is present in FinInstnId, PstlAdr must also be present, and vice versa.",
-    "All proprietary/text fields (excl. Nm/Adr/RmtInf) limited to FIN-X charset. Nm/Adr/RmtInf extended with !#$&%*=^_{|}~\";<>@[\\] (< as &lt;, > as &gt;).",
-    "AppHdr/BizSvc must be 'swift.cbprplus.03' (SR2025). This element is mandatory (min occurrence changed to 1).",
-    "AppHdr/BizMsgIdr must equal GrpHdr/MsgId.",
-    "DateTime fields must use YYYY-MM-DDTHH:MM:SS+HH:MM format. Z suffix is forbidden. Milliseconds are forbidden.",
-    "CBPR+ allows single transactions only per message.",
-    "BranchIdentification is removed from InstgAgt, InstdAgt, DbtrAgt, CdtrAgt, IntrmyAgt1/2/3, PrvsInstgAgt1/2/3 and settlement agents.",
-    "Dbtr and Cdtr in pacs.009 are financial institutions; identification follows FinInstnId rules (BICFI, or Nm+PstlAdr together, optional ClrSysMmbId).",
-    "UndrlygCstmrCdtTrf, when present, conveys the original customer payment detail (InstdAmt, charges context, RmtInf, customer Dbtr/Cdtr) for advice/reconciliation."
+    {
+      "rule_id": "CBPR_PRIORITY",
+      "name": "CBPR_Priority_Instruction_Priority_FormalRule",
+      "description": "AppHdr/Priority must equal CdtTrfTxInf/PmtTpInf/InstrPrty when both are present."
+    },
+    {
+      "rule_id": "CBPR_FR_TO_1",
+      "name": "CBPR_From_To_Instructing_Instructed_Agent_BIC_1",
+      "description": "AppHdr/Fr BIC must match InstgAgt BIC and AppHdr/To BIC must match InstdAgt BIC, except when CpyDplct = COPY or CODU."
+    },
+    {
+      "rule_id": "CBPR_FR_TO_2",
+      "name": "CBPR_From_To_Instructing_Instructed_Agent_BIC_2",
+      "description": "AppHdr/Fr BIC must match InstgAgt BIC and AppHdr/To BIC must match InstdAgt BIC when CpyDplct is absent."
+    },
+    {
+      "rule_id": "CBPR_AGENT_BICFI_EXCLUSIVE",
+      "name": "CBPR_Agent_BICFI_Rule",
+      "description": "If BICFI is present inside FinInstnId, then Nm and PstlAdr are NOT allowed in the same FinInstnId block."
+    },
+    {
+      "rule_id": "CBPR_AGENT_NM_PSTLADR",
+      "name": "CBPR_Agent_Name_Postal_Address_FormalRule",
+      "description": "If Nm is present in FinInstnId, PstlAdr must also be present, and vice versa."
+    },
+    {
+      "rule_id": "CBPR_CHARSET",
+      "name": "CBPR_Character_Set_Usage_TextualRule",
+      "description": "All proprietary/text fields (excl. Nm/Adr/RmtInf) limited to FIN-X charset. Nm/Adr/RmtInf extended with !#$&%*=^_{|}~\";<>@[\\] (< as &lt;, > as &gt;)."
+    },
+    {
+      "rule_id": "CBPR_BIZ_SVC",
+      "name": "CBPR_Business_Service_Usage_TextualRule",
+      "description": "AppHdr/BizSvc must be 'swift.cbprplus.03' (SR2025). This element is mandatory (min occurrence changed to 1)."
+    },
+    {
+      "rule_id": "CBPR_BIZ_MSG_IDR",
+      "name": "CBPR_Business_Message_Identifier_TextualRule",
+      "description": "AppHdr/BizMsgIdr must equal GrpHdr/MsgId."
+    },
+    {
+      "rule_id": "CBPR_DATETIME_NO_Z",
+      "name": "CBPR_DateTime_Format",
+      "description": "DateTime fields must use YYYY-MM-DDTHH:MM:SS+HH:MM format. Z suffix is forbidden. Milliseconds are forbidden."
+    },
+    {
+      "rule_id": "CBPR_SINGLE_TX",
+      "name": "Single Transaction Only",
+      "description": "CBPR+ allows single transactions only per message."
+    },
+    {
+      "rule_id": "CBPR_BRANCH_REMOVED",
+      "name": "BrnchId Removed",
+      "description": "BranchIdentification is removed from InstgAgt, InstdAgt, DbtrAgt, CdtrAgt, IntrmyAgt1/2/3, PrvsInstgAgt1/2/3 and settlement agents."
+    }
   ],
   "tags": [
     {
@@ -105,7 +263,8 @@
           ],
           "possible_fixes": [
             "Replace with a valid BICFI: 8 or 11 uppercase alphanumeric characters following ISO 9362.",
-            "Pattern: [A-Z]{6}[A-Z2-9][A-NP-Z0-9]([A-Z0-9]{3})?"
+            "Pattern: [A-Z]{6}[A-Z2-9][A-NP-Z0-9]([A-Z0-9]{3})?",
+            "Example valid BIC: DEUTDEFFXXX"
           ]
         }
       ]
@@ -167,7 +326,7 @@
           ],
           "possible_fixes": [
             "Copy the value of GrpHdr/MsgId and insert as <BizMsgIdr>{MsgId_value}</BizMsgIdr>.",
-            "If MsgId is also absent, generate a unique Max35Text value."
+            "If MsgId is also absent, generate a unique Max35Text value (e.g. MSG-YYYYMMDD-001)."
           ]
         },
         {
@@ -245,7 +404,7 @@
       "xpath": "/AppHdr/BizSvc",
       "occurrence": "[1..1]",
       "mandatory": true,
-      "note": "Minimum occurrence changed to 1 by CBPR+ SR2025 guideline. ADV usage is conveyed by the AppHdr/BizSvc service value.",
+      "note": "Minimum occurrence changed to 1 by CBPR+ SR2025 guideline.",
       "expected_value": "swift.cbprplus.03",
       "description": "Business Service identifier. Mandatory under CBPR+ SR2025; must be 'swift.cbprplus.03'.",
       "errors": [
@@ -306,7 +465,7 @@
             "AppHdr/CreDt"
           ],
           "possible_fixes": [
-            "Replace trailing 'Z' with '+00:00'."
+            "Replace trailing 'Z' with '+00:00'. Example: 2026-05-28T10:00:00Z -> 2026-05-28T10:00:00+00:00."
           ]
         },
         {
@@ -318,7 +477,7 @@
             "AppHdr/CreDt"
           ],
           "possible_fixes": [
-            "Remove millisecond component."
+            "Remove millisecond component. Example: 2026-05-28T10:00:00.123+00:00 -> 2026-05-28T10:00:00+00:00."
           ]
         },
         {
@@ -379,7 +538,7 @@
     {
       "tag": "GrpHdr/MsgId",
       "xml_element": "MsgId",
-      "xpath": "/Document/FICdtTrf/GrpHdr/MsgId",
+      "xpath": "/Document/FinInstnCdtTrf/GrpHdr/MsgId",
       "occurrence": "[1..1]",
       "mandatory": true,
       "datatype": "Max35Text",
@@ -397,6 +556,7 @@
           ],
           "possible_fixes": [
             "Insert <MsgId>{unique identifier up to 35 chars}</MsgId> as first child of GrpHdr.",
+            "Use format MSG-YYYYMMDD-NNN (e.g. MSG-20260528-001).",
             "Ensure the same value is in AppHdr/BizMsgIdr."
           ]
         },
@@ -422,7 +582,7 @@
             "GrpHdr/MsgId"
           ],
           "possible_fixes": [
-            "Generate a new unique MsgId by appending current date and incrementing counter.",
+            "Generate a new unique MsgId by appending current date and incrementing counter (e.g. MSG-20260528-002).",
             "Check sending system for duplicate submission logic."
           ]
         },
@@ -445,7 +605,7 @@
     {
       "tag": "GrpHdr/CreDtTm",
       "xml_element": "CreDtTm",
-      "xpath": "/Document/FICdtTrf/GrpHdr/CreDtTm",
+      "xpath": "/Document/FinInstnCdtTrf/GrpHdr/CreDtTm",
       "occurrence": "[1..1]",
       "mandatory": true,
       "datatype": "ISODateTime",
@@ -472,7 +632,7 @@
             "GrpHdr/CreDtTm"
           ],
           "possible_fixes": [
-            "Replace 'Z' with '+00:00'."
+            "Replace 'Z' with '+00:00'. Example: 2026-05-28T10:00:00Z -> 2026-05-28T10:00:00+00:00."
           ]
         },
         {
@@ -484,7 +644,7 @@
             "GrpHdr/CreDtTm"
           ],
           "possible_fixes": [
-            "Strip milliseconds."
+            "Strip milliseconds. Example: 2026-05-28T10:00:00.000+00:00 -> 2026-05-28T10:00:00+00:00."
           ]
         },
         {
@@ -504,7 +664,7 @@
     {
       "tag": "GrpHdr/NbOfTxs",
       "xml_element": "NbOfTxs",
-      "xpath": "/Document/FICdtTrf/GrpHdr/NbOfTxs",
+      "xpath": "/Document/FinInstnCdtTrf/GrpHdr/NbOfTxs",
       "occurrence": "[1..1]",
       "mandatory": true,
       "datatype": "Max15NumericText",
@@ -559,7 +719,7 @@
             "GrpHdr/NbOfTxs"
           ],
           "possible_fixes": [
-            "Replace with a numeric integer string (max 15 digits)."
+            "Replace with a numeric integer string (max 15 digits). Example: '1'."
           ]
         }
       ]
@@ -567,7 +727,7 @@
     {
       "tag": "GrpHdr/CtrlSum",
       "xml_element": "CtrlSum",
-      "xpath": "/Document/FICdtTrf/GrpHdr/CtrlSum",
+      "xpath": "/Document/FinInstnCdtTrf/GrpHdr/CtrlSum",
       "occurrence": "[0..1]",
       "mandatory": false,
       "datatype": "DecimalNumber",
@@ -597,7 +757,7 @@
             "GrpHdr/CtrlSum"
           ],
           "possible_fixes": [
-            "Use a valid decimal number format.",
+            "Use a valid decimal number format (e.g. 1000.00).",
             "Maximum 18 digits total with up to 5 fraction digits."
           ]
         }
@@ -606,7 +766,7 @@
     {
       "tag": "GrpHdr/SttlmInf/SttlmMtd",
       "xml_element": "SttlmMtd",
-      "xpath": "/Document/FICdtTrf/GrpHdr/SttlmInf/SttlmMtd",
+      "xpath": "/Document/FinInstnCdtTrf/GrpHdr/SttlmInf/SttlmMtd",
       "occurrence": "[1..1]",
       "mandatory": true,
       "valid_values": [
@@ -648,7 +808,7 @@
     {
       "tag": "GrpHdr/InstgAgt",
       "xml_element": "InstgAgt",
-      "xpath": "/Document/FICdtTrf/GrpHdr/InstgAgt",
+      "xpath": "/Document/FinInstnCdtTrf/GrpHdr/InstgAgt",
       "occurrence": "[0..1]",
       "mandatory": false,
       "description": "GrpHdr-level instructing agent. If present, CdtTrfTxInf/InstgAgt must be absent (R5).",
@@ -672,7 +832,7 @@
     {
       "tag": "GrpHdr/InstdAgt",
       "xml_element": "InstdAgt",
-      "xpath": "/Document/FICdtTrf/GrpHdr/InstdAgt",
+      "xpath": "/Document/FinInstnCdtTrf/GrpHdr/InstdAgt",
       "occurrence": "[0..1]",
       "mandatory": false,
       "description": "GrpHdr-level instructed agent. If present, CdtTrfTxInf/InstdAgt must be absent (R4).",
@@ -694,46 +854,9 @@
       ]
     },
     {
-      "tag": "CdtTrfTxInf",
-      "xml_element": "CdtTrfTxInf",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf",
-      "occurrence": "[1..n]",
-      "mandatory": true,
-      "note": "CBPR+ restricts to a single occurrence (NbOfTxs = 1).",
-      "description": "Credit Transfer Transaction Information. Root transaction block of the FinancialInstitutionCreditTransfer message. Contains payment identification, settlement amount, settlement timing, agents, financial-institution debtor/creditor, related references and the underlying customer credit transfer.",
-      "errors": [
-        {
-          "error_id": "CDTTRFTXINF_MISSING",
-          "error_code": "MISSING_MANDATORY_FIELD",
-          "severity": "Fatal",
-          "description": "CdtTrfTxInf block is absent from FICdtTrf.",
-          "affected_tags": [
-            "CdtTrfTxInf"
-          ],
-          "possible_fixes": [
-            "Insert a complete <CdtTrfTxInf> block containing PmtId, IntrBkSttlmAmt, InstgAgt, InstdAgt, Dbtr and Cdtr."
-          ]
-        },
-        {
-          "error_id": "CDTTRFTXINF_MULTIPLE",
-          "error_code": "CBPR_SINGLE_TX",
-          "severity": "Fatal",
-          "description": "Multiple CdtTrfTxInf blocks present; CBPR+ permits a single transaction only.",
-          "affected_tags": [
-            "CdtTrfTxInf",
-            "GrpHdr/NbOfTxs"
-          ],
-          "possible_fixes": [
-            "Retain a single CdtTrfTxInf block and set GrpHdr/NbOfTxs to 1.",
-            "Split additional transactions into separate pacs.009 messages."
-          ]
-        }
-      ]
-    },
-    {
       "tag": "CdtTrfTxInf/PmtId",
       "xml_element": "PmtId",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/PmtId",
+      "xpath": "/Document/FinInstnCdtTrf/CdtTrfTxInf/PmtId",
       "occurrence": "[1..1]",
       "mandatory": true,
       "description": "Payment identification block. Contains InstrId, EndToEndId, TxId, and UETR (mandatory under CBPR+).",
@@ -755,12 +878,12 @@
     {
       "tag": "CdtTrfTxInf/PmtId/EndToEndId",
       "xml_element": "EndToEndId",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/PmtId/EndToEndId",
+      "xpath": "/Document/FinInstnCdtTrf/CdtTrfTxInf/PmtId/EndToEndId",
       "occurrence": "[1..1]",
       "mandatory": true,
       "datatype": "Max35Text",
       "max_length": 35,
-      "description": "End-to-end identification assigned by the originating financial institution. Must be passed through the chain unchanged. 'NOTPROVIDED' is allowed.",
+      "description": "End-to-end identification assigned by the initiating party. Must be passed through the chain unchanged. 'NOTPROVIDED' is allowed.",
       "errors": [
         {
           "error_id": "ENDTOENDID_MISSING",
@@ -793,12 +916,12 @@
     {
       "tag": "CdtTrfTxInf/PmtId/TxId",
       "xml_element": "TxId",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/PmtId/TxId",
+      "xpath": "/Document/FinInstnCdtTrf/CdtTrfTxInf/PmtId/TxId",
       "occurrence": "[1..1]",
       "mandatory": true,
       "datatype": "Max35Text",
       "max_length": 35,
-      "description": "Transaction identification assigned by the instructing agent. Unique reference for the financial institution credit transfer.",
+      "description": "Transaction identification assigned by the instructing agent. Unique reference for the transaction.",
       "errors": [
         {
           "error_id": "TXID_MISSING",
@@ -809,7 +932,8 @@
             "CdtTrfTxInf/PmtId/TxId"
           ],
           "possible_fixes": [
-            "Insert <TxId>{unique transaction reference, max 35 chars}</TxId>."
+            "Insert <TxId>{unique transaction reference, max 35 chars}</TxId>.",
+            "Example: TXN-20260528-001"
           ]
         },
         {
@@ -829,7 +953,7 @@
     {
       "tag": "CdtTrfTxInf/PmtId/UETR",
       "xml_element": "UETR",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/PmtId/UETR",
+      "xpath": "/Document/FinInstnCdtTrf/CdtTrfTxInf/PmtId/UETR",
       "occurrence": "[1..1]",
       "mandatory": true,
       "datatype": "UUIDv4Identifier",
@@ -847,6 +971,7 @@
           ],
           "possible_fixes": [
             "Insert <UETR>{valid UUID v4}</UETR> after TxId in PmtId.",
+            "Example valid UETR: 4a1a0945-5772-409a-83ba-240e666e0267",
             "Generate a new UUID v4: lowercase hex, format xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx where y in {8,9,a,b}."
           ]
         },
@@ -881,64 +1006,13 @@
       ]
     },
     {
-      "tag": "CdtTrfTxInf/PmtTpInf",
-      "xml_element": "PmtTpInf",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/PmtTpInf",
-      "occurrence": "[0..1]",
-      "mandatory": false,
-      "description": "Payment type information. If present at GrpHdr, must NOT be present at CdtTrfTxInf level (R10).",
-      "errors": [
-        {
-          "error_id": "PMTTPINF_BOTH_LEVELS",
-          "error_code": "X00009",
-          "severity": "Fatal",
-          "description": "PmtTpInf is present at both GrpHdr and CdtTrfTxInf level; violates R10.",
-          "affected_tags": [
-            "GrpHdr/PmtTpInf",
-            "CdtTrfTxInf/PmtTpInf"
-          ],
-          "possible_fixes": [
-            "Remove CdtTrfTxInf/PmtTpInf if GrpHdr/PmtTpInf is present.",
-            "Remove GrpHdr/PmtTpInf if CdtTrfTxInf/PmtTpInf is the intended location."
-          ]
-        },
-        {
-          "error_id": "INSTRPRTY_INVALID_CODE",
-          "error_code": "SCHEMENAME_INVALID",
-          "severity": "Fatal",
-          "description": "PmtTpInf/InstrPrty contains a value not in the allowed codelist.",
-          "affected_tags": [
-            "CdtTrfTxInf/PmtTpInf/InstrPrty"
-          ],
-          "possible_fixes": [
-            "Replace with NORM or HIGH.",
-            "Default: NORM."
-          ]
-        },
-        {
-          "error_id": "INSTRPRTY_NEQ_APPHDR_PRTY",
-          "error_code": "CBPR_PRIORITY",
-          "severity": "Fatal",
-          "description": "PmtTpInf/InstrPrty does not match AppHdr/Prty.",
-          "affected_tags": [
-            "CdtTrfTxInf/PmtTpInf/InstrPrty",
-            "AppHdr/Prty"
-          ],
-          "possible_fixes": [
-            "Set InstrPrty to the same value as AppHdr/Prty.",
-            "Alternatively, set AppHdr/Prty to match InstrPrty."
-          ]
-        }
-      ]
-    },
-    {
       "tag": "CdtTrfTxInf/IntrBkSttlmAmt",
       "xml_element": "IntrBkSttlmAmt",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/IntrBkSttlmAmt",
+      "xpath": "/Document/FinInstnCdtTrf/CdtTrfTxInf/IntrBkSttlmAmt",
       "occurrence": "[1..1]",
       "mandatory": true,
       "datatype": "ActiveCurrencyAndAmount",
-      "description": "Interbank settlement amount transferred between the financial institutions, with currency attribute (Ccy). Amount > 0. ISO 4217 currency code.",
+      "description": "Interbank settlement amount with currency attribute (Ccy). Amount > 0. ISO 4217 currency code.",
       "errors": [
         {
           "error_id": "INTRBKSTTLMAMT_MISSING",
@@ -962,7 +1036,8 @@
             "CdtTrfTxInf/IntrBkSttlmAmt"
           ],
           "possible_fixes": [
-            "Add Ccy attribute with a valid ISO 4217 3-letter currency code."
+            "Add Ccy attribute with a valid ISO 4217 3-letter currency code.",
+            "Example: <IntrBkSttlmAmt Ccy=\"USD\">{amount}</IntrBkSttlmAmt>"
           ]
         },
         {
@@ -1010,7 +1085,7 @@
     {
       "tag": "CdtTrfTxInf/IntrBkSttlmDt",
       "xml_element": "IntrBkSttlmDt",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/IntrBkSttlmDt",
+      "xpath": "/Document/FinInstnCdtTrf/CdtTrfTxInf/IntrBkSttlmDt",
       "occurrence": "[0..1]",
       "mandatory": true,
       "note": "Mandatory at transaction level when GrpHdr/IntrBkSttlmDt is absent (R9). Cannot coexist with GrpHdr/IntrBkSttlmDt (R8).",
@@ -1066,58 +1141,151 @@
             "CdtTrfTxInf/IntrBkSttlmDt"
           ],
           "possible_fixes": [
-            "Use date-only format YYYY-MM-DD with no time component."
+            "Use date-only format YYYY-MM-DD with no time component.",
+            "Example: 2026-05-28"
           ]
         }
       ]
     },
     {
-      "tag": "CdtTrfTxInf/SttlmPrty",
-      "xml_element": "SttlmPrty",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/SttlmPrty",
-      "occurrence": "[0..1]",
-      "mandatory": false,
+      "tag": "CdtTrfTxInf/ChrgBr",
+      "xml_element": "ChrgBr",
+      "xpath": "/Document/FinInstnCdtTrf/CdtTrfTxInf/ChrgBr",
+      "occurrence": "[1..1]",
+      "mandatory": true,
       "valid_values": [
-        "URGT",
-        "HIGH",
-        "NORM"
+        "SHAR",
+        "CRED",
+        "DEBT"
       ],
-      "description": "Settlement priority of the financial institution credit transfer.",
+      "preferred": "SHAR",
+      "description": "Charge bearer. Specifies who bears the charges. SLEV = follow service level (CBPR+ default).",
       "errors": [
         {
-          "error_id": "STTLMPRTY_INVALID_CODE",
-          "error_code": "SCHEMENAME_INVALID",
+          "error_id": "CHRGBR_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
           "severity": "Fatal",
-          "description": "SttlmPrty contains a value not in the allowed code list.",
+          "description": "ChrgBr is absent from CdtTrfTxInf.",
           "affected_tags": [
-            "CdtTrfTxInf/SttlmPrty"
+            "CdtTrfTxInf/ChrgBr"
           ],
           "possible_fixes": [
-            "Replace with one of: URGT, HIGH, NORM."
+            "Insert <ChrgBr>SHAR</ChrgBr> in CdtTrfTxInf.",
+            "Position ChrgBr after XchgRate/InstdAmt and before ChrgsInf per XSD element order."
+          ]
+        },
+        {
+          "error_id": "CHRGBR_INVALID_CODE",
+          "error_code": "CHRGBR_INVALID",
+          "severity": "Fatal",
+          "description": "ChrgBr contains an invalid code.",
+          "affected_tags": [
+            "CdtTrfTxInf/ChrgBr"
+          ],
+          "possible_fixes": [
+            "Replace with one of: SHAR, CRED, DEBT.",
+            "Default value is SHAR (SLEV disallowed by policy)."
+          ]
+        },
+        {
+          "error_id": "CHRGBR_CRED_WITHOUT_CHRGSINF",
+          "error_code": "CHRGSINF_CCY_MISMATCH",
+          "severity": "Fatal",
+          "description": "ChrgBr = CRED but ChrgsInf block is absent.",
+          "affected_tags": [
+            "CdtTrfTxInf/ChrgBr",
+            "CdtTrfTxInf/ChrgsInf"
+          ],
+          "possible_fixes": [
+            "Insert a ChrgsInf block with Amt and Agt elements when ChrgBr = CRED.",
+            "Alternatively change ChrgBr to SHAR to avoid the requirement."
           ]
         }
       ]
     },
     {
-      "tag": "CdtTrfTxInf/SttlmTmIndctn",
-      "xml_element": "SttlmTmIndctn",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/SttlmTmIndctn",
+      "tag": "CdtTrfTxInf/InstdAmt",
+      "xml_element": "InstdAmt",
+      "xpath": "/Document/FinInstnCdtTrf/CdtTrfTxInf/InstdAmt",
       "occurrence": "[0..1]",
       "mandatory": false,
-      "description": "Settlement time indication. CdtDtTm and DbtDtTm must use YYYY-MM-DDTHH:MM:SS+HH:MM; Z and milliseconds forbidden under CBPR+.",
+      "datatype": "ActiveOrHistoricCurrencyAndAmount",
+      "description": "Instructed amount. Required when XchgRate is present. Currency may differ from IntrBkSttlmAmt.",
       "errors": [
         {
-          "error_id": "STTLMTMINDCTN_Z_SUFFIX",
-          "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+          "error_id": "INSTDAMT_MISSING_WHEN_XCHGRATE",
+          "error_code": "XCHGRATE_REQUIRED",
           "severity": "Fatal",
-          "description": "SttlmTmIndctn/CdtDtTm or DbtDtTm uses 'Z' suffix; forbidden under CBPR+.",
+          "description": "XchgRate is present but InstdAmt is absent; or InstdAmt currency differs from IntrBkSttlmAmt currency but XchgRate is missing.",
           "affected_tags": [
-            "CdtTrfTxInf/SttlmTmIndctn/CdtDtTm",
-            "CdtTrfTxInf/SttlmTmIndctn/DbtDtTm"
+            "CdtTrfTxInf/InstdAmt",
+            "CdtTrfTxInf/XchgRate"
           ],
           "possible_fixes": [
-            "Replace 'Z' with '+00:00'.",
-            "Remove millisecond component."
+            "When InstdAmt.Ccy != IntrBkSttlmAmt.Ccy, insert <XchgRate>{rate}</XchgRate> in CdtTrfTxInf.",
+            "When currencies are the same, remove XchgRate entirely."
+          ]
+        },
+        {
+          "error_id": "INSTDAMT_ZERO_OR_NEGATIVE",
+          "error_code": "INVALID_CHARSETS",
+          "severity": "Fatal",
+          "description": "InstdAmt is zero or negative.",
+          "affected_tags": [
+            "CdtTrfTxInf/InstdAmt"
+          ],
+          "possible_fixes": [
+            "Set InstdAmt to a positive decimal amount greater than zero."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "CdtTrfTxInf/XchgRate",
+      "xml_element": "XchgRate",
+      "xpath": "/Document/FinInstnCdtTrf/CdtTrfTxInf/XchgRate",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "datatype": "BaseOneRate",
+      "description": "Exchange rate. Required when InstdAmt currency != IntrBkSttlmAmt currency. Forbidden when currencies are the same.",
+      "errors": [
+        {
+          "error_id": "XCHGRATE_REQUIRED",
+          "error_code": "XCHGRATE_REQUIRED",
+          "severity": "Fatal",
+          "description": "InstdAmt currency differs from IntrBkSttlmAmt currency but XchgRate is absent.",
+          "affected_tags": [
+            "CdtTrfTxInf/XchgRate",
+            "CdtTrfTxInf/InstdAmt",
+            "CdtTrfTxInf/IntrBkSttlmAmt"
+          ],
+          "possible_fixes": [
+            "Insert <XchgRate>1.0</XchgRate> inside CdtTrfTxInf after InstdAmt.",
+            "Provide the actual exchange rate if known."
+          ]
+        },
+        {
+          "error_id": "XCHGRATE_FORBIDDEN",
+          "error_code": "XCHGRATE_FORBIDDEN",
+          "severity": "Fatal",
+          "description": "InstdAmt currency equals IntrBkSttlmAmt currency but XchgRate is present.",
+          "affected_tags": [
+            "CdtTrfTxInf/XchgRate"
+          ],
+          "possible_fixes": [
+            "Remove the XchgRate element entirely when currencies are the same."
+          ]
+        },
+        {
+          "error_id": "XCHGRATE_ZERO_OR_NEGATIVE",
+          "error_code": "INVALID_CHARSETS",
+          "severity": "Fatal",
+          "description": "XchgRate value is zero or negative.",
+          "affected_tags": [
+            "CdtTrfTxInf/XchgRate"
+          ],
+          "possible_fixes": [
+            "Replace with a positive decimal exchange rate greater than zero."
           ]
         }
       ]
@@ -1125,7 +1293,7 @@
     {
       "tag": "CdtTrfTxInf/InstgAgt",
       "xml_element": "InstgAgt",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/InstgAgt",
+      "xpath": "/Document/FinInstnCdtTrf/CdtTrfTxInf/InstgAgt",
       "occurrence": "[0..1]",
       "mandatory": true,
       "note": "Mandatory at transaction level when absent at GrpHdr level. BICFI mandatory on SWIFT.",
@@ -1201,7 +1369,7 @@
     {
       "tag": "CdtTrfTxInf/InstdAgt",
       "xml_element": "InstdAgt",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/InstdAgt",
+      "xpath": "/Document/FinInstnCdtTrf/CdtTrfTxInf/InstdAgt",
       "occurrence": "[0..1]",
       "mandatory": true,
       "note": "Mandatory at transaction level when absent at GrpHdr level.",
@@ -1260,189 +1428,25 @@
       ]
     },
     {
-      "tag": "CdtTrfTxInf/FinInstnId",
-      "xml_element": "FinInstnId",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf//FinInstnId",
-      "occurrence": "[1..1]",
-      "mandatory": true,
-      "note": "Reusable FinancialInstitutionIdentification building block applied to InstgAgt, InstdAgt, Dbtr, DbtrAgt, CdtrAgt, Cdtr, IntrmyAgt1/2/3 and PrvsInstgAgt1/2/3.",
-      "description": "Financial Institution Identification. BICFI is exclusive of Nm/PstlAdr; Nm and PstlAdr must be present together; ClrSysMmbId optional; BrnchId removed under CBPR+ SR2025.",
-      "errors": [
-        {
-          "error_id": "FININSTNID_EMPTY",
-          "error_code": "EMPTY_FININSTNID",
-          "severity": "Fatal",
-          "description": "FinInstnId is present but contains no identification (no BICFI, no Nm/PstlAdr, no ClrSysMmbId).",
-          "affected_tags": [
-            "CdtTrfTxInf//FinInstnId"
-          ],
-          "possible_fixes": [
-            "Add a BICFI child element to FinInstnId.",
-            "If no BICFI is available, provide Nm and PstlAdr together, optionally with ClrSysMmbId."
-          ]
-        },
-        {
-          "error_id": "FININSTNID_BICFI_EXCLUSIVE",
-          "error_code": "BICFI_EXCLUSIVE",
-          "severity": "Fatal",
-          "description": "BICFI is present but Nm and/or PstlAdr are also present in the same FinInstnId.",
-          "affected_tags": [
-            "CdtTrfTxInf//FinInstnId/BICFI",
-            "CdtTrfTxInf//FinInstnId/Nm",
-            "CdtTrfTxInf//FinInstnId/PstlAdr"
-          ],
-          "possible_fixes": [
-            "Remove Nm and PstlAdr when BICFI is present."
-          ]
-        },
-        {
-          "error_id": "FININSTNID_NM_PSTLADR_PAIR",
-          "error_code": "CBPR_AGENT_NM_PSTLADR",
-          "severity": "Fatal",
-          "description": "Nm is present without PstlAdr, or PstlAdr is present without Nm.",
-          "affected_tags": [
-            "CdtTrfTxInf//FinInstnId/Nm",
-            "CdtTrfTxInf//FinInstnId/PstlAdr"
-          ],
-          "possible_fixes": [
-            "Add the missing counterpart so Nm and PstlAdr are present together.",
-            "Or use BICFI instead of Nm/PstlAdr."
-          ]
-        },
-        {
-          "error_id": "FININSTNID_BRNCHID_PRESENT",
-          "error_code": "CBPR_BRANCH_REMOVED",
-          "severity": "Fatal",
-          "description": "BrnchId is present alongside FinInstnId; removed under CBPR+ SR2025.",
-          "affected_tags": [
-            "CdtTrfTxInf//BrnchId"
-          ],
-          "possible_fixes": [
-            "Remove the BrnchId element entirely."
-          ]
-        }
-      ]
-    },
-    {
-      "tag": "CdtTrfTxInf/Dbtr",
-      "xml_element": "Dbtr",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/Dbtr",
-      "occurrence": "[1..1]",
-      "mandatory": true,
-      "note": "In pacs.009 the Dbtr is a financial institution (BranchAndFinancialInstitutionIdentification6); identified via FinInstnId, not customer Nm/Id.",
-      "description": "Debtor financial institution. BICFI mandatory on SWIFT. Nm/PstlAdr only when BICFI absent and must be present together. BrnchId removed.",
-      "errors": [
-        {
-          "error_id": "DBTR_MISSING",
-          "error_code": "MISSING_MANDATORY_FIELD",
-          "severity": "Fatal",
-          "description": "Dbtr block is absent from CdtTrfTxInf.",
-          "affected_tags": [
-            "CdtTrfTxInf/Dbtr"
-          ],
-          "possible_fixes": [
-            "Insert <Dbtr><FinInstnId><BICFI>{debtor_fi_bic}</BICFI></FinInstnId></Dbtr>."
-          ]
-        },
-        {
-          "error_id": "DBTR_INVALID_BIC",
-          "error_code": "INVALID_BICFI",
-          "severity": "Fatal",
-          "description": "Dbtr/FinInstnId/BICFI is invalid or malformed.",
-          "affected_tags": [
-            "CdtTrfTxInf/Dbtr/FinInstnId/BICFI"
-          ],
-          "possible_fixes": [
-            "Replace with a valid 8 or 11 character BICFI.",
-            "Pattern: [A-Z]{6}[A-Z2-9][A-NP-Z0-9]([A-Z0-9]{3})?"
-          ]
-        },
-        {
-          "error_id": "DBTR_NM_PSTLADR_WITH_BIC",
-          "error_code": "BICFI_EXCLUSIVE",
-          "severity": "Fatal",
-          "description": "CBPR+: BICFI present but Nm and/or PstlAdr also present in Dbtr/FinInstnId.",
-          "affected_tags": [
-            "CdtTrfTxInf/Dbtr/FinInstnId/Nm",
-            "CdtTrfTxInf/Dbtr/FinInstnId/PstlAdr"
-          ],
-          "possible_fixes": [
-            "Remove Nm and PstlAdr from Dbtr/FinInstnId when BICFI is present."
-          ]
-        },
-        {
-          "error_id": "DBTR_NM_WITHOUT_PSTLADR",
-          "error_code": "CBPR_AGENT_NM_PSTLADR",
-          "severity": "Fatal",
-          "description": "Dbtr/FinInstnId has Nm but PstlAdr is absent; Nm and PstlAdr must be present together.",
-          "affected_tags": [
-            "CdtTrfTxInf/Dbtr/FinInstnId/Nm",
-            "CdtTrfTxInf/Dbtr/FinInstnId/PstlAdr"
-          ],
-          "possible_fixes": [
-            "Add <PstlAdr><AdrLine>{address}</AdrLine><Ctry>{ISO2_country}</Ctry></PstlAdr> to FinInstnId.",
-            "Or use BICFI instead of Nm/PstlAdr."
-          ]
-        },
-        {
-          "error_id": "DBTR_BRNCHID_PRESENT",
-          "error_code": "CBPR_BRANCH_REMOVED",
-          "severity": "Fatal",
-          "description": "BrnchId present in Dbtr; removed under CBPR+ SR2025.",
-          "affected_tags": [
-            "CdtTrfTxInf/Dbtr/BrnchId"
-          ],
-          "possible_fixes": [
-            "Remove the BrnchId element from Dbtr entirely."
-          ]
-        }
-      ]
-    },
-    {
-      "tag": "CdtTrfTxInf/DbtrAcct",
-      "xml_element": "DbtrAcct",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/DbtrAcct",
-      "occurrence": "[0..1]",
-      "mandatory": false,
-      "description": "Debtor financial institution's account serviced by the debtor agent. Identified by IBAN or Othr; not both simultaneously.",
-      "errors": [
-        {
-          "error_id": "DBTRACCT_INVALID_IBAN",
-          "error_code": "IBAN_INVALID",
-          "severity": "Fatal",
-          "description": "DbtrAcct/Id/IBAN fails ISO 13616 format or MOD97 checksum validation.",
-          "affected_tags": [
-            "CdtTrfTxInf/DbtrAcct/Id/IBAN"
-          ],
-          "possible_fixes": [
-            "Replace with a valid IBAN: 2-letter country code + 2 check digits + BBAN (max 34 chars total).",
-            "Verify MOD97 check digit computation."
-          ]
-        },
-        {
-          "error_id": "DBTRACCT_IBAN_AND_OTHR",
-          "error_code": "IBAN_XOR_OTHR",
-          "severity": "Fatal",
-          "description": "Both IBAN and Othr are present in DbtrAcct/Id; mutually exclusive.",
-          "affected_tags": [
-            "CdtTrfTxInf/DbtrAcct/Id/IBAN",
-            "CdtTrfTxInf/DbtrAcct/Id/Othr"
-          ],
-          "possible_fixes": [
-            "Remove Othr if IBAN is the correct identifier.",
-            "Remove IBAN if Othr is the correct identifier."
-          ]
-        }
-      ]
-    },
-    {
       "tag": "CdtTrfTxInf/DbtrAgt",
       "xml_element": "DbtrAgt",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/DbtrAgt",
+      "xpath": "/Document/FinInstnCdtTrf/CdtTrfTxInf/DbtrAgt",
       "occurrence": "[0..1]",
       "mandatory": false,
-      "description": "Financial institution servicing the debtor FI's account. Must have valid BICFI under CBPR+. BrnchId removed.",
+      "description": "Debtor agent (previous instructing agent in chain). Must have valid BICFI under CBPR+. BrnchId removed. Maps from pacs.008 DbtrAgt; optional in pacs.009 when Dbtr (FinInstnId) is the direct ordering institution.",
       "errors": [
+        {
+          "error_id": "DBTRAGT_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "DbtrAgt is absent from CdtTrfTxInf when required by message flow.",
+          "affected_tags": [
+            "CdtTrfTxInf/DbtrAgt"
+          ],
+          "possible_fixes": [
+            "Insert <DbtrAgt><FinInstnId><BICFI>{debtor_agent_bic}</BICFI></FinInstnId></DbtrAgt>."
+          ]
+        },
         {
           "error_id": "DBTRAGT_INVALID_BIC",
           "error_code": "INVALID_BICFI",
@@ -1460,13 +1464,13 @@
           "error_id": "DBTRAGT_EQUALS_CDTRAGT",
           "error_code": "DBTRAGT_NEQ_CDTRAGT",
           "severity": "Warning",
-          "description": "DbtrAgt BICFI equals CdtrAgt BICFI — loopback transfer warning.",
+          "description": "DbtrAgt BICFI equals CdtrAgt BICFI — loopback payment warning.",
           "affected_tags": [
             "CdtTrfTxInf/DbtrAgt/FinInstnId/BICFI",
             "CdtTrfTxInf/CdtrAgt/FinInstnId/BICFI"
           ],
           "possible_fixes": [
-            "Verify that the debtor and creditor agents are not the same institution.",
+            "Verify that the debtor agent and creditor agent are not the same institution.",
             "Use different BICs for DbtrAgt and CdtrAgt."
           ]
         },
@@ -1499,11 +1503,23 @@
     {
       "tag": "CdtTrfTxInf/CdtrAgt",
       "xml_element": "CdtrAgt",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/CdtrAgt",
+      "xpath": "/Document/FinInstnCdtTrf/CdtTrfTxInf/CdtrAgt",
       "occurrence": "[0..1]",
       "mandatory": false,
-      "description": "Financial institution servicing the creditor FI's account. BICFI mandatory on SWIFT. Nm/PstlAdr optional when BICFI absent. BrnchId removed.",
+      "description": "Creditor agent (next agent toward creditor). BICFI mandatory on SWIFT when present. Nm/PstlAdr optional when BICFI absent. BrnchId removed.",
       "errors": [
+        {
+          "error_id": "CDTRAGT_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "CdtrAgt is absent from CdtTrfTxInf when required by message flow.",
+          "affected_tags": [
+            "CdtTrfTxInf/CdtrAgt"
+          ],
+          "possible_fixes": [
+            "Insert <CdtrAgt><FinInstnId><BICFI>{creditor_agent_bic}</BICFI></FinInstnId></CdtrAgt>."
+          ]
+        },
         {
           "error_id": "CDTRAGT_INVALID_BIC",
           "error_code": "INVALID_BICFI",
@@ -1560,13 +1576,151 @@
       ]
     },
     {
-      "tag": "CdtTrfTxInf/Cdtr",
-      "xml_element": "Cdtr",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/Cdtr",
+      "tag": "CdtTrfTxInf/Dbtr",
+      "xml_element": "Dbtr",
+      "xpath": "/Document/FinInstnCdtTrf/CdtTrfTxInf/Dbtr",
       "occurrence": "[1..1]",
       "mandatory": true,
-      "note": "In pacs.009 the Cdtr is a financial institution (BranchAndFinancialInstitutionIdentification6); identified via FinInstnId, not customer Nm/Id.",
-      "description": "Creditor financial institution. BICFI mandatory on SWIFT. Nm/PstlAdr only when BICFI absent and must be present together. BrnchId removed. Subject to sanctions screening.",
+      "description": "Ordering financial institution (debtor). In pacs.009, Dbtr is a BranchAndFinancialInstitutionIdentification; must contain FinInstnId with BICFI or Nm/PstlAdr. Maps from pacs.008 Dbtr (PartyIdentification); party-level fields (Nm as individual, Id/PrvtId) are not applicable.",
+      "errors": [
+        {
+          "error_id": "DBTR_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Dbtr block is absent from CdtTrfTxInf.",
+          "affected_tags": [
+            "CdtTrfTxInf/Dbtr"
+          ],
+          "possible_fixes": [
+            "Insert <Dbtr><FinInstnId><BICFI>{ordering_institution_bic}</BICFI></FinInstnId></Dbtr>.",
+            "If BICFI unavailable, use <Dbtr><FinInstnId><Nm>{institution_name}</Nm><PstlAdr><AdrLine>{addr}</AdrLine><Ctry>{CC}</Ctry></PstlAdr></FinInstnId></Dbtr>."
+          ]
+        },
+        {
+          "error_id": "DBTR_INVALID_BIC",
+          "error_code": "INVALID_BICFI",
+          "severity": "Fatal",
+          "description": "Dbtr/FinInstnId/BICFI is invalid or malformed.",
+          "affected_tags": [
+            "CdtTrfTxInf/Dbtr/FinInstnId/BICFI"
+          ],
+          "possible_fixes": [
+            "Replace with a valid BICFI: 8 or 11 uppercase alphanumeric characters.",
+            "Pattern: [A-Z]{6}[A-Z2-9][A-NP-Z0-9]([A-Z0-9]{3})?"
+          ]
+        },
+        {
+          "error_id": "DBTR_NM_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Dbtr/FinInstnId/Nm exceeds 140 characters.",
+          "affected_tags": [
+            "CdtTrfTxInf/Dbtr/FinInstnId/Nm"
+          ],
+          "possible_fixes": [
+            "Truncate to 140 characters maximum."
+          ]
+        },
+        {
+          "error_id": "DBTR_INVALID_CHARS",
+          "error_code": "INVALID_CHARSETS",
+          "severity": "Fatal",
+          "description": "Dbtr/FinInstnId/Nm contains invalid characters.",
+          "affected_tags": [
+            "CdtTrfTxInf/Dbtr/FinInstnId/Nm"
+          ],
+          "possible_fixes": [
+            "Nm/Adr fields support extended charset: A-Z a-z 0-9 / - ? : ( ) . , ' + SPACE and !#$&%*=^_{|}~\";<>@[\\].",
+            "Replace < with &lt; and > with &gt;."
+          ]
+        },
+        {
+          "error_id": "DBTR_PSTLADR_MISSING_CTRY",
+          "error_code": "PSTLADR_MISSING_CTRY",
+          "severity": "Fatal",
+          "description": "Dbtr/FinInstnId/PstlAdr is present but Ctry is missing.",
+          "affected_tags": [
+            "CdtTrfTxInf/Dbtr/FinInstnId/PstlAdr/Ctry"
+          ],
+          "possible_fixes": [
+            "Add <Ctry>{ISO 3166-1 alpha-2 code}</Ctry> inside PstlAdr.",
+            "Example: <Ctry>GB</Ctry>"
+          ]
+        },
+        {
+          "error_id": "DBTR_PSTLADR_MISSING_TWNNM",
+          "error_code": "PSTLADR_MISSING_TWNNM",
+          "severity": "Fatal",
+          "description": "Dbtr/FinInstnId/PstlAdr uses structured form (no AdrLine) but TwnNm is absent.",
+          "affected_tags": [
+            "CdtTrfTxInf/Dbtr/FinInstnId/PstlAdr/TwnNm"
+          ],
+          "possible_fixes": [
+            "Add <TwnNm>{city name}</TwnNm> inside PstlAdr.",
+            "Or use AdrLine for unstructured address."
+          ]
+        },
+        {
+          "error_id": "DBTR_NM_WITH_BICFI",
+          "error_code": "BICFI_EXCLUSIVE",
+          "severity": "Fatal",
+          "description": "Dbtr/FinInstnId/BICFI is present but Nm and/or PstlAdr are also present; BICFI is exclusive.",
+          "affected_tags": [
+            "CdtTrfTxInf/Dbtr/FinInstnId/Nm",
+            "CdtTrfTxInf/Dbtr/FinInstnId/BICFI"
+          ],
+          "possible_fixes": [
+            "Remove Nm and PstlAdr from Dbtr/FinInstnId when BICFI is present.",
+            "Or remove BICFI and retain Nm/PstlAdr."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "CdtTrfTxInf/DbtrAcct",
+      "xml_element": "DbtrAcct",
+      "xpath": "/Document/FinInstnCdtTrf/CdtTrfTxInf/DbtrAcct",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Account of the ordering financial institution (debtor). In pacs.009, identified by Othr or IBAN when applicable. Optional element.",
+      "errors": [
+        {
+          "error_id": "DBTRACCT_INVALID_IBAN",
+          "error_code": "IBAN_INVALID",
+          "severity": "Fatal",
+          "description": "DbtrAcct/Id/IBAN fails ISO 13616 format or MOD97 checksum validation.",
+          "affected_tags": [
+            "CdtTrfTxInf/DbtrAcct/Id/IBAN"
+          ],
+          "possible_fixes": [
+            "Replace with a valid IBAN: 2-letter country code + 2 check digits + BBAN (max 34 chars total).",
+            "Verify MOD97 check digit computation.",
+            "Example: DE89370400440532013000"
+          ]
+        },
+        {
+          "error_id": "DBTRACCT_IBAN_AND_OTHR",
+          "error_code": "IBAN_XOR_OTHR",
+          "severity": "Fatal",
+          "description": "Both IBAN and Othr are present in DbtrAcct/Id; mutually exclusive.",
+          "affected_tags": [
+            "CdtTrfTxInf/DbtrAcct/Id/IBAN",
+            "CdtTrfTxInf/DbtrAcct/Id/Othr"
+          ],
+          "possible_fixes": [
+            "Remove Othr if IBAN is the correct identifier.",
+            "Remove IBAN if Othr is the correct identifier."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "CdtTrfTxInf/Cdtr",
+      "xml_element": "Cdtr",
+      "xpath": "/Document/FinInstnCdtTrf/CdtTrfTxInf/Cdtr",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Beneficiary financial institution (creditor). In pacs.009, Cdtr is a BranchAndFinancialInstitutionIdentification; must contain FinInstnId with BICFI or Nm/PstlAdr. Maps from pacs.008 Cdtr (PartyIdentification); party-level fields are not applicable.",
       "errors": [
         {
           "error_id": "CDTR_MISSING",
@@ -1577,7 +1731,8 @@
             "CdtTrfTxInf/Cdtr"
           ],
           "possible_fixes": [
-            "Insert <Cdtr><FinInstnId><BICFI>{creditor_fi_bic}</BICFI></FinInstnId></Cdtr>."
+            "Insert <Cdtr><FinInstnId><BICFI>{beneficiary_institution_bic}</BICFI></FinInstnId></Cdtr>.",
+            "If BICFI unavailable, use <Cdtr><FinInstnId><Nm>{institution_name}</Nm><PstlAdr><AdrLine>{addr}</AdrLine><Ctry>{CC}</Ctry></PstlAdr></FinInstnId></Cdtr>."
           ]
         },
         {
@@ -1589,61 +1744,46 @@
             "CdtTrfTxInf/Cdtr/FinInstnId/BICFI"
           ],
           "possible_fixes": [
-            "Replace with a valid 8 or 11 character BICFI.",
+            "Replace with a valid BICFI: 8 or 11 uppercase alphanumeric characters.",
             "Pattern: [A-Z]{6}[A-Z2-9][A-NP-Z0-9]([A-Z0-9]{3})?"
           ]
         },
         {
-          "error_id": "CDTR_NM_PSTLADR_WITH_BIC",
-          "error_code": "BICFI_EXCLUSIVE",
+          "error_id": "CDTR_NM_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
           "severity": "Fatal",
-          "description": "CBPR+: BICFI present but Nm and/or PstlAdr also present in Cdtr/FinInstnId.",
+          "description": "Cdtr/FinInstnId/Nm exceeds 140 characters.",
           "affected_tags": [
-            "CdtTrfTxInf/Cdtr/FinInstnId/Nm",
-            "CdtTrfTxInf/Cdtr/FinInstnId/PstlAdr"
+            "CdtTrfTxInf/Cdtr/FinInstnId/Nm"
           ],
           "possible_fixes": [
-            "Remove Nm and PstlAdr from Cdtr/FinInstnId when BICFI is present."
+            "Truncate to maximum 140 characters."
           ]
         },
         {
-          "error_id": "CDTR_NM_WITHOUT_PSTLADR",
-          "error_code": "CBPR_AGENT_NM_PSTLADR",
+          "error_id": "CDTR_PSTLADR_MISSING_CTRY",
+          "error_code": "PSTLADR_MISSING_CTRY",
           "severity": "Fatal",
-          "description": "Cdtr/FinInstnId has Nm but PstlAdr is absent.",
+          "description": "Cdtr/FinInstnId/PstlAdr is present but Ctry is missing.",
           "affected_tags": [
-            "CdtTrfTxInf/Cdtr/FinInstnId/Nm",
-            "CdtTrfTxInf/Cdtr/FinInstnId/PstlAdr"
+            "CdtTrfTxInf/Cdtr/FinInstnId/PstlAdr/Ctry"
           ],
           "possible_fixes": [
-            "Add <PstlAdr><AdrLine>{address}</AdrLine><Ctry>{ISO2_country}</Ctry></PstlAdr> to FinInstnId.",
-            "Or use BICFI instead of Nm/PstlAdr."
+            "Add <Ctry>{ISO 3166-1 alpha-2 code}</Ctry> inside Cdtr/FinInstnId/PstlAdr."
           ]
         },
         {
           "error_id": "CDTR_SANCTIONS_FLAG",
           "error_code": "SANCTIONS_BLOCKED",
           "severity": "Fatal",
-          "description": "Cdtr name, country, or BIC matches a sanctioned entity.",
+          "description": "Cdtr institution name, country, or BIC matches a sanctioned entity.",
           "affected_tags": [
-            "CdtTrfTxInf/Cdtr/FinInstnId/BICFI",
+            "CdtTrfTxInf/Cdtr/FinInstnId/Nm",
             "CdtTrfTxInf/Cdtr/FinInstnId/PstlAdr/Ctry"
           ],
           "possible_fixes": [
-            "Escalate to compliance team; do not process.",
-            "Replace sanctioned country code or name with compliant values where permitted."
-          ]
-        },
-        {
-          "error_id": "CDTR_BRNCHID_PRESENT",
-          "error_code": "CBPR_BRANCH_REMOVED",
-          "severity": "Fatal",
-          "description": "BrnchId present in Cdtr; removed under CBPR+ SR2025.",
-          "affected_tags": [
-            "CdtTrfTxInf/Cdtr/BrnchId"
-          ],
-          "possible_fixes": [
-            "Remove the BrnchId element from Cdtr entirely."
+            "Replace sanctioned country code or institution identifier with non-sanctioned values for testing.",
+            "For production: escalate to compliance team; do not process."
           ]
         }
       ]
@@ -1651,10 +1791,10 @@
     {
       "tag": "CdtTrfTxInf/CdtrAcct",
       "xml_element": "CdtrAcct",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/CdtrAcct",
+      "xpath": "/Document/FinInstnCdtTrf/CdtTrfTxInf/CdtrAcct",
       "occurrence": "[0..1]",
       "mandatory": false,
-      "description": "Creditor financial institution's account to be credited. IBAN or Othr. Currency must match IntrBkSttlmAmt if present.",
+      "description": "Account of the beneficiary financial institution (creditor). IBAN or Othr. Currency must match IntrBkSttlmAmt if present. Optional in pacs.009.",
       "errors": [
         {
           "error_id": "CDTRACCT_INVALID_IBAN",
@@ -1665,21 +1805,8 @@
             "CdtTrfTxInf/CdtrAcct/Id/IBAN"
           ],
           "possible_fixes": [
-            "Replace with a valid IBAN (ISO 13616, max 34 chars, MOD97 check digits valid)."
-          ]
-        },
-        {
-          "error_id": "CDTRACCT_IBAN_AND_OTHR",
-          "error_code": "IBAN_XOR_OTHR",
-          "severity": "Fatal",
-          "description": "Both IBAN and Othr are present in CdtrAcct/Id; mutually exclusive.",
-          "affected_tags": [
-            "CdtTrfTxInf/CdtrAcct/Id/IBAN",
-            "CdtTrfTxInf/CdtrAcct/Id/Othr"
-          ],
-          "possible_fixes": [
-            "Remove Othr if IBAN is the correct identifier.",
-            "Remove IBAN if Othr is the correct identifier."
+            "Replace with a valid IBAN (ISO 13616, max 34 chars, MOD97 check digits valid).",
+            "Example: GB29NWBK60161331926819"
           ]
         },
         {
@@ -1699,221 +1826,52 @@
       ]
     },
     {
-      "tag": "CdtTrfTxInf/IntrmyAgt1",
-      "xml_element": "IntrmyAgt1",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/IntrmyAgt1",
+      "tag": "CdtTrfTxInf/PmtTpInf",
+      "xml_element": "PmtTpInf",
+      "xpath": "/Document/FinInstnCdtTrf/CdtTrfTxInf/PmtTpInf",
       "occurrence": "[0..1]",
       "mandatory": false,
-      "description": "First intermediary agent. BrnchId removed. IntrmyAgt2 cannot exist without IntrmyAgt1.",
+      "description": "Payment type information. If present at GrpHdr, must NOT be present at CdtTrfTxInf level (R10).",
       "errors": [
         {
-          "error_id": "INTRMYAGT2_WITHOUT_INTRMYAGT1",
-          "error_code": "MISSING_EXPECTED_ELEMENT",
+          "error_id": "PMTTPINF_BOTH_LEVELS",
+          "error_code": "X00009",
           "severity": "Fatal",
-          "description": "IntrmyAgt2 is present but IntrmyAgt1 is absent.",
+          "description": "PmtTpInf is present at both GrpHdr and CdtTrfTxInf level; violates R10.",
           "affected_tags": [
-            "CdtTrfTxInf/IntrmyAgt1",
-            "CdtTrfTxInf/IntrmyAgt2"
+            "GrpHdr/PmtTpInf",
+            "CdtTrfTxInf/PmtTpInf"
           ],
           "possible_fixes": [
-            "Insert IntrmyAgt1 before IntrmyAgt2.",
-            "Or remove IntrmyAgt2 if only one intermediary is needed."
+            "Remove CdtTrfTxInf/PmtTpInf if GrpHdr/PmtTpInf is present.",
+            "Remove GrpHdr/PmtTpInf if CdtTrfTxInf/PmtTpInf is the intended location."
           ]
         },
         {
-          "error_id": "INTRMYAGT1_INVALID_BIC",
-          "error_code": "INVALID_BICFI",
-          "severity": "Fatal",
-          "description": "IntrmyAgt1/FinInstnId/BICFI is invalid.",
-          "affected_tags": [
-            "CdtTrfTxInf/IntrmyAgt1/FinInstnId/BICFI"
-          ],
-          "possible_fixes": [
-            "Replace with a valid 8 or 11 character BIC."
-          ]
-        },
-        {
-          "error_id": "INTRMYAGT1_BRNCHID_PRESENT",
-          "error_code": "CBPR_BRANCH_REMOVED",
-          "severity": "Fatal",
-          "description": "BrnchId present in IntrmyAgt1; removed under CBPR+ SR2025.",
-          "affected_tags": [
-            "CdtTrfTxInf/IntrmyAgt1/BrnchId"
-          ],
-          "possible_fixes": [
-            "Remove the BrnchId element from IntrmyAgt1 entirely."
-          ]
-        },
-        {
-          "error_id": "INTRMYAGT3_WITHOUT_INTRMYAGT2",
-          "error_code": "MISSING_EXPECTED_ELEMENT",
-          "severity": "Fatal",
-          "description": "IntrmyAgt3 is present but IntrmyAgt2 is absent.",
-          "affected_tags": [
-            "CdtTrfTxInf/IntrmyAgt2",
-            "CdtTrfTxInf/IntrmyAgt3"
-          ],
-          "possible_fixes": [
-            "Insert IntrmyAgt2 before IntrmyAgt3.",
-            "Or remove IntrmyAgt3 if only two intermediaries are needed."
-          ]
-        }
-      ]
-    },
-    {
-      "tag": "CdtTrfTxInf/PrvsInstgAgt1",
-      "xml_element": "PrvsInstgAgt1",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/PrvsInstgAgt1",
-      "occurrence": "[0..1]",
-      "mandatory": false,
-      "note": "Related reference: previous agent that instructed the current instructing agent.",
-      "description": "First previous instructing agent. BrnchId removed. PrvsInstgAgt2 cannot exist without PrvsInstgAgt1.",
-      "errors": [
-        {
-          "error_id": "PRVSINSTGAGT2_WITHOUT_PRVSINSTGAGT1",
-          "error_code": "MISSING_EXPECTED_ELEMENT",
-          "severity": "Fatal",
-          "description": "PrvsInstgAgt2 is present but PrvsInstgAgt1 is absent.",
-          "affected_tags": [
-            "CdtTrfTxInf/PrvsInstgAgt1",
-            "CdtTrfTxInf/PrvsInstgAgt2"
-          ],
-          "possible_fixes": [
-            "Insert PrvsInstgAgt1 before PrvsInstgAgt2.",
-            "Or remove PrvsInstgAgt2 if only one previous agent is needed."
-          ]
-        },
-        {
-          "error_id": "PRVSINSTGAGT1_INVALID_BIC",
-          "error_code": "INVALID_BICFI",
-          "severity": "Fatal",
-          "description": "PrvsInstgAgt1/FinInstnId/BICFI is invalid.",
-          "affected_tags": [
-            "CdtTrfTxInf/PrvsInstgAgt1/FinInstnId/BICFI"
-          ],
-          "possible_fixes": [
-            "Replace with a valid 8 or 11 character BIC."
-          ]
-        },
-        {
-          "error_id": "PRVSINSTGAGT1_BRNCHID_PRESENT",
-          "error_code": "CBPR_BRANCH_REMOVED",
-          "severity": "Fatal",
-          "description": "BrnchId present in PrvsInstgAgt1; removed under CBPR+ SR2025.",
-          "affected_tags": [
-            "CdtTrfTxInf/PrvsInstgAgt1/BrnchId"
-          ],
-          "possible_fixes": [
-            "Remove the BrnchId element from PrvsInstgAgt1 entirely."
-          ]
-        }
-      ]
-    },
-    {
-      "tag": "CdtTrfTxInf/InstrForCdtrAgt",
-      "xml_element": "InstrForCdtrAgt",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/InstrForCdtrAgt",
-      "occurrence": "[0..n]",
-      "mandatory": false,
-      "note": "Related reference information directed to the creditor agent.",
-      "description": "Instruction for creditor agent. Cd and InstrInf carry coded/free-text handling instructions. InstrInf limited to 140 characters.",
-      "errors": [
-        {
-          "error_id": "INSTRFORCDTRAGT_INVALID_CODE",
+          "error_id": "INSTRPRTY_INVALID_CODE",
           "error_code": "SCHEMENAME_INVALID",
           "severity": "Fatal",
-          "description": "InstrForCdtrAgt/Cd is not in the allowed code list.",
+          "description": "PmtTpInf/InstrPrty contains a value not in the allowed codelist.",
           "affected_tags": [
-            "CdtTrfTxInf/InstrForCdtrAgt/Cd"
+            "CdtTrfTxInf/PmtTpInf/InstrPrty"
           ],
           "possible_fixes": [
-            "Use a valid InstructionForCreditorAgent code (e.g. CHQB, HOLD, PHOB, TELB).",
-            "Or convey the instruction via InstrForCdtrAgt/InstrInf."
+            "Replace with NORM or HIGH.",
+            "Default: NORM."
           ]
         },
         {
-          "error_id": "INSTRFORCDTRAGT_INSTRINF_TOO_LONG",
-          "error_code": "ID_LENGTH_ERROR",
+          "error_id": "INSTRPRTY_NEQ_APPHDR_PRTY",
+          "error_code": "CBPR_PRIORITY",
           "severity": "Fatal",
-          "description": "InstrForCdtrAgt/InstrInf exceeds 140 characters.",
+          "description": "PmtTpInf/InstrPrty does not match AppHdr/Prty.",
           "affected_tags": [
-            "CdtTrfTxInf/InstrForCdtrAgt/InstrInf"
+            "CdtTrfTxInf/PmtTpInf/InstrPrty",
+            "AppHdr/Prty"
           ],
           "possible_fixes": [
-            "Truncate InstrInf to a maximum of 140 characters."
-          ]
-        }
-      ]
-    },
-    {
-      "tag": "CdtTrfTxInf/InstrForNxtAgt",
-      "xml_element": "InstrForNxtAgt",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/InstrForNxtAgt",
-      "occurrence": "[0..n]",
-      "mandatory": false,
-      "note": "Related reference information directed to the next agent in the chain.",
-      "description": "Instruction for next agent. InstrInf free-text handling instruction limited to 140 characters.",
-      "errors": [
-        {
-          "error_id": "INSTRFORNXTAGT_INSTRINF_TOO_LONG",
-          "error_code": "ID_LENGTH_ERROR",
-          "severity": "Fatal",
-          "description": "InstrForNxtAgt/InstrInf exceeds 140 characters.",
-          "affected_tags": [
-            "CdtTrfTxInf/InstrForNxtAgt/InstrInf"
-          ],
-          "possible_fixes": [
-            "Truncate InstrInf to a maximum of 140 characters."
-          ]
-        },
-        {
-          "error_id": "INSTRFORNXTAGT_INVALID_CHARS",
-          "error_code": "INVALID_CHARSETS",
-          "severity": "Fatal",
-          "description": "InstrForNxtAgt/InstrInf contains characters outside the FIN-X character set.",
-          "affected_tags": [
-            "CdtTrfTxInf/InstrForNxtAgt/InstrInf"
-          ],
-          "possible_fixes": [
-            "Allowed: A-Z a-z 0-9 / - ? : ( ) . , ' + SPACE.",
-            "Replace special/accented characters with ASCII equivalents."
-          ]
-        }
-      ]
-    },
-    {
-      "tag": "CdtTrfTxInf/Purp",
-      "xml_element": "Purp",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/Purp",
-      "occurrence": "[0..1]",
-      "mandatory": false,
-      "description": "Purpose of the financial institution credit transfer. Cd (ISO 20022 code) and Prtry are mutually exclusive.",
-      "errors": [
-        {
-          "error_id": "PURP_INVALID_CODE",
-          "error_code": "SCHEMENAME_INVALID",
-          "severity": "Fatal",
-          "description": "Purp/Cd is not in the ISO 20022 external Purpose code list.",
-          "affected_tags": [
-            "CdtTrfTxInf/Purp/Cd"
-          ],
-          "possible_fixes": [
-            "Use a valid ISO 20022 Purpose code: e.g. INTC (intra-company), TREA (treasury), CASH (cash management), SUPP (supplier).",
-            "Alternatively use Purp/Prtry with a proprietary code (max 35 chars)."
-          ]
-        },
-        {
-          "error_id": "PURP_CD_AND_PRTRY",
-          "error_code": "DUPLICATE_TAG",
-          "severity": "Fatal",
-          "description": "Both Purp/Cd and Purp/Prtry are present; mutually exclusive.",
-          "affected_tags": [
-            "CdtTrfTxInf/Purp/Cd",
-            "CdtTrfTxInf/Purp/Prtry"
-          ],
-          "possible_fixes": [
-            "Remove Prtry if Cd is the correct choice.",
-            "Remove Cd if Prtry is the correct choice."
+            "Set InstrPrty to the same value as AppHdr/Prty.",
+            "Alternatively, set AppHdr/Prty to match InstrPrty."
           ]
         }
       ]
@@ -1921,7 +1879,7 @@
     {
       "tag": "CdtTrfTxInf/RmtInf",
       "xml_element": "RmtInf",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/RmtInf",
+      "xpath": "/Document/FinInstnCdtTrf/CdtTrfTxInf/RmtInf",
       "occurrence": "[0..1]",
       "mandatory": false,
       "description": "Remittance information. Ustrd and Strd are mutually exclusive within the same RmtInf block.",
@@ -1982,171 +1940,100 @@
       ]
     },
     {
-      "tag": "CdtTrfTxInf/UndrlygCstmrCdtTrf",
-      "xml_element": "UndrlygCstmrCdtTrf",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/UndrlygCstmrCdtTrf",
+      "tag": "CdtTrfTxInf/Purp",
+      "xml_element": "Purp",
+      "xpath": "/Document/FinInstnCdtTrf/CdtTrfTxInf/Purp",
       "occurrence": "[0..1]",
       "mandatory": false,
-      "note": "Underlying Transaction References. CreditTransferTransaction37 conveying the original customer payment being advised/covered. Carries customer Dbtr/Cdtr, InstdAmt, RmtInf and Tax of the underlying instruction.",
-      "description": "Underlying customer credit transfer reference. Present in advice (ADV) and cover (COV) usage to mirror the original pacs.008 customer payment for reconciliation. Charges context (originally ChrgBr/ChrgsInf) and InstdAmt are conveyed here, not at FI level.",
+      "description": "Purpose of the credit transfer. Cd (ISO 20022 code) and Prtry are mutually exclusive.",
       "errors": [
         {
-          "error_id": "UNDRLYG_MISSING_WHEN_ADVISED",
-          "error_code": "X00311",
+          "error_id": "PURP_INVALID_CODE",
+          "error_code": "SCHEMENAME_INVALID",
           "severity": "Fatal",
-          "description": "Advice/cover usage indicated but UndrlygCstmrCdtTrf is absent.",
+          "description": "Purp/Cd is not in the ISO 20022 external Purpose code list.",
           "affected_tags": [
-            "CdtTrfTxInf/UndrlygCstmrCdtTrf"
+            "CdtTrfTxInf/Purp/Cd"
           ],
           "possible_fixes": [
-            "Insert <UndrlygCstmrCdtTrf> with the original customer Dbtr, Cdtr and InstdAmt of the advised payment.",
-            "Remove the advice indication if no underlying customer payment is referenced."
+            "Use a valid ISO 20022 Purpose code: e.g. GDDS (goods), SUPP (supplier), SALA (salary), TAXS (tax), TREA (treasury).",
+            "Alternatively use Purp/Prtry with a proprietary code (max 35 chars)."
           ]
         },
         {
-          "error_id": "UNDRLYG_INSTDAMT_ZERO_OR_NEGATIVE",
-          "error_code": "INVALID_CHARSETS",
-          "severity": "Fatal",
-          "description": "UndrlygCstmrCdtTrf/InstdAmt is zero or negative.",
-          "affected_tags": [
-            "CdtTrfTxInf/UndrlygCstmrCdtTrf/InstdAmt"
-          ],
-          "possible_fixes": [
-            "Set the underlying InstdAmt to a positive decimal amount greater than zero."
-          ]
-        }
-      ]
-    },
-    {
-      "tag": "CdtTrfTxInf/UndrlygCstmrCdtTrf/InstdAmt",
-      "xml_element": "InstdAmt",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/UndrlygCstmrCdtTrf/InstdAmt",
-      "occurrence": "[0..1]",
-      "mandatory": false,
-      "note": "Nearest equivalent of source CdtTrfTxInf/InstdAmt; carried within the underlying customer credit transfer.",
-      "datatype": "ActiveOrHistoricCurrencyAndAmount",
-      "description": "Instructed amount of the underlying customer payment with currency attribute (Ccy). ISO 4217 currency code.",
-      "errors": [
-        {
-          "error_id": "UNDRLYG_INSTDAMT_MISSING_CCY",
-          "error_code": "INVALID_CHARSETS",
-          "severity": "Fatal",
-          "description": "UndrlygCstmrCdtTrf/InstdAmt present but Ccy attribute missing.",
-          "affected_tags": [
-            "CdtTrfTxInf/UndrlygCstmrCdtTrf/InstdAmt"
-          ],
-          "possible_fixes": [
-            "Add Ccy attribute with a valid ISO 4217 3-letter currency code."
-          ]
-        }
-      ]
-    },
-    {
-      "tag": "CdtTrfTxInf/UndrlygCstmrCdtTrf/Dbtr",
-      "xml_element": "Dbtr",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/UndrlygCstmrCdtTrf/Dbtr",
-      "occurrence": "[0..1]",
-      "mandatory": false,
-      "note": "Underlying customer (ordering party) of the advised payment; identified by Nm/PstlAdr or Id.",
-      "description": "Underlying customer debtor. At least Nm or Id required when present. Name required for AML/sanctions screening.",
-      "errors": [
-        {
-          "error_id": "UNDRLYG_DBTR_NM_TOO_LONG",
-          "error_code": "ID_LENGTH_ERROR",
-          "severity": "Fatal",
-          "description": "UndrlygCstmrCdtTrf/Dbtr/Nm exceeds 140 characters.",
-          "affected_tags": [
-            "CdtTrfTxInf/UndrlygCstmrCdtTrf/Dbtr/Nm"
-          ],
-          "possible_fixes": [
-            "Truncate to 140 characters maximum."
-          ]
-        },
-        {
-          "error_id": "UNDRLYG_DBTR_PSTLADR_MISSING_CTRY",
-          "error_code": "PSTLADR_MISSING_CTRY",
-          "severity": "Fatal",
-          "description": "UndrlygCstmrCdtTrf/Dbtr/PstlAdr present but Ctry is missing.",
-          "affected_tags": [
-            "CdtTrfTxInf/UndrlygCstmrCdtTrf/Dbtr/PstlAdr/Ctry"
-          ],
-          "possible_fixes": [
-            "Add <Ctry>{ISO 3166-1 alpha-2 code}</Ctry> inside PstlAdr."
-          ]
-        }
-      ]
-    },
-    {
-      "tag": "CdtTrfTxInf/UndrlygCstmrCdtTrf/Cdtr",
-      "xml_element": "Cdtr",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/UndrlygCstmrCdtTrf/Cdtr",
-      "occurrence": "[0..1]",
-      "mandatory": false,
-      "note": "Underlying customer (beneficiary) of the advised payment; identified by Nm/PstlAdr or Id.",
-      "description": "Underlying customer creditor. At least Nm or Id required when present. Name required for AML/sanctions screening.",
-      "errors": [
-        {
-          "error_id": "UNDRLYG_CDTR_NM_TOO_LONG",
-          "error_code": "ID_LENGTH_ERROR",
-          "severity": "Fatal",
-          "description": "UndrlygCstmrCdtTrf/Cdtr/Nm exceeds 140 characters.",
-          "affected_tags": [
-            "CdtTrfTxInf/UndrlygCstmrCdtTrf/Cdtr/Nm"
-          ],
-          "possible_fixes": [
-            "Truncate to 140 characters maximum."
-          ]
-        },
-        {
-          "error_id": "UNDRLYG_CDTR_SANCTIONS_FLAG",
-          "error_code": "SANCTIONS_BLOCKED",
-          "severity": "Fatal",
-          "description": "Underlying creditor name, country, or identifier matches a sanctioned entity.",
-          "affected_tags": [
-            "CdtTrfTxInf/UndrlygCstmrCdtTrf/Cdtr/Nm",
-            "CdtTrfTxInf/UndrlygCstmrCdtTrf/Cdtr/PstlAdr/Ctry"
-          ],
-          "possible_fixes": [
-            "Escalate to compliance team; do not process.",
-            "Replace sanctioned country code or name with compliant values where permitted."
-          ]
-        }
-      ]
-    },
-    {
-      "tag": "CdtTrfTxInf/UndrlygCstmrCdtTrf/RmtInf",
-      "xml_element": "RmtInf",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/UndrlygCstmrCdtTrf/RmtInf",
-      "occurrence": "[0..1]",
-      "mandatory": false,
-      "note": "Remittance information of the underlying customer payment.",
-      "description": "Underlying remittance information. Ustrd and Strd are mutually exclusive within the same RmtInf block.",
-      "errors": [
-        {
-          "error_id": "UNDRLYG_RMTINF_USTRD_AND_STRD",
+          "error_id": "PURP_CD_AND_PRTRY",
           "error_code": "DUPLICATE_TAG",
           "severity": "Fatal",
-          "description": "Both Ustrd and Strd are present in the same underlying RmtInf block; mutually exclusive.",
+          "description": "Both Purp/Cd and Purp/Prtry are present; mutually exclusive.",
           "affected_tags": [
-            "CdtTrfTxInf/UndrlygCstmrCdtTrf/RmtInf/Ustrd",
-            "CdtTrfTxInf/UndrlygCstmrCdtTrf/RmtInf/Strd"
+            "CdtTrfTxInf/Purp/Cd",
+            "CdtTrfTxInf/Purp/Prtry"
           ],
           "possible_fixes": [
-            "Remove Strd if unstructured remittance is preferred.",
-            "Remove Ustrd if structured remittance is preferred."
+            "Remove Prtry if Cd is the correct choice.",
+            "Remove Cd if Prtry is the correct choice."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "CdtTrfTxInf/IntrmyAgt1",
+      "xml_element": "IntrmyAgt1",
+      "xpath": "/Document/FinInstnCdtTrf/CdtTrfTxInf/IntrmyAgt1",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "First intermediary agent. BrnchId removed. IntrmyAgt2 cannot exist without IntrmyAgt1.",
+      "errors": [
+        {
+          "error_id": "INTRMYAGT2_WITHOUT_INTRMYAGT1",
+          "error_code": "MISSING_EXPECTED_ELEMENT",
+          "severity": "Fatal",
+          "description": "IntrmyAgt2 is present but IntrmyAgt1 is absent.",
+          "affected_tags": [
+            "CdtTrfTxInf/IntrmyAgt1",
+            "CdtTrfTxInf/IntrmyAgt2"
+          ],
+          "possible_fixes": [
+            "Insert IntrmyAgt1 before IntrmyAgt2.",
+            "Or remove IntrmyAgt2 if only one intermediary is needed."
           ]
         },
         {
-          "error_id": "UNDRLYG_RMTINF_USTRD_TOO_LONG",
-          "error_code": "ID_LENGTH_ERROR",
+          "error_id": "INTRMYAGT1_INVALID_BIC",
+          "error_code": "INVALID_BICFI",
           "severity": "Fatal",
-          "description": "Underlying Ustrd text exceeds 140 characters per occurrence.",
+          "description": "IntrmyAgt1/FinInstnId/BICFI is invalid.",
           "affected_tags": [
-            "CdtTrfTxInf/UndrlygCstmrCdtTrf/RmtInf/Ustrd"
+            "CdtTrfTxInf/IntrmyAgt1/FinInstnId/BICFI"
           ],
           "possible_fixes": [
-            "Truncate each Ustrd occurrence to maximum 140 characters.",
-            "Maximum 4 Ustrd occurrences allowed."
+            "Replace with a valid 8 or 11 character BIC."
+          ]
+        },
+        {
+          "error_id": "INTRMYAGT1_BRNCHID_PRESENT",
+          "error_code": "CBPR_BRANCH_REMOVED",
+          "severity": "Fatal",
+          "description": "BrnchId present in IntrmyAgt1; removed under CBPR+ SR2025.",
+          "affected_tags": [
+            "CdtTrfTxInf/IntrmyAgt1/BrnchId"
+          ],
+          "possible_fixes": [
+            "Remove the BrnchId element from IntrmyAgt1 entirely."
+          ]
+        },
+        {
+          "error_id": "INTRMYAGT3_WITHOUT_INTRMYAGT2",
+          "error_code": "MISSING_EXPECTED_ELEMENT",
+          "severity": "Fatal",
+          "description": "IntrmyAgt3 is present but IntrmyAgt2 is absent.",
+          "affected_tags": [
+            "CdtTrfTxInf/IntrmyAgt2",
+            "CdtTrfTxInf/IntrmyAgt3"
+          ],
+          "possible_fixes": [
+            "Insert IntrmyAgt2 before IntrmyAgt3.",
+            "Or remove IntrmyAgt3 if only two intermediaries are needed."
           ]
         }
       ]
@@ -2154,19 +2041,31 @@
     {
       "tag": "CdtTrfTxInf/ChrgsInf",
       "xml_element": "ChrgsInf",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/UndrlygCstmrCdtTrf/ChrgsInf",
+      "xpath": "/Document/FinInstnCdtTrf/CdtTrfTxInf/ChrgsInf",
       "occurrence": "[0..n]",
       "mandatory": false,
-      "note": "Charges Information. pacs.009 has no FI-level charges; nearest equivalent is the charges context of the underlying customer credit transfer.",
-      "description": "Charges information of the advised underlying payment. When present, Amt currency must match the underlying InstdAmt/IntrBkSttlmAmt currency context, and Agt must be present.",
+      "description": "Charges information. Required when ChrgBr = CRED. Must contain Agt when present.",
       "errors": [
+        {
+          "error_id": "CHRGSINF_MISSING_WHEN_CHRGBR_CRED",
+          "error_code": "CHRGBR_CRED_REQUIRES_CHRGSINF",
+          "severity": "Fatal",
+          "description": "ChrgBr = CRED but ChrgsInf is absent.",
+          "affected_tags": [
+            "CdtTrfTxInf/ChrgsInf",
+            "CdtTrfTxInf/ChrgBr"
+          ],
+          "possible_fixes": [
+            "Insert <ChrgsInf><Amt Ccy=\"{CCY}\">{amount}</Amt><Agt><FinInstnId><BICFI>{BIC}</BICFI></FinInstnId></Agt></ChrgsInf>."
+          ]
+        },
         {
           "error_id": "CHRGSINF_MISSING_AGT",
           "error_code": "CHRGSINF_REQUIRES_AGT",
           "severity": "Fatal",
           "description": "ChrgsInf is present but the Agt element is absent.",
           "affected_tags": [
-            "CdtTrfTxInf/UndrlygCstmrCdtTrf/ChrgsInf/Agt"
+            "CdtTrfTxInf/ChrgsInf/Agt"
           ],
           "possible_fixes": [
             "Add <Agt><FinInstnId><BICFI>{agent_BIC}</BICFI></FinInstnId></Agt> inside ChrgsInf."
@@ -2176,126 +2075,13 @@
           "error_id": "CHRGSINF_CCY_MISMATCH",
           "error_code": "CHRGSINF_CCY_MISMATCH",
           "severity": "Fatal",
-          "description": "ChrgsInf/Amt currency does not match the underlying instructed/settlement currency context.",
+          "description": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
           "affected_tags": [
-            "CdtTrfTxInf/UndrlygCstmrCdtTrf/ChrgsInf/Amt",
-            "CdtTrfTxInf/UndrlygCstmrCdtTrf/InstdAmt"
+            "CdtTrfTxInf/ChrgsInf/Amt",
+            "CdtTrfTxInf/IntrBkSttlmAmt"
           ],
           "possible_fixes": [
-            "Update ChrgsInf/Amt/@Ccy to match the underlying amount currency."
-          ]
-        }
-      ]
-    },
-    {
-      "tag": "CdtTrfTxInf/ChrgBr",
-      "xml_element": "ChrgBr",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/UndrlygCstmrCdtTrf/ChrgBr",
-      "occurrence": "[0..1]",
-      "mandatory": false,
-      "note": "Charge bearer of the advised payment. pacs.009 carries no FI-level ChrgBr; nearest equivalent is the underlying customer credit transfer charge bearer.",
-      "valid_values": [
-        "SLEV",
-        "SHAR",
-        "CRED",
-        "DEBT"
-      ],
-      "preferred": "SLEV",
-      "description": "Charge bearer of the underlying customer payment. SLEV = follow service level.",
-      "errors": [
-        {
-          "error_id": "CHRGBR_INVALID_CODE",
-          "error_code": "CHRGBR_INVALID",
-          "severity": "Fatal",
-          "description": "ChrgBr contains an invalid code.",
-          "affected_tags": [
-            "CdtTrfTxInf/UndrlygCstmrCdtTrf/ChrgBr"
-          ],
-          "possible_fixes": [
-            "Replace with one of: SLEV, SHAR, CRED, DEBT.",
-            "Default value is SLEV."
-          ]
-        }
-      ]
-    },
-    {
-      "tag": "CdtTrfTxInf/PmtId/InstrId",
-      "xml_element": "InstrId",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/PmtId/InstrId",
-      "occurrence": "[0..1]",
-      "mandatory": false,
-      "datatype": "Max35Text",
-      "max_length": 35,
-      "description": "Point-to-point instruction identification. Max 35 chars.",
-      "errors": [
-        {
-          "error_id": "INSTRID_LEN",
-          "error_code": "ID_LENGTH_ERROR",
-          "severity": "Fatal",
-          "description": "InstrId exceeds 35 characters.",
-          "affected_tags": [
-            "CdtTrfTxInf/PmtId/InstrId"
-          ],
-          "possible_fixes": [
-            "Truncate InstrId to a maximum of 35 characters."
-          ]
-        }
-      ]
-    },
-    {
-      "tag": "CdtTrfTxInf/IntrmyAgt2",
-      "xml_element": "IntrmyAgt2",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/IntrmyAgt2",
-      "occurrence": "[0..1]",
-      "mandatory": false,
-      "description": "Second intermediary agent. Only valid when IntrmyAgt1 is present.",
-      "errors": [
-        {
-          "error_id": "INTRMY2_NO_AGT1",
-          "error_code": "MISSING_EXPECTED_ELEMENT",
-          "severity": "Fatal",
-          "description": "IntrmyAgt2 present without IntrmyAgt1.",
-          "affected_tags": [
-            "CdtTrfTxInf/IntrmyAgt1",
-            "CdtTrfTxInf/IntrmyAgt2"
-          ],
-          "possible_fixes": [
-            "Insert IntrmyAgt1 before IntrmyAgt2, or remove IntrmyAgt2."
-          ]
-        },
-        {
-          "error_id": "INTRMY2_BIC",
-          "error_code": "INVALID_BICFI",
-          "severity": "Fatal",
-          "description": "IntrmyAgt2 BICFI is invalid.",
-          "affected_tags": [
-            "CdtTrfTxInf/IntrmyAgt2"
-          ],
-          "possible_fixes": [
-            "Set FinInstnId/BICFI to a valid 8 or 11 character BIC."
-          ]
-        }
-      ]
-    },
-    {
-      "tag": "CdtTrfTxInf/IntrmyAgt3",
-      "xml_element": "IntrmyAgt3",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/IntrmyAgt3",
-      "occurrence": "[0..1]",
-      "mandatory": false,
-      "description": "Third intermediary agent. Only valid when IntrmyAgt2 is present.",
-      "errors": [
-        {
-          "error_id": "INTRMY3_NO_AGT2",
-          "error_code": "MISSING_EXPECTED_ELEMENT",
-          "severity": "Fatal",
-          "description": "IntrmyAgt3 present without IntrmyAgt2.",
-          "affected_tags": [
-            "CdtTrfTxInf/IntrmyAgt2",
-            "CdtTrfTxInf/IntrmyAgt3"
-          ],
-          "possible_fixes": [
-            "Insert IntrmyAgt2 before IntrmyAgt3, or remove IntrmyAgt3."
+            "Update ChrgsInf/Amt/@Ccy to match IntrBkSttlmAmt/@Ccy."
           ]
         }
       ]
@@ -2393,6 +2179,16 @@
     },
     {
       "rule_id": "DEP_011",
+      "rule": "XchgRate required iff InstdAmt.Ccy != IntrBkSttlmAmt.Ccy",
+      "affected_tags": [
+        "CdtTrfTxInf/XchgRate",
+        "CdtTrfTxInf/InstdAmt",
+        "CdtTrfTxInf/IntrBkSttlmAmt"
+      ],
+      "fix": "Add XchgRate when currencies differ; remove when same."
+    },
+    {
+      "rule_id": "DEP_012",
       "rule": "IntrmyAgt2 requires IntrmyAgt1; IntrmyAgt3 requires IntrmyAgt2",
       "affected_tags": [
         "CdtTrfTxInf/IntrmyAgt1",
@@ -2400,16 +2196,6 @@
         "CdtTrfTxInf/IntrmyAgt3"
       ],
       "fix": "Insert missing predecessor agent(s)."
-    },
-    {
-      "rule_id": "DEP_012",
-      "rule": "PrvsInstgAgt2 requires PrvsInstgAgt1; PrvsInstgAgt3 requires PrvsInstgAgt2",
-      "affected_tags": [
-        "CdtTrfTxInf/PrvsInstgAgt1",
-        "CdtTrfTxInf/PrvsInstgAgt2",
-        "CdtTrfTxInf/PrvsInstgAgt3"
-      ],
-      "fix": "Insert missing predecessor previous-agent(s)."
     },
     {
       "rule_id": "DEP_013",
@@ -2432,51 +2218,26 @@
     },
     {
       "rule_id": "DEP_015",
-      "rule": "BrnchId is removed from all agent and FI-party elements under CBPR+ SR2025",
+      "rule": "BrnchId is removed from all agent elements under CBPR+ SR2025",
       "affected_tags": [
         "InstgAgt/BrnchId",
         "InstdAgt/BrnchId",
-        "Dbtr/BrnchId",
         "DbtrAgt/BrnchId",
         "CdtrAgt/BrnchId",
-        "Cdtr/BrnchId",
         "IntrmyAgt1/BrnchId",
         "IntrmyAgt2/BrnchId",
-        "IntrmyAgt3/BrnchId",
-        "PrvsInstgAgt1/BrnchId",
-        "PrvsInstgAgt2/BrnchId",
-        "PrvsInstgAgt3/BrnchId"
+        "IntrmyAgt3/BrnchId"
       ],
-      "fix": "Remove all BrnchId elements from agent and FI-party blocks."
+      "fix": "Remove all BrnchId elements from agent blocks."
     },
     {
       "rule_id": "DEP_016",
-      "rule": "Dbtr and Cdtr are financial institutions identified by FinInstnId (R13)",
+      "rule": "Dbtr/FinInstnId and Cdtr/FinInstnId must use BranchAndFinancialInstitutionIdentification type; PartyIdentification type from pacs.008 is not applicable",
       "affected_tags": [
         "CdtTrfTxInf/Dbtr/FinInstnId",
         "CdtTrfTxInf/Cdtr/FinInstnId"
       ],
-      "fix": "Identify Dbtr and Cdtr via BICFI (or Nm+PstlAdr together); customer-only identification is not permitted."
-    },
-    {
-      "rule_id": "DEP_017",
-      "rule": "DbtrAgt BICFI should differ from CdtrAgt BICFI (loopback transfer warning)",
-      "affected_tags": [
-        "CdtTrfTxInf/DbtrAgt/FinInstnId/BICFI",
-        "CdtTrfTxInf/CdtrAgt/FinInstnId/BICFI"
-      ],
-      "fix": "Use different BICs for DbtrAgt and CdtrAgt unless an on-us transfer is intended."
-    },
-    {
-      "rule_id": "DEP_018",
-      "rule": "When advising an underlying customer payment, UndrlygCstmrCdtTrf carries InstdAmt, charges context and customer parties (R12)",
-      "affected_tags": [
-        "CdtTrfTxInf/UndrlygCstmrCdtTrf",
-        "CdtTrfTxInf/UndrlygCstmrCdtTrf/InstdAmt",
-        "CdtTrfTxInf/UndrlygCstmrCdtTrf/Dbtr",
-        "CdtTrfTxInf/UndrlygCstmrCdtTrf/Cdtr"
-      ],
-      "fix": "Populate UndrlygCstmrCdtTrf with the original customer payment detail being advised."
+      "fix": "Replace any party-type identification (PrvtId, OrgId AnyBIC under PartyIdentification) with FinInstnId/BICFI or FinInstnId/Nm+PstlAdr."
     }
   ],
   "tag_insertion_order": {
@@ -2491,7 +2252,8 @@
       "SttlmInf",
       "PmtTpInf",
       "InstgAgt",
-      "InstdAgt"
+      "InstdAgt",
+      "FwdgAgt"
     ],
     "CdtTrfTxInf": [
       "PmtId",
@@ -2501,12 +2263,15 @@
       "SttlmPrty",
       "SttlmTmIndctn",
       "SttlmTmReq",
+      "AccptncDtTm",
+      "PoolgAdjstmntDt",
+      "InstdAmt",
+      "XchgRate",
+      "ChrgBr",
+      "ChrgsInf",
       "PrvsInstgAgt1",
-      "PrvsInstgAgt1Acct",
       "PrvsInstgAgt2",
-      "PrvsInstgAgt2Acct",
       "PrvsInstgAgt3",
-      "PrvsInstgAgt3Acct",
       "InstgAgt",
       "InstdAgt",
       "IntrmyAgt1",
@@ -2515,7 +2280,6 @@
       "IntrmyAgt2Acct",
       "IntrmyAgt3",
       "IntrmyAgt3Acct",
-      "UltmtDbtr",
       "Dbtr",
       "DbtrAcct",
       "DbtrAgt",
@@ -2524,13 +2288,13 @@
       "CdtrAgtAcct",
       "Cdtr",
       "CdtrAcct",
-      "UltmtCdtr",
       "InstrForCdtrAgt",
       "InstrForNxtAgt",
       "Purp",
-      "RmtInf",
-      "UndrlygCstmrCdtTrf",
-      "SplmtryData"
+      "RgltryRptg",
+      "Tax",
+      "RltdRmtInf",
+      "RmtInf"
     ],
     "PmtId": [
       "InstrId",
@@ -2538,36 +2302,6 @@
       "TxId",
       "ClrSysRef",
       "UETR"
-    ],
-    "UndrlygCstmrCdtTrf": [
-      "UltmtDbtr",
-      "InitgPty",
-      "Dbtr",
-      "DbtrAcct",
-      "DbtrAgt",
-      "DbtrAgtAcct",
-      "PrvsInstgAgt1",
-      "PrvsInstgAgt1Acct",
-      "PrvsInstgAgt2",
-      "PrvsInstgAgt2Acct",
-      "PrvsInstgAgt3",
-      "PrvsInstgAgt3Acct",
-      "IntrmyAgt1",
-      "IntrmyAgt1Acct",
-      "IntrmyAgt2",
-      "IntrmyAgt2Acct",
-      "IntrmyAgt3",
-      "IntrmyAgt3Acct",
-      "CdtrAgt",
-      "CdtrAgtAcct",
-      "Cdtr",
-      "CdtrAcct",
-      "UltmtCdtr",
-      "InstrForCdtrAgt",
-      "InstrForNxtAgt",
-      "Tax",
-      "RmtInf",
-      "InstdAmt"
     ],
     "AppHdr": [
       "Fr",
@@ -2583,15 +2317,71 @@
       "Rltd"
     ]
   },
-  "schema_mapping_notes": {
-    "root_element": "pacs.009.001.08 ADV root is /Document/FICdtTrf (FinancialInstitutionCreditTransfer, advice variant); the AppHdr (BAH) precedes the Document.",
-    "msg_def_idr": "AppHdr/MsgDefIdr must be 'pacs.009.001.08' matching urn:iso:std:iso:20022:tech:xsd:pacs.009.001.08.",
-    "biz_svc": "AppHdr/BizSvc for CBPR+ pacs.009 ADV is 'swift.cbprplus.03'.",
-    "structure": "GrpHdr [1..1] + CdtTrfTxInf [1..n]. The ADV (advice) variant may carry CdtTrfTxInf/UndrlygCstmrCdtTrf describing the advised underlying customer credit transfer, plus instruction elements (InstrForCdtrAgt, InstrForNxtAgt).",
-    "amount_location": "IntrBkSttlmAmt directly under CdtTrfTxInf carries the FI settlement amount; UndrlygCstmrCdtTrf/InstdAmt carries the underlying customer amount when present.",
-    "agent_chain": "InstgAgt/InstdAgt plus IntrmyAgt1..3 and PrvsInstgAgt1..3; agents identified by BICFI; BrnchId removed under CBPR+.",
-    "underlying_transfer": "CdtTrfTxInf/UndrlygCstmrCdtTrf mirrors the customer-level Dbtr/Cdtr and remittance of the advised payment; it is informational and must stay consistent with the FI-level transfer.",
-    "datetime_format": "ISODateTime fields use YYYY-MM-DDTHH:MM:SS+HH:MM; no 'Z' suffix, no milliseconds.",
-    "nb_of_txs_scope": "GrpHdr/NbOfTxs must equal the number of CdtTrfTxInf occurrences."
-  }
+  "schema_mapping_notes": [
+    {
+      "pacs008_element": "/Document/FIToFICstmrCdtTrf",
+      "pacs009_element": "/Document/FinInstnCdtTrf",
+      "note": "Root message element renamed; message type changed from FIToFICustomerCreditTransfer to FinancialInstitutionCreditTransfer."
+    },
+    {
+      "pacs008_element": "AppHdr/MsgDefIdr = pacs.008.001.08",
+      "pacs009_element": "AppHdr/MsgDefIdr = pacs.009.001.08",
+      "note": "Message Definition Identifier updated to pacs.009.001.08."
+    },
+    {
+      "pacs008_element": "CdtTrfTxInf/Dbtr (PartyIdentification)",
+      "pacs009_element": "CdtTrfTxInf/Dbtr (BranchAndFinancialInstitutionIdentification)",
+      "note": "Dbtr type changes from PartyIdentification to BranchAndFinancialInstitutionIdentification; must use FinInstnId."
+    },
+    {
+      "pacs008_element": "CdtTrfTxInf/Cdtr (PartyIdentification)",
+      "pacs009_element": "CdtTrfTxInf/Cdtr (BranchAndFinancialInstitutionIdentification)",
+      "note": "Cdtr type changes from PartyIdentification to BranchAndFinancialInstitutionIdentification; must use FinInstnId."
+    },
+    {
+      "pacs008_element": "CdtTrfTxInf/DbtrAcct [1..1]",
+      "pacs009_element": "CdtTrfTxInf/DbtrAcct [0..1]",
+      "note": "DbtrAcct is mandatory in pacs.008; optional in pacs.009."
+    },
+    {
+      "pacs008_element": "CdtTrfTxInf/CdtrAcct [1..1]",
+      "pacs009_element": "CdtTrfTxInf/CdtrAcct [0..1]",
+      "note": "CdtrAcct is mandatory in pacs.008; optional in pacs.009."
+    },
+    {
+      "pacs008_element": "CdtTrfTxInf/DbtrAgt [1..1]",
+      "pacs009_element": "CdtTrfTxInf/DbtrAgt [0..1]",
+      "note": "DbtrAgt is mandatory in pacs.008; optional in pacs.009 when Dbtr is the direct ordering institution."
+    },
+    {
+      "pacs008_element": "CdtTrfTxInf/CdtrAgt [1..1]",
+      "pacs009_element": "CdtTrfTxInf/CdtrAgt [0..1]",
+      "note": "CdtrAgt is mandatory in pacs.008; optional in pacs.009 when Cdtr is the direct beneficiary institution."
+    },
+    {
+      "pacs008_element": "CdtTrfTxInf/InitgPty",
+      "pacs009_element": "N/A — removed",
+      "note": "InitgPty (initiating party) is not present in pacs.009 CdtTrfTxInf; no equivalent field."
+    },
+    {
+      "pacs008_element": "CdtTrfTxInf/UltmtDbtr",
+      "pacs009_element": "N/A — removed",
+      "note": "UltmtDbtr is not present in pacs.009; ultimate party concept does not apply to interbank transfers."
+    },
+    {
+      "pacs008_element": "CdtTrfTxInf/UltmtCdtr",
+      "pacs009_element": "N/A — removed",
+      "note": "UltmtCdtr is not present in pacs.009; ultimate party concept does not apply to interbank transfers."
+    },
+    {
+      "pacs008_element": "CdtTrfTxInf/MndtRltdInf",
+      "pacs009_element": "N/A — removed",
+      "note": "MndtRltdInf (mandate related information) is not present in pacs.009."
+    },
+    {
+      "pacs008_element": "CdtTrfTxInf/tag_insertion_order includes InitgPty, UltmtDbtr, UltmtCdtr, MndtRltdInf",
+      "pacs009_element": "Removed from CdtTrfTxInf insertion order",
+      "note": "pacs.009 CdtTrfTxInf element sequence does not include these party-level fields."
+    }
+  ]
 }

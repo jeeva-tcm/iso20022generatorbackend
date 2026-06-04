@@ -1031,6 +1031,8 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             'TxDtls':            "Refs, Amt, or RltdPties",
             # ── Account identification choice ──
             'AcctId':            "<IBAN> or <Othr> with an identifier",
+            # ── Party identification (camt.056 Cretr, etc.) ──
+            'Pty':               "Nm (party name) and PstlAdr (postal address with Ctry)",
         }
 
         # Party/agent wrappers — must contain *some* identifying child
@@ -1284,8 +1286,8 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
 
         # ── BizMsgIdr == GrpHdr/MsgId ─────────────────────────────────────────
         rule_declared = (
-            any(fr.get("rule_id") == "CBPR_BIZ_MSG_IDR" for fr in kb.formal_rules)
-            or any("BizMsgIdr" in r.get("rule", "") and "MsgId" in r.get("rule", "")
+            any(isinstance(fr, dict) and fr.get("rule_id") == "CBPR_BIZ_MSG_IDR" for fr in kb.formal_rules)
+            or any(isinstance(r, dict) and "BizMsgIdr" in r.get("rule", "") and "MsgId" in r.get("rule", "")
                    for r in kb.dependency_rules)
         )
         if rule_declared and "BIZMSGIDR_NEQ_MSGID" not in existing_codes:

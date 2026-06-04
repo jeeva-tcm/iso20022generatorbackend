@@ -76,6 +76,8 @@ app.include_router(fixes_router)
 @app.on_event("startup")
 async def startup_event():
     import threading
+    from datetime import datetime
+    print(f"\n[Server] Reloaded at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     # Init LLM on main thread (fast) so it's ready immediately
     chat_service._ensure_llm()

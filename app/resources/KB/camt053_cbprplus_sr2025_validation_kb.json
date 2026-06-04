@@ -1099,10 +1099,13 @@
           "error_id": "BAL_CDTDBTIND_INVALID",
           "error_code": "SCHEMENAME_INVALID",
           "severity": "Fatal",
-          "description": "Stmt/Bal/CdtDbtInd is not CRDT or DBIT.",
+          "description": "Stmt/Bal/CdtDbtInd contains an invalid value. Only CRDT or DBIT are allowed.",
           "affected_tags": ["Stmt/Bal/CdtDbtInd"],
+          "valid_values": ["CRDT", "DBIT"],
           "possible_fixes": [
-            "Replace with CRDT (credit/increase) or DBIT (debit/decrease)."
+            "Replace the invalid value with CRDT (credit balance) — the balance is a credit (money owed to the account holder).",
+            "Replace the invalid value with DBIT (debit balance) — the balance is a debit (money owed by the account holder). A zero balance is treated as CRDT.",
+            "The value must be one of the following: CRDT, DBIT."
           ]
         }
       ]

@@ -187,19 +187,32 @@ def _kb_folder_name(msg_type: str, xml: str = "") -> Optional[str]:
     if msg_type.startswith("pacs.009"):
         is_cov = ("cov" in msg_type.lower() or "cov" in xml.lower()
                   or "swift.cbprplus.cov" in xml.lower())
-        return ("pacs009_cov_cbprplus_sr2025_validation_kb.json" if is_cov
-                else "pacs009_cbprplus_sr2025_validation_kb.json")
+        if is_cov:
+            return "pacs009_cov_cbprplus_sr2025_validation_kb.json"
+        # ADV (advice) variant — e.g. msg_type "pacs.009.001.08_ADV". Routed to
+        # its dedicated KB; falls back to the CORE KB for plain pacs.009.
+        is_adv = ("adv" in msg_type.lower() or "adv" in xml.lower())
+        if is_adv:
+            return "pacs009_adv_cbprplus_sr2025_validation_kb.json"
+        return "pacs009_cbprplus_sr2025_validation_kb.json"
+    if msg_type.startswith("pacs.002"):
+        return "pacs002_cbprplus_sr2025_validation_kb.json"
     if msg_type.startswith("pacs.003"):
         return "pacs003_cbprplus_sr2025_validation_kb.json"
-    # pacs.008 ships its KB under the plain "pacs.008.json" name (same schema:
-    # a top-level "tags" array). It was previously unmapped, so the fixer never
-    # consulted it for the most common message type — add it explicitly.
+    if msg_type.startswith("pacs.004"):
+        return "pacs004_cbprplus_sr2025_validation_kb.json"
     if msg_type.startswith("pacs.008"):
-        return "pacs.008.json"
-    # Per-message auto-fix KBs (one file per message family). The family prefix
-    # is enough — a single file covers all variants of that message.
+        return "pacs008_cbprplus_sr2025_validation_kb.json"
     if msg_type.startswith("pacs.010"):
         return "pacs010_cbprplus_sr2025_validation_kb.json"
+    if msg_type.startswith("camt.052"):
+        return "camt052_cbprplus_sr2025_validation_kb.json"
+    if msg_type.startswith("camt.053"):
+        return "camt053_cbprplus_sr2025_validation_kb.json"
+    if msg_type.startswith("camt.054"):
+        return "camt054_cbprplus_sr2025_validation_kb.json"
+    if msg_type.startswith("camt.055"):
+        return "camt055_cbprplus_sr2025_validation_kb.json"
     if msg_type.startswith("camt.056"):
         return "camt056_cbprplus_sr2025_validation_kb.json"
     if msg_type.startswith("camt.057"):
@@ -210,8 +223,6 @@ def _kb_folder_name(msg_type: str, xml: str = "") -> Optional[str]:
         return "pain002_cbprplus_sr2025_validation_kb.json"
     if msg_type.startswith("pain.008"):
         return "pain008_cbprplus_sr2025_validation_kb.json"
-    if msg_type.startswith("pacs.004"):
-        return "pacs004_cbprplus_sr2025_validation_kb.json"
     return None
 
 
@@ -468,7 +479,7 @@ def _enterprise_shared(path: str, default: Any = None) -> Any:
 
 
 # ── Syntactic / Lexical Validation KB (cached) ────────────────────────────────
-# resources/KB/CBPRPlus_Syntactic_Lexical_Validation_KB.json is a companion
+# resources/KB/syntactic_lexical_cbprplus_validation_kb.json is a companion
 # knowledge base for detecting and repairing SYNTACTIC errors (character encoding,
 # well-formedness, whitespace, numeric/date lexical form) that are checked BEFORE
 # schema/business validation can even run. It is loaded once and consulted by
@@ -483,7 +494,7 @@ def _load_syntactic_kb() -> Dict[str, Any]:
         return _SYNTACTIC_KB_CACHE
     path = os.path.normpath(os.path.join(
         os.path.dirname(__file__), "..", "resources", "KB",
-        "CBPRPlus_Syntactic_Lexical_Validation_KB.json",
+        "syntactic_lexical_cbprplus_validation_kb.json",
     ))
     try:
         with open(path, "r", encoding="utf-8-sig") as f:
@@ -682,9 +693,21 @@ class _KBContext:
         family = _kb_msg_family(msg_type)
         if not family:
             return None
-        if family not in cls._cache:
-            cls._cache[family] = _KBContext(family)
-        ctx = cls._cache[family]
+        # pacs.009 ships variant-specific KBs (CORE / COV / ADV) that all share
+        # the 'pacs.009' family and namespace, so _find_file would pick the
+        # shortest (CORE) filename for every variant. Disambiguate from the
+        # msg_type when it names the variant (e.g. 'pacs.009.001.08_COV'); fall
+        # back to CORE — the prior behaviour — when it does not.
+        key = family
+        if family == "pacs.009":
+            mt = (msg_type or "").lower()
+            if "cov" in mt:
+                key = "pacs009_cov"
+            elif "adv" in mt:
+                key = "pacs009_adv"
+        if key not in cls._cache:
+            cls._cache[key] = _KBContext(key)
+        ctx = cls._cache[key]
         # Treat an empty context (no file) as unavailable
         return ctx if (ctx.by_tag or ctx.dependency_rules) else None
 
@@ -1186,9 +1209,9 @@ _TEMPLATES: dict[str, str] = {
         "</Pty></Cretr>"
     ),
     "Pty": (
-        "<Pty><Nm>Party Name</Nm>"
-        "<PstlAdr><StrtNm>Main Street</StrtNm><BldgNb>1</BldgNb>"
-        "<TwnNm>Amsterdam</TwnNm><Ctry>NL</Ctry></PstlAdr>"
+        "<Pty><Nm>Case Creator Name</Nm>"
+        "<PstlAdr><StrtNm>Allen Street</StrtNm><BldgNb>1</BldgNb>"
+        "<TwnNm>Oslo</TwnNm><Ctry>NO</Ctry></PstlAdr>"
         "</Pty>"
     ),
     "AcctSvcr": "<AcctSvcr><FinInstnId><BICFI>DEUTDEFFXXX</BICFI></FinInstnId></AcctSvcr>",
@@ -2871,7 +2894,6 @@ class FixSuggester:
             or ("pty" in msg.lower() and ("nm" in msg.lower() or "id" in msg.lower()))
         )
         if _empty_pty_msg:
-            _ns_pty = etree.QName(root.tag).namespace or ""
             for _pty_el in root.iter():
                 if not isinstance(_pty_el.tag, str):
                     continue
@@ -2884,6 +2906,8 @@ class FixSuggester:
                     _pty_tmpl = _TEMPLATES.get("Pty", "")
                     if _pty_tmpl:
                         try:
+                            # Use Pty element's own namespace, not the root envelope namespace
+                            _ns_pty = etree.QName(_pty_el.tag).namespace or ""
                             _pty_new = etree.fromstring(_pty_tmpl.encode("utf-8"))
                             _pty_new = self._apply_ns(_pty_new, _ns_pty)
                             return FixSuggestion(
@@ -3259,6 +3283,41 @@ class FixSuggester:
             if rule:
                 fix_hint = rule.get("fix") or rule.get("errorMessage") or ""
 
+        # ── Route: invalid enum/code VALUE with several same-named leaves ──────
+        # Layer 2 emits a NON-INDEXED xpath (e.g. /…/Stmt/Bal/CdtDbtInd) via
+        # _get_xpath_for_element. When a message has repeating siblings (OPBD &
+        # CLBD balances, multiple Ntry, etc.) the dot-path walk below always lands
+        # on the FIRST sibling — so a later, actually-invalid leaf (e.g. the bad
+        # CdtDbtInd at line 84) is never repaired and the fix silently no-ops.
+        # Pin the exact offending leaf by the bad VALUE quoted in the message,
+        # disambiguating with the line hint when several share that value.
+        _bad_m = re.search(r"(?:value|code|data) '([^']*)'", f"{msg} {fix_hint}", re.I)
+        if _bad_m and _bad_m.group(1).strip():
+            _bad_val = _bad_m.group(1).strip()
+            _leaf_m = re.search(r"(?:field|element|tag) '([^']+)'", f"{msg} {fix_hint}", re.I)
+            _leaf = ""
+            if _leaf_m:
+                _leaf = _leaf_m.group(1).split('}')[-1].split(':')[-1]
+            if not _leaf:
+                _pp = [p for p in path.replace("/", ".").split(".") if p and "[" not in p]
+                _leaf = _pp[-1] if _pp else ""
+            if _leaf and _VALID_XML_NAME.match(_leaf):
+                _val_cands = [
+                    el for el in root.iter()
+                    if isinstance(el.tag, str)
+                    and etree.QName(el.tag).localname == _leaf
+                    and not list(el)
+                    and (el.text or "").strip() == _bad_val
+                ]
+                if _val_cands:
+                    _pick = _val_cands[0]
+                    if len(_val_cands) > 1 and line_hint is not None:
+                        _pick = min(_val_cands,
+                                    key=lambda e: abs((e.sourceline or 0) - line_hint))
+                    _vfix = self._fix_value(_pick, code, msg, fix_hint, ns)
+                    if _vfix is not None and _vfix.confidence != "low":
+                        return _vfix
+
         # ── Parse dot-path ────────────────────────────────────────────────────
         # Detect attribute-target paths like 'IntrBkSttlmAmt@Ccy' or '...Amt@Ccy'.
         # These mean: fix the @Ccy attribute on the IntrBkSttlmAmt element.
@@ -3347,7 +3406,7 @@ class FixSuggester:
                     and etree.QName(el.tag).localname == missing_tag
                 ]
                 if existing_matches:
-                    bad_m = re.search(r"value '([^']*)'", f"{msg} {fix_hint}", re.I)
+                    bad_m = re.search(r"(?:value|code) '([^']*)'", f"{msg} {fix_hint}", re.I)
                     bad_val = bad_m.group(1) if bad_m else None
                     pick = None
                     if bad_val:
@@ -5829,6 +5888,20 @@ class FixSuggester:
                                          self._serialize(_el_copy), code, msg, "high")
             except (ValueError, TypeError):
                 pass
+            # ── Non-numeric amount text (e.g. 'GB', 'abc') ───────────────────
+            # float() above threw — the text is not a number at all. Replace
+            # with a valid placeholder that keeps the Ccy attribute intact.
+            # Only fires when the element IS an amount element (ends with Amt
+            # or carries a Ccy attribute) to avoid touching non-amount fields
+            # whose text happens to be non-numeric for a different reason.
+            if _is_amt_el and _amt_cur and not re.match(r"^-?\d+(\.\d{0,5})?$", _amt_cur):
+                _ccy_n = (el.get("Ccy") or "").upper()
+                _prec_n = _ccy_precision(_ccy_n) if _ccy_n else 2
+                _placeholder = f"1000.{'0' * _prec_n}" if _prec_n > 0 else "1000"
+                _el_copy_n = self._copy(el)
+                _el_copy_n.text = _placeholder
+                return FixSuggestion(xpath, original_fragment,
+                                     self._serialize(_el_copy_n), code, msg, "high")
 
         # ── Text too long: truncate in-place, never replace ─────────────────
         # "Jhon ......(162 chars)" → "Jhon ......(140 chars)" for Max140Text.
