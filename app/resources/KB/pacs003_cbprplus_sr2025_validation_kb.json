@@ -1,202 +1,44 @@
 {
   "domain": "SWIFT MX CBPR+ pacs.003.001.08",
   "version": "SR2025",
-  "last_updated": "2026-05-28",
+  "last_updated": "2026-06-04",
   "purpose": "Context KB for pacs.003 FIToFICustomerDirectDebit validation. For each XML tag: possible errors, affected tags, and all possible fixes. Based on CBPR+ SR2025 Usage Guideline (pacs.003.001.08) and SWIFT MX Enterprise KB.",
   "reference_documents": [
     "CBPRPlus-pacs.003.001.08_FIToFICustomerDirectDebit CBPRPlus SR2025 (Combined), 21 March 2025",
     "SWIFT MX Enterprise LLM KB v2.0"
   ],
-  "iso_20022_rules": [
-    {
-      "rule_id": "R1",
-      "name": "RelatedPresentWhenCopyDupl",
-      "description": "If CopyDuplicate is present, Related MUST be present.",
-      "error_code": "H00001",
-      "severity": "Warning",
-      "error_text": "Element Related is missing"
-    },
-    {
-      "rule_id": "R4",
-      "name": "InstructedAgentRule",
-      "description": "If GrpHdr/InstdAgt is present, then DrctDbtTxInf/InstdAgt is not allowed.",
-      "error_code": "X00008",
-      "severity": "Fatal",
-      "error_text": "Invalid message content for instructed agent."
-    },
-    {
-      "rule_id": "R5",
-      "name": "InstructingAgentRule",
-      "description": "If GrpHdr/InstgAgt is present, then DrctDbtTxInf/InstgAgt is not allowed.",
-      "error_code": "X00007",
-      "severity": "Fatal",
-      "error_text": "Invalid message content for instructing agent."
-    },
-    {
-      "rule_id": "R6",
-      "name": "TotalInterbankSettlementAmountRule",
-      "description": "If GrpHdr/TtlIntrBkSttlmAmt is present, all DrctDbtTxInf/IntrBkSttlmAmt must use the same currency.",
-      "error_code": "X00042",
-      "severity": "Fatal"
-    },
-    {
-      "rule_id": "R7",
-      "name": "TotalInterbankSettlementAmountAndSumRule",
-      "description": "If GrpHdr/TtlIntrBkSttlmAmt is present, it must equal the sum of all DrctDbtTxInf/IntrBkSttlmAmt.",
-      "error_code": "X00043",
-      "severity": "Fatal"
-    },
-    {
-      "rule_id": "R8",
-      "name": "GroupHeaderInterbankSettlementDateRule",
-      "description": "If GrpHdr/IntrBkSttlmDt is present, DrctDbtTxInf/IntrBkSttlmDt is not allowed.",
-      "error_code": "X00045",
-      "severity": "Fatal"
-    },
-    {
-      "rule_id": "R9",
-      "name": "TransactionInterbankSettlementDateRule",
-      "description": "If GrpHdr/IntrBkSttlmDt is not present, DrctDbtTxInf/IntrBkSttlmDt MUST be present.",
-      "error_code": "X00290",
-      "severity": "Fatal"
-    },
-    {
-      "rule_id": "R10",
-      "name": "PaymentTypeInformationRule",
-      "description": "If GrpHdr/PmtTpInf is present, DrctDbtTxInf/PmtTpInf is not allowed.",
-      "error_code": "X00009",
-      "severity": "Fatal"
-    },
-    {
-      "rule_id": "R11",
-      "name": "NumberOfTransactionsAndDirectDebitsRule",
-      "description": "GrpHdr/NbOfTxs must equal the number of DrctDbtTxInf occurrences.",
-      "error_code": "X00062",
-      "severity": "Fatal"
-    },
-    {
-      "rule_id": "R12",
-      "name": "MandateRelatedInformationRule",
-      "description": "If DrctDbtTx is present, MndtRltdInf MUST be present and contain MndtId and DtOfSgntr.",
-      "error_code": "X00310",
-      "severity": "Fatal"
-    },
-    {
-      "rule_id": "R13",
-      "name": "AmountPositiveRule",
-      "description": "IntrBkSttlmAmt must be >= 0 (minInclusive=0), max 5 fractional digits, max 18 total digits (ActiveCurrencyAndAmount from XSD pacs.003.001.11).",
-      "error_code": "AMOUNT_NEGATIVE",
-      "severity": "Fatal",
-      "xsd_source": "ActiveCurrencyAndAmount_SimpleType — pacs.003.001.11"
-    },
-    {
-      "rule_id": "R14",
-      "name": "BICFIFormatRule",
-      "description": "BICFI values must match [A-Z0-9]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?. 8 or 11 uppercase alphanumeric characters.",
-      "error_code": "INVALID_BICFI",
-      "severity": "Fatal",
-      "xsd_source": "BICFIDec2014Identifier — pacs.003.001.11"
-    },
-    {
-      "rule_id": "R15",
-      "name": "IBANFormatRule",
-      "description": "IBAN must match [A-Z]{2}[0-9]{2}[a-zA-Z0-9]{1,30}. Max 34 characters. Used in CdtrAcct/Id/IBAN and DbtrAcct/Id/IBAN.",
-      "error_code": "IBAN_INVALID",
-      "severity": "Fatal",
-      "xsd_source": "IBAN2007Identifier — pacs.003.001.11"
-    },
-    {
-      "rule_id": "R16",
-      "name": "UUIDv4FormatRule",
-      "description": "UETR must match UUID v4 pattern [a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}. Mandatory in CBPR+ pacs.003.",
-      "error_code": "UETR_FORMAT_ERROR",
-      "severity": "Fatal",
-      "xsd_source": "UUIDv4Identifier — pacs.003.001.11"
-    },
-    {
-      "rule_id": "R17",
-      "name": "LEIFormatRule",
-      "description": "LEI must match [A-Z0-9]{18}[0-9]{2} (exactly 20 chars). Used optionally in BranchData5/LEI.",
-      "error_code": "LEI_INVALID",
-      "severity": "Fatal",
-      "xsd_source": "LEIIdentifier — pacs.003.001.11"
-    },
-    {
-      "rule_id": "R18",
-      "name": "SttlmTmIndctnRule",
-      "description": "When SttlmTmIndctn is present in pacs.003 DrctDbtTxInf, it must contain DbtDtTm (debit datetime) — NOT CdtDtTm. pacs.003 is a direct debit (debit-side timing). Format: YYYY-MM-DDTHH:MM:SS+HH:MM, no Z, no milliseconds.",
-      "error_code": "STTLMTMINDCTN_EXCLUSIVE",
-      "severity": "Fatal",
-      "xsd_source": "SettlementDateTimeIndication1 — pacs.003.001.11",
-      "ai_fix": "Remove CdtDtTm if present; ensure DbtDtTm is present and uses CBPR+ offset format."
-    }
-  ],
+  "iso_20022_rules": {
+    "RelatedPresentWhenCopyDupl": "If CopyDuplicate is present, Related MUST be present.",
+    "InstructedAgentRule": "If GrpHdr/InstdAgt is present, then DrctDbtTxInf/InstdAgt is not allowed.",
+    "InstructingAgentRule": "If GrpHdr/InstgAgt is present, then DrctDbtTxInf/InstgAgt is not allowed.",
+    "TotalInterbankSettlementAmountRule": "If GrpHdr/TtlIntrBkSttlmAmt is present, all DrctDbtTxInf/IntrBkSttlmAmt must use the same currency.",
+    "TotalInterbankSettlementAmountAndSumRule": "If GrpHdr/TtlIntrBkSttlmAmt is present, it must equal the sum of all DrctDbtTxInf/IntrBkSttlmAmt.",
+    "GroupHeaderInterbankSettlementDateRule": "If GrpHdr/IntrBkSttlmDt is present, DrctDbtTxInf/IntrBkSttlmDt is not allowed.",
+    "TransactionInterbankSettlementDateRule": "If GrpHdr/IntrBkSttlmDt is not present, DrctDbtTxInf/IntrBkSttlmDt MUST be present.",
+    "PaymentTypeInformationRule": "If GrpHdr/PmtTpInf is present, DrctDbtTxInf/PmtTpInf is not allowed.",
+    "NumberOfTransactionsAndDirectDebitsRule": "GrpHdr/NbOfTxs must equal the number of DrctDbtTxInf occurrences.",
+    "MandateRelatedInformationRule": "If DrctDbtTx is present, MndtRltdInf MUST be present and contain MndtId and DtOfSgntr.",
+    "AmountPositiveRule": "IntrBkSttlmAmt must be >= 0 (minInclusive=0), max 5 fractional digits, max 18 total digits (ActiveCurrencyAndAmount from XSD pacs.003.001.11).",
+    "BICFIFormatRule": "BICFI values must match [A-Z0-9]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?. 8 or 11 uppercase alphanumeric characters.",
+    "IBANFormatRule": "IBAN must match [A-Z]{2}[0-9]{2}[a-zA-Z0-9]{1,30}. Max 34 characters. Used in CdtrAcct/Id/IBAN and DbtrAcct/Id/IBAN.",
+    "UUIDv4FormatRule": "UETR must match UUID v4 pattern [a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}. Mandatory in CBPR+ pacs.003.",
+    "LEIFormatRule": "LEI must match [A-Z0-9]{18}[0-9]{2} (exactly 20 chars). Used optionally in BranchData5/LEI.",
+    "SttlmTmIndctnRule": "When SttlmTmIndctn is present in pacs.003 DrctDbtTxInf, it must contain DbtDtTm (debit datetime) — NOT CdtDtTm. pacs.003 is a direct debit (debit-side timing). Format: YYYY-MM-DDTHH:MM:SS+HH:MM, no Z, no milliseconds."
+  },
   "cbpr_plus_formal_rules": [
-    {
-      "rule_id": "CBPR_PRIORITY",
-      "name": "CBPR_Priority_Instruction_Priority_FormalRule",
-      "description": "AppHdr/Priority must equal DrctDbtTxInf/PmtTpInf/InstrPrty when both are present."
-    },
-    {
-      "rule_id": "CBPR_FR_TO_1",
-      "name": "CBPR_From_To_Instructing_Instructed_Agent_BIC_1",
-      "description": "AppHdr/Fr BIC must match InstgAgt BIC and AppHdr/To BIC must match InstdAgt BIC, except when CpyDplct = COPY or CODU."
-    },
-    {
-      "rule_id": "CBPR_FR_TO_2",
-      "name": "CBPR_From_To_Instructing_Instructed_Agent_BIC_2",
-      "description": "AppHdr/Fr BIC must match InstgAgt BIC and AppHdr/To BIC must match InstdAgt BIC when CpyDplct is absent."
-    },
-    {
-      "rule_id": "CBPR_AGENT_BICFI_EXCLUSIVE",
-      "name": "CBPR_Agent_BICFI_Rule",
-      "description": "If BICFI is present inside FinInstnId, then Nm and PstlAdr are NOT allowed in the same FinInstnId block."
-    },
-    {
-      "rule_id": "CBPR_AGENT_NM_PSTLADR",
-      "name": "CBPR_Agent_Name_Postal_Address_FormalRule",
-      "description": "If Nm is present in FinInstnId, PstlAdr must also be present, and vice versa."
-    },
-    {
-      "rule_id": "CBPR_CHARSET",
-      "name": "CBPR_Character_Set_Usage_TextualRule",
-      "description": "All proprietary/text fields (excl. Nm/Adr/RmtInf) limited to FIN-X charset. Nm/Adr/RmtInf extended with !#$&%*=^_{|}~\";<>@[\\] (< as &lt;, > as &gt;)."
-    },
-    {
-      "rule_id": "CBPR_BIZ_SVC",
-      "name": "CBPR_Business_Service_Usage_TextualRule",
-      "description": "AppHdr/BizSvc must be 'swift.cbprplus.03' (SR2025). This element is mandatory (min occurrence changed to 1)."
-    },
-    {
-      "rule_id": "CBPR_BIZ_MSG_IDR",
-      "name": "CBPR_Business_Message_Identifier_TextualRule",
-      "description": "AppHdr/BizMsgIdr must equal GrpHdr/MsgId."
-    },
-    {
-      "rule_id": "CBPR_DATETIME_NO_Z",
-      "name": "CBPR_DateTime_Format",
-      "description": "DateTime fields must use YYYY-MM-DDTHH:MM:SS+HH:MM format. Z suffix is forbidden. Milliseconds are forbidden."
-    },
-    {
-      "rule_id": "CBPR_SINGLE_TX",
-      "name": "Single Transaction Only",
-      "description": "CBPR+ allows single transactions only per message."
-    },
-    {
-      "rule_id": "CBPR_BRANCH_REMOVED",
-      "name": "BrnchId Removed",
-      "description": "BranchIdentification is removed from InstgAgt, InstdAgt, DbtrAgt, CdtrAgt, IntrmyAgt1/2/3, PrvsInstgAgt1/2/3 and settlement agents."
-    },
-    {
-      "rule_id": "CBPR_MNDT_REQUIRED",
-      "name": "CBPR_Mandate_Related_Information_TextualRule",
-      "description": "MndtRltdInf/MndtId and MndtRltdInf/DtOfSgntr are required when DrctDbtTx is present under CBPR+."
-    },
-    {
-      "rule_id": "CBPR_CDTR_SCHME_ID",
-      "name": "CBPR_Creditor_Scheme_Identification_TextualRule",
-      "description": "DrctDbtTx/CdtrSchmeId identifies the creditor under a direct debit scheme; Id and SchmeNm must be consistent when present."
-    }
+    "AppHdr/Priority must equal DrctDbtTxInf/PmtTpInf/InstrPrty when both are present.",
+    "AppHdr/Fr BIC must match InstgAgt BIC and AppHdr/To BIC must match InstdAgt BIC, except when CpyDplct = COPY or CODU.",
+    "AppHdr/Fr BIC must match InstgAgt BIC and AppHdr/To BIC must match InstdAgt BIC when CpyDplct is absent.",
+    "If BICFI is present inside FinInstnId, then Nm and PstlAdr are NOT allowed in the same FinInstnId block.",
+    "If Nm is present in FinInstnId, PstlAdr must also be present, and vice versa.",
+    "All proprietary/text fields (excl. Nm/Adr/RmtInf) limited to FIN-X charset. Nm/Adr/RmtInf extended with !#$&%*=^_{|}~\";<>@[\\] (< as &lt;, > as &gt;).",
+    "AppHdr/BizSvc must be 'swift.cbprplus.03' (SR2025). This element is mandatory (min occurrence changed to 1).",
+    "AppHdr/BizMsgIdr must equal GrpHdr/MsgId.",
+    "DateTime fields must use YYYY-MM-DDTHH:MM:SS+HH:MM format. Z suffix is forbidden. Milliseconds are forbidden.",
+    "CBPR+ allows single transactions only per message.",
+    "BranchIdentification is removed from InstgAgt, InstdAgt, DbtrAgt, CdtrAgt, IntrmyAgt1/2/3, PrvsInstgAgt1/2/3 and settlement agents.",
+    "MndtRltdInf/MndtId and MndtRltdInf/DtOfSgntr are required when DrctDbtTx is present under CBPR+.",
+    "DrctDbtTx/CdtrSchmeId identifies the creditor under a direct debit scheme; Id and SchmeNm must be consistent when present."
   ],
   "tags": [
     {
@@ -2368,6 +2210,102 @@
           ]
         }
       ]
+    },
+    {
+      "tag": "GrpHdr/TtlIntrBkSttlmAmt",
+      "xml_element": "TtlIntrBkSttlmAmt",
+      "xpath": "/Document/FIToFICstmrDrctDbt/GrpHdr/TtlIntrBkSttlmAmt",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "datatype": "ActiveCurrencyAndAmount",
+      "description": "Total interbank settlement amount for the group. When present must equal the sum of all DrctDbtTxInf/IntrBkSttlmAmt and share their currency.",
+      "errors": [
+        {
+          "error_id": "TTLAMT_MISMATCH",
+          "error_code": "CTRL_SUM_MISMATCH",
+          "severity": "Fatal",
+          "description": "GrpHdr/TtlIntrBkSttlmAmt does not equal the sum of DrctDbtTxInf/IntrBkSttlmAmt.",
+          "affected_tags": [
+            "GrpHdr/TtlIntrBkSttlmAmt",
+            "DrctDbtTxInf/IntrBkSttlmAmt"
+          ],
+          "possible_fixes": [
+            "Recompute the sum of all DrctDbtTxInf/IntrBkSttlmAmt and set TtlIntrBkSttlmAmt to that value.",
+            "Ensure the Ccy attribute matches the per-transaction settlement currency."
+          ]
+        },
+        {
+          "error_id": "TTLAMT_CCY",
+          "error_code": "INVALID_CHARSETS",
+          "severity": "Fatal",
+          "description": "TtlIntrBkSttlmAmt Ccy attribute is missing or not a valid ISO 4217 code.",
+          "affected_tags": [
+            "GrpHdr/TtlIntrBkSttlmAmt"
+          ],
+          "possible_fixes": [
+            "Add a valid Ccy attribute (e.g. Ccy=\"EUR\") matching the transaction currency."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "DrctDbtTxInf/PmtId/InstrId",
+      "xml_element": "InstrId",
+      "xpath": "/Document/FIToFICstmrDrctDbt/DrctDbtTxInf/PmtId/InstrId",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "datatype": "Max35Text",
+      "max_length": 35,
+      "description": "Point-to-point instruction identification assigned by the instructing party. Max 35 chars.",
+      "errors": [
+        {
+          "error_id": "INSTRID_LEN",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "InstrId exceeds 35 characters.",
+          "affected_tags": [
+            "DrctDbtTxInf/PmtId/InstrId"
+          ],
+          "possible_fixes": [
+            "Truncate InstrId to a maximum of 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "DrctDbtTxInf/IntrmyAgt2",
+      "xml_element": "IntrmyAgt2",
+      "xpath": "/Document/FIToFICstmrDrctDbt/DrctDbtTxInf/IntrmyAgt2",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Second intermediary agent in the settlement chain. May only be present when IntrmyAgt1 is present.",
+      "errors": [
+        {
+          "error_id": "INTRMY2_NO_AGT1",
+          "error_code": "MISSING_EXPECTED_ELEMENT",
+          "severity": "Fatal",
+          "description": "IntrmyAgt2 present without IntrmyAgt1.",
+          "affected_tags": [
+            "DrctDbtTxInf/IntrmyAgt1",
+            "DrctDbtTxInf/IntrmyAgt2"
+          ],
+          "possible_fixes": [
+            "Insert IntrmyAgt1 before IntrmyAgt2, or remove IntrmyAgt2."
+          ]
+        },
+        {
+          "error_id": "INTRMY2_BIC",
+          "error_code": "INVALID_BICFI",
+          "severity": "Fatal",
+          "description": "IntrmyAgt2 BICFI is not a valid 8 or 11 character ISO 9362 BIC.",
+          "affected_tags": [
+            "DrctDbtTxInf/IntrmyAgt2"
+          ],
+          "possible_fixes": [
+            "Set FinInstnId/BICFI to a valid 8 or 11 character BIC; remove BrnchId (CBPR+ branch removed)."
+          ]
+        }
+      ]
     }
   ],
   "cross_tag_dependency_rules": [
@@ -2541,6 +2479,15 @@
         "DrctDbtTxInf/CdtrAgt/FinInstnId/BICFI"
       ],
       "fix": "Use different BICs for DbtrAgt and CdtrAgt unless an on-us collection is intended."
+    },
+    {
+      "rule_id": "DEP_TTLAMT",
+      "rule": "GrpHdr/TtlIntrBkSttlmAmt, when present, must equal the sum of all DrctDbtTxInf/IntrBkSttlmAmt and share their currency.",
+      "affected_tags": [
+        "GrpHdr/TtlIntrBkSttlmAmt",
+        "DrctDbtTxInf/IntrBkSttlmAmt"
+      ],
+      "fix": "Recompute the total from the transaction amounts and set TtlIntrBkSttlmAmt (with matching Ccy)."
     }
   ],
   "tag_insertion_order": {
@@ -2634,5 +2581,16 @@
       "Sgntr",
       "Rltd"
     ]
+  },
+  "schema_mapping_notes": {
+    "root_element": "pacs.003.001.08 root is /Document/FIToFICstmrDrctDbt (FIToFICustomerDirectDebit); the AppHdr (BAH) precedes the Document.",
+    "msg_def_idr": "AppHdr/MsgDefIdr must be 'pacs.003.001.08' matching urn:iso:std:iso:20022:tech:xsd:pacs.003.001.08.",
+    "biz_svc": "AppHdr/BizSvc for CBPR+ SR2025 FI-to-FI customer direct debit is 'swift.cbprplus.03' (SR2024 and earlier used 'swift.cbprplus.02').",
+    "structure": "GrpHdr [1..1] + DrctDbtTxInf [1..n]; CBPR+ restricts the message to a single DrctDbtTxInf. Mandate data is carried under DrctDbtTxInf/DrctDbtTx/MndtRltdInf.",
+    "amount_location": "The settlement amount is IntrBkSttlmAmt directly under DrctDbtTxInf (with a Ccy attribute). InstdAmt is the optional instructed amount and requires XchgRate when its currency differs from IntrBkSttlmAmt.",
+    "party_roles": "In a direct debit the Cdtr is the party collecting funds and the Dbtr is the party being debited - the opposite cash-flow direction to a credit transfer. CdtrAgt collects from the debtor held at DbtrAgt.",
+    "settlement_method": "GrpHdr/SttlmInf/SttlmMtd is mandatory; INDA/INGA settle across the agents' accounts, CLRG requires a clearing system, COVE requires reimbursement agents.",
+    "datetime_format": "All ISODateTime fields (AppHdr/CreDt, GrpHdr/CreDtTm) use YYYY-MM-DDTHH:MM:SS+HH:MM; the 'Z' suffix and milliseconds are forbidden under CBPR+.",
+    "nb_of_txs_scope": "GrpHdr/NbOfTxs must equal the number of DrctDbtTxInf occurrences (1 under CBPR+)."
   }
 }

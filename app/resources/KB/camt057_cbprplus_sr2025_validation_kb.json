@@ -1,632 +1,902 @@
 {
-    "domain": "SWIFT MX CBPR+ camt.057.001.08",
-    "version": "SR2025",
-    "last_updated": "2026-06-01",
-    "purpose": "Context KB for camt.057 NotificationToReceive auto-fixing. For each XML tag: datatype, mandatory, errors, possible_fixes so the AI fixer can insert correct structures and fix value errors.",
-    "reference_documents": [
-        "ISO 20022 camt.057.001.08 NotificationToReceive schema",
-        "SWIFT CBPR+ Usage Guidelines SR2025"
-    ],
-    "iso_20022_rules": {
-        "NTFCTN_MANDATORY": "Document/NtfctnToRcv/Ntfctn is mandatory [1..1].",
-        "NTFCTN_ITM_MANDATORY": "Each Ntfctn must contain at least one Itm [1..n].",
-        "ITM_AMT_MANDATORY": "Each Itm must carry an Amt (ActiveOrHistoricCurrencyAndAmount) [1..1].",
-        "ITM_ID_MANDATORY": "Each Itm must have an Id (Max35Text) [1..1].",
-        "GRPHDR_MANDATORY": "GrpHdr with MsgId and CreDtTm is mandatory [1..1].",
-        "NTFCTN_ID_MANDATORY": "Ntfctn.Id (notification identifier, Max35Text) is mandatory [1..1].",
-        "XPCTDVALDT_NOT_PAST": "XpctdValDt (expected value date) must not be in the past.",
-        "UETR_RECOMMENDED": "Itm.UETR (UUIDv4) is strongly recommended under CBPR+ to correlate the notification with the originating payment."
-    },
-    "cbpr_plus_formal_rules": [
-        "AppHdr (BusinessApplicationHeader) is mandatory for all CBPR+ camt.057 messages.",
-        "AppHdr/BizMsgIdr must equal GrpHdr/MsgId.",
-        "AppHdr/MsgDefIdr must equal 'camt.057.001.08'.",
-        "AppHdr/BizSvc must be 'swift.cbprplus.02' for CBPR+ messages.",
-        "AppHdr/CreDt must use format YYYY-MM-DDTHH:MM:SS+HH:MM — 'Z' suffix is forbidden.",
-        "AppHdr/Fr and AppHdr/To are mandatory; each must contain a valid BICFI.",
-        "Itm/UETR if present must be a valid UUID v4 (lowercase hex, format xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx).",
-        "XpctdValDt must not be a past date (PAST_DATE_ERROR).",
-        "When BICFI is present inside FinInstnId, Nm and PstlAdr must NOT also be present (BICFI exclusivity).",
-        "AcctSvcr/FinInstnId/BICFI should identify the account-servicing institution."
-    ],
-    "tags": [
+  "domain": "SWIFT MX CBPR+ camt.057.001.08",
+  "version": "SR2025",
+  "last_updated": "2026-06-04",
+  "purpose": "Context KB for camt.057 NotificationToReceive auto-fixing. For each XML tag: datatype, mandatory, errors, possible_fixes so the AI fixer can insert correct structures and fix value errors.",
+  "reference_documents": [
+    "ISO 20022 camt.057.001.08 NotificationToReceive schema",
+    "SWIFT CBPR+ Usage Guidelines SR2025"
+  ],
+  "iso_20022_rules": {
+    "NTFCTN_MANDATORY": "Document/NtfctnToRcv/Ntfctn is mandatory [1..1].",
+    "NTFCTN_ITM_MANDATORY": "Each Ntfctn must contain at least one Itm [1..n].",
+    "ITM_AMT_MANDATORY": "Each Itm must carry an Amt (ActiveOrHistoricCurrencyAndAmount) [1..1].",
+    "ITM_ID_MANDATORY": "Each Itm must have an Id (Max35Text) [1..1].",
+    "GRPHDR_MANDATORY": "GrpHdr with MsgId and CreDtTm is mandatory [1..1].",
+    "NTFCTN_ID_MANDATORY": "Ntfctn.Id (notification identifier, Max35Text) is mandatory [1..1].",
+    "XPCTDVALDT_NOT_PAST": "XpctdValDt (expected value date) must not be in the past.",
+    "UETR_RECOMMENDED": "Itm.UETR (UUIDv4) is strongly recommended under CBPR+ to correlate the notification with the originating payment."
+  },
+  "cbpr_plus_formal_rules": [
+    "AppHdr (BusinessApplicationHeader) is mandatory for all CBPR+ camt.057 messages.",
+    "AppHdr/BizMsgIdr must equal GrpHdr/MsgId.",
+    "AppHdr/MsgDefIdr must equal 'camt.057.001.08'.",
+    "AppHdr/BizSvc must be 'swift.cbprplus.02' for CBPR+ messages.",
+    "AppHdr/CreDt must use format YYYY-MM-DDTHH:MM:SS+HH:MM — 'Z' suffix is forbidden.",
+    "AppHdr/Fr and AppHdr/To are mandatory; each must contain a valid BICFI.",
+    "Itm/UETR if present must be a valid UUID v4 (lowercase hex, format xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx).",
+    "XpctdValDt must not be a past date (PAST_DATE_ERROR).",
+    "When BICFI is present inside FinInstnId, Nm and PstlAdr must NOT also be present (BICFI exclusivity).",
+    "AcctSvcr/FinInstnId/BICFI should identify the account-servicing institution."
+  ],
+  "tags": [
+    {
+      "tag": "AppHdr",
+      "xml_element": "AppHdr",
+      "xpath": "/AppHdr",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Business Application Header V02. Mandatory for all CBPR+ camt.057 messages.",
+      "errors": [
         {
-            "tag": "AppHdr",
-            "xml_element": "AppHdr",
-            "xpath": "/AppHdr",
-            "occurrence": "[1..1]",
-            "mandatory": true,
-            "description": "Business Application Header V02. Mandatory for all CBPR+ camt.057 messages.",
-            "errors": [
-                {
-                    "error_id": "APPHDR_MISSING",
-                    "error_code": "SCHEMA_ERR",
-                    "severity": "Fatal",
-                    "description": "AppHdr is absent.",
-                    "affected_tags": ["AppHdr"],
-                    "possible_fixes": [
-                        "Insert a complete <AppHdr> block containing Fr, To, BizMsgIdr, MsgDefIdr, BizSvc, and CreDt before the <Document> element."
-                    ]
-                }
-            ]
-        },
-        {
-            "tag": "AppHdr/Fr",
-            "xml_element": "Fr",
-            "xpath": "/AppHdr/Fr",
-            "occurrence": "[1..1]",
-            "mandatory": true,
-            "description": "Sender of the message (BAH). Must contain FIId/FinInstnId/BICFI.",
-            "errors": [
-                {
-                    "error_id": "FR_MISSING",
-                    "error_code": "MISSING_MANDATORY_FIELD",
-                    "severity": "Fatal",
-                    "description": "AppHdr/Fr is absent.",
-                    "affected_tags": ["AppHdr/Fr"],
-                    "possible_fixes": [
-                        "Insert <Fr><FIId><FinInstnId><BICFI>SENDERXXXXX</BICFI></FinInstnId></FIId></Fr> as first child of AppHdr."
-                    ]
-                }
-            ]
-        },
-        {
-            "tag": "AppHdr/To",
-            "xml_element": "To",
-            "xpath": "/AppHdr/To",
-            "occurrence": "[1..1]",
-            "mandatory": true,
-            "description": "Receiver of the message (BAH). Must contain FIId/FinInstnId/BICFI.",
-            "errors": [
-                {
-                    "error_id": "TO_MISSING",
-                    "error_code": "MISSING_MANDATORY_FIELD",
-                    "severity": "Fatal",
-                    "description": "AppHdr/To is absent.",
-                    "affected_tags": ["AppHdr/To"],
-                    "possible_fixes": [
-                        "Insert <To><FIId><FinInstnId><BICFI>RECEIVERXXXX</BICFI></FinInstnId></FIId></To> after <Fr> in AppHdr."
-                    ]
-                }
-            ]
-        },
-        {
-            "tag": "AppHdr/BizMsgIdr",
-            "xml_element": "BizMsgIdr",
-            "xpath": "/AppHdr/BizMsgIdr",
-            "occurrence": "[1..1]",
-            "mandatory": true,
-            "datatype": "Max35Text",
-            "max_length": 35,
-            "description": "Unique identifier of the business message. Must equal GrpHdr/MsgId.",
-            "errors": [
-                {
-                    "error_id": "BIZMSGIDR_MISSING",
-                    "error_code": "MISSING_MANDATORY_FIELD",
-                    "severity": "Fatal",
-                    "description": "BizMsgIdr is absent.",
-                    "affected_tags": ["AppHdr/BizMsgIdr"],
-                    "possible_fixes": ["Copy GrpHdr/MsgId value and insert as <BizMsgIdr>{value}</BizMsgIdr>."]
-                },
-                {
-                    "error_id": "BIZMSGIDR_NEQ_MSGID",
-                    "error_code": "BIZMSGIDR_EQ_GRPHDR_MSGID",
-                    "severity": "Fatal",
-                    "description": "BizMsgIdr does not equal GrpHdr/MsgId.",
-                    "affected_tags": ["AppHdr/BizMsgIdr","GrpHdr/MsgId"],
-                    "possible_fixes": ["Set BizMsgIdr to the same value as GrpHdr/MsgId."]
-                }
-            ]
-        },
-        {
-            "tag": "AppHdr/MsgDefIdr",
-            "xml_element": "MsgDefIdr",
-            "xpath": "/AppHdr/MsgDefIdr",
-            "occurrence": "[1..1]",
-            "mandatory": true,
-            "datatype": "Max35Text",
-            "expected_value": "camt.057.001.08",
-            "description": "Message Definition Identifier. Must equal 'camt.057.001.08'.",
-            "errors": [
-                {
-                    "error_id": "MSGDEFIDR_WRONG",
-                    "error_code": "MSGDEFIDR_MISMATCH",
-                    "severity": "Fatal",
-                    "description": "MsgDefIdr does not match the Document namespace.",
-                    "affected_tags": ["AppHdr/MsgDefIdr"],
-                    "possible_fixes": ["Set <MsgDefIdr>camt.057.001.08</MsgDefIdr>."]
-                }
-            ]
-        },
-        {
-            "tag": "AppHdr/BizSvc",
-            "xml_element": "BizSvc",
-            "xpath": "/AppHdr/BizSvc",
-            "occurrence": "[0..1]",
-            "mandatory": false,
-            "datatype": "Max35Text",
-            "expected_value": "swift.cbprplus.02",
-            "description": "Business Service identifier. The ONLY valid value for camt.057 in this implementation is 'swift.cbprplus.02'. The validator rule CBPR_R8 (CBPR_Business_Service_Usage_camt057) must enforce 'swift.cbprplus.02'. Any message with 'swift.cbprplus.03' must be fixed to 'swift.cbprplus.02'.",
-            "errors": [
-                {
-                    "error_id": "BIZSVC_WRONG_VALUE",
-                    "error_code": "CBPR_R8",
-                    "severity": "Error",
-                    "description": "BizSvc contains a value other than 'swift.cbprplus.02'. For camt.057 in this implementation, only 'swift.cbprplus.02' is accepted. The validator rule CBPR_R8 fires when the value is not the expected one.",
-                    "affected_tags": ["AppHdr/BizSvc"],
-                    "correct_value": "swift.cbprplus.02",
-                    "possible_fixes": [
-                        "Set <BizSvc>swift.cbprplus.02</BizSvc> in AppHdr.",
-                        "If the current value is 'swift.cbprplus.03', replace it with 'swift.cbprplus.02'.",
-                        "If BizSvc is absent, insert <BizSvc>swift.cbprplus.02</BizSvc> after MsgDefIdr."
-                    ],
-                    "ai_fix_action": "replace_value",
-                    "ai_fix_old": "swift.cbprplus.03",
-                    "ai_fix_new": "swift.cbprplus.02",
-                    "ai_fix_note": "Always use 'swift.cbprplus.02' for camt.057 regardless of what the CBPR_R8 error message says."
-                }
-            ]
-        },
-        {
-            "tag": "AppHdr/CreDt",
-            "xml_element": "CreDt",
-            "xpath": "/AppHdr/CreDt",
-            "occurrence": "[1..1]",
-            "mandatory": true,
-            "datatype": "ISODateTime",
-            "description": "Creation date-time of the BAH. Format YYYY-MM-DDTHH:MM:SS+HH:MM. 'Z' forbidden under CBPR+.",
-            "errors": [
-                {
-                    "error_id": "CREDT_Z_FORBIDDEN",
-                    "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
-                    "severity": "Error",
-                    "description": "CreDt uses 'Z' suffix instead of explicit offset.",
-                    "affected_tags": ["AppHdr/CreDt"],
-                    "possible_fixes": ["Replace trailing 'Z' with '+00:00'."]
-                },
-                {
-                    "error_id": "CREDT_NO_TZ",
-                    "error_code": "CBPR_DATETIME_NO_TIMEZONE",
-                    "severity": "Error",
-                    "description": "CreDt has no timezone offset.",
-                    "affected_tags": ["AppHdr/CreDt"],
-                    "possible_fixes": ["Append '+00:00' to the datetime value."]
-                }
-            ]
-        },
-        {
-            "tag": "GrpHdr",
-            "xml_element": "GrpHdr",
-            "xpath": "/Document/NtfctnToRcv/GrpHdr",
-            "occurrence": "[1..1]",
-            "mandatory": true,
-            "description": "Group Header. Contains MsgId and CreDtTm.",
-            "errors": [
-                {
-                    "error_id": "GRPHDR_MISSING",
-                    "error_code": "MISSING_MANDATORY_FIELD",
-                    "severity": "Fatal",
-                    "description": "GrpHdr is absent.",
-                    "affected_tags": ["GrpHdr"],
-                    "possible_fixes": [
-                        "Insert <GrpHdr><MsgId>MSG-ID</MsgId><CreDtTm>YYYY-MM-DDTHH:MM:SS+00:00</CreDtTm></GrpHdr> as first child of NtfctnToRcv."
-                    ]
-                }
-            ]
-        },
-        {
-            "tag": "GrpHdr/MsgId",
-            "xml_element": "MsgId",
-            "xpath": "/Document/NtfctnToRcv/GrpHdr/MsgId",
-            "occurrence": "[1..1]",
-            "mandatory": true,
-            "datatype": "Max35Text",
-            "max_length": 35,
-            "description": "Unique identifier for this notification message. Must equal AppHdr/BizMsgIdr.",
-            "errors": [
-                {
-                    "error_id": "MSGID_MISSING",
-                    "error_code": "MISSING_MANDATORY_FIELD",
-                    "severity": "Fatal",
-                    "description": "GrpHdr/MsgId is absent.",
-                    "affected_tags": ["GrpHdr/MsgId"],
-                    "possible_fixes": ["Add <MsgId>MSG-YYYYMMDD-001</MsgId> inside <GrpHdr>."]
-                },
-                {
-                    "error_id": "MSGID_TOO_LONG",
-                    "error_code": "ID_LENGTH_ERROR",
-                    "severity": "Error",
-                    "description": "MsgId exceeds 35 characters.",
-                    "affected_tags": ["GrpHdr/MsgId"],
-                    "possible_fixes": ["Truncate MsgId to 35 characters."]
-                }
-            ]
-        },
-        {
-            "tag": "GrpHdr/CreDtTm",
-            "xml_element": "CreDtTm",
-            "xpath": "/Document/NtfctnToRcv/GrpHdr/CreDtTm",
-            "occurrence": "[1..1]",
-            "mandatory": true,
-            "datatype": "ISODateTime",
-            "description": "Creation date-time of the message. Format YYYY-MM-DDTHH:MM:SS+HH:MM. Must not be in the past.",
-            "errors": [
-                {
-                    "error_id": "CREDTTM_MISSING",
-                    "error_code": "MISSING_MANDATORY_FIELD",
-                    "severity": "Fatal",
-                    "description": "GrpHdr/CreDtTm is absent.",
-                    "affected_tags": ["GrpHdr/CreDtTm"],
-                    "possible_fixes": ["Add <CreDtTm>YYYY-MM-DDTHH:MM:SS+00:00</CreDtTm> inside <GrpHdr>."]
-                },
-                {
-                    "error_id": "CREDTTM_PAST",
-                    "error_code": "PAST_DATE_ERROR",
-                    "severity": "Error",
-                    "description": "CreDtTm is in the past.",
-                    "affected_tags": ["GrpHdr/CreDtTm"],
-                    "possible_fixes": ["Replace with current datetime using format YYYY-MM-DDTHH:MM:SS+00:00."]
-                },
-                {
-                    "error_id": "CREDTTM_Z_FORBIDDEN",
-                    "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
-                    "severity": "Error",
-                    "description": "CreDtTm uses 'Z' suffix.",
-                    "affected_tags": ["GrpHdr/CreDtTm"],
-                    "possible_fixes": ["Replace trailing 'Z' with '+00:00'."]
-                }
-            ]
-        },
-        {
-            "tag": "GrpHdr/MsgSndr",
-            "xml_element": "MsgSndr",
-            "xpath": "/Document/NtfctnToRcv/GrpHdr/MsgSndr",
-            "occurrence": "[0..1]",
-            "mandatory": false,
-            "description": "Message Sender. Contains Agt/FinInstnId/BICFI identifying who sends the notification.",
-            "errors": [
-                {
-                    "error_id": "MSGSNDR_INVALID_BICFI",
-                    "error_code": "INVALID_BICFI",
-                    "severity": "Error",
-                    "description": "MsgSndr BICFI is invalid.",
-                    "affected_tags": ["GrpHdr/MsgSndr"],
-                    "possible_fixes": ["Replace BICFI with a valid 8 or 11 character BIC code."]
-                }
-            ]
-        },
-        {
-            "tag": "Ntfctn",
-            "xml_element": "Ntfctn",
-            "xpath": "/Document/NtfctnToRcv/Ntfctn",
-            "occurrence": "[1..1]",
-            "mandatory": true,
-            "description": "Account Notification. Contains Id [1..1] and one or more Itm [1..n].",
-            "errors": [
-                {
-                    "error_id": "NTFCTN_MISSING",
-                    "error_code": "MISSING_MANDATORY_FIELD",
-                    "severity": "Fatal",
-                    "description": "Ntfctn is absent.",
-                    "affected_tags": ["Ntfctn"],
-                    "possible_fixes": [
-                        "Insert <Ntfctn><Id>NTFCTN-001</Id><Itm><Id>ITM-001</Id><Amt Ccy=\"EUR\">0.00</Amt></Itm></Ntfctn> as second child of NtfctnToRcv."
-                    ]
-                }
-            ]
-        },
-        {
-            "tag": "Ntfctn/Id",
-            "xml_element": "Id",
-            "xpath": "/Document/NtfctnToRcv/Ntfctn/Id",
-            "occurrence": "[1..1]",
-            "mandatory": true,
-            "datatype": "Max35Text",
-            "max_length": 35,
-            "description": "Unique identifier of this notification.",
-            "errors": [
-                {
-                    "error_id": "NTFCTN_ID_MISSING",
-                    "error_code": "MISSING_MANDATORY_FIELD",
-                    "severity": "Fatal",
-                    "description": "Ntfctn/Id is absent.",
-                    "affected_tags": ["Ntfctn/Id"],
-                    "possible_fixes": ["Add <Id>NTFCTN-001</Id> as first child of <Ntfctn>."]
-                }
-            ]
-        },
-        {
-            "tag": "Ntfctn/Itm",
-            "xml_element": "Itm",
-            "xpath": "/Document/NtfctnToRcv/Ntfctn/Itm",
-            "occurrence": "[1..n]",
-            "mandatory": true,
-            "description": "Notification Item. Each item must have an Id and Amt. UETR is strongly recommended.",
-            "errors": [
-                {
-                    "error_id": "ITM_MISSING",
-                    "error_code": "MISSING_MANDATORY_FIELD",
-                    "severity": "Fatal",
-                    "description": "Ntfctn contains no Itm.",
-                    "affected_tags": ["Ntfctn/Itm"],
-                    "possible_fixes": [
-                        "Insert at least one <Itm><Id>ITM-001</Id><Amt Ccy=\"EUR\">0.00</Amt></Itm> inside <Ntfctn>."
-                    ]
-                }
-            ]
-        },
-        {
-            "tag": "Ntfctn/Itm/Id",
-            "xml_element": "Id",
-            "xpath": "/Document/NtfctnToRcv/Ntfctn/Itm/Id",
-            "occurrence": "[1..1]",
-            "mandatory": true,
-            "datatype": "Max35Text",
-            "max_length": 35,
-            "description": "Unique identifier of the notification item.",
-            "errors": [
-                {
-                    "error_id": "ITM_ID_MISSING",
-                    "error_code": "MISSING_MANDATORY_FIELD",
-                    "severity": "Fatal",
-                    "description": "Itm/Id is absent.",
-                    "affected_tags": ["Ntfctn/Itm/Id"],
-                    "possible_fixes": ["Add <Id>ITM-001</Id> as first child of <Itm>."]
-                }
-            ]
-        },
-        {
-            "tag": "Ntfctn/Itm/EndToEndId",
-            "xml_element": "EndToEndId",
-            "xpath": "/Document/NtfctnToRcv/Ntfctn/Itm/EndToEndId",
-            "occurrence": "[0..1]",
-            "mandatory": false,
-            "datatype": "Max35Text",
-            "max_length": 35,
-            "description": "End-to-end identification from the original payment instruction.",
-            "errors": []
-        },
-        {
-            "tag": "Ntfctn/Itm/UETR",
-            "xml_element": "UETR",
-            "xpath": "/Document/NtfctnToRcv/Ntfctn/Itm/UETR",
-            "occurrence": "[0..1]",
-            "mandatory": false,
-            "datatype": "UUIDv4Identifier",
-            "description": "Unique End-to-end Transaction Reference. Strongly recommended under CBPR+ to correlate the notification with the originating pacs.008/pacs.009 UETR.",
-            "errors": [
-                {
-                    "error_id": "ITM_UETR_INVALID",
-                    "error_code": "UETR_FORMAT_ERROR",
-                    "severity": "Error",
-                    "description": "Itm/UETR is not a valid UUID v4.",
-                    "affected_tags": ["Ntfctn/Itm/UETR"],
-                    "possible_fixes": [
-                        "Replace with a valid UUID v4: lowercase hex, format xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx."
-                    ]
-                }
-            ]
-        },
-        {
-            "tag": "Ntfctn/Itm/Amt",
-            "xml_element": "Amt",
-            "xpath": "/Document/NtfctnToRcv/Ntfctn/Itm/Amt",
-            "occurrence": "[1..1]",
-            "mandatory": true,
-            "datatype": "ActiveOrHistoricCurrencyAndAmount",
-            "description": "Amount of the notification item. Requires @Ccy attribute (ISO 4217 currency code).",
-            "errors": [
-                {
-                    "error_id": "ITM_AMT_MISSING",
-                    "error_code": "MISSING_MANDATORY_FIELD",
-                    "severity": "Fatal",
-                    "description": "Itm/Amt is absent.",
-                    "affected_tags": ["Ntfctn/Itm/Amt"],
-                    "possible_fixes": ["Add <Amt Ccy=\"EUR\">0.00</Amt> inside <Itm>."]
-                },
-                {
-                    "error_id": "ITM_AMT_NO_CCY",
-                    "error_code": "SCHEMA_ERR",
-                    "severity": "Fatal",
-                    "description": "Amt/@Ccy attribute is missing.",
-                    "affected_tags": ["Ntfctn/Itm/Amt"],
-                    "possible_fixes": ["Add the Ccy attribute: <Amt Ccy=\"EUR\">0.00</Amt>."]
-                }
-            ]
-        },
-        {
-            "tag": "Ntfctn/Itm/XpctdValDt",
-            "xml_element": "XpctdValDt",
-            "xpath": "/Document/NtfctnToRcv/Ntfctn/Itm/XpctdValDt",
-            "occurrence": "[0..1]",
-            "mandatory": false,
-            "datatype": "ISODate",
-            "description": "Expected Value Date. Must not be in the past.",
-            "errors": [
-                {
-                    "error_id": "XPCTDVALDT_PAST",
-                    "error_code": "PAST_DATE_ERROR",
-                    "severity": "Error",
-                    "description": "XpctdValDt is in the past.",
-                    "affected_tags": ["Ntfctn/Itm/XpctdValDt"],
-                    "possible_fixes": ["Replace with today's date (YYYY-MM-DD) or a future date."]
-                }
-            ]
-        },
-        {
-            "tag": "Ntfctn/Itm/Dbtr",
-            "xml_element": "Dbtr",
-            "xpath": "/Document/NtfctnToRcv/Ntfctn/Itm/Dbtr",
-            "occurrence": "[0..1]",
-            "mandatory": false,
-            "description": "Debtor (Party50Choice). Either a Party (Pty) or an Agent (Agt with FinInstnId/BICFI).",
-            "errors": [
-                {
-                    "error_id": "ITM_DBTR_BICFI_INVALID",
-                    "error_code": "INVALID_BICFI",
-                    "severity": "Error",
-                    "description": "Dbtr/Agt/FinInstnId/BICFI is invalid.",
-                    "affected_tags": ["Ntfctn/Itm/Dbtr"],
-                    "possible_fixes": ["Replace BICFI with a valid 8 or 11 character BIC."]
-                }
-            ]
-        },
-        {
-            "tag": "Ntfctn/Itm/DbtrAgt",
-            "xml_element": "DbtrAgt",
-            "xpath": "/Document/NtfctnToRcv/Ntfctn/Itm/DbtrAgt",
-            "occurrence": "[0..1]",
-            "mandatory": false,
-            "description": "Debtor Agent. BranchAndFinancialInstitutionIdentification8 — contains FinInstnId/BICFI.",
-            "errors": [
-                {
-                    "error_id": "ITM_DBTRAGT_BICFI_INVALID",
-                    "error_code": "INVALID_BICFI",
-                    "severity": "Error",
-                    "description": "DbtrAgt/FinInstnId/BICFI is invalid.",
-                    "affected_tags": ["Ntfctn/Itm/DbtrAgt"],
-                    "possible_fixes": ["Replace BICFI with a valid BIC code."]
-                }
-            ]
-        },
-        {
-            "tag": "Ntfctn/Itm/RmtInf",
-            "xml_element": "RmtInf",
-            "xpath": "/Document/NtfctnToRcv/Ntfctn/Itm/RmtInf",
-            "occurrence": "[0..1]",
-            "mandatory": false,
-            "description": "Remittance Information. Contains Ustrd (Max140Text) or Strd.",
-            "errors": []
-        },
-        {
-            "tag": "Ntfctn/Acct",
-            "xml_element": "Acct",
-            "xpath": "/Document/NtfctnToRcv/Ntfctn/Acct",
-            "occurrence": "[0..1]",
-            "mandatory": false,
-            "description": "Account being notified. CashAccount40 — Id/IBAN or Id/Othr.",
-            "errors": [
-                {
-                    "error_id": "NTFCTN_ACCT_IBAN_INVALID",
-                    "error_code": "IBAN_INVALID",
-                    "severity": "Error",
-                    "description": "Ntfctn/Acct/Id/IBAN fails checksum or format validation.",
-                    "affected_tags": ["Ntfctn/Acct"],
-                    "possible_fixes": ["Replace with a valid IBAN, e.g. GB29NWBK60161331926819."]
-                }
-            ]
-        },
-        {
-            "tag": "Ntfctn/AcctSvcr",
-            "xml_element": "AcctSvcr",
-            "xpath": "/Document/NtfctnToRcv/Ntfctn/AcctSvcr",
-            "occurrence": "[0..1]",
-            "mandatory": false,
-            "description": "Account Servicer. BranchAndFinancialInstitutionIdentification8 — FinInstnId/BICFI.",
-            "errors": [
-                {
-                    "error_id": "ACCTSVR_BICFI_EXCLUSIVE",
-                    "error_code": "SCHEMA_ERR",
-                    "severity": "Error",
-                    "description": "AcctSvcr FinInstnId has both BICFI and Nm/PstlAdr (BICFI exclusivity violation).",
-                    "affected_tags": ["Ntfctn/AcctSvcr"],
-                    "possible_fixes": ["Remove Nm and PstlAdr from FinInstnId when BICFI is present."]
-                }
-            ]
-        },
-        {
-            "tag": "Ntfctn/XpctdValDt",
-            "xml_element": "XpctdValDt",
-            "xpath": "/Document/NtfctnToRcv/Ntfctn/XpctdValDt",
-            "occurrence": "[0..1]",
-            "mandatory": false,
-            "datatype": "ISODate",
-            "description": "Expected Value Date at notification level. Must not be in the past.",
-            "errors": [
-                {
-                    "error_id": "NTFCTN_XPCTDVALDT_PAST",
-                    "error_code": "PAST_DATE_ERROR",
-                    "severity": "Error",
-                    "description": "Ntfctn/XpctdValDt is in the past.",
-                    "affected_tags": ["Ntfctn/XpctdValDt"],
-                    "possible_fixes": ["Replace with today's date (YYYY-MM-DD) or a future date."]
-                }
-            ]
+          "error_id": "APPHDR_MISSING",
+          "error_code": "SCHEMA_ERR",
+          "severity": "Fatal",
+          "description": "AppHdr is absent.",
+          "affected_tags": [
+            "AppHdr"
+          ],
+          "possible_fixes": [
+            "Insert a complete <AppHdr> block containing Fr, To, BizMsgIdr, MsgDefIdr, BizSvc, and CreDt before the <Document> element."
+          ]
         }
-    ],
-    "cross_tag_dependency_rules": [
-        {
-            "rule_id": "DEP_CAMT057_001",
-            "rule": "AppHdr/BizMsgIdr must equal GrpHdr/MsgId.",
-            "affected_tags": ["AppHdr/BizMsgIdr","GrpHdr/MsgId"],
-            "fix": "Copy GrpHdr/MsgId and set AppHdr/BizMsgIdr to the same value."
-        },
-        {
-            "rule_id": "DEP_CAMT057_002",
-            "rule": "AppHdr/MsgDefIdr must equal 'camt.057.001.08' (the Document namespace identifier).",
-            "affected_tags": ["AppHdr/MsgDefIdr"],
-            "fix": "Set <MsgDefIdr>camt.057.001.08</MsgDefIdr>."
-        },
-        {
-            "rule_id": "DEP_CAMT057_003",
-            "rule": "Each Ntfctn must contain at least one Itm. Ntfctn without Itm is schema-invalid.",
-            "affected_tags": ["Ntfctn","Ntfctn/Itm"],
-            "fix": "Insert at least one <Itm><Id>ITM-001</Id><Amt Ccy=\"EUR\">0.00</Amt></Itm> inside <Ntfctn>."
-        },
-        {
-            "rule_id": "DEP_CAMT057_004",
-            "rule": "Each Itm must have both Id [1..1] and Amt [1..1].",
-            "affected_tags": ["Ntfctn/Itm/Id","Ntfctn/Itm/Amt"],
-            "fix": "Ensure every <Itm> contains <Id> and <Amt Ccy=\"...\">0.00</Amt>."
-        },
-        {
-            "rule_id": "DEP_CAMT057_005",
-            "rule": "Itm/UETR if present must be a valid UUID v4 (strongly recommended to match the originating payment UETR).",
-            "affected_tags": ["Ntfctn/Itm/UETR"],
-            "fix": "Replace with a valid UUID v4: lowercase hex, xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx."
-        },
-        {
-            "rule_id": "DEP_CAMT057_006",
-            "rule": "XpctdValDt (at Ntfctn or Itm level) must not be a past date.",
-            "affected_tags": ["Ntfctn/XpctdValDt","Ntfctn/Itm/XpctdValDt"],
-            "fix": "Replace past XpctdValDt with today's date or a future date (YYYY-MM-DD)."
-        },
-        {
-            "rule_id": "DEP_CAMT057_007",
-            "rule": "When BICFI is present inside FinInstnId (AcctSvcr, DbtrAgt, etc.), Nm and PstlAdr MUST NOT be present.",
-            "affected_tags": ["FinInstnId"],
-            "fix": "Remove Nm and PstlAdr siblings from the same FinInstnId when BICFI is present."
-        },
-        {
-            "rule_id": "DEP_CAMT057_008",
-            "rule": "AppHdr/CreDt must not use 'Z' suffix. Use explicit UTC offset +00:00.",
-            "affected_tags": ["AppHdr/CreDt","GrpHdr/CreDtTm"],
-            "fix": "Replace trailing 'Z' with '+00:00'."
-        },
-        {
-            "rule_id": "DEP_CAMT057_009",
-            "rule": "Ntfctn/Id must be unique per message and must not exceed 35 characters.",
-            "affected_tags": ["Ntfctn/Id"],
-            "fix": "Generate a unique Max35Text identifier for Ntfctn/Id."
-        },
-        {
-            "rule_id": "DEP_CAMT057_010",
-            "rule": "Itm/Amt/@Ccy must be a valid ISO 4217 3-letter currency code.",
-            "affected_tags": ["Ntfctn/Itm/Amt"],
-            "fix": "Set @Ccy to a valid currency code such as EUR, USD, or GBP."
-        }
-    ],
-    "tag_insertion_order": {
-        "NtfctnToRcv": ["GrpHdr","Ntfctn","SplmtryData"],
-        "GrpHdr": ["MsgId","CreDtTm","MsgSndr"],
-        "Ntfctn": ["Id","Acct","AcctOwnr","AcctSvcr","RltdAcct","TtlAmt","XpctdValDt","Dbtr","DbtrAgt","IntrmyAgt","Itm","SplmtryData"],
-        "Itm": ["Id","EndToEndId","UETR","Acct","AcctOwnr","AcctSvcr","RltdAcct","Amt","XpctdValDt","Dbtr","DbtrAgt","IntrmyAgt","Purp","RltdRmtInf","RmtInf","UndrlygAllcn"],
-        "AppHdr": ["CharSet","Fr","To","BizMsgIdr","MsgDefIdr","BizSvc","MktPrctc","CreDt","BizPrcgDt","CpyDplct","PssblDplct","Prty","Sgntr","Rltd"]
+      ]
     },
-    "schema_mapping_notes": {
-        "Ntfctn_vs_Ntfctn": "camt.057 uses AccountNotification23 as the Ntfctn type — NOT to be confused with camt.054 which uses BankToCustomerDebitCreditNotificationV10.",
-        "Party50Choice": "AcctOwnr and Dbtr at both Ntfctn and Itm level use Party50Choice — either a Pty (PartyIdentification272) or an Agt (BranchAndFinancialInstitutionIdentification8). Prefer Agt/FinInstnId/BICFI for FI parties.",
-        "UETR_optional_but_recommended": "XSD marks Itm/UETR as [0..1] but SWIFT CBPR+ strongly recommends including it to allow correlation with the originating pacs.008/pacs.009 transaction.",
-        "Amt_attribute": "Itm/Amt is ActiveOrHistoricCurrencyAndAmount — it requires a @Ccy attribute. Omitting the attribute causes an XSD schema validation failure."
+    {
+      "tag": "AppHdr/Fr",
+      "xml_element": "Fr",
+      "xpath": "/AppHdr/Fr",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Sender of the message (BAH). Must contain FIId/FinInstnId/BICFI.",
+      "errors": [
+        {
+          "error_id": "FR_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "AppHdr/Fr is absent.",
+          "affected_tags": [
+            "AppHdr/Fr"
+          ],
+          "possible_fixes": [
+            "Insert <Fr><FIId><FinInstnId><BICFI>SENDERXXXXX</BICFI></FinInstnId></FIId></Fr> as first child of AppHdr."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/To",
+      "xml_element": "To",
+      "xpath": "/AppHdr/To",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Receiver of the message (BAH). Must contain FIId/FinInstnId/BICFI.",
+      "errors": [
+        {
+          "error_id": "TO_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "AppHdr/To is absent.",
+          "affected_tags": [
+            "AppHdr/To"
+          ],
+          "possible_fixes": [
+            "Insert <To><FIId><FinInstnId><BICFI>RECEIVERXXXX</BICFI></FinInstnId></FIId></To> after <Fr> in AppHdr."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/BizMsgIdr",
+      "xml_element": "BizMsgIdr",
+      "xpath": "/AppHdr/BizMsgIdr",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "Max35Text",
+      "max_length": 35,
+      "description": "Unique identifier of the business message. Must equal GrpHdr/MsgId.",
+      "errors": [
+        {
+          "error_id": "BIZMSGIDR_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "BizMsgIdr is absent.",
+          "affected_tags": [
+            "AppHdr/BizMsgIdr"
+          ],
+          "possible_fixes": [
+            "Copy GrpHdr/MsgId value and insert as <BizMsgIdr>{value}</BizMsgIdr>."
+          ]
+        },
+        {
+          "error_id": "BIZMSGIDR_NEQ_MSGID",
+          "error_code": "BIZMSGIDR_EQ_GRPHDR_MSGID",
+          "severity": "Fatal",
+          "description": "BizMsgIdr does not equal GrpHdr/MsgId.",
+          "affected_tags": [
+            "AppHdr/BizMsgIdr",
+            "GrpHdr/MsgId"
+          ],
+          "possible_fixes": [
+            "Set BizMsgIdr to the same value as GrpHdr/MsgId."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/MsgDefIdr",
+      "xml_element": "MsgDefIdr",
+      "xpath": "/AppHdr/MsgDefIdr",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "Max35Text",
+      "expected_value": "camt.057.001.08",
+      "description": "Message Definition Identifier. Must equal 'camt.057.001.08'.",
+      "errors": [
+        {
+          "error_id": "MSGDEFIDR_WRONG",
+          "error_code": "MSGDEFIDR_MISMATCH",
+          "severity": "Fatal",
+          "description": "MsgDefIdr does not match the Document namespace.",
+          "affected_tags": [
+            "AppHdr/MsgDefIdr"
+          ],
+          "possible_fixes": [
+            "Set <MsgDefIdr>camt.057.001.08</MsgDefIdr>."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/BizSvc",
+      "xml_element": "BizSvc",
+      "xpath": "/AppHdr/BizSvc",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "datatype": "Max35Text",
+      "expected_value": "swift.cbprplus.02",
+      "description": "Business Service identifier. The ONLY valid value for camt.057 in this implementation is 'swift.cbprplus.02'. The validator rule CBPR_R8 (CBPR_Business_Service_Usage_camt057) must enforce 'swift.cbprplus.02'. Any message with 'swift.cbprplus.03' must be fixed to 'swift.cbprplus.02'.",
+      "errors": [
+        {
+          "error_id": "BIZSVC_WRONG_VALUE",
+          "error_code": "CBPR_R8",
+          "severity": "Error",
+          "description": "BizSvc contains a value other than 'swift.cbprplus.02'. For camt.057 in this implementation, only 'swift.cbprplus.02' is accepted. The validator rule CBPR_R8 fires when the value is not the expected one.",
+          "affected_tags": [
+            "AppHdr/BizSvc"
+          ],
+          "correct_value": "swift.cbprplus.02",
+          "possible_fixes": [
+            "Set <BizSvc>swift.cbprplus.02</BizSvc> in AppHdr.",
+            "If the current value is 'swift.cbprplus.03', replace it with 'swift.cbprplus.02'.",
+            "If BizSvc is absent, insert <BizSvc>swift.cbprplus.02</BizSvc> after MsgDefIdr."
+          ],
+          "ai_fix_action": "replace_value",
+          "ai_fix_old": "swift.cbprplus.03",
+          "ai_fix_new": "swift.cbprplus.02",
+          "ai_fix_note": "Always use 'swift.cbprplus.02' for camt.057 regardless of what the CBPR_R8 error message says."
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/CreDt",
+      "xml_element": "CreDt",
+      "xpath": "/AppHdr/CreDt",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "ISODateTime",
+      "description": "Creation date-time of the BAH. Format YYYY-MM-DDTHH:MM:SS+HH:MM. 'Z' forbidden under CBPR+.",
+      "errors": [
+        {
+          "error_id": "CREDT_Z_FORBIDDEN",
+          "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+          "severity": "Error",
+          "description": "CreDt uses 'Z' suffix instead of explicit offset.",
+          "affected_tags": [
+            "AppHdr/CreDt"
+          ],
+          "possible_fixes": [
+            "Replace trailing 'Z' with '+00:00'."
+          ]
+        },
+        {
+          "error_id": "CREDT_NO_TZ",
+          "error_code": "CBPR_DATETIME_NO_TIMEZONE",
+          "severity": "Error",
+          "description": "CreDt has no timezone offset.",
+          "affected_tags": [
+            "AppHdr/CreDt"
+          ],
+          "possible_fixes": [
+            "Append '+00:00' to the datetime value."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr",
+      "xml_element": "GrpHdr",
+      "xpath": "/Document/NtfctnToRcv/GrpHdr",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Group Header. Contains MsgId and CreDtTm.",
+      "errors": [
+        {
+          "error_id": "GRPHDR_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "GrpHdr is absent.",
+          "affected_tags": [
+            "GrpHdr"
+          ],
+          "possible_fixes": [
+            "Insert <GrpHdr><MsgId>MSG-ID</MsgId><CreDtTm>YYYY-MM-DDTHH:MM:SS+00:00</CreDtTm></GrpHdr> as first child of NtfctnToRcv."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr/MsgId",
+      "xml_element": "MsgId",
+      "xpath": "/Document/NtfctnToRcv/GrpHdr/MsgId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "Max35Text",
+      "max_length": 35,
+      "description": "Unique identifier for this notification message. Must equal AppHdr/BizMsgIdr.",
+      "errors": [
+        {
+          "error_id": "MSGID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "GrpHdr/MsgId is absent.",
+          "affected_tags": [
+            "GrpHdr/MsgId"
+          ],
+          "possible_fixes": [
+            "Add <MsgId>MSG-YYYYMMDD-001</MsgId> inside <GrpHdr>."
+          ]
+        },
+        {
+          "error_id": "MSGID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Error",
+          "description": "MsgId exceeds 35 characters.",
+          "affected_tags": [
+            "GrpHdr/MsgId"
+          ],
+          "possible_fixes": [
+            "Truncate MsgId to 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr/CreDtTm",
+      "xml_element": "CreDtTm",
+      "xpath": "/Document/NtfctnToRcv/GrpHdr/CreDtTm",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "ISODateTime",
+      "description": "Creation date-time of the message. Format YYYY-MM-DDTHH:MM:SS+HH:MM. Must not be in the past.",
+      "errors": [
+        {
+          "error_id": "CREDTTM_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "GrpHdr/CreDtTm is absent.",
+          "affected_tags": [
+            "GrpHdr/CreDtTm"
+          ],
+          "possible_fixes": [
+            "Add <CreDtTm>YYYY-MM-DDTHH:MM:SS+00:00</CreDtTm> inside <GrpHdr>."
+          ]
+        },
+        {
+          "error_id": "CREDTTM_PAST",
+          "error_code": "PAST_DATE_ERROR",
+          "severity": "Error",
+          "description": "CreDtTm is in the past.",
+          "affected_tags": [
+            "GrpHdr/CreDtTm"
+          ],
+          "possible_fixes": [
+            "Replace with current datetime using format YYYY-MM-DDTHH:MM:SS+00:00."
+          ]
+        },
+        {
+          "error_id": "CREDTTM_Z_FORBIDDEN",
+          "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+          "severity": "Error",
+          "description": "CreDtTm uses 'Z' suffix.",
+          "affected_tags": [
+            "GrpHdr/CreDtTm"
+          ],
+          "possible_fixes": [
+            "Replace trailing 'Z' with '+00:00'."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr/MsgSndr",
+      "xml_element": "MsgSndr",
+      "xpath": "/Document/NtfctnToRcv/GrpHdr/MsgSndr",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Message Sender. Contains Agt/FinInstnId/BICFI identifying who sends the notification.",
+      "errors": [
+        {
+          "error_id": "MSGSNDR_INVALID_BICFI",
+          "error_code": "INVALID_BICFI",
+          "severity": "Error",
+          "description": "MsgSndr BICFI is invalid.",
+          "affected_tags": [
+            "GrpHdr/MsgSndr"
+          ],
+          "possible_fixes": [
+            "Replace BICFI with a valid 8 or 11 character BIC code."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "Ntfctn",
+      "xml_element": "Ntfctn",
+      "xpath": "/Document/NtfctnToRcv/Ntfctn",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Account Notification. Contains Id [1..1] and one or more Itm [1..n].",
+      "errors": [
+        {
+          "error_id": "NTFCTN_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Ntfctn is absent.",
+          "affected_tags": [
+            "Ntfctn"
+          ],
+          "possible_fixes": [
+            "Insert <Ntfctn><Id>NTFCTN-001</Id><Itm><Id>ITM-001</Id><Amt Ccy=\"EUR\">0.00</Amt></Itm></Ntfctn> as second child of NtfctnToRcv."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "Ntfctn/Id",
+      "xml_element": "Id",
+      "xpath": "/Document/NtfctnToRcv/Ntfctn/Id",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "Max35Text",
+      "max_length": 35,
+      "description": "Unique identifier of this notification.",
+      "errors": [
+        {
+          "error_id": "NTFCTN_ID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Ntfctn/Id is absent.",
+          "affected_tags": [
+            "Ntfctn/Id"
+          ],
+          "possible_fixes": [
+            "Add <Id>NTFCTN-001</Id> as first child of <Ntfctn>."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "Ntfctn/Itm",
+      "xml_element": "Itm",
+      "xpath": "/Document/NtfctnToRcv/Ntfctn/Itm",
+      "occurrence": "[1..n]",
+      "mandatory": true,
+      "description": "Notification Item. Each item must have an Id and Amt. UETR is strongly recommended.",
+      "errors": [
+        {
+          "error_id": "ITM_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Ntfctn contains no Itm.",
+          "affected_tags": [
+            "Ntfctn/Itm"
+          ],
+          "possible_fixes": [
+            "Insert at least one <Itm><Id>ITM-001</Id><Amt Ccy=\"EUR\">0.00</Amt></Itm> inside <Ntfctn>."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "Ntfctn/Itm/Id",
+      "xml_element": "Id",
+      "xpath": "/Document/NtfctnToRcv/Ntfctn/Itm/Id",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "Max35Text",
+      "max_length": 35,
+      "description": "Unique identifier of the notification item.",
+      "errors": [
+        {
+          "error_id": "ITM_ID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Itm/Id is absent.",
+          "affected_tags": [
+            "Ntfctn/Itm/Id"
+          ],
+          "possible_fixes": [
+            "Add <Id>ITM-001</Id> as first child of <Itm>."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "Ntfctn/Itm/EndToEndId",
+      "xml_element": "EndToEndId",
+      "xpath": "/Document/NtfctnToRcv/Ntfctn/Itm/EndToEndId",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "datatype": "Max35Text",
+      "max_length": 35,
+      "description": "End-to-end identification from the original payment instruction.",
+      "errors": []
+    },
+    {
+      "tag": "Ntfctn/Itm/UETR",
+      "xml_element": "UETR",
+      "xpath": "/Document/NtfctnToRcv/Ntfctn/Itm/UETR",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "datatype": "UUIDv4Identifier",
+      "description": "Unique End-to-end Transaction Reference. Strongly recommended under CBPR+ to correlate the notification with the originating pacs.008/pacs.009 UETR.",
+      "errors": [
+        {
+          "error_id": "ITM_UETR_INVALID",
+          "error_code": "UETR_FORMAT_ERROR",
+          "severity": "Error",
+          "description": "Itm/UETR is not a valid UUID v4.",
+          "affected_tags": [
+            "Ntfctn/Itm/UETR"
+          ],
+          "possible_fixes": [
+            "Replace with a valid UUID v4: lowercase hex, format xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "Ntfctn/Itm/Amt",
+      "xml_element": "Amt",
+      "xpath": "/Document/NtfctnToRcv/Ntfctn/Itm/Amt",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "ActiveOrHistoricCurrencyAndAmount",
+      "description": "Amount of the notification item. Requires @Ccy attribute (ISO 4217 currency code).",
+      "errors": [
+        {
+          "error_id": "ITM_AMT_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Itm/Amt is absent.",
+          "affected_tags": [
+            "Ntfctn/Itm/Amt"
+          ],
+          "possible_fixes": [
+            "Add <Amt Ccy=\"EUR\">0.00</Amt> inside <Itm>."
+          ]
+        },
+        {
+          "error_id": "ITM_AMT_NO_CCY",
+          "error_code": "SCHEMA_ERR",
+          "severity": "Fatal",
+          "description": "Amt/@Ccy attribute is missing.",
+          "affected_tags": [
+            "Ntfctn/Itm/Amt"
+          ],
+          "possible_fixes": [
+            "Add the Ccy attribute: <Amt Ccy=\"EUR\">0.00</Amt>."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "Ntfctn/Itm/XpctdValDt",
+      "xml_element": "XpctdValDt",
+      "xpath": "/Document/NtfctnToRcv/Ntfctn/Itm/XpctdValDt",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "datatype": "ISODate",
+      "description": "Expected Value Date. Must not be in the past.",
+      "errors": [
+        {
+          "error_id": "XPCTDVALDT_PAST",
+          "error_code": "PAST_DATE_ERROR",
+          "severity": "Error",
+          "description": "XpctdValDt is in the past.",
+          "affected_tags": [
+            "Ntfctn/Itm/XpctdValDt"
+          ],
+          "possible_fixes": [
+            "Replace with today's date (YYYY-MM-DD) or a future date."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "Ntfctn/Itm/Dbtr",
+      "xml_element": "Dbtr",
+      "xpath": "/Document/NtfctnToRcv/Ntfctn/Itm/Dbtr",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Debtor (Party50Choice). Either a Party (Pty) or an Agent (Agt with FinInstnId/BICFI).",
+      "errors": [
+        {
+          "error_id": "ITM_DBTR_BICFI_INVALID",
+          "error_code": "INVALID_BICFI",
+          "severity": "Error",
+          "description": "Dbtr/Agt/FinInstnId/BICFI is invalid.",
+          "affected_tags": [
+            "Ntfctn/Itm/Dbtr"
+          ],
+          "possible_fixes": [
+            "Replace BICFI with a valid 8 or 11 character BIC."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "Ntfctn/Itm/DbtrAgt",
+      "xml_element": "DbtrAgt",
+      "xpath": "/Document/NtfctnToRcv/Ntfctn/Itm/DbtrAgt",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Debtor Agent. BranchAndFinancialInstitutionIdentification8 — contains FinInstnId/BICFI.",
+      "errors": [
+        {
+          "error_id": "ITM_DBTRAGT_BICFI_INVALID",
+          "error_code": "INVALID_BICFI",
+          "severity": "Error",
+          "description": "DbtrAgt/FinInstnId/BICFI is invalid.",
+          "affected_tags": [
+            "Ntfctn/Itm/DbtrAgt"
+          ],
+          "possible_fixes": [
+            "Replace BICFI with a valid BIC code."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "Ntfctn/Itm/RmtInf",
+      "xml_element": "RmtInf",
+      "xpath": "/Document/NtfctnToRcv/Ntfctn/Itm/RmtInf",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Remittance Information. Contains Ustrd (Max140Text) or Strd.",
+      "errors": []
+    },
+    {
+      "tag": "Ntfctn/Acct",
+      "xml_element": "Acct",
+      "xpath": "/Document/NtfctnToRcv/Ntfctn/Acct",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Account being notified. CashAccount40 — Id/IBAN or Id/Othr.",
+      "errors": [
+        {
+          "error_id": "NTFCTN_ACCT_IBAN_INVALID",
+          "error_code": "IBAN_INVALID",
+          "severity": "Error",
+          "description": "Ntfctn/Acct/Id/IBAN fails checksum or format validation.",
+          "affected_tags": [
+            "Ntfctn/Acct"
+          ],
+          "possible_fixes": [
+            "Replace with a valid IBAN, e.g. GB29NWBK60161331926819."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "Ntfctn/AcctSvcr",
+      "xml_element": "AcctSvcr",
+      "xpath": "/Document/NtfctnToRcv/Ntfctn/AcctSvcr",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Account Servicer. BranchAndFinancialInstitutionIdentification8 — FinInstnId/BICFI.",
+      "errors": [
+        {
+          "error_id": "ACCTSVR_BICFI_EXCLUSIVE",
+          "error_code": "SCHEMA_ERR",
+          "severity": "Error",
+          "description": "AcctSvcr FinInstnId has both BICFI and Nm/PstlAdr (BICFI exclusivity violation).",
+          "affected_tags": [
+            "Ntfctn/AcctSvcr"
+          ],
+          "possible_fixes": [
+            "Remove Nm and PstlAdr from FinInstnId when BICFI is present."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "Ntfctn/XpctdValDt",
+      "xml_element": "XpctdValDt",
+      "xpath": "/Document/NtfctnToRcv/Ntfctn/XpctdValDt",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "datatype": "ISODate",
+      "description": "Expected Value Date at notification level. Must not be in the past.",
+      "errors": [
+        {
+          "error_id": "NTFCTN_XPCTDVALDT_PAST",
+          "error_code": "PAST_DATE_ERROR",
+          "severity": "Error",
+          "description": "Ntfctn/XpctdValDt is in the past.",
+          "affected_tags": [
+            "Ntfctn/XpctdValDt"
+          ],
+          "possible_fixes": [
+            "Replace with today's date (YYYY-MM-DD) or a future date."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr/MsgRcpt",
+      "xml_element": "MsgRcpt",
+      "xpath": "/Document/NtfctnToRcv/GrpHdr/MsgRcpt",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Party authorised to receive the notification. Identified by BICFI under CBPR+.",
+      "errors": [
+        {
+          "error_id": "MSGRCPT_BIC",
+          "error_code": "INVALID_BICFI",
+          "severity": "Warning",
+          "description": "GrpHdr/MsgRcpt BICFI is not a valid ISO 9362 BIC.",
+          "affected_tags": [
+            "GrpHdr/MsgRcpt"
+          ],
+          "possible_fixes": [
+            "Set MsgRcpt/Id/OrgId/AnyBIC (or FinInstnId/BICFI) to a valid 8 or 11 character BIC."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "Ntfctn/AcctOwnr",
+      "xml_element": "AcctOwnr",
+      "xpath": "/Document/NtfctnToRcv/Ntfctn/AcctOwnr",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Owner of the account to be credited by the notified items. Identified by name or BICFI.",
+      "errors": [
+        {
+          "error_id": "ACCTOWNR_BIC",
+          "error_code": "INVALID_BICFI",
+          "severity": "Warning",
+          "description": "Ntfctn/AcctOwnr BICFI is invalid.",
+          "affected_tags": [
+            "Ntfctn/AcctOwnr"
+          ],
+          "possible_fixes": [
+            "Set AcctOwnr/Id/OrgId/AnyBIC to a valid 8 or 11 character BIC, or supply Nm."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "Ntfctn/Itm/Acct",
+      "xml_element": "Acct",
+      "xpath": "/Document/NtfctnToRcv/Ntfctn/Itm/Acct",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Account to be credited for this notified item; account identification is a choice of IBAN or Othr.",
+      "errors": [
+        {
+          "error_id": "ITM_ACCT_CHOICE",
+          "error_code": "IBAN_XOR_OTHR",
+          "severity": "Fatal",
+          "description": "Ntfctn/Itm/Acct/Id carries both IBAN and Othr, or neither.",
+          "affected_tags": [
+            "Ntfctn/Itm/Acct"
+          ],
+          "possible_fixes": [
+            "Provide exactly one of IBAN or Othr under Acct/Id."
+          ]
+        },
+        {
+          "error_id": "ITM_ACCT_IBAN",
+          "error_code": "IBAN_INVALID",
+          "severity": "Fatal",
+          "description": "Ntfctn/Itm/Acct IBAN fails ISO 13616 check digits.",
+          "affected_tags": [
+            "Ntfctn/Itm/Acct"
+          ],
+          "possible_fixes": [
+            "Correct the IBAN so its MOD-97 check digits are valid, or use Othr/Id."
+          ]
+        }
+      ]
     }
+  ],
+  "cross_tag_dependency_rules": [
+    {
+      "rule_id": "DEP_CAMT057_001",
+      "rule": "AppHdr/BizMsgIdr must equal GrpHdr/MsgId.",
+      "affected_tags": [
+        "AppHdr/BizMsgIdr",
+        "GrpHdr/MsgId"
+      ],
+      "fix": "Copy GrpHdr/MsgId and set AppHdr/BizMsgIdr to the same value."
+    },
+    {
+      "rule_id": "DEP_CAMT057_002",
+      "rule": "AppHdr/MsgDefIdr must equal 'camt.057.001.08' (the Document namespace identifier).",
+      "affected_tags": [
+        "AppHdr/MsgDefIdr"
+      ],
+      "fix": "Set <MsgDefIdr>camt.057.001.08</MsgDefIdr>."
+    },
+    {
+      "rule_id": "DEP_CAMT057_003",
+      "rule": "Each Ntfctn must contain at least one Itm. Ntfctn without Itm is schema-invalid.",
+      "affected_tags": [
+        "Ntfctn",
+        "Ntfctn/Itm"
+      ],
+      "fix": "Insert at least one <Itm><Id>ITM-001</Id><Amt Ccy=\"EUR\">0.00</Amt></Itm> inside <Ntfctn>."
+    },
+    {
+      "rule_id": "DEP_CAMT057_004",
+      "rule": "Each Itm must have both Id [1..1] and Amt [1..1].",
+      "affected_tags": [
+        "Ntfctn/Itm/Id",
+        "Ntfctn/Itm/Amt"
+      ],
+      "fix": "Ensure every <Itm> contains <Id> and <Amt Ccy=\"...\">0.00</Amt>."
+    },
+    {
+      "rule_id": "DEP_CAMT057_005",
+      "rule": "Itm/UETR if present must be a valid UUID v4 (strongly recommended to match the originating payment UETR).",
+      "affected_tags": [
+        "Ntfctn/Itm/UETR"
+      ],
+      "fix": "Replace with a valid UUID v4: lowercase hex, xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx."
+    },
+    {
+      "rule_id": "DEP_CAMT057_006",
+      "rule": "XpctdValDt (at Ntfctn or Itm level) must not be a past date.",
+      "affected_tags": [
+        "Ntfctn/XpctdValDt",
+        "Ntfctn/Itm/XpctdValDt"
+      ],
+      "fix": "Replace past XpctdValDt with today's date or a future date (YYYY-MM-DD)."
+    },
+    {
+      "rule_id": "DEP_CAMT057_007",
+      "rule": "When BICFI is present inside FinInstnId (AcctSvcr, DbtrAgt, etc.), Nm and PstlAdr MUST NOT be present.",
+      "affected_tags": [
+        "FinInstnId"
+      ],
+      "fix": "Remove Nm and PstlAdr siblings from the same FinInstnId when BICFI is present."
+    },
+    {
+      "rule_id": "DEP_CAMT057_008",
+      "rule": "AppHdr/CreDt must not use 'Z' suffix. Use explicit UTC offset +00:00.",
+      "affected_tags": [
+        "AppHdr/CreDt",
+        "GrpHdr/CreDtTm"
+      ],
+      "fix": "Replace trailing 'Z' with '+00:00'."
+    },
+    {
+      "rule_id": "DEP_CAMT057_009",
+      "rule": "Ntfctn/Id must be unique per message and must not exceed 35 characters.",
+      "affected_tags": [
+        "Ntfctn/Id"
+      ],
+      "fix": "Generate a unique Max35Text identifier for Ntfctn/Id."
+    },
+    {
+      "rule_id": "DEP_CAMT057_010",
+      "rule": "Itm/Amt/@Ccy must be a valid ISO 4217 3-letter currency code.",
+      "affected_tags": [
+        "Ntfctn/Itm/Amt"
+      ],
+      "fix": "Set @Ccy to a valid currency code such as EUR, USD, or GBP."
+    },
+    {
+      "rule_id": "DEP_ITM_AMT_CCY",
+      "rule": "Each Ntfctn/Itm/Amt must carry a valid ISO 4217 Ccy attribute consistent with the notified account currency.",
+      "affected_tags": [
+        "Ntfctn/Itm/Amt",
+        "Ntfctn/Acct"
+      ],
+      "fix": "Add or correct the Ccy attribute on Itm/Amt to a valid ISO 4217 code matching the account currency."
+    }
+  ],
+  "tag_insertion_order": {
+    "NtfctnToRcv": [
+      "GrpHdr",
+      "Ntfctn",
+      "SplmtryData"
+    ],
+    "GrpHdr": [
+      "MsgId",
+      "CreDtTm",
+      "MsgSndr"
+    ],
+    "Ntfctn": [
+      "Id",
+      "Acct",
+      "AcctOwnr",
+      "AcctSvcr",
+      "RltdAcct",
+      "TtlAmt",
+      "XpctdValDt",
+      "Dbtr",
+      "DbtrAgt",
+      "IntrmyAgt",
+      "Itm",
+      "SplmtryData"
+    ],
+    "Itm": [
+      "Id",
+      "EndToEndId",
+      "UETR",
+      "Acct",
+      "AcctOwnr",
+      "AcctSvcr",
+      "RltdAcct",
+      "Amt",
+      "XpctdValDt",
+      "Dbtr",
+      "DbtrAgt",
+      "IntrmyAgt",
+      "Purp",
+      "RltdRmtInf",
+      "RmtInf",
+      "UndrlygAllcn"
+    ],
+    "AppHdr": [
+      "CharSet",
+      "Fr",
+      "To",
+      "BizMsgIdr",
+      "MsgDefIdr",
+      "BizSvc",
+      "MktPrctc",
+      "CreDt",
+      "BizPrcgDt",
+      "CpyDplct",
+      "PssblDplct",
+      "Prty",
+      "Sgntr",
+      "Rltd"
+    ]
+  },
+  "schema_mapping_notes": {
+    "Ntfctn_vs_Ntfctn": "camt.057 uses AccountNotification23 as the Ntfctn type — NOT to be confused with camt.054 which uses BankToCustomerDebitCreditNotificationV10.",
+    "Party50Choice": "AcctOwnr and Dbtr at both Ntfctn and Itm level use Party50Choice — either a Pty (PartyIdentification272) or an Agt (BranchAndFinancialInstitutionIdentification8). Prefer Agt/FinInstnId/BICFI for FI parties.",
+    "UETR_optional_but_recommended": "XSD marks Itm/UETR as [0..1] but SWIFT CBPR+ strongly recommends including it to allow correlation with the originating pacs.008/pacs.009 transaction.",
+    "Amt_attribute": "Itm/Amt is ActiveOrHistoricCurrencyAndAmount — it requires a @Ccy attribute. Omitting the attribute causes an XSD schema validation failure.",
+    "root_element": "camt.057.001.08 root is /Document/NtfctnToRcv (NotificationToReceive); the AppHdr (BAH) precedes the Document.",
+    "msg_def_idr": "AppHdr/MsgDefIdr must equal 'camt.057.001.08' matching urn:iso:std:iso:20022:tech:xsd:camt.057.001.08.",
+    "biz_svc": "AppHdr/BizSvc for CBPR+ camt.057 is 'swift.cbprplus.02' (NOT 'swift.cbprplus.03'); rule CBPR_R8 enforces this.",
+    "datetime_format": "ISODateTime fields (AppHdr/CreDt, GrpHdr/CreDtTm) use YYYY-MM-DDTHH:MM:SS+HH:MM; no 'Z' suffix, no milliseconds."
+  }
 }

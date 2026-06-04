@@ -1,39 +1,162 @@
 {
   "domain": "SWIFT MX CBPR+ pacs.009.001.08 COV",
   "version": "SR2025",
-  "last_updated": "2026-06-04",
+  "last_updated": "2026-05-28",
   "purpose": "Context KB for pacs.009 COV FinancialInstitutionCreditTransfer validation. For each XML tag: possible errors, affected tags, and all possible fixes. Based on CBPR+ SR2025 Usage Guideline (pacs.009.001.08 COV) and SWIFT MX Enterprise KB.",
   "reference_documents": [
     "CBPRPlus-pacs.009.001.08_FinancialInstitutionCreditTransfer CBPRPlus SR2025 COV (Combined), 21 March 2025",
     "SWIFT MX Enterprise LLM KB v2.0"
   ],
-  "iso_20022_rules": {
-    "RelatedPresentWhenCopyDupl": "If CopyDuplicate is present, Related MUST be present.",
-    "InstructedAgentRule": "If GrpHdr/InstdAgt is present, then CdtTrfTxInf/InstdAgt is not allowed.",
-    "InstructingAgentRule": "If GrpHdr/InstgAgt is present, then CdtTrfTxInf/InstgAgt is not allowed.",
-    "TotalInterbankSettlementAmountRule": "If GrpHdr/TtlIntrBkSttlmAmt is present, all CdtTrfTxInf/IntrBkSttlmAmt must use the same currency.",
-    "TotalInterbankSettlementAmountAndSumRule": "If GrpHdr/TtlIntrBkSttlmAmt is present, it must equal the sum of all CdtTrfTxInf/IntrBkSttlmAmt.",
-    "GroupHeaderInterbankSettlementDateRule": "If GrpHdr/IntrBkSttlmDt is present, CdtTrfTxInf/IntrBkSttlmDt is not allowed.",
-    "TransactionInterbankSettlementDateRule": "If GrpHdr/IntrBkSttlmDt is not present, CdtTrfTxInf/IntrBkSttlmDt MUST be present.",
-    "PaymentTypeInformationRule": "If GrpHdr/PmtTpInf is present, CdtTrfTxInf/PmtTpInf is not allowed.",
-    "NumberOfTransactionsAndCreditTransfersRule": "GrpHdr/NbOfTxs must equal the number of CdtTrfTxInf occurrences.",
-    "UndrlygCstmrCdtTrfRule": "In COV usage, CdtTrfTxInf/UndrlygCstmrCdtTrf MUST be present and carry the underlying pacs.008 customer credit transfer details.",
-    "CoverSettlementMethodRule": "GrpHdr/SttlmInf/SttlmMtd MUST be COVE for pacs.009 COV messages."
-  },
+  "iso_20022_rules": [
+    {
+      "rule_id": "R1",
+      "name": "RelatedPresentWhenCopyDupl",
+      "description": "If CopyDuplicate is present, Related MUST be present.",
+      "error_code": "H00001",
+      "severity": "Warning",
+      "error_text": "Element Related is missing"
+    },
+    {
+      "rule_id": "R4",
+      "name": "InstructedAgentRule",
+      "description": "If GrpHdr/InstdAgt is present, then CdtTrfTxInf/InstdAgt is not allowed.",
+      "error_code": "X00008",
+      "severity": "Fatal",
+      "error_text": "Invalid message content for instructed agent."
+    },
+    {
+      "rule_id": "R5",
+      "name": "InstructingAgentRule",
+      "description": "If GrpHdr/InstgAgt is present, then CdtTrfTxInf/InstgAgt is not allowed.",
+      "error_code": "X00007",
+      "severity": "Fatal",
+      "error_text": "Invalid message content for instructing agent."
+    },
+    {
+      "rule_id": "R6",
+      "name": "TotalInterbankSettlementAmountRule",
+      "description": "If GrpHdr/TtlIntrBkSttlmAmt is present, all CdtTrfTxInf/IntrBkSttlmAmt must use the same currency.",
+      "error_code": "X00042",
+      "severity": "Fatal"
+    },
+    {
+      "rule_id": "R7",
+      "name": "TotalInterbankSettlementAmountAndSumRule",
+      "description": "If GrpHdr/TtlIntrBkSttlmAmt is present, it must equal the sum of all CdtTrfTxInf/IntrBkSttlmAmt.",
+      "error_code": "X00043",
+      "severity": "Fatal"
+    },
+    {
+      "rule_id": "R8",
+      "name": "GroupHeaderInterbankSettlementDateRule",
+      "description": "If GrpHdr/IntrBkSttlmDt is present, CdtTrfTxInf/IntrBkSttlmDt is not allowed.",
+      "error_code": "X00045",
+      "severity": "Fatal"
+    },
+    {
+      "rule_id": "R9",
+      "name": "TransactionInterbankSettlementDateRule",
+      "description": "If GrpHdr/IntrBkSttlmDt is not present, CdtTrfTxInf/IntrBkSttlmDt MUST be present.",
+      "error_code": "X00290",
+      "severity": "Fatal"
+    },
+    {
+      "rule_id": "R10",
+      "name": "PaymentTypeInformationRule",
+      "description": "If GrpHdr/PmtTpInf is present, CdtTrfTxInf/PmtTpInf is not allowed.",
+      "error_code": "X00009",
+      "severity": "Fatal"
+    },
+    {
+      "rule_id": "R11",
+      "name": "NumberOfTransactionsAndCreditTransfersRule",
+      "description": "GrpHdr/NbOfTxs must equal the number of CdtTrfTxInf occurrences.",
+      "error_code": "X00062",
+      "severity": "Fatal"
+    },
+    {
+      "rule_id": "R12",
+      "name": "UndrlygCstmrCdtTrfRule",
+      "description": "In COV usage, CdtTrfTxInf/UndrlygCstmrCdtTrf MUST be present and carry the underlying pacs.008 customer credit transfer details.",
+      "error_code": "X00300",
+      "severity": "Fatal",
+      "error_text": "UndrlygCstmrCdtTrf is mandatory for pacs.009 COV."
+    },
+    {
+      "rule_id": "R13",
+      "name": "CoverSettlementMethodRule",
+      "description": "GrpHdr/SttlmInf/SttlmMtd MUST be COVE for pacs.009 COV messages.",
+      "error_code": "X00301",
+      "severity": "Fatal",
+      "error_text": "SttlmMtd must be COVE in pacs.009 COV."
+    }
+  ],
   "cbpr_plus_formal_rules": [
-    "AppHdr/Priority must equal CdtTrfTxInf/PmtTpInf/InstrPrty when both are present.",
-    "AppHdr/Fr BIC must match InstgAgt BIC and AppHdr/To BIC must match InstdAgt BIC, except when CpyDplct = COPY or CODU.",
-    "AppHdr/Fr BIC must match InstgAgt BIC and AppHdr/To BIC must match InstdAgt BIC when CpyDplct is absent.",
-    "If BICFI is present inside FinInstnId, then Nm and PstlAdr are NOT allowed in the same FinInstnId block.",
-    "If Nm is present in FinInstnId, PstlAdr must also be present, and vice versa.",
-    "All proprietary/text fields (excl. Nm/Adr/RmtInf) limited to FIN-X charset. Nm/Adr/RmtInf extended with !#$&%*=^_{|}~\";<>@[\\] (< as &lt;, > as &gt;).",
-    "AppHdr/BizSvc must be 'swift.cbprplus.cov.03' (SR2025 COV). This element is mandatory (min occurrence changed to 1).",
-    "AppHdr/BizMsgIdr must equal GrpHdr/MsgId.",
-    "DateTime fields must use YYYY-MM-DDTHH:MM:SS+HH:MM format. Z suffix is forbidden. Milliseconds are forbidden.",
-    "CBPR+ allows single transactions only per message.",
-    "BranchIdentification is removed from InstgAgt, InstdAgt, DbtrAgt, CdtrAgt, IntrmyAgt1/2/3, PrvsInstgAgt1/2/3 and settlement agents.",
-    "pacs.009 COV: UndrlygCstmrCdtTrf must replicate the end-customer pacs.008 data (DbtrAgt, CdtrAgt, Dbtr, Cdtr, DbtrAcct, CdtrAcct, RmtInf, EndToEndId, UETR) for cover payment chain visibility.",
-    "The UETR in CdtTrfTxInf/PmtId must equal the UETR in UndrlygCstmrCdtTrf/PmtId, preserving the end-to-end tracking reference across the cover chain."
+    {
+      "rule_id": "CBPR_PRIORITY",
+      "name": "CBPR_Priority_Instruction_Priority_FormalRule",
+      "description": "AppHdr/Priority must equal CdtTrfTxInf/PmtTpInf/InstrPrty when both are present."
+    },
+    {
+      "rule_id": "CBPR_FR_TO_1",
+      "name": "CBPR_From_To_Instructing_Instructed_Agent_BIC_1",
+      "description": "AppHdr/Fr BIC must match InstgAgt BIC and AppHdr/To BIC must match InstdAgt BIC, except when CpyDplct = COPY or CODU."
+    },
+    {
+      "rule_id": "CBPR_FR_TO_2",
+      "name": "CBPR_From_To_Instructing_Instructed_Agent_BIC_2",
+      "description": "AppHdr/Fr BIC must match InstgAgt BIC and AppHdr/To BIC must match InstdAgt BIC when CpyDplct is absent."
+    },
+    {
+      "rule_id": "CBPR_AGENT_BICFI_EXCLUSIVE",
+      "name": "CBPR_Agent_BICFI_Rule",
+      "description": "If BICFI is present inside FinInstnId, then Nm and PstlAdr are NOT allowed in the same FinInstnId block."
+    },
+    {
+      "rule_id": "CBPR_AGENT_NM_PSTLADR",
+      "name": "CBPR_Agent_Name_Postal_Address_FormalRule",
+      "description": "If Nm is present in FinInstnId, PstlAdr must also be present, and vice versa."
+    },
+    {
+      "rule_id": "CBPR_CHARSET",
+      "name": "CBPR_Character_Set_Usage_TextualRule",
+      "description": "All proprietary/text fields (excl. Nm/Adr/RmtInf) limited to FIN-X charset. Nm/Adr/RmtInf extended with !#$&%*=^_{|}~\";<>@[\\] (< as &lt;, > as &gt;)."
+    },
+    {
+      "rule_id": "CBPR_BIZ_SVC",
+      "name": "CBPR_Business_Service_Usage_TextualRule",
+      "description": "AppHdr/BizSvc must be 'swift.cbprplus.cov.03' (SR2025 COV). This element is mandatory (min occurrence changed to 1)."
+    },
+    {
+      "rule_id": "CBPR_BIZ_MSG_IDR",
+      "name": "CBPR_Business_Message_Identifier_TextualRule",
+      "description": "AppHdr/BizMsgIdr must equal GrpHdr/MsgId."
+    },
+    {
+      "rule_id": "CBPR_DATETIME_NO_Z",
+      "name": "CBPR_DateTime_Format",
+      "description": "DateTime fields must use YYYY-MM-DDTHH:MM:SS+HH:MM format. Z suffix is forbidden. Milliseconds are forbidden."
+    },
+    {
+      "rule_id": "CBPR_SINGLE_TX",
+      "name": "Single Transaction Only",
+      "description": "CBPR+ allows single transactions only per message."
+    },
+    {
+      "rule_id": "CBPR_BRANCH_REMOVED",
+      "name": "BrnchId Removed",
+      "description": "BranchIdentification is removed from InstgAgt, InstdAgt, DbtrAgt, CdtrAgt, IntrmyAgt1/2/3, PrvsInstgAgt1/2/3 and settlement agents."
+    },
+    {
+      "rule_id": "CBPR_COV_UNDRLYGCSTMR",
+      "name": "CBPR_COV_Underlying_Customer_Credit_Transfer_TextualRule",
+      "description": "pacs.009 COV: UndrlygCstmrCdtTrf must replicate the end-customer pacs.008 data (DbtrAgt, CdtrAgt, Dbtr, Cdtr, DbtrAcct, CdtrAcct, RmtInf, EndToEndId, UETR) for cover payment chain visibility."
+    },
+    {
+      "rule_id": "CBPR_COV_UETR_PROPAGATION",
+      "name": "CBPR_COV_UETR_Propagation_FormalRule",
+      "description": "The UETR in CdtTrfTxInf/PmtId must equal the UETR in UndrlygCstmrCdtTrf/PmtId, preserving the end-to-end tracking reference across the cover chain."
+    }
   ],
   "tags": [
     {
@@ -2176,111 +2299,6 @@
           ]
         }
       ]
-    },
-    {
-      "tag": "CdtTrfTxInf/InstgRmbrsmntAgt",
-      "xml_element": "InstgRmbrsmntAgt",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/InstgRmbrsmntAgt",
-      "occurrence": "[0..1]",
-      "mandatory": false,
-      "description": "Instructing reimbursement agent for the cover. Required (together with or instead of InstdRmbrsmntAgt) when GrpHdr/SttlmInf/SttlmMtd is COVE.",
-      "errors": [
-        {
-          "error_id": "INSTGRMB_REQ_COVE",
-          "error_code": "X00301",
-          "severity": "Fatal",
-          "description": "SttlmMtd is COVE but neither InstgRmbrsmntAgt nor InstdRmbrsmntAgt is present.",
-          "affected_tags": [
-            "GrpHdr/SttlmInf/SttlmMtd",
-            "CdtTrfTxInf/InstgRmbrsmntAgt",
-            "CdtTrfTxInf/InstdRmbrsmntAgt"
-          ],
-          "possible_fixes": [
-            "Add InstgRmbrsmntAgt and/or InstdRmbrsmntAgt with a valid BICFI when SttlmMtd is COVE.",
-            "If reimbursement agents do not apply, change SttlmMtd to INDA/INGA/CLRG as appropriate."
-          ]
-        },
-        {
-          "error_id": "INSTGRMB_BIC",
-          "error_code": "INVALID_BICFI",
-          "severity": "Fatal",
-          "description": "InstgRmbrsmntAgt BICFI is invalid.",
-          "affected_tags": [
-            "CdtTrfTxInf/InstgRmbrsmntAgt"
-          ],
-          "possible_fixes": [
-            "Set FinInstnId/BICFI to a valid 8 or 11 character BIC."
-          ]
-        }
-      ]
-    },
-    {
-      "tag": "CdtTrfTxInf/InstdRmbrsmntAgt",
-      "xml_element": "InstdRmbrsmntAgt",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/InstdRmbrsmntAgt",
-      "occurrence": "[0..1]",
-      "mandatory": false,
-      "description": "Instructed reimbursement agent for the cover. Required (with or instead of InstgRmbrsmntAgt) when SttlmMtd is COVE.",
-      "errors": [
-        {
-          "error_id": "INSTDRMB_BIC",
-          "error_code": "INVALID_BICFI",
-          "severity": "Fatal",
-          "description": "InstdRmbrsmntAgt BICFI is invalid.",
-          "affected_tags": [
-            "CdtTrfTxInf/InstdRmbrsmntAgt"
-          ],
-          "possible_fixes": [
-            "Set FinInstnId/BICFI to a valid 8 or 11 character BIC."
-          ]
-        }
-      ]
-    },
-    {
-      "tag": "CdtTrfTxInf/UndrlygCstmrCdtTrf/IntrmyAgt1",
-      "xml_element": "IntrmyAgt1",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/UndrlygCstmrCdtTrf/IntrmyAgt1",
-      "occurrence": "[0..1]",
-      "mandatory": false,
-      "description": "Intermediary agent 1 of the underlying customer credit transfer. Identified by BICFI.",
-      "errors": [
-        {
-          "error_id": "UND_INTRMY1_BIC",
-          "error_code": "INVALID_BICFI",
-          "severity": "Fatal",
-          "description": "UndrlygCstmrCdtTrf/IntrmyAgt1 BICFI is invalid.",
-          "affected_tags": [
-            "CdtTrfTxInf/UndrlygCstmrCdtTrf/IntrmyAgt1"
-          ],
-          "possible_fixes": [
-            "Set FinInstnId/BICFI to a valid 8 or 11 character BIC; remove BrnchId (CBPR+ branch removed)."
-          ]
-        }
-      ]
-    },
-    {
-      "tag": "CdtTrfTxInf/PmtId/InstrId",
-      "xml_element": "InstrId",
-      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/PmtId/InstrId",
-      "occurrence": "[0..1]",
-      "mandatory": false,
-      "datatype": "Max35Text",
-      "max_length": 35,
-      "description": "Point-to-point instruction identification. Max 35 chars.",
-      "errors": [
-        {
-          "error_id": "INSTRID_LEN",
-          "error_code": "ID_LENGTH_ERROR",
-          "severity": "Fatal",
-          "description": "InstrId exceeds 35 characters.",
-          "affected_tags": [
-            "CdtTrfTxInf/PmtId/InstrId"
-          ],
-          "possible_fixes": [
-            "Truncate InstrId to a maximum of 35 characters."
-          ]
-        }
-      ]
     }
   ],
   "cross_tag_dependency_rules": [
@@ -2477,16 +2495,6 @@
         "CdtTrfTxInf/UndrlygCstmrCdtTrf/CdtrAgt/FinInstnId/BICFI"
       ],
       "fix": "Verify BICs differ; identical BICs indicate a loopback payment."
-    },
-    {
-      "rule_id": "DEP_COVE_RMBAGT",
-      "rule": "When GrpHdr/SttlmInf/SttlmMtd is COVE, at least one of CdtTrfTxInf/InstgRmbrsmntAgt or CdtTrfTxInf/InstdRmbrsmntAgt must be present.",
-      "affected_tags": [
-        "GrpHdr/SttlmInf/SttlmMtd",
-        "CdtTrfTxInf/InstgRmbrsmntAgt",
-        "CdtTrfTxInf/InstdRmbrsmntAgt"
-      ],
-      "fix": "Add InstgRmbrsmntAgt and/or InstdRmbrsmntAgt with a valid BICFI, or change SttlmMtd to INDA/INGA/CLRG."
     }
   ],
   "pacs008_to_pacs009_cov_field_mapping": [
@@ -2716,16 +2724,5 @@
       "Sgntr",
       "Rltd"
     ]
-  },
-  "schema_mapping_notes": {
-    "root_element": "pacs.009.001.08 COV root is /Document/FICdtTrf (FinancialInstitutionCreditTransfer, cover variant); the AppHdr (BAH) precedes the Document.",
-    "msg_def_idr": "AppHdr/MsgDefIdr must be 'pacs.009.001.08' matching urn:iso:std:iso:20022:tech:xsd:pacs.009.001.08. Do NOT use a pacs.008 identifier here.",
-    "biz_svc": "AppHdr/BizSvc for CBPR+ pacs.009 COV is 'swift.cbprplus.cov.03' (NOT 'swift.cbprplus.03', which is for the CORE / pacs.008 services).",
-    "structure": "GrpHdr [1..1] + CdtTrfTxInf [1..n], where each CdtTrfTxInf MUST contain UndrlygCstmrCdtTrf carrying the underlying customer credit transfer being covered (the cover for a pacs.008). The FI-level transfer moves the cover funds between correspondents.",
-    "amount_location": "FI-level IntrBkSttlmAmt sits under CdtTrfTxInf; the underlying customer amounts (IntrBkSttlmAmt / InstdAmt) sit under UndrlygCstmrCdtTrf.",
-    "cover_propagation": "PmtId/UETR and EndToEndId at the cover level must match the underlying customer transfer (UETR propagation rule CBPR_COV_UETR_PROPAGATION).",
-    "reimbursement_agents": "Cover settlement uses reimbursement agents: InstgRmbrsmntAgt and/or InstdRmbrsmntAgt are required when SttlmMtd is COVE; ThrdRmbrsmntAgt is optional.",
-    "datetime_format": "ISODateTime fields use YYYY-MM-DDTHH:MM:SS+HH:MM; no 'Z' suffix, no milliseconds.",
-    "nb_of_txs_scope": "GrpHdr/NbOfTxs must equal the number of CdtTrfTxInf occurrences."
   }
 }

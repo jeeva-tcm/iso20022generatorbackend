@@ -28,6 +28,17 @@
         "layer": 3
     },
     {
+        "rule_id": "CAMT053_BAL_CDTDBT_VALID",
+        "description": "Balance CdtDbtInd must be CRDT or DBIT.",
+        "selector": "^Document\\.BkToCstmrStmt\\.Stmt(\\[\\d+\\])?\\.Bal(\\[\\d+\\])?\\.CdtDbtInd$",
+        "type": "expression",
+        "expression": "VALUE in ('CRDT', 'DBIT')",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Invalid code for Bal/CdtDbtInd — only CRDT (credit) or DBIT (debit) are valid.",
+        "fix": "Replace the invalid value with CRDT (credit balance) or DBIT (debit balance). A zero balance is treated as CRDT."
+    },
+    {
         "rule_id": "CAMT053_ENTRY_CDTDBT_VALID",
         "description": "Entry CdtDbtInd must be CRDT or DBIT.",
         "selector": "^Document\\.BkToCstmrStmt\\.Stmt(\\[\\d+\\])?\\.Ntry(\\[\\d+\\])?\\.CdtDbtInd$",
@@ -35,8 +46,8 @@
         "expression": "VALUE in ('CRDT', 'DBIT')",
         "severity": "ERROR",
         "layer": 3,
-        "errorMessage": "CdtDbtInd must be 'CRDT' (credit) or 'DBIT' (debit).",
-        "fix": "Set <CdtDbtInd>CRDT</CdtDbtInd> or <CdtDbtInd>DBIT</CdtDbtInd>."
+        "errorMessage": "Invalid code for Ntry/CdtDbtInd — only CRDT (credit) or DBIT (debit) are valid.",
+        "fix": "Replace the invalid value with CRDT (credit entry) or DBIT (debit entry)."
     },
     {
         "rule_id": "CAMT053_PRD_DATES_ORDERED",

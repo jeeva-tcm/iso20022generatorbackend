@@ -2,174 +2,41 @@
   "domain": "SWIFT MX CBPR+ pacs.004.001.10",
   "message_variant": "PaymentReturn",
   "version": "SR2025",
-  "last_updated": "2026-05-28",
+  "last_updated": "2026-06-04",
   "purpose": "Context KB for pacs.004 PaymentReturn validation and transformation. For each XML tag: possible errors, affected tags, and all possible fixes. Based on CBPR+ SR2025 Usage Guideline (pacs.004.001.10) and SWIFT MX Enterprise KB.",
   "reference_documents": [
     "CBPRPlus-pacs.004.001.10_PaymentReturn CBPRPlus SR2025 (Combined), 21 March 2025",
     "SWIFT MX Enterprise LLM KB v2.0"
   ],
-  "iso_20022_rules": [
-    {
-      "rule_id": "R1",
-      "name": "RelatedPresentWhenCopyDupl",
-      "description": "If CopyDuplicate is present, Related MUST be present.",
-      "error_code": "H00001",
-      "severity": "Warning",
-      "error_text": "Element Related is missing"
-    },
-    {
-      "rule_id": "R4",
-      "name": "InstructedAgentRule",
-      "description": "If GrpHdr/InstdAgt is present, then TxInf/InstdAgt is not allowed.",
-      "error_code": "X00008",
-      "severity": "Fatal",
-      "error_text": "Invalid message content for instructed agent."
-    },
-    {
-      "rule_id": "R5",
-      "name": "InstructingAgentRule",
-      "description": "If GrpHdr/InstgAgt is present, then TxInf/InstgAgt is not allowed.",
-      "error_code": "X00007",
-      "severity": "Fatal",
-      "error_text": "Invalid message content for instructing agent."
-    },
-    {
-      "rule_id": "R6",
-      "name": "TotalReturnedInterbankSettlementAmountRule",
-      "description": "If GrpHdr/TtlRtrdIntrBkSttlmAmt is present, all TxInf/RtrdIntrBkSttlmAmt must use the same currency.",
-      "error_code": "X00042",
-      "severity": "Fatal"
-    },
-    {
-      "rule_id": "R7",
-      "name": "TotalReturnedInterbankSettlementAmountAndSumRule",
-      "description": "If GrpHdr/TtlRtrdIntrBkSttlmAmt is present, it must equal the sum of all TxInf/RtrdIntrBkSttlmAmt.",
-      "error_code": "X00043",
-      "severity": "Fatal"
-    },
-    {
-      "rule_id": "R8",
-      "name": "GroupHeaderInterbankSettlementDateRule",
-      "description": "If GrpHdr/IntrBkSttlmDt is present, TxInf/IntrBkSttlmDt is not allowed.",
-      "error_code": "X00045",
-      "severity": "Fatal"
-    },
-    {
-      "rule_id": "R9",
-      "name": "TransactionInterbankSettlementDateRule",
-      "description": "If GrpHdr/IntrBkSttlmDt is not present, TxInf/IntrBkSttlmDt MUST be present.",
-      "error_code": "X00290",
-      "severity": "Fatal"
-    },
-    {
-      "rule_id": "R10",
-      "name": "ChargesInformationRule",
-      "description": "If TxInf/ChrgBr indicates charges, the charge details in TxInf/ChrgsInf must be consistent with the returned and original settlement amounts.",
-      "error_code": "X00305",
-      "severity": "Fatal"
-    },
-    {
-      "rule_id": "R11",
-      "name": "NumberOfTransactionsAndReturnsRule",
-      "description": "GrpHdr/NbOfTxs must equal the number of TxInf occurrences.",
-      "error_code": "X00062",
-      "severity": "Fatal"
-    },
-    {
-      "rule_id": "R12",
-      "name": "OriginalGroupInformationRule",
-      "description": "TxInf/OrgnlGrpInf must reference the original message via OrgnlMsgId and OrgnlMsgNmId.",
-      "error_code": "X00320",
-      "severity": "Fatal"
-    },
-    {
-      "rule_id": "R13",
-      "name": "PaymentReturnReasonRule",
-      "description": "TxInf/RtrRsnInf must be present and carry a return reason (Rsn/Cd or Rsn/Prtry).",
-      "error_code": "X00321",
-      "severity": "Fatal"
-    },
-    {
-      "rule_id": "R14",
-      "name": "ReturnedInterbankSettlementAmountRule",
-      "description": "TxInf/RtrdIntrBkSttlmAmt must be present and must not exceed TxInf/OrgnlIntrBkSttlmAmt when both are present.",
-      "error_code": "X00322",
-      "severity": "Fatal"
-    },
-    {
-      "rule_id": "R15",
-      "name": "OriginalReferencesRule",
-      "description": "At least one of OrgnlEndToEndId, OrgnlTxId or OrgnlUETR must be present to identify the original transaction.",
-      "error_code": "X00323",
-      "severity": "Fatal"
-    }
-  ],
+  "iso_20022_rules": {
+    "RelatedPresentWhenCopyDupl": "If CopyDuplicate is present, Related MUST be present.",
+    "InstructedAgentRule": "If GrpHdr/InstdAgt is present, then TxInf/InstdAgt is not allowed.",
+    "InstructingAgentRule": "If GrpHdr/InstgAgt is present, then TxInf/InstgAgt is not allowed.",
+    "TotalReturnedInterbankSettlementAmountRule": "If GrpHdr/TtlRtrdIntrBkSttlmAmt is present, all TxInf/RtrdIntrBkSttlmAmt must use the same currency.",
+    "TotalReturnedInterbankSettlementAmountAndSumRule": "If GrpHdr/TtlRtrdIntrBkSttlmAmt is present, it must equal the sum of all TxInf/RtrdIntrBkSttlmAmt.",
+    "GroupHeaderInterbankSettlementDateRule": "If GrpHdr/IntrBkSttlmDt is present, TxInf/IntrBkSttlmDt is not allowed.",
+    "TransactionInterbankSettlementDateRule": "If GrpHdr/IntrBkSttlmDt is not present, TxInf/IntrBkSttlmDt MUST be present.",
+    "ChargesInformationRule": "If TxInf/ChrgBr indicates charges, the charge details in TxInf/ChrgsInf must be consistent with the returned and original settlement amounts.",
+    "NumberOfTransactionsAndReturnsRule": "GrpHdr/NbOfTxs must equal the number of TxInf occurrences.",
+    "OriginalGroupInformationRule": "TxInf/OrgnlGrpInf must reference the original message via OrgnlMsgId and OrgnlMsgNmId.",
+    "PaymentReturnReasonRule": "TxInf/RtrRsnInf must be present and carry a return reason (Rsn/Cd or Rsn/Prtry).",
+    "ReturnedInterbankSettlementAmountRule": "TxInf/RtrdIntrBkSttlmAmt must be present and must not exceed TxInf/OrgnlIntrBkSttlmAmt when both are present.",
+    "OriginalReferencesRule": "At least one of OrgnlEndToEndId, OrgnlTxId or OrgnlUETR must be present to identify the original transaction."
+  },
   "cbpr_plus_formal_rules": [
-    {
-      "rule_id": "CBPR_PRIORITY",
-      "name": "CBPR_Priority_Instruction_Priority_FormalRule",
-      "description": "AppHdr/Priority must equal TxInf/OrgnlTxRef/PmtTpInf/InstrPrty when both are present."
-    },
-    {
-      "rule_id": "CBPR_FR_TO_1",
-      "name": "CBPR_From_To_Instructing_Instructed_Agent_BIC_1",
-      "description": "AppHdr/Fr BIC must match InstgAgt BIC and AppHdr/To BIC must match InstdAgt BIC, except when CpyDplct = COPY or CODU."
-    },
-    {
-      "rule_id": "CBPR_FR_TO_2",
-      "name": "CBPR_From_To_Instructing_Instructed_Agent_BIC_2",
-      "description": "AppHdr/Fr BIC must match InstgAgt BIC and AppHdr/To BIC must match InstdAgt BIC when CpyDplct is absent."
-    },
-    {
-      "rule_id": "CBPR_AGENT_BICFI_EXCLUSIVE",
-      "name": "CBPR_Agent_BICFI_Rule",
-      "description": "If BICFI is present inside FinInstnId, then Nm and PstlAdr are NOT allowed in the same FinInstnId block."
-    },
-    {
-      "rule_id": "CBPR_AGENT_NM_PSTLADR",
-      "name": "CBPR_Agent_Name_Postal_Address_FormalRule",
-      "description": "If Nm is present in FinInstnId, PstlAdr must also be present, and vice versa."
-    },
-    {
-      "rule_id": "CBPR_CHARSET",
-      "name": "CBPR_Character_Set_Usage_TextualRule",
-      "description": "All proprietary/text fields (excl. Nm/Adr/RmtInf/AddtlInf) limited to FIN-X charset. Nm/Adr/RmtInf/AddtlInf extended with !#$&%*=^_{|}~\";<>@[\\] (< as &lt;, > as &gt;)."
-    },
-    {
-      "rule_id": "CBPR_BIZ_SVC",
-      "name": "CBPR_Business_Service_Usage_TextualRule",
-      "description": "AppHdr/BizSvc must be 'swift.cbprplus.03' (SR2025). This element is mandatory (min occurrence changed to 1)."
-    },
-    {
-      "rule_id": "CBPR_BIZ_MSG_IDR",
-      "name": "CBPR_Business_Message_Identifier_TextualRule",
-      "description": "AppHdr/BizMsgIdr must equal GrpHdr/MsgId."
-    },
-    {
-      "rule_id": "CBPR_DATETIME_NO_Z",
-      "name": "CBPR_DateTime_Format",
-      "description": "DateTime fields must use YYYY-MM-DDTHH:MM:SS+HH:MM format. Z suffix is forbidden. Milliseconds are forbidden."
-    },
-    {
-      "rule_id": "CBPR_SINGLE_TX",
-      "name": "Single Transaction Only",
-      "description": "CBPR+ allows single transactions only per message."
-    },
-    {
-      "rule_id": "CBPR_BRANCH_REMOVED",
-      "name": "BrnchId Removed",
-      "description": "BranchIdentification is removed from InstgAgt, InstdAgt, DbtrAgt, CdtrAgt, IntrmyAgt1/2/3 and PrvsInstgAgt1/2/3."
-    },
-    {
-      "rule_id": "CBPR_RTR_RSN",
-      "name": "CBPR_Payment_Return_Reason_TextualRule",
-      "description": "RtrRsnInf/Rsn/Cd must be a valid ExternalReturnReason code; AddtlInf limited to 105 characters per occurrence."
-    },
-    {
-      "rule_id": "CBPR_ORGNL_GRP",
-      "name": "CBPR_Original_Group_Information_TextualRule",
-      "description": "OrgnlGrpInf/OrgnlMsgNmId must reference a valid original message identifier (e.g. pacs.008.001.08, pacs.003.001.08, pacs.009.001.08)."
-    }
+    "AppHdr/Priority must equal TxInf/OrgnlTxRef/PmtTpInf/InstrPrty when both are present.",
+    "AppHdr/Fr BIC must match InstgAgt BIC and AppHdr/To BIC must match InstdAgt BIC, except when CpyDplct = COPY or CODU.",
+    "AppHdr/Fr BIC must match InstgAgt BIC and AppHdr/To BIC must match InstdAgt BIC when CpyDplct is absent.",
+    "If BICFI is present inside FinInstnId, then Nm and PstlAdr are NOT allowed in the same FinInstnId block.",
+    "If Nm is present in FinInstnId, PstlAdr must also be present, and vice versa.",
+    "All proprietary/text fields (excl. Nm/Adr/RmtInf/AddtlInf) limited to FIN-X charset. Nm/Adr/RmtInf/AddtlInf extended with !#$&%*=^_{|}~\";<>@[\\] (< as &lt;, > as &gt;).",
+    "AppHdr/BizSvc must be 'swift.cbprplus.03' (SR2025). This element is mandatory (min occurrence changed to 1).",
+    "AppHdr/BizMsgIdr must equal GrpHdr/MsgId.",
+    "DateTime fields must use YYYY-MM-DDTHH:MM:SS+HH:MM format. Z suffix is forbidden. Milliseconds are forbidden.",
+    "CBPR+ allows single transactions only per message.",
+    "BranchIdentification is removed from InstgAgt, InstdAgt, DbtrAgt, CdtrAgt, IntrmyAgt1/2/3 and PrvsInstgAgt1/2/3.",
+    "RtrRsnInf/Rsn/Cd must be a valid ExternalReturnReason code; AddtlInf limited to 105 characters per occurrence.",
+    "OrgnlGrpInf/OrgnlMsgNmId must reference a valid original message identifier (e.g. pacs.008.001.08, pacs.003.001.08, pacs.009.001.08)."
   ],
   "tags": [
     {
@@ -2239,6 +2106,87 @@
           ]
         }
       ]
+    },
+    {
+      "tag": "GrpHdr/GrpRtr",
+      "xml_element": "GrpRtr",
+      "xpath": "/Document/PmtRtr/GrpHdr/GrpRtr",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "datatype": "YesNoIndicator",
+      "description": "Group return indicator. When 'true' the whole original group is returned and transaction-level original references are not required.",
+      "errors": [
+        {
+          "error_id": "GRPRTR_BOOL",
+          "error_code": "SCHEMA_ERR",
+          "severity": "Fatal",
+          "description": "GrpHdr/GrpRtr must be a boolean ('true' or 'false').",
+          "affected_tags": [
+            "GrpHdr/GrpRtr"
+          ],
+          "possible_fixes": [
+            "Set GrpRtr to 'true' or 'false'."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInf/RtrRsnInf/Orgtr",
+      "xml_element": "Orgtr",
+      "xpath": "/Document/PmtRtr/TxInf/RtrRsnInf/Orgtr",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Party that issued the return reason (BICFI or Name). Identifies who initiated the return.",
+      "errors": [
+        {
+          "error_id": "ORGTR_BIC",
+          "error_code": "INVALID_BICFI",
+          "severity": "Warning",
+          "description": "RtrRsnInf/Orgtr BICFI is not a valid ISO 9362 BIC.",
+          "affected_tags": [
+            "TxInf/RtrRsnInf/Orgtr"
+          ],
+          "possible_fixes": [
+            "Set Orgtr/Id/OrgId/AnyBIC (or FinInstnId/BICFI) to a valid 8 or 11 character BIC."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInf/OrgnlGrpInf/OrgnlMsgNmId",
+      "xml_element": "OrgnlMsgNmId",
+      "xpath": "/Document/PmtRtr/TxInf/OrgnlGrpInf/OrgnlMsgNmId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "Max35Text",
+      "max_length": 35,
+      "description": "Message name identifier of the original message being returned (e.g. 'pacs.008.001.08').",
+      "errors": [
+        {
+          "error_id": "ORGNLMSGNMID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "OrgnlMsgNmId is absent from OrgnlGrpInf.",
+          "affected_tags": [
+            "TxInf/OrgnlGrpInf/OrgnlMsgNmId"
+          ],
+          "possible_fixes": [
+            "Insert OrgnlMsgNmId with the original message identifier, e.g. <OrgnlMsgNmId>pacs.008.001.08</OrgnlMsgNmId>."
+          ]
+        },
+        {
+          "error_id": "ORGNLMSGNMID_FMT",
+          "error_code": "SCHEMENAME_INVALID",
+          "severity": "Warning",
+          "description": "OrgnlMsgNmId is not a recognised ISO 20022 message identifier.",
+          "affected_tags": [
+            "TxInf/OrgnlGrpInf/OrgnlMsgNmId"
+          ],
+          "possible_fixes": [
+            "Use the full dotted message identifier of the returned message (pacs.008.001.08, pacs.003.001.08, pacs.009.001.08, ...)."
+          ]
+        }
+      ]
     }
   ],
   "cross_tag_dependency_rules": [
@@ -2410,6 +2358,15 @@
         "TxInf/XchgRate"
       ],
       "fix": "Add XchgRate when currencies differ; remove when they match."
+    },
+    {
+      "rule_id": "DEP_GRPRTR",
+      "rule": "When GrpHdr/GrpRtr = true the whole group is returned; transaction-level OrgnlInstrId/OrgnlEndToEndId are not required, but OrgnlGrpInf must identify the original message.",
+      "affected_tags": [
+        "GrpHdr/GrpRtr",
+        "TxInf/OrgnlGrpInf"
+      ],
+      "fix": "If GrpRtr is true, ensure OrgnlGrpInf/OrgnlMsgId and OrgnlMsgNmId are present; otherwise populate the per-transaction original references."
     }
   ],
   "tag_insertion_order": {
@@ -2523,5 +2480,16 @@
       "Sgntr",
       "Rltd"
     ]
+  },
+  "schema_mapping_notes": {
+    "root_element": "pacs.004.001.10 root is /Document/PmtRtr (PaymentReturn); the AppHdr (BAH) precedes the Document.",
+    "msg_def_idr": "AppHdr/MsgDefIdr must be 'pacs.004.001.10' matching urn:iso:std:iso:20022:tech:xsd:pacs.004.001.10.",
+    "biz_svc": "AppHdr/BizSvc for CBPR+ payment return is 'swift.cbprplus.03'.",
+    "structure": "GrpHdr [1..1] + TxInf [1..n] (single TxInf under CBPR+). The original payment is referenced by TxInf/OrgnlGrpInf (OrgnlMsgId, OrgnlMsgNmId) and the Orgnl* identifiers; the parties of the returned payment are mirrored in TxInf/RtrChain.",
+    "amount_location": "TxInf/RtrdIntrBkSttlmAmt is the returned settlement amount; OrgnlIntrBkSttlmAmt echoes the original; CompstnAmt carries interest compensation. RtrdIntrBkSttlmAmt must not exceed OrgnlIntrBkSttlmAmt.",
+    "return_reason": "TxInf/RtrRsnInf/Rsn/Cd uses ExternalReturnReason1Code (e.g. AC04 closed account, AM09 wrong amount, CUST requested by customer, DUPL duplicate, RR04 missing regulatory info); free text goes in AddtlInf.",
+    "return_chain": "TxInf/RtrChain carries the parties of the payment being returned (Dbtr, DbtrAgt, Cdtr, CdtrAgt, intermediaries) so funds can be routed back.",
+    "datetime_format": "ISODateTime fields use YYYY-MM-DDTHH:MM:SS+HH:MM; no 'Z' suffix, no milliseconds.",
+    "nb_of_txs_scope": "GrpHdr/NbOfTxs must equal the number of TxInf occurrences."
   }
 }
