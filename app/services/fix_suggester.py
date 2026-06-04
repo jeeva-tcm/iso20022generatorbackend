@@ -5869,6 +5869,20 @@ class FixSuggester:
                                          self._serialize(_el_copy), code, msg, "high")
             except (ValueError, TypeError):
                 pass
+            # ── Non-numeric amount text (e.g. 'GB', 'abc') ───────────────────
+            # float() above threw — the text is not a number at all. Replace
+            # with a valid placeholder that keeps the Ccy attribute intact.
+            # Only fires when the element IS an amount element (ends with Amt
+            # or carries a Ccy attribute) to avoid touching non-amount fields
+            # whose text happens to be non-numeric for a different reason.
+            if _is_amt_el and _amt_cur and not re.match(r"^-?\d+(\.\d{0,5})?$", _amt_cur):
+                _ccy_n = (el.get("Ccy") or "").upper()
+                _prec_n = _ccy_precision(_ccy_n) if _ccy_n else 2
+                _placeholder = f"1000.{'0' * _prec_n}" if _prec_n > 0 else "1000"
+                _el_copy_n = self._copy(el)
+                _el_copy_n.text = _placeholder
+                return FixSuggestion(xpath, original_fragment,
+                                     self._serialize(_el_copy_n), code, msg, "high")
 
         # ── Text too long: truncate in-place, never replace ─────────────────
         # "Jhon ......(162 chars)" → "Jhon ......(140 chars)" for Max140Text.
