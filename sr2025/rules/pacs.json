@@ -1,0 +1,18 @@
+[
+    {
+        "rule_id": "L3-PACS-MATCH-FR",
+        "description": "Header Sender BIC (From) must match the Instructing Agent BIC in the Business Message.",
+        "layer": 3,
+        "severity": "ERROR",
+        "condition": "True",
+        "expression": "check_bic_match('Fr', 'InstgAgt')"
+    },
+    {
+        "rule_id": "L3-PACS-MATCH-TO",
+        "description": "Header Receiver BIC (To) must match the Instructed Agent BIC in the Business Message.",
+        "layer": 3,
+        "severity": "ERROR",
+        "condition": "True",
+        "expression": "check_bic_match('To', 'InstdAgt')"
+    }
+]

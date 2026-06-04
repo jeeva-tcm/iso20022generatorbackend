@@ -1,0 +1,89 @@
+{
+  "lei_structure": {
+    "total_length": 20,
+    "format": "[LOU_PREFIX(4)][RESERVED(2)][ENTITY_ID(12)][CHECK_DIGITS(2)]",
+    "parts": [
+      {
+        "name": "LOU Prefix",
+        "position": "1-4",
+        "length": 4,
+        "description": "Local Operating Unit identifier assigned by GLEIF",
+        "example": "5493"
+      },
+      {
+        "name": "Reserved",
+        "position": "5-6",
+        "length": 2,
+        "description": "Always '00' — reserved for future use",
+        "example": "00"
+      },
+      {
+        "name": "Entity ID",
+        "position": "7-18",
+        "length": 12,
+        "description": "Unique alphanumeric entity identifier",
+        "example": "TRUWO2CD2G56"
+      },
+      {
+        "name": "Check Digits",
+        "position": "19-20",
+        "length": 2,
+        "description": "ISO 7064 MOD 97-10 checksum digits",
+        "valid_range": "02 to 97",
+        "reserved_values": ["00", "01"],
+        "example": "92"
+      }
+    ]
+  },
+  "lei_valid_examples": [
+    {
+      "id": "V001",
+      "lei": "549300TRUWO2CD2G5692",
+      "parts": {
+        "lou_prefix": "5493",
+        "reserved": "00",
+        "entity_id": "TRUWO2CD2G56",
+        "check_digits": "92"
+      },
+      "checksum": {
+        "algorithm": "ISO 7064 MOD 97-10",
+        "mod_97_result": 1,
+        "valid": true
+      },
+      "status": "ACTIVE",
+      "note": "GLEIF verified — most commonly used test LEI"
+    },
+    {
+      "id": "V002",
+      "lei": "7H6GLXDRUGQFU57RNE97",
+      "parts": {
+        "lou_prefix": "7H6G",
+        "reserved": "LX",
+        "entity_id": "DRUGQFU57RNE",
+        "check_digits": "97"
+      },
+      "checksum": {
+        "algorithm": "ISO 7064 MOD 97-10",
+        "mod_97_result": 1,
+        "valid": true
+      },
+      "status": "ACTIVE",
+      "note": "Standard valid LEI with alphanumeric LOU prefix"
+    }
+  ],
+  "lei_checksum_validation": {
+    "algorithm": "ISO 7064 MOD 97-10",
+    "expected_remainder": 1,
+    "check_digit_valid_range": { "min": 2, "max": 97 },
+    "reserved_check_digits": ["00", "01"],
+    "common_errors": {
+      "CHECKSUM_MISMATCH": "MOD 97 remainder ≠ 1 — LEI is invalid or tampered",
+      "INVALID_CHECK_DIGITS_00": "'00' is reserved — not a valid check digit",
+      "INVALID_CHECK_DIGITS_01": "'01' is reserved — not a valid check digit",
+      "INVALID_CHARACTERS": "Special characters found — only A-Z and 0-9 allowed",
+      "INVALID_LENGTH": "LEI must be exactly 20 characters",
+      "ALL_ZEROS": "All-zero LEI is not GLEIF-registered",
+      "OVERFLOW_RISK": "Use BigInt/Large Int for MOD 97 — standard 32-bit int will overflow"
+    }
+  }
+}

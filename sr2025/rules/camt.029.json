@@ -1,0 +1,30 @@
+[
+    {
+        "rule_id": "CAMT029_001",
+        "description": "Resolution of Investigation: Debtor should identify with Name and/or ID.",
+        "condition": "exists(Document.RsltnOfInvstgtn.CxlDetails.OrgnlGrpInfAndSts.Dbtr)",
+        "expression": "exists(Document.RsltnOfInvstgtn.CxlDetails.OrgnlGrpInfAndSts.Dbtr.Nm) or exists(Document.RsltnOfInvstgtn.CxlDetails.OrgnlGrpInfAndSts.Dbtr.Id)",
+        "severity": "WARNING",
+        "layer": 3
+    },
+    {
+        "rule_id": "CAMT029_ASSGNMT_REQUIRED",
+        "description": "Resolution of Investigation requires an Assgnmt block.",
+        "condition": "exists(Document.RsltnOfInvstgtn)",
+        "mandatory_fields": [
+            "Document.RsltnOfInvstgtn.Assgnmt"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "CAMT029_STS_REQUIRED",
+        "description": "Resolution of Investigation must include Status (Sts).",
+        "condition": "exists(Document.RsltnOfInvstgtn)",
+        "mandatory_fields": [
+            "Document.RsltnOfInvstgtn.Sts"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    }
+]

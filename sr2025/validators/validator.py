@@ -1,5 +1,4 @@
 import time
-import uuid
 import threading
 import re
 import os
@@ -28,7 +27,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
         self.history_service = history_service
         # Path configuration
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        backend_root = os.path.normpath(os.path.join(base_dir, "../../"))
+        backend_root = os.path.normpath(os.path.join(base_dir, "../../../"))
         
         self.xsd_path = os.path.join(backend_root, "xsds", "extracted")
         self.rules_path = os.path.join(backend_root, "app", "resources", "rules")
@@ -313,130 +312,10 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
         self._last_cache_update = now
         return self._message_type_cache
 
-    async def validate(self, xml_content: str, mode: str = "Full 1-3", message_type: str = "Auto-detect", filename: Optional[str] = None, validation_id: Optional[str] = None, version: str = "SR2025") -> ValidationReport:
+    async def validate(self, xml_content: str, mode: str = "Full 1-3", message_type: str = "Auto-detect", filename: Optional[str] = None, validation_id: Optional[str] = None) -> ValidationReport:
         """
         Main 10-Step Validation Flow
         """
-        if version == "SR2026":
-            from datetime import datetime, timezone
-            from sr2026.validators.models import ValidationReport as SR2026Report
-            from sr2026.validators.layer1 import Layer1Validator
-            from sr2026.validators.layer2 import Layer2Validator
-            from sr2026.usage_guidelines.guideline_validator import GuidelineValidator
-            from sr2026.nvr.nvr_engine import NVREngine
-            from sr2026.validators.layer3 import Layer3Validator
-            from sr2026.delta_rules.address_validator import AddressValidator
-            from sr2026.delta_rules.lei_validator import LEIValidator
-            from sr2026.delta_rules.tax_validator import TaxValidator
-            from sr2026.delta_rules.new_mandatory_fields import NewMandatoryFieldsValidator
-            from sr2026.delta_rules.warning_engine import WarningEngine
-            
-            start_time_perf = time.perf_counter()
-            report2026 = SR2026Report()
-            
-            # Layer 1
-            l1_start = time.perf_counter()
-            root_element = Layer1Validator.validate(xml_content, report2026)
-            l1_time = (time.perf_counter() - l1_start) * 1000
-            
-            l2_time = 0
-            l3_time = 0
-            
-            # Safe default for message type detection
-            msg_type_clean = message_type
-            if not msg_type_clean or msg_type_clean == "Auto-detect":
-                msg_type_clean = "pacs.008"
-            else:
-                msg_type_clean = msg_type_clean.split('.')[0] + '.' + msg_type_clean.split('.')[1] if '.' in msg_type_clean else msg_type_clean
-            
-            if root_element is not None:
-                # Layer 2
-                l2_start = time.perf_counter()
-                if not message_type or message_type == "Auto-detect":
-                    # Detect from root or namespace
-                    doc_ns = root_element.xpath("//*[local-name()='Document']")
-                    if doc_ns:
-                        ns = etree.QName(doc_ns[0]).namespace or ""
-                        parts = ns.split(":")[-1].split('.')
-                        msg_type_clean = ".".join(parts[:2]) if len(parts) >= 2 else "pacs.008"
-                    else:
-                        msg_type_clean = "pacs.008"
-                
-                Layer2Validator.validate(root_element, msg_type_clean, report2026)
-                l2_time = (time.perf_counter() - l2_start) * 1000
-                
-                # Layer 3 / Guidelines / NVRs / Delta Rules
-                l3_start = time.perf_counter()
-                GuidelineValidator.validate(root_element, report2026)
-                NVREngine.validate(root_element, report2026)
-                
-                canonical_data, line_map = Layer3Validator.normalize(root_element)
-                Layer3Validator.validate(canonical_data, line_map, msg_type_clean, report2026)
-                
-                AddressValidator.validate(root_element, report2026)
-                LEIValidator.validate(root_element, report2026)
-                TaxValidator.validate(root_element, report2026)
-                NewMandatoryFieldsValidator.validate(root_element, report2026)
-                WarningEngine.evaluate(root_element, report2026)
-                l3_time = (time.perf_counter() - l3_start) * 1000
-                
-            time_taken = (time.perf_counter() - start_time_perf) * 1000
-            
-            # Map report2026 to SR2025 ValidationReport
-            assigned_id = validation_id if validation_id else self.generate_next_id()
-            final_report = ValidationReport(assigned_id, msg_type_clean, mode)
-            final_report.schema_version = msg_type_clean
-            final_report.total_time_ms = time_taken
-            
-            # Extract MsgId and UETR early for history and metadata
-            msg_id_match = re.search(r'<MsgId>\s*([^<]+?)\s*</MsgId>', xml_content, re.IGNORECASE)
-            uetr_match = re.search(r'<UETR>\s*([^<]+?)\s*</UETR>', xml_content, re.IGNORECASE)
-            if msg_id_match:
-                final_report.metadata["MsgId"] = msg_id_match.group(1).strip()
-            if uetr_match:
-                final_report.metadata["UETR"] = uetr_match.group(1).strip()
-            final_report.metadata["version"] = version
-            
-            # Map issues
-            from app.services.validation.models import ValidationIssue as SR2025Issue
-            has_l1_err = False
-            has_l2_err = False
-            has_l3_err = False
-            
-            for issue in report2026.issues:
-                if issue.code in ["INVALID_CHARSET", "XML_SYNTAX"]:
-                    layer = 1
-                    if issue.severity == "ERROR":
-                        has_l1_err = True
-                elif issue.code in ["SCHEMA_VALIDATION_ERROR", "SCHEMA_NOT_FOUND"]:
-                    layer = 2
-                    if issue.severity == "ERROR":
-                        has_l2_err = True
-                else:
-                    layer = 3
-                    if issue.severity == "ERROR":
-                        has_l3_err = True
-                    
-                sr25_issue = SR2025Issue(
-                    severity=issue.severity,
-                    layer=layer,
-                    code=issue.code,
-                    path=issue.path or "/",
-                    message=issue.message,
-                    fix_suggestion=issue.fix or "",
-                    line=issue.line
-                )
-                final_report.add_issue(sr25_issue)
-                
-            # Fill layer status
-            final_report.layer_status = {
-                "1": {"status": "✅" if not has_l1_err else "❌", "time": round(l1_time, 2)},
-                "2": {"status": "✅" if not has_l2_err else "❌", "time": round(l2_time, 2)},
-                "3": {"status": "✅" if not has_l3_err else "❌", "time": round(l3_time, 2)}
-            }
-            
-            return final_report
-
         start_time = time.time()
         
         # 0. Detect Identity or use provided type
@@ -459,7 +338,6 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             report.metadata["MsgId"] = msg_id_match.group(1).strip()
         if uetr_match:
             report.metadata["UETR"] = uetr_match.group(1).strip()
-        report.metadata["version"] = version
 
         try:
             # STEP 1 & 2: Safe XML Parse & Well-formedness (Layer 1)
@@ -574,7 +452,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                     # promotes it to mandatory for cross-border direct debits.
                     self._validate_pain008_fwdgagt_rule(xml_content, report)
 
-                    layer2_success = await self._run_layer_2(xml_content, report, detected_type)
+                    await self._run_layer_2(xml_content, report, detected_type)
                 except Exception as e:
                     report.add_issue(ValidationIssue("ERROR", 2, "FATAL_L2", "/", f"Critical failure in Layer 2 (XSD): {str(e)}", "Ensure the XSD library is available."))
                     return self._finalize_report(report, start_time)
@@ -753,7 +631,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             
         return self._finalize_report(report, start_time)
 
-    def _validate_dates_in_xml(self, xml_content: str, report: ValidationReport, start_time: float) -> None:
+    def _validate_dates_in_xml(self, xml_content: str, report: ValidationReport, _start_time: float) -> None:
         """
         Step 4.5 — Past Date Validation
         Scans the raw XML string directly for ALL date and datetime values.
@@ -892,7 +770,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                 ))
 
     def _validate_cbpr_datetime(self, xml_content: str, report: ValidationReport) -> None:
-        """
+        r"""
         Step 4.21 — CBPR+ DateTime Format Validation
         Enforces:
           1. Timezone offset is mandatory (e.g., +00:00, +05:30)
@@ -1224,8 +1102,9 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
         cannot catch this because the header and the payload are validated
         against different schemas.
 
-        Also checks BizSvc format ("swift.<service>.NN") and AppHdr CreDt vs
-        Document CreDtTm timezone consistency (warning only).
+        Also checks BizSvc format against UsageIdentifierPatternText (allows multi-segment
+        values such as 'swift.cbprplus.col.02') and AppHdr CreDt vs Document CreDtTm
+        timezone consistency (warning only).
         """
         try:
             parser = etree.XMLParser(recover=True, no_network=True, resolve_entities=False)
@@ -1259,18 +1138,29 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                 f"Header and payload must reference the same ISO 20022 message definition."
             ))
 
-        # 2. BizSvc format (CBPR+ uses 'swift.cbprplus.NN', HVPS+ uses 'swift.hvps.NN', etc.)
+        # 2. BizSvc format — validated against the UsageIdentifierPatternText from ISO 20022 /
+        #    CBPR+ SR2025 (page 184 of the pacs.010.001.03 usage guideline):
+        #      [a-z0-9]{1,10}\.([a-z0-9]{1,10}\.)+\d\d
+        #    This allows multi-segment values such as:
+        #      swift.cbprplus.02          (CBPR+ general)
+        #      swift.cbprplus.col.02      (CBPR+ pacs.010 Margin Collection, SR2025 §4.1.6)
+        #      swift.hvps.01              (HVPS+)
+        #      swift.csp.02               (CSP)
+        _BIZSVC_PATTERN = re.compile(
+            r'^[a-z0-9]{1,10}(\.[a-z0-9]{1,10})+\.\d{2}$'
+        )
         biz_svc_el = app_hdr.find(".//{*}BizSvc")
         if biz_svc_el is not None and biz_svc_el.text:
             biz_svc = biz_svc_el.text.strip()
-            if not re.match(r'^swift\.[a-z]+(\.[0-9]+)?$', biz_svc):
+            if not _BIZSVC_PATTERN.match(biz_svc):
                 line = str(biz_svc_el.sourceline or "?")
                 report.add_issue(ValidationIssue(
                     "WARNING", 2, "HEAD001_BIZSVC_FORMAT", line,
-                    f"AppHdr.BizSvc '{biz_svc}' does not match the SWIFT business service "
-                    f"pattern 'swift.<service>.NN'.",
-                    "Use a recognised value such as 'swift.cbprplus.02' (CBPR+ SR2025), "
-                    "'swift.cbprplus.01', 'swift.hvps.01', or 'swift.csp.02'."
+                    f"AppHdr.BizSvc '{biz_svc}' does not match the SWIFT UsageIdentifierPattern "
+                    f"'[issuer].([segment].)+NN' (e.g. swift.cbprplus.02 or swift.cbprplus.col.02).",
+                    "Use a recognised value: 'swift.cbprplus.col.02' (CBPR+ pacs.010 SR2025 "
+                    "Margin Collection), 'swift.cbprplus.02' (CBPR+ general), "
+                    "'swift.hvps.01' (HVPS+), or 'swift.csp.02' (CSP)."
                 ))
 
         # 3. Timezone consistency (warning) — both header CreDt and payload CreDtTm should
@@ -2130,7 +2020,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                     seen[val] = line_num
 
     def _validate_swift_charset(self, xml_content: str, report: ValidationReport) -> None:
-        """
+        r"""
         Step 4.10 — SWIFT Character Set Validation
         Checks <Ustrd> (unstructured remittance) content for characters
         outside the permitted ISO 20022 MX character set.
@@ -2810,7 +2700,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             
         return res
 
-    def _finalize_report(self, report: ValidationReport, start_time: float) -> ValidationReport:
+    def _finalize_report(self, report: ValidationReport, _start_time: float) -> ValidationReport:
         """
         Runs post-processing on the report:
         1. Deduplicates issues (especially common when structural and business rules overlap).
@@ -2828,7 +2718,6 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                 continue
 
             # Create a unique signature for deduplication
-            code = issue.get("code")
             line = issue.get("path")
             msg = issue.get("message")
             
@@ -2974,12 +2863,6 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
         clr_ref_els = root.xpath("//*[local-name()='ClrSysRef']")
         has_clr_ref = len(clr_ref_els) > 0
         
-        # --- 2. Extract Business Service/Standard (e.g. pacs.009.001.08) ---
-        biz_svc = "Unknown"
-        doc = root.find(".//{*}Document")
-        if doc is not None and len(doc) > 0:
-            biz_svc = local(doc[0].tag)
-
         # --- 3. ClrSysRef SPECIAL RULES (Manual Entry Scope) ---
         
         # Rule 3.1: No Empty ClrSysRef Tag
@@ -3324,7 +3207,6 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
         """
         # Default fallback lists
         valid_codes = {"LEI": "", "TXID": "", "BANK": "", "CUST": "", "COID": "", "TXNR": "", "DUNS": "", "GIIN": ""}
-        invalid_map = {}
         error_labels = {
             "invalid_scheme": "Invalid scheme code in <Cd>",
             "both_cd_and_prtry": "Mutually exclusive elements conflict",
@@ -3355,9 +3237,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             vc = {item['code'].upper(): item.get('usage', '') for item in cfg.get('valid_cd_codes', [])}
             if vc: valid_codes = vc
             
-            im = {item['code'].upper(): {"reason": item['reason'], "fix": item.get('fix')} 
-                  for item in cfg.get('invalid_cd_codes', [])}
-            if im: invalid_map = im
+            # invalid_cd_codes reserved for future use
             
             labels = cfg.get('errors', {})
             for k, v in labels.items():

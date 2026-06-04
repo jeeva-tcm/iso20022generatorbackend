@@ -1,0 +1,25 @@
+{
+    "description": "ExternalCashAccountType1Code (Acct.Tp.Cd)",
+    "codes": [
+        "CACC",
+        "CASH",
+        "CHAR",
+        "CISH",
+        "COMM",
+        "CPAC",
+        "LLSV",
+        "LOAN",
+        "MGLD",
+        "MOMA",
+        "NREX",
+        "ODFT",
+        "ONDP",
+        "OTHR",
+        "SACC",
+        "SLRY",
+        "SVGS",
+        "TAXE",
+        "TRAN",
+        "TRAS"
+    ]
+}

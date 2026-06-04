@@ -1,0 +1,75 @@
+[
+    {
+        "rule_id": "L3-CAMT055-EXCTNDT-XOR",
+        "description": "Original Requested Execution Date: Only one of Date (Dt) or DateTime (DtTm) is allowed.",
+        "errorMessage": "Only one of Date (Dt) or DateTime (DtTm) is allowed",
+        "fix": "Remove one of the tags from the <OrgnlReqdExctnDt> block.",
+        "type": "expression",
+        "selector": ".*OrgnlReqdExctnDt$",
+        "expression": "not (exists(KEY + '.Dt') and exists(KEY + '.DtTm'))",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3-CAMT055-COLLTNDT-FORMAT",
+        "description": "OrgnlReqdColltnDt is a simple ISODate field (not a choice). It must contain a direct YYYY-MM-DD value with no child elements.",
+        "errorMessage": "Invalid OrgnlReqdColltnDt value. Must be a plain ISO date in YYYY-MM-DD format (e.g. 2026-03-30). Do NOT wrap in <Dt> or <DtTm> child tags.",
+        "fix": "Change <OrgnlReqdColltnDt><Dt>...</Dt></OrgnlReqdColltnDt> to <OrgnlReqdColltnDt>YYYY-MM-DD</OrgnlReqdColltnDt>.",
+        "type": "regex",
+        "selector": ".*\\.OrgnlReqdColltnDt$",
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+        "severity": "ERROR",
+        "layer": 2
+    },
+    {
+        "rule_id": "L3-CAMT055-DATE-CHOICE-XOR",
+        "description": "OrgnlReqdExctnDt and OrgnlReqdColltnDt are mutually exclusive in camt.055 TxInf. Only ONE date type is permitted per transaction cancellation request.",
+        "errorMessage": "Both OrgnlReqdExctnDt and OrgnlReqdColltnDt are present. These are mutually exclusive — only ONE is allowed per ISO 20022 camt.055 schema.",
+        "fix": "Remove either OrgnlReqdExctnDt or OrgnlReqdColltnDt. Keep only the one that matches the original payment instruction.",
+        "condition": "exists('Document.CstmrPmtCxlReq.Undrlyg.OrgnlPmtInfAndCxl.TxInf.OrgnlReqdExctnDt') and exists('Document.CstmrPmtCxlReq.Undrlyg.OrgnlPmtInfAndCxl.TxInf.OrgnlReqdColltnDt')",
+        "type": "expression",
+        "expression": "True",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "CAMT055_CXLRSN_VALID",
+        "description": "Cancellation reason code (CxlRsnInf.Rsn.Cd) must be a valid ExternalCancellationReason code.",
+        "selector": ".*\\.CxlRsnInf(\\[\\d+\\])?\\.Rsn\\.Cd$",
+        "type": "codelist",
+        "list_name": "cancellation_reason",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "CAMT055_NO_ORGNLTXREF_IN_TXINF",
+        "description": "OrgnlTxRef must not appear inside TxInf in camt.055 CustomerPaymentCancellationRequest. CBPR+ forbids original transaction reference at TxInf level.",
+        "errorMessage": "OrgnlTxRef is not allowed inside TxInf of a camt.055 message. Remove the OrgnlTxRef block from TxInf — it is not permitted at this level in camt.055.001.08.",
+        "fix": "Remove the <OrgnlTxRef> block from within <TxInf>. Original transaction reference data is not permitted at the TxInf level in CustomerPaymentCancellationRequest (camt.055.001.08).",
+        "condition": "any(re.match(r'.*\\.TxInf(\\[\\d+\\])?\\.OrgnlTxRef', k) for k in DATA.keys())",
+        "type": "expression",
+        "expression": "False",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "CAMT055_ASSGNR_REQUIRED",
+        "description": "Cancellation request must identify the Assigner (Assgnmt.Assgnr).",
+        "condition": "exists(Document.CstmrPmtCxlReq.Assgnmt)",
+        "mandatory_fields": [
+            "Document.CstmrPmtCxlReq.Assgnmt.Assgnr"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "CAMT055_ASSGNE_REQUIRED",
+        "description": "Cancellation request must identify the Assignee (Assgnmt.Assgne).",
+        "condition": "exists(Document.CstmrPmtCxlReq.Assgnmt)",
+        "mandatory_fields": [
+            "Document.CstmrPmtCxlReq.Assgnmt.Assgne"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    }
+]

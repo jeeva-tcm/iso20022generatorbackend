@@ -1,0 +1,9 @@
+{
+    "description": "ExternalEntryStatus1Code (camt.052/053/054 Sts.Cd)",
+    "codes": [
+        "BOOK",
+        "FUTR",
+        "INFO",
+        "PDNG"
+    ]
+}

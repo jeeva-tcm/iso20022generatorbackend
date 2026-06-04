@@ -1,0 +1,26 @@
+{
+    "description": "ExternalLocalInstrument1Code (subset, CBPR+ SR2025 most-used)",
+    "codes": [
+        "B2B",
+        "B2BBIZ",
+        "CHQB",
+        "CORE",
+        "COR1",
+        "INST",
+        "ONCL",
+        "ONUS",
+        "PMTS",
+        "RTGS",
+        "RTND",
+        "RTNF",
+        "RTPI",
+        "SDVA",
+        "SDCL",
+        "SDCP",
+        "STDR",
+        "TRNF",
+        "TRNN",
+        "UPAY",
+        "URGT"
+    ]
+}

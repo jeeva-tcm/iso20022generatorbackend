@@ -1,0 +1,151 @@
+
+<h2 class="sr-only">pacs.010 Interbank Direct Debit SR2025 vs SR2026 full comparison table</h2>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:1rem 0;font-family:var(--font-sans)}
+.sec{font-size:12px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--color-text-secondary);margin:1.5rem 0 .5rem;padding-bottom:5px;border-bottom:.5px solid var(--color-border-tertiary)}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:.5rem}
+th{text-align:left;padding:7px 10px;font-size:11.5px;font-weight:500;color:var(--color-text-secondary);border-bottom:.5px solid var(--color-border-secondary);background:var(--color-background-secondary)}
+td{padding:7px 10px;border-bottom:.5px solid var(--color-border-tertiary);vertical-align:top;color:var(--color-text-primary);line-height:1.5}
+tr:last-child td{border-bottom:none}
+.tag{display:inline-block;font-size:11px;font-weight:500;padding:2px 7px;border-radius:4px;white-space:nowrap}
+.new{background:var(--color-background-success);color:var(--color-text-success)}
+.rem{background:var(--color-background-danger);color:var(--color-text-danger)}
+.chg{background:var(--color-background-warning);color:var(--color-text-warning)}
+.mand{background:var(--color-background-info);color:var(--color-text-info)}
+.mono{font-family:var(--font-mono);font-size:11.5px;background:var(--color-background-secondary);padding:1px 5px;border-radius:3px;border:.5px solid var(--color-border-tertiary)}
+.note{font-size:11.5px;color:var(--color-text-secondary);font-style:italic}
+</style>
+<div class="wrap">
+
+<div class="sec">1 · Fixed values &amp; service version</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th style="width:195px">Element / Path</th><th>SR2025</th><th>SR2026</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">&lt;BizSvc&gt;</span></td><td>BAH / BusinessService</td><td>Type: <span class="mono">UsageIdentifierPatternText</span><br>Fixed value implied via <span class="mono">CBPR_Business_Service_Usage_TextualRule</span>: <em>"swift.cbprplus.03" must be used</em><br>Both TextualRules present</td><td>Type: <span class="mono">Max35Text</span> (standard)<br>Fixed value: <span class="mono">swift.cbprplus.04</span><br>Both textual rules removed</td><td><span class="tag chg">Changed</span></td></tr>
+<tr><td><span class="mono">&lt;MsgDefIdr&gt;</span></td><td>BAH / MessageDefinitionIdentifier</td><td><span class="mono">CBPR_Message_Definition_Identifier_TextualRule</span> present; no fixed value</td><td>Textual rule removed; new fixed value: <span class="mono">pacs.010.001.03</span></td><td><span class="tag chg">Changed</span></td></tr>
+<tr><td><span class="mono">&lt;BizMsgIdr&gt;</span></td><td>BAH / BusinessMessageIdentifier</td><td>Type: <span class="mono">Max35Text</span><br><span class="mono">CBPR_Business_Message_Identifier_TextualRule</span> + Comment: "must contain MsgId from GroupHeader"</td><td>Type: <span class="mono">CBPR_RestrictedFINXMax35Text</span><br>Textual rule + comment removed; type restriction applied</td><td><span class="tag chg">Changed</span></td></tr>
+<tr><td><span class="mono">&lt;NbOfTxs&gt;</span></td><td>GrpHdr / NumberOfTransactions</td><td>Fixed value: <span class="mono">1</span> (present)</td><td>Fixed value: <span class="mono">1</span> (retained)</td><td><span class="tag chg">Retained</span></td></tr>
+</table>
+
+<div class="sec">2 · Datatype changes — BAH / Header fields</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th>Element / Path</th><th>SR2025 Type</th><th>SR2026 Type</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">&lt;BizMsgIdr&gt;</span></td><td>BAH / BusinessMessageIdentifier</td><td><span class="mono">Max35Text</span></td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;BizMsgIdr&gt;</span></td><td>BAH / Related / BusinessMessageIdentifier</td><td>No CBPR restriction</td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">&lt;BizSvc&gt;</span></td><td>BAH / Related / BusinessService</td><td>No CBPR restriction</td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">&lt;MsgDefIdr&gt;</span></td><td>BAH / Related / MessageDefinitionIdentifier</td><td>No CBPR restriction</td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">&lt;Prty&gt;</span></td><td>BAH / Related / Priority</td><td>No CBPR restriction</td><td><span class="mono">Priority2Code</span></td><td><span class="tag new">New</span></td></tr>
+</table>
+
+<div class="sec">3 · Datatype changes — pacs.010 message fields (new in SR2026)</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th>Element / Path</th><th>SR2025 Type</th><th>SR2026 Type</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">&lt;MsgId&gt;</span></td><td>GrpHdr / MessageIdentification</td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span> + <span class="mono">CBPR_Message_Identification_TextualRule</span></td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span> only (TextualRule removed)</td><td><span class="tag chg">Rule removed</span></td></tr>
+<tr><td><span class="mono">&lt;Nm&gt;</span></td><td>CreditInstruction / CreditorAgentAccount / Name</td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="mono">CBPR_RestrictedFINXMax70Text</span></td><td><span class="tag chg">Widened</span></td></tr>
+<tr><td><span class="mono">&lt;CdtId&gt;</span></td><td>CreditInstruction / CreditIdentification</td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="mono">CBPR_RestrictedFINXMax16Text</span></td><td><span class="tag chg">Narrowed</span></td></tr>
+<tr><td><span class="mono">&lt;Nm&gt;</span></td><td>CreditInstruction / IntermediaryAgent1Account / Name</td><td>No restriction</td><td><span class="mono">CBPR_RestrictedFINXMax70Text</span></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">&lt;Nm&gt;</span></td><td>CreditInstruction / IntermediaryAgent2Account / Name</td><td>No restriction</td><td><span class="mono">CBPR_RestrictedFINXMax70Text</span></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">&lt;Nm&gt;</span></td><td>CreditInstruction / IntermediaryAgent3Account / Name</td><td>No restriction</td><td><span class="mono">CBPR_RestrictedFINXMax70Text</span></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">&lt;Prtry&gt;</span></td><td>CreditInstruction / IntermediaryAgent1Account / Type / Proprietary</td><td>No restriction</td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">&lt;Prtry&gt;</span></td><td>CreditInstruction / IntermediaryAgent2Account / Type / Proprietary</td><td>No restriction</td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">&lt;Prtry&gt;</span></td><td>CreditInstruction / IntermediaryAgent3Account / Type / Proprietary</td><td>No restriction</td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">&lt;Prtry&gt;</span></td><td>CreditInstruction / CreditorAccount / Type / Proprietary</td><td>No restriction</td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">&lt;Prtry&gt;</span></td><td>CreditInstruction / PmtTpInf / CategoryPurpose / Proprietary</td><td>No restriction</td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">&lt;Issr&gt;</span></td><td>All account / Identification / Other / Issuer paths (6 paths)</td><td>No restriction (<span class="mono">Max35Text</span>)</td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span> across all account paths</td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">&lt;Prxy&gt; Identification</span></td><td>IntermediaryAgent1/2/3Account / Proxy / Identification</td><td>No restriction</td><td><span class="mono">CBPR_RestrictedFINXMax320Text_Extended</span></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">&lt;Prtry&gt;</span></td><td>IntermediaryAgent1/2/3Account / Proxy / Type / Proprietary</td><td>No restriction</td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="tag new">New</span></td></tr>
+</table>
+
+<div class="sec">4 · pacs.010-specific type change: CreditIdentification narrowed</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th>Element / Path</th><th>SR2025</th><th>SR2026</th><th style="width:90px">Impact</th></tr>
+<tr><td><span class="mono">&lt;CdtId&gt;</span></td><td>CreditInstruction / CreditIdentification</td><td>Max length: <strong>35 characters</strong> (<span class="mono">CBPR_RestrictedFINXMax35Text</span>)</td><td>Max length: <strong>16 characters</strong> (<span class="mono">CBPR_RestrictedFINXMax16Text</span>)</td><td><span class="tag chg">Breaking</span> — field length reduced by 54%; existing values &gt;16 chars will be invalid</td></tr>
+</table>
+
+<div class="sec">5 · Datatype change — agent identifier datatype upgrade for IntermediaryAgents</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th>Element / Path</th><th>SR2025 Datatype</th><th>SR2026 Datatype</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">&lt;IntrmyAgt1&gt;</span></td><td>CreditInstruction / IntermediaryAgent1</td><td><span class="mono">BranchAndFinancialInstitutionIdentification6</span> (base)</td><td><span class="mono">BranchAndFinancialInstitutionIdentification6__2</span> (new variant with account type restrictions)</td><td><span class="tag chg">Upgraded</span></td></tr>
+<tr><td><span class="mono">&lt;IntrmyAgt2&gt;</span></td><td>CreditInstruction / IntermediaryAgent2</td><td><span class="mono">BranchAndFinancialInstitutionIdentification6</span> (base)</td><td><span class="mono">BranchAndFinancialInstitutionIdentification6__2</span></td><td><span class="tag chg">Upgraded</span></td></tr>
+<tr><td><span class="mono">&lt;IntrmyAgt3&gt;</span></td><td>CreditInstruction / IntermediaryAgent3</td><td><span class="mono">BranchAndFinancialInstitutionIdentification6</span> (base)</td><td><span class="mono">BranchAndFinancialInstitutionIdentification6__2</span></td><td><span class="tag chg">Upgraded</span></td></tr>
+</table>
+<p style="font-size:12px;color:var(--color-text-secondary);margin:.5rem 0 0;">Note: The new <span class="mono">__2</span> variant introduces CBPR type restrictions on FinancialInstitutionIdentification sub-elements (hence the gained "!" indicator on IntrmyAgt1/2/3). SR2026 also introduced a new <span class="mono">BranchAndFinancialInstitutionIdentification6__3</span> variant for Creditor, CreditorAgent, Debtor, DebtorAgent paths.</p>
+
+<div class="sec">6 · Newly mandatory elements in SR2026</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th>Element / Path</th><th>SR2025</th><th>SR2026</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">&lt;Tp&gt;</span></td><td>CreditInstruction / CreditorAccount / Proxy / Type</td><td>Optional</td><td>Mandatory [1..1]</td><td><span class="tag mand">Mandatory</span></td></tr>
+<tr><td><span class="mono">&lt;Tp&gt;</span></td><td>CreditInstruction / CreditorAgentAccount / Proxy / Type</td><td>Optional</td><td>Mandatory [1..1]</td><td><span class="tag mand">Mandatory</span></td></tr>
+<tr><td><span class="mono">&lt;Tp&gt;</span></td><td>CreditInstruction / IntermediaryAgent1Account / Proxy / Type</td><td>Optional</td><td>Mandatory [1..1]</td><td><span class="tag mand">Mandatory</span></td></tr>
+<tr><td><span class="mono">&lt;Tp&gt;</span></td><td>CreditInstruction / IntermediaryAgent2Account / Proxy / Type</td><td>Optional</td><td>Mandatory [1..1]</td><td><span class="tag mand">Mandatory</span></td></tr>
+<tr><td><span class="mono">&lt;Tp&gt;</span></td><td>CreditInstruction / IntermediaryAgent3Account / Proxy / Type</td><td>Optional</td><td>Mandatory [1..1]</td><td><span class="tag mand">Mandatory</span></td></tr>
+</table>
+<p style="font-size:12px;color:var(--color-text-secondary);margin:.5rem 0 0;">Note: pacs.010 has no Debtor/Creditor postal address (FI message), so no TownName/Country mandates apply. Also no DebtorAccount or DebtorAgentAccount Proxy/Type in this message's mandatory scope.</p>
+
+<div class="sec">7 · Usage guideline text added in SR2026 (tags gained "!" indicator)</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th>Element / Path</th><th>New guideline in SR2026</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">&lt;IntrmyAgt1&gt;</span></td><td>CreditInstruction / IntermediaryAgent1</td><td>New CBPR type restrictions on inner FinancialInstitutionIdentification sub-elements via <span class="mono">BranchAndFinancialInstitutionIdentification6__2</span> datatype</td><td><span class="tag new">Added</span></td></tr>
+<tr><td><span class="mono">&lt;IntrmyAgt2&gt;</span></td><td>CreditInstruction / IntermediaryAgent2</td><td>Same — new CBPR type restrictions on inner elements</td><td><span class="tag new">Added</span></td></tr>
+<tr><td><span class="mono">&lt;IntrmyAgt3&gt;</span></td><td>CreditInstruction / IntermediaryAgent3</td><td>Same — new CBPR type restrictions on inner elements</td><td><span class="tag new">Added</span></td></tr>
+<tr><td><span class="mono">&lt;Issr&gt;</span></td><td>All Account / Identification / Other / Issuer paths</td><td>Multiple type-change guidelines: all Issuer fields now <span class="mono">CBPR_RestrictedFINXMax35Text</span> across DebtorAccount, DebtorAgentAccount, CreditorAgentAccount, CreditorAccount, IntermediaryAgent1/2/3Account</td><td><span class="tag new">Added</span></td></tr>
+<tr><td><span class="mono">&lt;Prtry&gt;</span></td><td>AccountSchemeName / Proprietary across all account paths</td><td>Multiple type-change guidelines: all Proprietary scheme name fields now <span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="tag new">Added</span></td></tr>
+</table>
+
+<div class="sec">8 · Usage guideline text removed (tags lost "!" indicator)</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th>Element</th><th>SR2025 guideline content</th><th>SR2026</th></tr>
+<tr><td><span class="mono">&lt;CharSet&gt;</span></td><td>BAH / CharacterSet</td><td><span class="mono">CBPR_Character_Set_Usage_TextualRule</span>: pointed to CBPR+ UHB</td><td><span class="tag rem">No guideline</span></td></tr>
+<tr><td><span class="mono">&lt;Fr&gt;</span></td><td>BAH / From</td><td>Comment: "When exchanged on SWIFT, 'From' must contain either BIC8 or BIC11; Additional Information may be used optionally"</td><td><span class="tag rem">Comment removed</span></td></tr>
+<tr><td><span class="mono">&lt;To&gt;</span></td><td>BAH / To</td><td>Inline usage guideline / Comment present</td><td><span class="tag rem">No guideline</span></td></tr>
+<tr><td><span class="mono">&lt;MktPrctc&gt;</span></td><td>BAH / MarketPractice</td><td><span class="mono">CBPR_Market_Practice_TextualRule</span> present</td><td><span class="tag rem">No guideline</span></td></tr>
+<tr><td><span class="mono">&lt;GrpHdr&gt;</span></td><td>GroupHeader (parent element)</td><td>Had "!" because child <span class="mono">&lt;MsgId&gt;</span> contained <span class="mono">CBPR_Message_Identification_TextualRule</span></td><td><span class="tag rem">Loses "!"</span> — TextualRule removed from MsgId; MsgId type restriction retained</td></tr>
+<tr><td><span class="mono">&lt;CdtrAcct&gt;</span></td><td>CreditInstruction / CreditorAccount</td><td>Had "!" because used <span class="mono">CashAccount38__2</span> variant with inner type restrictions</td><td><span class="tag rem">Loses "!"</span> — now uses <span class="mono">CashAccount38__1</span>; outer element still has inner sub-element guidelines</td></tr>
+<tr><td><span class="mono">&lt;CdtrAgtAcct&gt;</span></td><td>CreditInstruction / CreditorAgentAccount</td><td><span class="mono">CBPR_Creditor_Agent_Account_Guideline</span>: "It is recommended not to use CreditorAgentAccount unless mandated or bilaterally agreed"</td><td><span class="tag rem">Guideline removed</span></td></tr>
+<tr><td><span class="mono">&lt;DbtrAcct&gt;</span></td><td>CreditInstruction / DDTxInf / DebtorAccount</td><td><span class="mono">CBPR_Debtor_Account_Guideline</span>: "It is recommended not to use DebtorAgentAccount unless mandated or bilaterally agreed"</td><td><span class="tag rem">Guideline removed</span></td></tr>
+<tr><td><span class="mono">&lt;DbtrAgtAcct&gt;</span></td><td>CreditInstruction / DDTxInf / DebtorAgentAccount</td><td>Had "!" indicator (inner sub-element guidelines)</td><td><span class="tag rem">Loses "!"</span></td></tr>
+</table>
+
+<div class="sec">9 · New CBPR+ rules added in SR2026</div>
+<table>
+<tr><th>Rule name</th><th>Description</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">CBPR_BusinessMessageIdentifier_FormalRule</span></td><td>BAH BusinessMessageIdentifier must equal GroupHeader/MessageIdentification</td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">CBPR_From_Instructing_Agent_BIC_FormalRule</span></td><td>BAH "From" BIC must always match InstructingAgent BIC — unconditional, no CopyDuplicate exception</td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">CBPR_To_Instructed_Agent_BIC_1_FormalRule</span></td><td>BAH "To" BIC must match InstructedAgent BIC except where CopyDuplicate = COPY or CODU</td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">CBPR_To_Instructed_Agent_BIC_2_FormalRule</span></td><td>BAH "To" BIC must match InstructedAgent BIC if CopyDuplicate is absent</td><td><span class="tag new">New</span></td></tr>
+</table>
+
+<div class="sec">10 · CBPR+ rules removed in SR2026</div>
+<table>
+<tr><th>Rule name</th><th>What it did in SR2025</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">CBPR_From_To_Instructing_Instructed_Agent_BIC_1_FormalRule</span></td><td>Checked both BAH From (InstructingAgent) and To (InstructedAgent) BIC together when CopyDuplicate ≠ COPY/CODU</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_From_To_Instructing_Instructed_Agent_BIC_2_FormalRule</span></td><td>Checked both BAH From + To BIC together when CopyDuplicate absent</td><td><span class="tag rem">Removed</span> <span class="note">(split into separate rules)</span></td></tr>
+<tr><td><span class="mono">CBPR_Message_Identification_TextualRule</span></td><td>pacs.010-specific: "If no unique MessageIdentification can be generated, it should be populated with a copy of InstructionIdentification" — <em>pacs.010 specific</em></td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_GracePeriod_Hybrid_FormalRule</span></td><td>If AddressLine + other postal elements present: TownName &amp; Country mandatory; max 2 AddressLines</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_GracePeriod_Structured_FormalRule</span></td><td>If PostalAddress used without AddressLine, TownName &amp; Country must be present</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_GracePeriod_Unstructured_FormalRule</span></td><td>If only AddressLine present in PostalAddress, each line must not exceed 35 characters</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_Business_Service_TextualRule</span></td><td>Explained use of BizSvc for differentiated SWIFT processing</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_Business_Service_Usage_TextualRule</span></td><td>Specified swift.cbprplus.03 must be used as BizSvc value</td><td><span class="tag rem">Removed</span> <span class="note">(replaced by fixed value swift.cbprplus.04)</span></td></tr>
+<tr><td><span class="mono">CBPR_Character_Set_Usage_TextualRule</span></td><td>Pointed to CBPR+ UHB for CharacterSet usage on &lt;CharSet&gt;</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_Market_Practice_TextualRule</span></td><td>Usage guidance text for &lt;MktPrctc&gt;</td><td><span class="tag rem">Removed</span></td></tr>
+</table>
+
+<div class="sec">11 · Overview paragraph added in SR2026 (new in Message Functionality)</div>
+<table>
+<tr><th>SR2025</th><th>SR2026</th><th style="width:90px">Change</th></tr>
+<tr><td>No scenario description in Overview section</td><td>New paragraph added: <em>"This usage guideline can also support a scenario where the CCP has debit authority of the member's account (Debtor) and sends a pacs.010 to the Debtor Agent that is different than the Creditor Agent. A pacs.009 is sent to the Creditor Agent, through one or more agents."</em></td><td><span class="tag new">New</span></td></tr>
+</table>
+
+<div class="sec">12 · Document-level statistics</div>
+<table>
+<tr><th>Item</th><th>SR2025</th><th>SR2026</th></tr>
+<tr><td>Message type</td><td colspan="2">pacs.010.001.03 — FinancialInstitutionDirectDebit (Interbank Direct Debit)</td></tr>
+<tr><td>Publication date</td><td>21 March 2025</td><td>20 February 2026</td></tr>
+<tr><td>Release</td><td>CBPRPlus SR2025 — live November 2025; 31 UGs (incl. admi.024, camt.025)</td><td>CBPRPlus SR2026 — live November 2026; 30 UGs</td></tr>
+<tr><td>Total document pages</td><td>183</td><td>181</td></tr>
+<tr><td>Comments section in Restriction Summary</td><td>Present (pages 12, 13, 14, 19, 35, 36, 77, 78, 98…)</td><td>n.a. — all comments removed</td></tr>
+<tr><td>Fixed values in Restriction Summary</td><td>1 (page 103 — NbOfTxs=1)</td><td>3 (pages 13, 14, 96 — MsgDefIdr, BizSvc, NbOfTxs)</td></tr>
+<tr><td>BizSvc service identifier</td><td>swift.cbprplus.03</td><td>swift.cbprplus.04</td></tr>
+</table>
+
+</div>

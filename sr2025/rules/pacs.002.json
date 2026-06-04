@@ -1,0 +1,101 @@
+[
+    {
+        "rule_id": "PACS002_001",
+        "description": "Payment Status Report: Instructing Agent must be a Financial Institution Identification.",
+        "condition": "exists(Document.FIToFIPmtStsRpt.GrpHdr.InstgAgt)",
+        "mandatory_fields": [
+            "Document.FIToFIPmtStsRpt.GrpHdr.InstgAgt.FinInstnId"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PACS002_002",
+        "description": "Payment Status Report: Instructed Agent must be a Financial Institution Identification.",
+        "condition": "exists(Document.FIToFIPmtStsRpt.GrpHdr.InstdAgt)",
+        "mandatory_fields": [
+            "Document.FIToFIPmtStsRpt.GrpHdr.InstdAgt.FinInstnId"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PACS002_GRPSTS_VALID",
+        "description": "Group Status (GrpSts) must be a valid ExternalPaymentTransactionStatus code.",
+        "selector": "^Document\\.FIToFIPmtStsRpt\\.OrgnlGrpInfAndSts\\.GrpSts$",
+        "type": "codelist",
+        "list_name": "status_code",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PACS002_TXSTS_VALID",
+        "description": "Transaction Status (TxSts) must be a valid ExternalPaymentTransactionStatus code.",
+        "selector": "^Document\\.FIToFIPmtStsRpt\\.TxInfAndSts(\\[\\d+\\])?\\.TxSts$",
+        "type": "codelist",
+        "list_name": "status_code",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PACS002_RJCT_REQUIRES_RSN",
+        "description": "If TxSts = RJCT, StsRsnInf is mandatory.",
+        "selector": "^Document\\.FIToFIPmtStsRpt\\.TxInfAndSts(\\[\\d+\\])?\\.TxSts$",
+        "type": "expression",
+        "expression": "VALUE != 'RJCT' or any(k.startswith(KEY.rsplit('.TxSts',1)[0] + '.StsRsnInf') for k in DATA.keys())",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "When TxSts = RJCT, a <StsRsnInf> block with the rejection reason is mandatory.",
+        "fix": "Add <StsRsnInf><Rsn><Cd>AC01|AM04|...</Cd></Rsn></StsRsnInf> alongside <TxSts>RJCT</TxSts>."
+    },
+    {
+        "rule_id": "PACS002_PDNG_REQUIRES_RSN",
+        "description": "If TxSts = PDNG, StsRsnInf should be present to explain the pending reason.",
+        "selector": "^Document\\.FIToFIPmtStsRpt\\.TxInfAndSts(\\[\\d+\\])?\\.TxSts$",
+        "type": "expression",
+        "expression": "VALUE != 'PDNG' or any(k.startswith(KEY.rsplit('.TxSts',1)[0] + '.StsRsnInf') for k in DATA.keys())",
+        "severity": "WARNING",
+        "layer": 3,
+        "errorMessage": "When TxSts = PDNG, providing <StsRsnInf> explaining the pending reason is recommended.",
+        "fix": "Consider adding <StsRsnInf> with reason code PD01/PD02/PD03/etc."
+    },
+    {
+        "rule_id": "PACS002_RSN_CODE_VALID",
+        "description": "Status Reason Code must be a valid ISO 20022 status reason code.",
+        "selector": "^Document\\.FIToFIPmtStsRpt\\.(OrgnlGrpInfAndSts|TxInfAndSts(\\[\\d+\\])?)\\.StsRsnInf(\\[\\d+\\])?\\.Rsn\\.Cd$",
+        "type": "codelist",
+        "list_name": "return_reason",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PACS002_ORGNLMSGID_REQUIRED",
+        "description": "Original Message ID is mandatory in OrgnlGrpInfAndSts.",
+        "condition": "exists(Document.FIToFIPmtStsRpt.OrgnlGrpInfAndSts)",
+        "mandatory_fields": [
+            "Document.FIToFIPmtStsRpt.OrgnlGrpInfAndSts.OrgnlMsgId"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PACS002_ORGNLMSGNMID_REQUIRED",
+        "description": "Original Message Name ID is mandatory.",
+        "condition": "exists(Document.FIToFIPmtStsRpt.OrgnlGrpInfAndSts)",
+        "mandatory_fields": [
+            "Document.FIToFIPmtStsRpt.OrgnlGrpInfAndSts.OrgnlMsgNmId"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PACS002_ORGNL_REF_PRESENT",
+        "description": "Either OrgnlGrpInfAndSts or TxInfAndSts must be present (status reports must reference an original).",
+        "condition": "exists(Document.FIToFIPmtStsRpt)",
+        "expression": "exists(Document.FIToFIPmtStsRpt.OrgnlGrpInfAndSts) or exists(Document.FIToFIPmtStsRpt.TxInfAndSts)",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "A status report (pacs.002) must reference an original via <OrgnlGrpInfAndSts> or <TxInfAndSts>.",
+        "fix": "Add at least one of these blocks pointing to the original message being reported on."
+    }
+]

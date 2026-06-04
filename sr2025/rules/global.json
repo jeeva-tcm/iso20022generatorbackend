@@ -1,0 +1,352 @@
+[
+    {
+        "rule_id": "L3_CURRENCY_001",
+        "description": "Currency Decimal Precision Check",
+        "type": "currency_amount",
+        "selector": ".*Amt$",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3_COUNTRY_001",
+        "description": "Country Code Compliance (ISO 3166-1 Alpha-2)",
+        "type": "codelist",
+        "selector": ".*\\.Ctry$",
+        "list_name": "country",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3_CHRGBR_001",
+        "description": "Charge Bearer Code Validation",
+        "type": "codelist",
+        "selector": ".*ChrgBr$",
+        "list_name": "charge_bearer",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "E001",
+        "description": "Postal Address Coexistence Rule: If Address Line is absent, Town Name and Country must be present.",
+        "type": "expression",
+        "expression": "check_address(KEY)",
+        "selector": ".*PstlAdr$",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "W005",
+        "description": "Instruction ID is unusually long",
+        "type": "expression",
+        "expression": "len(str(VALUE)) <= 35",
+        "selector": ".*InstrId$",
+        "severity": "WARNING",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3_BIC_DIRECTORY_001",
+        "description": "BIC Existence in SWIFT Directory",
+        "type": "bic",
+        "selector": ".*BIC.*|.*AnyBIC.*",
+        "severity": "WARNING",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3_URGENT_DATE_001",
+        "description": "Urgent payments should normally be settled on the current date.",
+        "type": "expression",
+        "expression": "not (exists('SvcLvl.Cd') and 'URGT' in str(DATA.get('SvcLvl.Cd'))) or DATA.get('IntrBkSttlmDt') == datetime.now().strftime('%Y-%m-%d')",
+        "severity": "WARNING",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3-PURPOSE-LIMIT",
+        "description": "Conditional Amount Limit based on Purpose Code",
+        "type": "expression",
+        "selector": ".*Purp\\.Cd$",
+        "expression": "check_purpose_limit(KEY, VALUE)",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3_IBAN_CURR_001",
+        "description": "IBAN Based Currency Validation",
+        "type": "expression",
+        "selector": ".*DbtrAcct\\.Id\\.IBAN$",
+        "expression": "check_iban_currency(KEY, VALUE)",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3_LEI_NOT_BIC",
+        "description": "LEI cannot replace BIC for financial institution agents. CBPR+ requires BICFI.",
+        "layer": 3,
+        "severity": "ERROR",
+        "type": "expression",
+        "selector": ".*FinInstnId\\.LEI$",
+        "expression": "exists(KEY.rsplit('.LEI', 1)[0] + '.BICFI') if '.' in KEY else True"
+    },
+    {
+        "rule_id": "L3_INTRMY_ORDER_1",
+        "description": "IntrmyAgt2 cannot exist without IntrmyAgt1.",
+        "layer": 3,
+        "severity": "ERROR",
+        "condition": "exists('Document') or exists('BusMsg')",
+        "expression": "not any(k.endswith('IntrmyAgt2.FinInstnId.BICFI') for k in DATA.keys()) or any(k.endswith('IntrmyAgt1.FinInstnId.BICFI') for k in DATA.keys())"
+    },
+    {
+        "rule_id": "L3_INTRMY_ORDER_2",
+        "description": "IntrmyAgt3 cannot exist without IntrmyAgt2.",
+        "layer": 3,
+        "severity": "ERROR",
+        "condition": "exists('Document') or exists('BusMsg')",
+        "expression": "not any(k.endswith('IntrmyAgt3.FinInstnId.BICFI') for k in DATA.keys()) or any(k.endswith('IntrmyAgt2.FinInstnId.BICFI') for k in DATA.keys())"
+    },
+    {
+        "rule_id": "L3_PURPOSE_001",
+        "description": "ISO Purpose Code Validation (SR2025)",
+        "type": "codelist",
+        "selector": ".*Purp\\.Cd$",
+        "list_name": "purp",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3_CTGYPURP_001",
+        "description": "ISO Category Purpose Code Validation (SR2025)",
+        "type": "codelist",
+        "selector": ".*CtgyPurp\\.Cd$",
+        "list_name": "ctgypurp",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3_STTLM_CLRG_001",
+        "description": "If Settlement Method is CLRG (Clearing System), Clearing System (ClrSys) identity must be present.",
+        "condition": "any(k.endswith('.GrpHdr.SttlmInf.SttlmMtd') and DATA[k] == 'CLRG' for k in DATA.keys())",
+        "expression": "any(k.endswith('.GrpHdr.SttlmInf.ClrSys') for k in DATA.keys()) or any(k.endswith('.CdtTrfTxInf.SttlmInf.ClrSys') for k in DATA.keys())",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3_PARTY_EXCLUSIVITY",
+        "description": "Party Identification: Organization ID (/OrgId) and Private ID (/PrvtId) are mutually exclusive. Both cannot be present.",
+        "type": "expression",
+        "selector": ".*\\.Pty\\.Id$|.*\\.Dbtr\\.Id$|.*\\.Cdtr\\.Id$|.*\\.UltmtDbtr\\.Id$|.*\\.UltmtCdtr\\.Id$",
+        "expression": "not (exists(KEY + '.OrgId') and exists(KEY + '.PrvtId'))",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3_FININSTNID_COMPLETENESS",
+        "description": "Financial Institution Identification: Must contain either a BICFI or a Clearing System Member identification.",
+        "type": "expression",
+        "selector": ".*FinInstnId$",
+        "expression": "exists(KEY + '.BICFI') or exists(KEY + '.ClrSysMmbId')",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3_NAME_FOR_ID",
+        "description": "Party Identification: When an ID (Organisation /OrgId or Private /PrvtId) is provided, the Name field (/Nm) should also be included for reference.",
+        "type": "expression",
+        "selector": ".*\\.Pty$|.*\\.Dbtr$|.*\\.Cdtr$|.*\\.UltmtDbtr$|.*\\.UltmtCdtr$",
+        "expression": "not exists(KEY + '.Id') or exists(KEY + '.Nm')",
+        "severity": "WARNING",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3_ORG_SCHEME_VALIDATION",
+        "description": "Validation of scheme code for Organisation Identification. Allowed: LEI, DUNS, VAT, TXID, GIIN, CRN.",
+        "errorMessage": "Validation of scheme code for Organisation Identification. Allowed: LEI, DUNS, VAT, TXID, GIIN, CRN.",
+        "fix": "Use a valid Organisation scheme code like 'LEI' or 'DUNS'.",
+        "type": "expression",
+        "selector": ".*\\.OrgId\\.Othr\\.SchmeNm\\.Cd$",
+        "expression": "VALUE in ['LEI', 'DUNS', 'VAT', 'TXID', 'GIIN', 'CRN']",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3_PRVT_SCHEME_VALIDATION",
+        "description": "Validation of scheme code for Private Identification. Allowed: CCPT, DRLC, NIDN, SSSN, PASSPORT, NATIONALID.",
+        "errorMessage": "Validation of scheme code for Private Identification. Allowed: CCPT, DRLC, NIDN, SSSN, PASSPORT, NATIONALID.",
+        "fix": "Use a valid Private scheme code like 'CCPT' (Passport) or 'NIDN'.",
+        "type": "expression",
+        "selector": ".*\\.PrvtId\\.Othr\\.SchmeNm\\.Cd$",
+        "expression": "VALUE in ['CCPT', 'DRLC', 'NIDN', 'SSSN', 'PASSPORT', 'NATIONALID']",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3_SETTLEMENT_METHOD",
+        "description": "Settlement Method must be one of the ISO 20022 standard codes: INDA, INGA, CLRG, COVE",
+        "type": "expression",
+        "selector": ".*SttlmMtd$",
+        "expression": "VALUE in ['INDA', 'INGA', 'CLRG', 'COVE']",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3-BIZ-PARTY-NAME-ENTITY-MATCH-ORG",
+        "description": "Organisation identification cannot accompany personal name and vice versa (ENTITY_MISMATCH).",
+        "errorMessage": "ENTITY_MISMATCH: Organisation identification (OrgId) found with a non-corporate name. A corporate keyword (e.g., LTD, INC) is expected.",
+        "fix": "Ensure the <Nm> tag includes a corporate indicator like 'Ltd', 'Corp', or 'Inc', or use <PrvtId> if this is an individual.",
+        "type": "expression",
+        "selector": ".*\\.Dbtr$|.*\\.Cdtr$|.*\\.UltmtDbtr$|.*\\.UltmtCdtr$|.*\\.InitgPty$|.*\\.RltdPties$",
+        "condition": "exists(KEY + '.Id.OrgId')",
+        "expression": "not exists(KEY + '.Nm') or any(kw in str(DATA.get(KEY + '.Nm', '')).upper() for kw in ['LTD', 'LIMITED', 'PVT', 'PRIVATE', 'INC', 'CORP', 'BANK', 'PLC', 'COMPANY', 'GROUP', 'HOLDINGS'])",
+        "severity": "CRITICAL",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3-BIZ-PARTY-NAME-ENTITY-MATCH-PRVT",
+        "description": "Organisation identification cannot accompany personal name and vice versa (ENTITY_MISMATCH).",
+        "errorMessage": "ENTITY_MISMATCH: Private identification (PrvtId) found with a corporate name keyword.",
+        "fix": "Remove corporate keywords (e.g., 'Ltd', 'Corp') from the <Nm> field, or use <OrgId> if this is a company identification.",
+        "type": "expression",
+        "selector": ".*\\.Dbtr$|.*\\.Cdtr$|.*\\.UltmtDbtr$|.*\\.UltmtCdtr$|.*\\.InitgPty$|.*\\.RltdPties$",
+        "condition": "exists(KEY + '.Id.PrvtId')",
+        "expression": "not exists(KEY + '.Nm') or not any(kw in str(DATA.get(KEY + '.Nm', '')).upper() for kw in ['LTD', 'LIMITED', 'PVT', 'PRIVATE', 'INC', 'CORP', 'BANK', 'PLC', 'COMPANY', 'GROUP', 'HOLDINGS'])",
+        "severity": "CRITICAL",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3-MANDATORY-PAYMENT-PARTIES",
+        "description": "Debtor and Creditor are mandatory for all payment messages. For customer credit transfers (pacs.008, pacs.003), Debtor Agent and Creditor Agent are also required.",
+        "layer": 3,
+        "severity": "ERROR",
+        "condition": "any((k.startswith('Document.FIToFI') and 'FIToFIPmtStsRpt' not in k and 'FIToFIPmtCxlReq' not in k) or k.startswith('Document.FICdtTrf') or k.startswith('Document.CstmrCdtTrfInitn') or k.startswith('Document.PmtIndctn') for k in DATA.keys())",
+        "expression": "any('.Dbtr' in k for k in DATA.keys()) and any('.Cdtr' in k for k in DATA.keys()) and (any(k.startswith('Document.FICdtTrf') for k in DATA.keys()) or (any('.DbtrAgt' in k for k in DATA.keys()) and any('.CdtrAgt' in k for k in DATA.keys())))",
+        "errorMessage": "Mandatory Parties Missing: Debtor and Creditor must be provided. For customer credit transfers, Debtor Agent and Creditor Agent must also be included.",
+        "fix": "Ensure <Dbtr> and <Cdtr> blocks are included. For pacs.008/pacs.003, also include <DbtrAgt> and <CdtrAgt>."
+    },
+    {
+        "rule_id": "L3_APPHDR_PRTY_001",
+        "description": "AppHdr Priority Validation (HIGH, NORM, LOW)",
+        "type": "expression",
+        "selector": ".*AppHdr\\.Prty$",
+        "expression": "VALUE in ['HIGH', 'NORM', 'LOW']",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3_SVCLVL_CODE",
+        "description": "Service Level Code (SvcLvl/Cd) must be a valid ExternalServiceLevel1Code.",
+        "type": "codelist",
+        "selector": ".*\\.SvcLvl\\.Cd$",
+        "list_name": "service_level",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3_LCLINSTRM_CODE",
+        "description": "Local Instrument Code (LclInstrm/Cd) must be a valid ExternalLocalInstrument1Code.",
+        "type": "codelist",
+        "selector": ".*\\.LclInstrm\\.Cd$",
+        "list_name": "local_instrument",
+        "severity": "WARNING",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3_CLRSYS_CODE",
+        "description": "Clearing System Identification Code (ClrSys/Cd or ClrSysId/Cd) must be a valid ExternalCashClearingSystem1Code.",
+        "type": "codelist",
+        "selector": ".*\\.(ClrSys|ClrSysId)\\.Cd$",
+        "list_name": "clearing_system",
+        "severity": "WARNING",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3_ACCT_TYPE_CODE",
+        "description": "Cash Account Type Code (Acct/Tp/Cd) must be a valid ExternalCashAccountType1Code.",
+        "type": "codelist",
+        "selector": ".*Acct\\.Tp\\.Cd$",
+        "list_name": "account_type",
+        "severity": "WARNING",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3_ENTRY_STATUS_CODE",
+        "description": "Entry Status Code (Sts/Cd) must be a valid ExternalEntryStatus1Code.",
+        "type": "codelist",
+        "selector": ".*\\.Ntry(\\[\\d+\\])?\\.Sts\\.Cd$",
+        "list_name": "entry_status",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3_BIC_LENGTH",
+        "description": "BIC must be exactly 8 or 11 characters (XSD pattern allows it; this gives a clearer error).",
+        "type": "expression",
+        "selector": ".*\\.BICFI$|.*\\.AnyBIC$",
+        "expression": "len(str(VALUE).strip()) in (8, 11)",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "BIC must be exactly 8 or 11 characters.",
+        "fix": "A valid BIC is 8 chars (e.g. NDEAFIHH) or 11 chars including a 3-char branch (e.g. NDEAFIHHXXX)."
+    },
+    {
+        "rule_id": "L3_LEI_FORMAT",
+        "description": "LEI must be exactly 20 alphanumeric characters (ISO 17442).",
+        "type": "regex",
+        "selector": ".*\\.LEI$",
+        "pattern": "^[A-Z0-9]{18}[0-9]{2}$",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "L3_FRACTIONDIGITS_JPY",
+        "description": "JPY amounts cannot have decimal places.",
+        "type": "expression",
+        "selector": ".*Amt$",
+        "expression": "DATA.get(KEY + '@Ccy') != 'JPY' or '.' not in str(VALUE)",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "JPY (Japanese Yen) does not support decimal places.",
+        "fix": "Remove the decimal portion from the JPY amount (e.g. use '1000' instead of '1000.00')."
+    },
+    {
+        "rule_id": "L3_IBAN_UPPERCASE",
+        "description": "IBAN must contain only uppercase A-Z and digits 0-9.",
+        "type": "regex",
+        "selector": ".*\\.IBAN$",
+        "pattern": "^[A-Z]{2}[0-9]{2}[A-Z0-9]{1,30}$",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "IBAN must use only uppercase letters and digits with no spaces.",
+        "fix": "Remove any lowercase letters or whitespace from the IBAN value."
+    },
+    {
+        "rule_id": "L3_NM_NOT_EQ_BIC",
+        "description": "Party Name (Nm) should not be a BIC code \u2014 likely a mapping error.",
+        "type": "expression",
+        "selector": ".*\\.Nm$",
+        "expression": "not (len(str(VALUE).strip()) in (8, 11) and __import__('re').match(r'^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$', str(VALUE).strip()) is not None)",
+        "severity": "WARNING",
+        "layer": 3,
+        "errorMessage": "Party <Nm> looks like a BIC code rather than a name \u2014 verify the mapping.",
+        "fix": "Move the BIC value into <BICFI> and put the actual party name in <Nm>."
+    },
+    {
+        "rule_id": "L3_FAR_FUTURE_DATE",
+        "description": "Settlement / execution dates more than 1 year in the future are unusual.",
+        "type": "expression",
+        "selector": ".*\\.(IntrBkSttlmDt|ReqdExctnDt|ReqdColltnDt|SttlmDt)$",
+        "expression": "(__import__('datetime').datetime.strptime(str(VALUE)[:10], '%Y-%m-%d').date() - __import__('datetime').date.today()).days <= 366",
+        "severity": "WARNING",
+        "layer": 3,
+        "errorMessage": "Settlement / execution date is more than 1 year in the future.",
+        "fix": "Verify the date is correct. Future-dated payments beyond 12 months are unusual and may be rejected by clearing systems."
+    },
+    {
+        "rule_id": "GLOBAL_INTRMY_AGT1_REQUIRES_CDTR_AGT",
+        "description": "When IntrmyAgt1 is present, CdtrAgt must also be present. CBPR+ dependency rule: an intermediary agent requires a creditor agent to define the end of the payment chain.",
+        "condition": "any(re.search(r'\\.IntrmyAgt1[\\[.]', k) for k in DATA.keys())",
+        "type": "expression",
+        "expression": "any(re.search(r'\\.CdtrAgt[\\[.]', k) for k in DATA.keys())",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "IntrmyAgt1 (Intermediary Agent 1) is present but CdtrAgt (Creditor Agent) is missing. Per CBPR+ rules, a Creditor Agent must be present whenever an Intermediary Agent is specified.",
+        "fix": "Add <CdtrAgt><FinInstnId><BICFI>CREDITOR_BIC</BICFI></FinInstnId></CdtrAgt> to the transaction, or remove <IntrmyAgt1> if no intermediary routing is required."
+    }
+]

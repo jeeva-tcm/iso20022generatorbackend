@@ -1,0 +1,947 @@
+[
+    {
+        "rule_id": "PACS008_UETR_REQUIRED",
+        "description": "CBPR+: UETR is mandatory in pacs.008 even though the XSD declares it optional.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtId.UETR"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "UETR (Unique End-to-End Transaction Reference) is mandatory in pacs.008 under CBPR+.",
+        "fix": "Add a valid UUID v4 to <PmtId><UETR> (e.g., 4a1a0945-5772-409a-83ba-240e666e0267)."
+    },
+    {
+        "rule_id": "PACS008_DBTR_REQUIRED",
+        "description": "CBPR+: Debtor is mandatory in pacs.008.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Dbtr"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PACS008_CDTR_REQUIRED",
+        "description": "CBPR+: Creditor is mandatory in pacs.008.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Cdtr"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PACS008_DBTR_NM_REQUIRED",
+        "description": "CBPR+: Debtor Name is mandatory in pacs.008.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Dbtr) and not exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Dbtr.Id.OrgId.AnyBIC)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Dbtr.Nm"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PACS008_CDTR_NM_REQUIRED",
+        "description": "CBPR+: Creditor Name is mandatory in pacs.008.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Cdtr) and not exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Cdtr.Id.OrgId.AnyBIC)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Cdtr.Nm"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PACS008_DBTRACCT_REQUIRED",
+        "description": "CBPR+: Debtor Account is mandatory in customer credit transfers (pacs.008).",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.DbtrAcct"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "DbtrAcct is mandatory in pacs.008 \u2014 every customer payment must reference a debtor account.",
+        "fix": "Add <DbtrAcct><Id><IBAN>...</IBAN></Id></DbtrAcct> (or <Othr><Id>...</Id></Othr> for non-IBAN accounts)."
+    },
+    {
+        "rule_id": "PACS008_CDTRACCT_REQUIRED",
+        "description": "CBPR+: Creditor Account is mandatory in customer credit transfers (pacs.008).",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.CdtrAcct"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtrAcct is mandatory in pacs.008 \u2014 every customer payment must reference a creditor account.",
+        "fix": "Add <CdtrAcct><Id><IBAN>...</IBAN></Id></CdtrAcct> (or <Othr><Id>...</Id></Othr> for non-IBAN accounts)."
+    },
+    {
+        "rule_id": "PACS008_CHRGBR_REQUIRED",
+        "description": "CBPR+: ChrgBr (Charge Bearer) is mandatory in pacs.008.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgBr"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PACS008_INTRBKSTTLMDT_REQUIRED",
+        "description": "CBPR+: Interbank Settlement Date is mandatory.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrBkSttlmDt"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PACS008_INSTRPRTY_VALID",
+        "description": "Instruction Priority (InstrPrty) must be HIGH or NORM.",
+        "selector": "^Document\\.FIToFICstmrCdtTrf\\.CdtTrfTxInf(\\[\\d+\\])?\\.PmtTpInf\\.InstrPrty$",
+        "type": "codelist",
+        "list_name": "instrpr_enum",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PACS008_NO_LOOPBACK_BIC",
+        "description": "Debtor Agent BIC and Creditor Agent BIC must not be identical in pacs.008 (loopback).",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.DbtrAgt.FinInstnId.BICFI) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.CdtrAgt.FinInstnId.BICFI)",
+        "expression": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.DbtrAgt.FinInstnId.BICFI != Document.FIToFICstmrCdtTrf.CdtTrfTxInf.CdtrAgt.FinInstnId.BICFI",
+        "severity": "WARNING",
+        "layer": 3,
+        "errorMessage": "Debtor Agent BIC equals Creditor Agent BIC \u2014 verify this is not a loopback payment.",
+        "fix": "If you intend a same-bank transfer, this is acceptable; otherwise correct one of the agents."
+    },
+    {
+        "rule_id": "PACS008_INSTDAMT_REQUIRES_XCHGRATE",
+        "description": "If InstdAmt currency differs from IntrBkSttlmAmt currency, XchgRate must be present (FX transfer).",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstdAmt) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrBkSttlmAmt) and Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstdAmt@Ccy != Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrBkSttlmAmt@Ccy",
+        "mandatory_fields": [
+            "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.XchgRate"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "InstdAmt currency differs from IntrBkSttlmAmt currency but no XchgRate provided.",
+        "fix": "Add <XchgRate> with the FX rate used to derive IntrBkSttlmAmt from InstdAmt."
+    },
+    {
+        "rule_id": "PACS008_NO_XCHGRATE_IF_SAME_CCY",
+        "description": "If InstdAmt currency equals IntrBkSttlmAmt currency, XchgRate must NOT be present (no FX).",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstdAmt) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrBkSttlmAmt) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.XchgRate) and Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstdAmt@Ccy == Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrBkSttlmAmt@Ccy",
+        "expression": "False",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "XchgRate provided but InstdAmt and IntrBkSttlmAmt share the same currency \u2014 exchange rate not applicable.",
+        "fix": "Remove <XchgRate> when the instructed and settlement amounts are in the same currency."
+    },
+    {
+        "rule_id": "PACS008_CHRGSINF_REQUIRED_CRED",
+        "description": "When ChrgBr=CRED, at least one ChrgsInformation must be present (use Amt=0.00 if no charges taken).",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgBr) and Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgBr == 'CRED'",
+        "type": "expression",
+        "expression": "any(re.match(r'.*\\.CdtTrfTxInf(\\[\\d+\\])?\\.ChrgsInf', k) for k in DATA.keys())",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "ChrgBr=CRED requires at least one <ChrgsInf> block. If no charges are deducted, use <Amt Ccy=\"...\">0.00</Amt>.",
+        "fix": "Add <ChrgsInf><Amt Ccy=\"USD\">0.00</Amt><Agt><FinInstnId><BICFI>BANKUS33XXX</BICFI></FinInstnId></Agt></ChrgsInf> inside <CdtTrfTxInf>."
+    },
+    {
+        "rule_id": "PACS008_CHRGSINF_REQUIRES_AGT",
+        "description": "If ChrgsInf is present, an Agt (charge-bearing agent) must be inside it.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf.Agt"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Charges Information block present without <Agt> (the charge-bearing agent).",
+        "fix": "Add <Agt><FinInstnId><BICFI>...</BICFI></FinInstnId></Agt> inside <ChrgsInf>."
+    },
+    {
+        "rule_id": "PACS008_NBOFTXS_EQ_TX_COUNT",
+        "description": "NbOfTxs must equal the actual number of <CdtTrfTxInf> elements.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.NbOfTxs)",
+        "expression": "int(Document.FIToFICstmrCdtTrf.GrpHdr.NbOfTxs) == sum(1 for k in DATA.keys() if k.startswith('Document.FIToFICstmrCdtTrf.CdtTrfTxInf') and k.endswith('.PmtId.EndToEndId'))",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Group Header NbOfTxs does not match the actual number of CdtTrfTxInf blocks.",
+        "fix": "Update <NbOfTxs> to equal the count of <CdtTrfTxInf> transaction blocks present."
+    },
+    {
+        "rule_id": "PACS008_DBTRAGTACCT_REQUIRES_DBTRAGT",
+        "description": "DbtrAgtAcct may only be present if DbtrAgt is also present.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.DbtrAgtAcct)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.DbtrAgt"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PACS008_CDTRAGTACCT_REQUIRES_CDTRAGT",
+        "description": "CdtrAgtAcct may only be present if CdtrAgt is also present.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.CdtrAgtAcct)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.CdtrAgt"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "CBPR_R1",
+        "name": "CBPR_Priority_Instruction_Priority_FormalRule",
+        "description": "If AppHdr/Prty is present, its value must match CdtTrfTxInf/PmtTpInf/InstrPrty where present.",
+        "condition": "exists(AppHdr.Prty) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtTpInf.InstrPrty)",
+        "expression": "AppHdr.Prty == Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtTpInf.InstrPrty",
+        "selector": "AppHdr",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "AppHdr <Prty> must match CdtTrfTxInf <InstrPrty> when both are present.",
+        "fix": "Align <Prty> in AppHdr with <InstrPrty> in <PmtTpInf>."
+    },
+    {
+        "rule_id": "CBPR_R2",
+        "name": "CBPR_From_To_Instructing_Instructed_Agent_BIC_1_FormalRule",
+        "description": "When AppHdr/CpyDplct is not COPY or CODU: AppHdr/Fr BICFI must match CdtTrfTxInf/InstgAgt BICFI, and AppHdr/To BICFI must match CdtTrfTxInf/InstdAgt BICFI.",
+        "condition": "AppHdr.CpyDplct not in ('COPY','CODU')",
+        "expression": "AppHdr.Fr.FIId.FinInstnId.BICFI == Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstgAgt.FinInstnId.BICFI and AppHdr.To.FIId.FinInstnId.BICFI == Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstdAgt.FinInstnId.BICFI",
+        "selector": "AppHdr",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "AppHdr <Fr> BICFI must match <InstgAgt> BICFI and <To> BICFI must match <InstdAgt> BICFI (when CpyDplct is not COPY/CODU).",
+        "fix": "Align AppHdr <Fr>/<To> BICFIs with CdtTrfTxInf <InstgAgt>/<InstdAgt> BICFIs."
+    },
+    {
+        "rule_id": "CBPR_R3",
+        "name": "CBPR_From_To_Instructing_Instructed_Agent_BIC_2_FormalRule",
+        "description": "When AppHdr/CpyDplct is absent: AppHdr/Fr BICFI must match CdtTrfTxInf/InstgAgt BICFI, and AppHdr/To BICFI must match CdtTrfTxInf/InstdAgt BICFI.",
+        "condition": "not exists(AppHdr.CpyDplct)",
+        "expression": "AppHdr.Fr.FIId.FinInstnId.BICFI == Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstgAgt.FinInstnId.BICFI and AppHdr.To.FIId.FinInstnId.BICFI == Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstdAgt.FinInstnId.BICFI",
+        "selector": "AppHdr",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "AppHdr <Fr>/<To> BICFIs must match <InstgAgt>/<InstdAgt> BICFIs (when CpyDplct is absent).",
+        "fix": "Align AppHdr <Fr>/<To> BICFIs with CdtTrfTxInf <InstgAgt>/<InstdAgt> BICFIs."
+    },
+    {
+        "rule_id": "CBPR_R4",
+        "name": "CBPR_Character_Set_Usage",
+        "description": "Character set usage must comply with CBPR Plus UHB specifications (enforced by CBPR_COM_R1 in cbpr_common.json).",
+        "type": "textual",
+        "severity": "INFO",
+        "layer": 3,
+        "errorMessage": "Character set check is enforced globally by CBPR_COM_R1."
+    },
+    {
+        "rule_id": "CBPR_R5",
+        "name": "CBPR_Business_Message_Identifier",
+        "description": "BizMsgIdr must contain the MsgId from the GroupHeader of the underlying message.",
+        "condition": "exists(AppHdr.BizMsgIdr) and exists(Document.FIToFICstmrCdtTrf.GrpHdr.MsgId)",
+        "expression": "AppHdr.BizMsgIdr == Document.FIToFICstmrCdtTrf.GrpHdr.MsgId",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "AppHdr <BizMsgIdr> must match <GrpHdr><MsgId> in the underlying pacs.008 message.",
+        "fix": "Set <BizMsgIdr> equal to <GrpHdr><MsgId>."
+    },
+    {
+        "rule_id": "CBPR_R6",
+        "name": "CBPR_Message_Definition_Identifier",
+        "description": "MsgDefIdr must be formatted exactly as it appears in the namespace (pacs.008.001.08).",
+        "condition": "exists(AppHdr.MsgDefIdr)",
+        "expression": "AppHdr.MsgDefIdr == 'pacs.008.001.08'",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "AppHdr <MsgDefIdr> must be 'pacs.008.001.08' for pacs.008 messages.",
+        "fix": "Set <MsgDefIdr>pacs.008.001.08</MsgDefIdr> in AppHdr."
+    },
+    {
+        "rule_id": "CBPR_R7",
+        "name": "CBPR_Business_Service_TextualRule",
+        "description": "BizSvc may be used by SWIFT for differentiated processing. User-specific values require Service Administrator alignment.",
+        "type": "textual",
+        "severity": "WARNING",
+        "layer": 3,
+        "errorMessage": "AppHdr <BizSvc> value must be aligned with Service Administrator if using a user-specific value."
+    },
+    {
+        "rule_id": "CBPR_R8",
+        "name": "CBPR_Business_Service_Usage_TextualRule",
+        "description": "BizSvc must have the value 'swift.cbprplus.02' for pacs.008.",
+        "selector": "AppHdr.BizSvc",
+        "type": "expression",
+        "expression": "VALUE == 'swift.cbprplus.02'",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "AppHdr <BizSvc> must be 'swift.cbprplus.02' for pacs.008.",
+        "fix": "Set <BizSvc>swift.cbprplus.02</BizSvc> in AppHdr."
+    },
+    {
+        "rule_id": "CBPR_R9",
+        "name": "CBPR_Market_Practice_TextualRule",
+        "description": "MktPrctc may be used by SWIFT. User-specific values require Service Administrator alignment.",
+        "type": "textual",
+        "severity": "WARNING",
+        "layer": 3,
+        "errorMessage": "AppHdr <MktPrctc> value must be aligned with Service Administrator if user-specific."
+    },
+    {
+        "rule_id": "CBPR_R10",
+        "name": "CBPR_Related_Business_Application_Header",
+        "description": "If RltdBizMsg is present, it must contain Fr, To, BizMsgIdr, MsgDefIdr, and CreDtTm.",
+        "condition": "exists(AppHdr.RltdBizMsg)",
+        "expression": "exists(AppHdr.RltdBizMsg.Fr) and exists(AppHdr.RltdBizMsg.To) and exists(AppHdr.RltdBizMsg.BizMsgIdr) and exists(AppHdr.RltdBizMsg.MsgDefIdr) and exists(AppHdr.RltdBizMsg.CreDtTm)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "AppHdr <RltdBizMsg> must contain <Fr>, <To>, <BizMsgIdr>, <MsgDefIdr>, and <CreDtTm> from the referenced BAH.",
+        "fix": "Populate all mandatory BAH fields inside <RltdBizMsg>: Fr, To, BizMsgIdr, MsgDefIdr, CreDtTm."
+    },
+    {
+        "rule_id": "CBPR_R11",
+        "name": "CBPR_Related_BAH_Business_Service_TextualRule",
+        "description": "If RltdBizMsg is present, it should carry the BizSvc element.",
+        "condition": "exists(AppHdr.RltdBizMsg)",
+        "expression": "exists(AppHdr.RltdBizMsg.BizSvc)",
+        "type": "expression",
+        "severity": "WARNING",
+        "layer": 3,
+        "errorMessage": "AppHdr <RltdBizMsg> should include <BizSvc> when present.",
+        "fix": "Add <BizSvc> inside <RltdBizMsg>."
+    },
+    {
+        "rule_id": "CBPR_R12",
+        "name": "CBPR_Agent_Name_Postal_Address_ChrgsInf_FormalRule",
+        "description": "In CdtTrfTxInf/ChrgsInf/Agt/FinInstnId: Nm and PstlAdr must always be present together.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf.Agt.FinInstnId.Nm) or exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf.Agt.FinInstnId.PstlAdr)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf.Agt.FinInstnId.Nm) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf.Agt.FinInstnId.PstlAdr)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/ChrgsInf/Agt/FinInstnId: <Nm> and <PstlAdr> must both be present or both absent.",
+        "fix": "Add both <Nm> and <PstlAdr>, or remove both."
+    },
+    {
+        "rule_id": "CBPR_R13",
+        "name": "CBPR_Instruction_for_Creditor_Agent1_FormalRule",
+        "description": "InstrForCdtrAgt code HOLD is not allowed when CHQB is present.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstrForCdtrAgt.Cd) and 'CHQB' in values(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstrForCdtrAgt.Cd)",
+        "expression": "'HOLD' not in values(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstrForCdtrAgt.Cd)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/InstrForCdtrAgt: code HOLD must not be present when CHQB is present.",
+        "fix": "Remove HOLD from <InstrForCdtrAgt> when CHQB is used."
+    },
+    {
+        "rule_id": "CBPR_R14",
+        "name": "CBPR_Instruction_for_Creditor_Agent2_FormalRule",
+        "description": "InstrForCdtrAgt code TELB is not allowed when PHOB is present.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstrForCdtrAgt.Cd) and 'PHOB' in values(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstrForCdtrAgt.Cd)",
+        "expression": "'TELB' not in values(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstrForCdtrAgt.Cd)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/InstrForCdtrAgt: code TELB must not be present when PHOB is present.",
+        "fix": "Remove TELB from <InstrForCdtrAgt> when PHOB is used."
+    },
+    {
+        "rule_id": "CBPR_R15",
+        "name": "CBPR_Agent_National_only_TextualRule",
+        "description": "When DbtrAgt, CdtrAgt and all agents in between are in the same country, the clearing code alone may be used.",
+        "type": "textual",
+        "severity": "INFO",
+        "layer": 3,
+        "errorMessage": "Agent (national): ClrSysMmbId alone is permitted when all agents are in the same country."
+    },
+    {
+        "rule_id": "CBPR_R16",
+        "name": "CBPR_Agent_Option_1_TextualRule",
+        "description": "Agent identification option 1 (preferred): BICFI, optionally complemented with LEI.",
+        "type": "textual",
+        "severity": "INFO",
+        "layer": 3,
+        "errorMessage": "Agent Option 1 (preferred): use <BICFI>, optionally with <LEI>."
+    },
+    {
+        "rule_id": "CBPR_R17",
+        "name": "CBPR_Agent_Option_2",
+        "description": "Agent option 2: if ClrSysMmbId OR LEI is present (without BICFI), then both Nm AND PstlAdr must also be present.",
+        "type": "expression",
+        "expression": "all((not (robust_exists(k + '.ClrSysMmbId') or robust_exists(k + '.LEI'))) or robust_exists(k.replace('.FinInstnId', '.FinInstnId.Nm')) and robust_exists(k.replace('.FinInstnId', '.FinInstnId.PstlAdr')) for k in DATA.keys() if k.endswith('.FinInstnId') and not robust_exists(k + '.BICFI'))",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Agent Option 2: when ClrSysMmbId or LEI is used (without BICFI), <Nm> and <PstlAdr> must both be present.",
+        "fix": "Add <Nm> and <PstlAdr> inside <FinInstnId> when using ClrSysMmbId or LEI without BICFI."
+    },
+    {
+        "rule_id": "CBPR_R18",
+        "name": "CBPR_Agent_Option_3",
+        "description": "Agent option 3: if Nm is present (without BICFI, ClrSysMmbId, or LEI), PstlAdr with at minimum TwnNm and Ctry must be present.",
+        "type": "expression",
+        "expression": "all(not robust_exists(k.replace('.FinInstnId', '.FinInstnId.Nm')) or robust_exists(k.replace('.FinInstnId', '.FinInstnId.PstlAdr')) for k in DATA.keys() if k.endswith('.FinInstnId') and not robust_exists(k + '.BICFI') and not robust_exists(k + '.ClrSysMmbId') and not robust_exists(k + '.LEI'))",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Agent Option 3: when Nm is present without BICFI/ClrSysMmbId/LEI, a <PstlAdr> with at least <TwnNm> and <Ctry> must be present.",
+        "fix": "Add <PstlAdr> with <TwnNm> and <Ctry> inside <FinInstnId> when using Name-only identification."
+    },
+    {
+        "rule_id": "CBPR_R19",
+        "name": "CBPR_Agent_Point_To_Point_On_SWIFT",
+        "description": "BICFI is mandatory for DbtrAgt and CdtrAgt identification in pacs.008 (both on SWIFT network).",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.DbtrAgt) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.CdtrAgt)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.DbtrAgt.FinInstnId.BICFI) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.CdtrAgt.FinInstnId.BICFI)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Agent: <BICFI> is mandatory for both DbtrAgt and CdtrAgt in pacs.008 (SWIFT point-to-point).",
+        "fix": "Provide <BICFI> inside <FinInstnId> for both <DbtrAgt> and <CdtrAgt>."
+    },
+    {
+        "rule_id": "CBPR_R20",
+        "name": "CBPR_Agent_Name_Postal_Address_InstgRmbrsmntAgt_FormalRule",
+        "description": "In GrpHdr/SttlmInf/InstgRmbrsmntAgt/FinInstnId: Nm and PstlAdr must always be present together.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstgRmbrsmntAgt.FinInstnId.Nm) or exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstgRmbrsmntAgt.FinInstnId.PstlAdr)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstgRmbrsmntAgt.FinInstnId.Nm) and exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstgRmbrsmntAgt.FinInstnId.PstlAdr)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "GrpHdr/SttlmInf/InstgRmbrsmntAgt/FinInstnId: <Nm> and <PstlAdr> must both be present or both absent.",
+        "fix": "Add both <Nm> and <PstlAdr>, or remove both."
+    },
+    {
+        "rule_id": "CBPR_R21",
+        "name": "CBPR_GracePeriod_Structured_InstgRmbrsmntAgt",
+        "description": "In GrpHdr/SttlmInf/InstgRmbrsmntAgt/FinInstnId/PstlAdr: if AdrLine absent, TwnNm and Ctry must be present.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstgRmbrsmntAgt.FinInstnId.PstlAdr) and not exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstgRmbrsmntAgt.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstgRmbrsmntAgt.FinInstnId.PstlAdr.TwnNm) and exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstgRmbrsmntAgt.FinInstnId.PstlAdr.Ctry)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "GrpHdr/SttlmInf/InstgRmbrsmntAgt/FinInstnId/PstlAdr: <TwnNm> and <Ctry> mandatory when <AdrLine> absent.",
+        "fix": "Add <TwnNm> and <Ctry> inside <PstlAdr>."
+    },
+    {
+        "rule_id": "CBPR_R22",
+        "name": "CBPR_GracePeriod_Hybrid_InstgRmbrsmntAgt",
+        "description": "In GrpHdr/SttlmInf/InstgRmbrsmntAgt/FinInstnId/PstlAdr: if AdrLine and other element present, TwnNm and Ctry mandatory; max 2 AdrLine.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstgRmbrsmntAgt.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstgRmbrsmntAgt.FinInstnId.PstlAdr.TwnNm) and exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstgRmbrsmntAgt.FinInstnId.PstlAdr.Ctry) and count(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstgRmbrsmntAgt.FinInstnId.PstlAdr.AdrLine) <= 2",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "GrpHdr/SttlmInf/InstgRmbrsmntAgt/FinInstnId/PstlAdr: <TwnNm> and <Ctry> mandatory; max 2 <AdrLine>.",
+        "fix": "Add <TwnNm> and <Ctry>; limit <AdrLine> to 2."
+    },
+    {
+        "rule_id": "CBPR_R23",
+        "name": "CBPR_Hybrid_Postal_Address",
+        "description": "Hybrid address mode: when AdrLine is present, TwnNm and Ctry are mandatory and at least one AdrLine must be present. Detail structural fields (StrtNm, BldgNb, BldgNm, Flr, PstBx, Room, PstCd, Dept, SubDept, TwnLctnNm, DstrctNm, CtrySubDvsn) must NOT coexist with AdrLine.",
+        "type": "expression",
+        "expression": "all(not (any(k2.startswith(k.rsplit('.AdrLine',1)[0] + '.') and not k2.startswith(k.rsplit('.AdrLine',1)[0] + '.AdrLine') and k2.split('.')[-1] in ('StrtNm','BldgNb','BldgNm','Flr','PstBx','Room','PstCd','Dept','SubDept','TwnLctnNm','DstrctNm','CtrySubDvsn') for k2 in DATA.keys())) for k in DATA.keys() if '.PstlAdr.AdrLine' in k)",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "PstlAdr hybrid mode: detail structured fields (StrtNm, BldgNb, PstCd etc.) must not coexist with <AdrLine>. Use hybrid (TwnNm + Ctry + AdrLine) or pure structured (no AdrLine).",
+        "fix": "Remove StrtNm/BldgNb/PstCd/etc. and keep only TwnNm + Ctry alongside AdrLine, or remove AdrLine and use fully structured fields."
+    },
+    {
+        "rule_id": "CBPR_R23b",
+        "name": "CBPR_Hybrid_TwnNm_Ctry_Mandatory",
+        "description": "Hybrid address mode: when AdrLine is present, TwnNm and Ctry are both mandatory.",
+        "type": "expression",
+        "expression": "all(exists(k.rsplit('.AdrLine',1)[0] + '.TwnNm') and exists(k.rsplit('.AdrLine',1)[0] + '.Ctry') for k in DATA.keys() if '.PstlAdr.AdrLine' in k)",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "PstlAdr hybrid mode: <TwnNm> and <Ctry> are mandatory when <AdrLine> is present.",
+        "fix": "Add <TwnNm> and <Ctry> to the PstlAdr block that contains <AdrLine>."
+    },
+    {
+        "rule_id": "CBPR_R24",
+        "name": "CBPR_GracePeriod_Unstructured_InstgRmbrsmntAgt",
+        "description": "In GrpHdr/SttlmInf/InstgRmbrsmntAgt/FinInstnId/PstlAdr: if only AdrLine present, each must not exceed 35 characters.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstgRmbrsmntAgt.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "all(len(line) <= 35 for line in Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstgRmbrsmntAgt.FinInstnId.PstlAdr.AdrLine)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "GrpHdr/SttlmInf/InstgRmbrsmntAgt/FinInstnId/PstlAdr: each <AdrLine> max 35 characters.",
+        "fix": "Reduce each <AdrLine> to 35 characters or fewer."
+    },
+    {
+        "rule_id": "CBPR_R25",
+        "name": "CBPR_Agent_Name_Postal_Address_InstdRmbrsmntAgt_FormalRule",
+        "description": "In GrpHdr/SttlmInf/InstdRmbrsmntAgt/FinInstnId: Nm and PstlAdr must always be present together.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstdRmbrsmntAgt.FinInstnId.Nm) or exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstdRmbrsmntAgt.FinInstnId.PstlAdr)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstdRmbrsmntAgt.FinInstnId.Nm) and exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstdRmbrsmntAgt.FinInstnId.PstlAdr)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "GrpHdr/SttlmInf/InstdRmbrsmntAgt/FinInstnId: <Nm> and <PstlAdr> must both be present or both absent.",
+        "fix": "Add both <Nm> and <PstlAdr>, or remove both."
+    },
+    {
+        "rule_id": "CBPR_R26",
+        "name": "CBPR_GracePeriod_Structured_InstdRmbrsmntAgt",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstdRmbrsmntAgt.FinInstnId.PstlAdr) and not exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstdRmbrsmntAgt.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstdRmbrsmntAgt.FinInstnId.PstlAdr.TwnNm) and exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstdRmbrsmntAgt.FinInstnId.PstlAdr.Ctry)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "GrpHdr/SttlmInf/InstdRmbrsmntAgt/FinInstnId/PstlAdr: <TwnNm> and <Ctry> mandatory when <AdrLine> absent.",
+        "fix": "Add <TwnNm> and <Ctry>."
+    },
+    {
+        "rule_id": "CBPR_R27",
+        "name": "CBPR_GracePeriod_Hybrid_InstdRmbrsmntAgt",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstdRmbrsmntAgt.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstdRmbrsmntAgt.FinInstnId.PstlAdr.TwnNm) and exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstdRmbrsmntAgt.FinInstnId.PstlAdr.Ctry) and count(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstdRmbrsmntAgt.FinInstnId.PstlAdr.AdrLine) <= 2",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "GrpHdr/SttlmInf/InstdRmbrsmntAgt/FinInstnId/PstlAdr: <TwnNm> and <Ctry> mandatory; max 2 <AdrLine>.",
+        "fix": "Add <TwnNm> and <Ctry>; limit <AdrLine> to 2."
+    },
+    {
+        "rule_id": "CBPR_R28",
+        "name": "CBPR_GracePeriod_Unstructured_InstdRmbrsmntAgt",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstdRmbrsmntAgt.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "all(len(line) <= 35 for line in Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.InstdRmbrsmntAgt.FinInstnId.PstlAdr.AdrLine)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "GrpHdr/SttlmInf/InstdRmbrsmntAgt/FinInstnId/PstlAdr: each <AdrLine> max 35 characters.",
+        "fix": "Reduce each <AdrLine> to 35 characters or fewer."
+    },
+    {
+        "rule_id": "CBPR_R29",
+        "name": "CBPR_Agent_Name_Postal_Address_ThrdRmbrsmntAgt_FormalRule",
+        "description": "In GrpHdr/SttlmInf/ThrdRmbrsmntAgt/FinInstnId: Nm and PstlAdr must always be present together.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.ThrdRmbrsmntAgt.FinInstnId.Nm) or exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.ThrdRmbrsmntAgt.FinInstnId.PstlAdr)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.ThrdRmbrsmntAgt.FinInstnId.Nm) and exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.ThrdRmbrsmntAgt.FinInstnId.PstlAdr)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "GrpHdr/SttlmInf/ThrdRmbrsmntAgt/FinInstnId: <Nm> and <PstlAdr> must both be present or both absent.",
+        "fix": "Add both <Nm> and <PstlAdr>, or remove both."
+    },
+    {
+        "rule_id": "CBPR_R30",
+        "name": "CBPR_GracePeriod_Structured_ThrdRmbrsmntAgt",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.ThrdRmbrsmntAgt.FinInstnId.PstlAdr) and not exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.ThrdRmbrsmntAgt.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.ThrdRmbrsmntAgt.FinInstnId.PstlAdr.TwnNm) and exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.ThrdRmbrsmntAgt.FinInstnId.PstlAdr.Ctry)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "GrpHdr/SttlmInf/ThrdRmbrsmntAgt/FinInstnId/PstlAdr: <TwnNm> and <Ctry> mandatory when <AdrLine> absent.",
+        "fix": "Add <TwnNm> and <Ctry>."
+    },
+    {
+        "rule_id": "CBPR_R31",
+        "name": "CBPR_GracePeriod_Hybrid_ThrdRmbrsmntAgt",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.ThrdRmbrsmntAgt.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.ThrdRmbrsmntAgt.FinInstnId.PstlAdr.TwnNm) and exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.ThrdRmbrsmntAgt.FinInstnId.PstlAdr.Ctry) and count(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.ThrdRmbrsmntAgt.FinInstnId.PstlAdr.AdrLine) <= 2",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "GrpHdr/SttlmInf/ThrdRmbrsmntAgt/FinInstnId/PstlAdr: <TwnNm> and <Ctry> mandatory; max 2 <AdrLine>.",
+        "fix": "Add <TwnNm> and <Ctry>; limit <AdrLine> to 2."
+    },
+    {
+        "rule_id": "CBPR_R32",
+        "name": "CBPR_GracePeriod_Unstructured_ThrdRmbrsmntAgt",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.ThrdRmbrsmntAgt.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "all(len(line) <= 35 for line in Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf.ThrdRmbrsmntAgt.FinInstnId.PstlAdr.AdrLine)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "GrpHdr/SttlmInf/ThrdRmbrsmntAgt/FinInstnId/PstlAdr: each <AdrLine> max 35 characters.",
+        "fix": "Reduce each <AdrLine> to 35 characters or fewer."
+    },
+    {
+        "rule_id": "CBPR_R33",
+        "name": "CBPR_Related_Remit_Info_Remit_Info_Mutually_Exclusive_FormalRule",
+        "description": "CdtTrfTxInf/RltdRmtInf and CdtTrfTxInf/RmtInf are mutually exclusive.",
+        "expression": "not (exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.RltdRmtInf) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.RmtInf))",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf: <RltdRmtInf> and <RmtInf> are mutually exclusive.",
+        "fix": "Use either <RltdRmtInf> or <RmtInf>, not both."
+    },
+    {
+        "rule_id": "CBPR_R34",
+        "name": "CBPR_Remittance_Mutually_Exclusive_FormalRule",
+        "description": "CdtTrfTxInf/RmtInf/Ustrd and CdtTrfTxInf/RmtInf/Strd are mutually exclusive.",
+        "expression": "not (exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.RmtInf.Ustrd) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.RmtInf.Strd))",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/RmtInf: <Ustrd> and <Strd> are mutually exclusive.",
+        "fix": "Use either <Ustrd> or <Strd> remittance, not both."
+    },
+    {
+        "rule_id": "CBPR_R35",
+        "name": "CBPR_CRED_FormalRule",
+        "description": "If CdtTrfTxInf/ChrgBr is CRED, at least one ChrgsInf must be present (use zero amount if no charges taken).",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgBr) and Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgBr == 'CRED'",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf: <ChrgsInf> is mandatory when <ChrgBr> is CRED.",
+        "fix": "Add <ChrgsInf> with zero <Amt> if no charges are taken."
+    },
+    {
+        "rule_id": "CBPR_R36",
+        "name": "CBPR_Instruction_For_Creditor_Presence_Code_FormalRule",
+        "description": "Each code value in InstrForCdtrAgt/Cd can only be used once.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstrForCdtrAgt.Cd)",
+        "expression": "all_unique(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstrForCdtrAgt.Cd)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/InstrForCdtrAgt: each <Cd> value must appear at most once.",
+        "fix": "Remove duplicate code values from <InstrForCdtrAgt>."
+    },
+    {
+        "rule_id": "CBPR_R37",
+        "name": "CBPR_DEBT_FormalRule",
+        "description": "If CdtTrfTxInf/ChrgBr is DEBT, a maximum of one ChrgsInf occurrence is allowed.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgBr) and Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgBr == 'DEBT'",
+        "expression": "count(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf) <= 1",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf: maximum 1 occurrence of <ChrgsInf> allowed when <ChrgBr> is DEBT.",
+        "fix": "Reduce <ChrgsInf> to at most one occurrence when <ChrgBr> is DEBT."
+    },
+    {
+        "rule_id": "CBPR_R38",
+        "name": "CBPR_Instruction_Identification_FormalRule",
+        "description": "PmtId/InstrId must not start or end with '/' and must not contain '//'",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtId.InstrId)",
+        "expression": "not re.match(r'(^/.*|.*/$|.*//.*)', Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtId.InstrId)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/PmtId/InstrId must not start/end with '/' or contain '//'.",
+        "fix": "Remove leading/trailing slashes and double slashes from <InstrId>."
+    },
+    {
+        "rule_id": "CBPR_R39",
+        "name": "CBPR_Local_Instrument_Guideline",
+        "description": "LclInstrm: the preferred option is coded information (Cd over Prtry).",
+        "type": "textual",
+        "severity": "INFO",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/LclInstrm: coded information (<Cd>) is preferred over proprietary (<Prtry>)."
+    },
+    {
+        "rule_id": "CBPR_R40",
+        "name": "CBPR_Category_Purpose_Guideline",
+        "description": "CtgyPurp: the preferred option is coded information (Cd over Prtry).",
+        "type": "textual",
+        "severity": "INFO",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/CtgyPurp: coded information (<Cd>) is preferred over proprietary (<Prtry>)."
+    },
+    {
+        "rule_id": "CBPR_R41",
+        "name": "CBPR_Interbank_Settlement_Currency_FormalRule",
+        "description": "CdtTrfTxInf/IntrBkSttlmAmt/Ccy must not be XAU, XAG, XPD, or XPT.",
+        "selector": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrBkSttlmAmt@Ccy",
+        "type": "expression",
+        "expression": "VALUE not in ('XAU','XAG','XPD','XPT')",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/IntrBkSttlmAmt: <Ccy> must not be a commodity code (XAU/XAG/XPD/XPT).",
+        "fix": "Use a valid ISO 4217 currency code."
+    },
+    {
+        "rule_id": "CBPR_R42",
+        "name": "CBPR_DEBT_Rule_1_TextualRule",
+        "description": "DEBT same-currency: ChrgsInf mandatory only for prepaid charges; zero amount not allowed for prepaid.",
+        "type": "textual",
+        "severity": "WARNING",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf (DEBT, same currency): ChrgsInf mandatory only for prepaid charges; zero amount not allowed for prepaid."
+    },
+    {
+        "rule_id": "CBPR_R43",
+        "name": "CBPR_DEBT_Rule_2_TextualRule",
+        "description": "DEBT cross-currency: ChrgsInf mandatory only for prepaid charges; zero amount not allowed.",
+        "type": "textual",
+        "severity": "WARNING",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf (DEBT, cross currency): ChrgsInf mandatory only for prepaid charges; zero amount not allowed for prepaid."
+    },
+    {
+        "rule_id": "CBPR_R44",
+        "name": "CBPR_SHAR_TextualRule",
+        "description": "SHAR: ChrgsInf mandatory if a deduct is taken by the agent.",
+        "type": "textual",
+        "severity": "WARNING",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf (SHAR): <ChrgsInf> is mandatory when a deduct is taken."
+    },
+    {
+        "rule_id": "CBPR_R45",
+        "name": "CBPR_GracePeriod_Structured_ChrgsInf",
+        "description": "In CdtTrfTxInf/ChrgsInf/Agt/FinInstnId/PstlAdr: if AdrLine absent, TwnNm and Ctry must be present.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf.Agt.FinInstnId.PstlAdr) and not exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf.Agt.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf.Agt.FinInstnId.PstlAdr.TwnNm) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf.Agt.FinInstnId.PstlAdr.Ctry)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/ChrgsInf/Agt/FinInstnId/PstlAdr: <TwnNm> and <Ctry> mandatory when <AdrLine> absent.",
+        "fix": "Add <TwnNm> and <Ctry>."
+    },
+    {
+        "rule_id": "CBPR_R46",
+        "name": "CBPR_GracePeriod_Hybrid_ChrgsInf",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf.Agt.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf.Agt.FinInstnId.PstlAdr.TwnNm) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf.Agt.FinInstnId.PstlAdr.Ctry) and count(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf.Agt.FinInstnId.PstlAdr.AdrLine) <= 2",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/ChrgsInf/Agt/FinInstnId/PstlAdr: <TwnNm> and <Ctry> mandatory; max 2 <AdrLine>.",
+        "fix": "Add <TwnNm> and <Ctry>; limit <AdrLine> to 2."
+    },
+    {
+        "rule_id": "CBPR_R47",
+        "name": "CBPR_GracePeriod_Unstructured_ChrgsInf",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf.Agt.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "all(len(line) <= 35 for line in Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf.Agt.FinInstnId.PstlAdr.AdrLine)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/ChrgsInf/Agt/FinInstnId/PstlAdr: each <AdrLine> max 35 characters.",
+        "fix": "Reduce each <AdrLine> to 35 characters or fewer."
+    },
+    {
+        "rule_id": "CBPR_R48",
+        "name": "CBPR_Agent_Name_Postal_Address_PrvsInstgAgt1_FormalRule",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt1.FinInstnId.Nm) or exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt1.FinInstnId.PstlAdr)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt1.FinInstnId.Nm) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt1.FinInstnId.PstlAdr)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/PrvsInstgAgt1/FinInstnId: <Nm> and <PstlAdr> must both be present or both absent.",
+        "fix": "Add both <Nm> and <PstlAdr>, or remove both."
+    },
+    {
+        "rule_id": "CBPR_R49",
+        "name": "CBPR_GracePeriod_Structured_PrvsInstgAgt1",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt1.FinInstnId.PstlAdr) and not exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt1.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt1.FinInstnId.PstlAdr.TwnNm) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt1.FinInstnId.PstlAdr.Ctry)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/PrvsInstgAgt1/PstlAdr: <TwnNm> and <Ctry> mandatory when <AdrLine> absent.",
+        "fix": "Add <TwnNm> and <Ctry>."
+    },
+    {
+        "rule_id": "CBPR_R50",
+        "name": "CBPR_GracePeriod_Hybrid_PrvsInstgAgt1",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt1.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt1.FinInstnId.PstlAdr.TwnNm) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt1.FinInstnId.PstlAdr.Ctry) and count(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt1.FinInstnId.PstlAdr.AdrLine) <= 2",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/PrvsInstgAgt1/PstlAdr: <TwnNm> and <Ctry> mandatory; max 2 <AdrLine>.",
+        "fix": "Add <TwnNm> and <Ctry>; limit <AdrLine> to 2."
+    },
+    {
+        "rule_id": "CBPR_R51",
+        "name": "CBPR_GracePeriod_Unstructured_PrvsInstgAgt1",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt1.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "all(len(line) <= 35 for line in Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt1.FinInstnId.PstlAdr.AdrLine)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/PrvsInstgAgt1/PstlAdr: each <AdrLine> max 35 characters.",
+        "fix": "Reduce each <AdrLine> to 35 characters or fewer."
+    },
+    {
+        "rule_id": "CBPR_R52",
+        "name": "CBPR_Agent_Name_Postal_Address_PrvsInstgAgt2_FormalRule",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt2.FinInstnId.Nm) or exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt2.FinInstnId.PstlAdr)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt2.FinInstnId.Nm) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt2.FinInstnId.PstlAdr)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/PrvsInstgAgt2/FinInstnId: <Nm> and <PstlAdr> must both be present or both absent.",
+        "fix": "Add both <Nm> and <PstlAdr>, or remove both."
+    },
+    {
+        "rule_id": "CBPR_R53",
+        "name": "CBPR_GracePeriod_Structured_PrvsInstgAgt2",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt2.FinInstnId.PstlAdr) and not exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt2.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt2.FinInstnId.PstlAdr.TwnNm) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt2.FinInstnId.PstlAdr.Ctry)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/PrvsInstgAgt2/PstlAdr: <TwnNm> and <Ctry> mandatory when <AdrLine> absent.",
+        "fix": "Add <TwnNm> and <Ctry>."
+    },
+    {
+        "rule_id": "CBPR_R54",
+        "name": "CBPR_GracePeriod_Hybrid_PrvsInstgAgt2",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt2.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt2.FinInstnId.PstlAdr.TwnNm) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt2.FinInstnId.PstlAdr.Ctry) and count(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt2.FinInstnId.PstlAdr.AdrLine) <= 2",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/PrvsInstgAgt2/PstlAdr: <TwnNm> and <Ctry> mandatory; max 2 <AdrLine>.",
+        "fix": "Add <TwnNm> and <Ctry>; limit <AdrLine> to 2."
+    },
+    {
+        "rule_id": "CBPR_R55",
+        "name": "CBPR_GracePeriod_Unstructured_PrvsInstgAgt2",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt2.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "all(len(line) <= 35 for line in Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt2.FinInstnId.PstlAdr.AdrLine)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/PrvsInstgAgt2/PstlAdr: each <AdrLine> max 35 characters.",
+        "fix": "Reduce each <AdrLine> to 35 characters or fewer."
+    },
+    {
+        "rule_id": "CBPR_R56",
+        "name": "CBPR_Agent_Name_Postal_Address_PrvsInstgAgt3_FormalRule",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt3.FinInstnId.Nm) or exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt3.FinInstnId.PstlAdr)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt3.FinInstnId.Nm) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt3.FinInstnId.PstlAdr)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/PrvsInstgAgt3/FinInstnId: <Nm> and <PstlAdr> must both be present or both absent.",
+        "fix": "Add both <Nm> and <PstlAdr>, or remove both."
+    },
+    {
+        "rule_id": "CBPR_R57",
+        "name": "CBPR_GracePeriod_Structured_PrvsInstgAgt3",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt3.FinInstnId.PstlAdr) and not exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt3.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt3.FinInstnId.PstlAdr.TwnNm) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt3.FinInstnId.PstlAdr.Ctry)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/PrvsInstgAgt3/PstlAdr: <TwnNm> and <Ctry> mandatory when <AdrLine> absent.",
+        "fix": "Add <TwnNm> and <Ctry>."
+    },
+    {
+        "rule_id": "CBPR_R58",
+        "name": "CBPR_GracePeriod_Hybrid_PrvsInstgAgt3",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt3.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt3.FinInstnId.PstlAdr.TwnNm) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt3.FinInstnId.PstlAdr.Ctry) and count(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt3.FinInstnId.PstlAdr.AdrLine) <= 2",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/PrvsInstgAgt3/PstlAdr: <TwnNm> and <Ctry> mandatory; max 2 <AdrLine>.",
+        "fix": "Add <TwnNm> and <Ctry>; limit <AdrLine> to 2."
+    },
+    {
+        "rule_id": "CBPR_R59",
+        "name": "CBPR_GracePeriod_Unstructured_PrvsInstgAgt3",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt3.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "all(len(line) <= 35 for line in Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PrvsInstgAgt3.FinInstnId.PstlAdr.AdrLine)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/PrvsInstgAgt3/PstlAdr: each <AdrLine> max 35 characters.",
+        "fix": "Reduce each <AdrLine> to 35 characters or fewer."
+    },
+    {
+        "rule_id": "CBPR_R60",
+        "name": "CBPR_Agent_Name_Postal_Address_IntrmyAgt1_FormalRule",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt1.FinInstnId.Nm) or exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt1.FinInstnId.PstlAdr)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt1.FinInstnId.Nm) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt1.FinInstnId.PstlAdr)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/IntrmyAgt1/FinInstnId: <Nm> and <PstlAdr> must both be present or both absent.",
+        "fix": "Add both <Nm> and <PstlAdr>, or remove both."
+    },
+    {
+        "rule_id": "CBPR_R61",
+        "name": "CBPR_GracePeriod_Structured_IntrmyAgt1",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt1.FinInstnId.PstlAdr) and not exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt1.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt1.FinInstnId.PstlAdr.TwnNm) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt1.FinInstnId.PstlAdr.Ctry)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/IntrmyAgt1/PstlAdr: <TwnNm> and <Ctry> mandatory when <AdrLine> absent.",
+        "fix": "Add <TwnNm> and <Ctry>."
+    },
+    {
+        "rule_id": "CBPR_R62",
+        "name": "CBPR_GracePeriod_Hybrid_IntrmyAgt1",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt1.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt1.FinInstnId.PstlAdr.TwnNm) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt1.FinInstnId.PstlAdr.Ctry) and count(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt1.FinInstnId.PstlAdr.AdrLine) <= 2",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/IntrmyAgt1/PstlAdr: <TwnNm> and <Ctry> mandatory; max 2 <AdrLine>.",
+        "fix": "Add <TwnNm> and <Ctry>; limit <AdrLine> to 2."
+    },
+    {
+        "rule_id": "CBPR_R63",
+        "name": "CBPR_GracePeriod_Unstructured_IntrmyAgt1",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt1.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "all(len(line) <= 35 for line in Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt1.FinInstnId.PstlAdr.AdrLine)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/IntrmyAgt1/PstlAdr: each <AdrLine> max 35 characters.",
+        "fix": "Reduce each <AdrLine> to 35 characters or fewer."
+    },
+    {
+        "rule_id": "CBPR_R64",
+        "name": "CBPR_Agent_Name_Postal_Address_IntrmyAgt2_FormalRule",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt2.FinInstnId.Nm) or exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt2.FinInstnId.PstlAdr)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt2.FinInstnId.Nm) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt2.FinInstnId.PstlAdr)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/IntrmyAgt2/FinInstnId: <Nm> and <PstlAdr> must both be present or both absent.",
+        "fix": "Add both <Nm> and <PstlAdr>, or remove both."
+    },
+    {
+        "rule_id": "CBPR_R65",
+        "name": "CBPR_GracePeriod_Structured_IntrmyAgt2",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt2.FinInstnId.PstlAdr) and not exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt2.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt2.FinInstnId.PstlAdr.TwnNm) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt2.FinInstnId.PstlAdr.Ctry)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/IntrmyAgt2/PstlAdr: <TwnNm> and <Ctry> mandatory when <AdrLine> absent.",
+        "fix": "Add <TwnNm> and <Ctry>."
+    },
+    {
+        "rule_id": "CBPR_R66",
+        "name": "CBPR_GracePeriod_Hybrid_IntrmyAgt2",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt2.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt2.FinInstnId.PstlAdr.TwnNm) and exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt2.FinInstnId.PstlAdr.Ctry) and count(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt2.FinInstnId.PstlAdr.AdrLine) <= 2",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/IntrmyAgt2/PstlAdr: <TwnNm> and <Ctry> mandatory; max 2 <AdrLine>.",
+        "fix": "Add <TwnNm> and <Ctry>; limit <AdrLine> to 2."
+    },
+    {
+        "rule_id": "CBPR_R67",
+        "name": "CBPR_GracePeriod_Unstructured_IntrmyAgt2",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt2.FinInstnId.PstlAdr.AdrLine)",
+        "expression": "all(len(line) <= 35 for line in Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrmyAgt2.FinInstnId.PstlAdr.AdrLine)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtTrfTxInf/IntrmyAgt2/PstlAdr: each <AdrLine> max 35 characters.",
+        "fix": "Reduce each <AdrLine> to 35 characters or fewer."
+    }
+]

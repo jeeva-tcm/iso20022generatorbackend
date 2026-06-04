@@ -1,0 +1,30 @@
+{
+    "description": "ExternalPaymentTransactionStatus1Code (pacs.002 TxSts) + group statuses",
+    "codes": [
+        "ACCC",
+        "ACCP",
+        "ACFC",
+        "ACIS",
+        "ACPD",
+        "ACSC",
+        "ACSP",
+        "ACTC",
+        "ACWC",
+        "ACWP",
+        "BLCK",
+        "CANC",
+        "CPUC",
+        "PART",
+        "PATC",
+        "PDNG",
+        "PEND",
+        "PRCS",
+        "PRES",
+        "RCVD",
+        "REJT",
+        "RJCT",
+        "RJTW",
+        "STLM",
+        "STUD"
+    ]
+}

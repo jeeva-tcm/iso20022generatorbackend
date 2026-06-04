@@ -1,0 +1,23 @@
+{
+    "description": "ExternalServiceLevel1Code (ISO 20022 / SWIFT CBPR+ SR2025)",
+    "codes": [
+        "G001",
+        "G002",
+        "G003",
+        "G004",
+        "BKTR",
+        "INST",
+        "NPCA",
+        "NUGP",
+        "NURG",
+        "PRPT",
+        "SDVA",
+        "SEPA",
+        "SVEA",
+        "SVEX",
+        "SVPA",
+        "SVPX",
+        "URGP",
+        "URNS"
+    ]
+}

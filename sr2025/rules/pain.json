@@ -1,0 +1,190 @@
+[
+    {
+        "rule_id": "L3-PAIN-MANDATORY-PARTIES",
+        "description": "Debtor, Creditor, Debtor Agent, and Creditor Agent are mandatory for PAIN messages (e.g. pain.001).",
+        "layer": 3,
+        "severity": "ERROR",
+        "condition": "'pain.002' not in DATA.get('AppHdr.MsgDefIdr', '')",
+        "expression": "any('.Dbtr' in k for k in DATA.keys()) and any('.Cdtr' in k for k in DATA.keys()) and any('.DbtrAgt' in k for k in DATA.keys()) and any('.CdtrAgt' in k for k in DATA.keys())",
+        "errorMessage": "Mandatory Parties Missing: Debtor, Creditor, Debtor Agent, and Creditor Agent must be provided in the message.",
+        "fix": "Ensure that the message contains <Dbtr>, <Cdtr>, <DbtrAgt>, and <CdtrAgt> blocks as required by payment instructions."
+    },
+    {
+        "rule_id": "L3-PAIN002-PARTY-PLACEMENT",
+        "description": "In pain.002, party elements must be placed under <OrgnlTxRef>.",
+        "layer": 3,
+        "severity": "ERROR",
+        "condition": "'pain.002' in DATA.get('AppHdr.MsgDefIdr', '')",
+        "expression": "all(('.OrgnlTxRef' in k or ('.Dbtr' not in k and '.Cdtr' not in k and '.DbtrAgt' not in k and '.CdtrAgt' not in k)) for k in DATA.keys() if any(p in k for p in ['.Dbtr', '.Cdtr', '.DbtrAgt', '.CdtrAgt']))",
+        "errorMessage": "Invalid structure: Party elements must be placed under <OrgnlTxRef> in pain.002 message.",
+        "fix": "If provided, <Dbtr>, <Cdtr>, <DbtrAgt>, and <CdtrAgt> must be present within <OrgnlTxRef>."
+    },
+    {
+        "rule_id": "PAIN001_NBOFTXS_REQUIRED",
+        "description": "pain.001: GrpHdr.NbOfTxs is mandatory.",
+        "condition": "exists(Document.CstmrCdtTrfInitn.GrpHdr)",
+        "mandatory_fields": [
+            "Document.CstmrCdtTrfInitn.GrpHdr.NbOfTxs"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PAIN001_INITGPTY_REQUIRED",
+        "description": "pain.001: Initiating Party (InitgPty) is mandatory.",
+        "condition": "exists(Document.CstmrCdtTrfInitn.GrpHdr)",
+        "mandatory_fields": [
+            "Document.CstmrCdtTrfInitn.GrpHdr.InitgPty"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PAIN001_INITGPTY_NM_REQUIRED",
+        "description": "pain.001: Initiating Party Name (InitgPty/Nm) is mandatory.",
+        "condition": "exists(Document.CstmrCdtTrfInitn.GrpHdr.InitgPty)",
+        "mandatory_fields": [
+            "Document.CstmrCdtTrfInitn.GrpHdr.InitgPty.Nm"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PAIN001_PMTMTD_MUST_BE_TRF",
+        "description": "pain.001: Payment Method must be 'TRF' for credit transfer initiation.",
+        "selector": "^Document\\.CstmrCdtTrfInitn\\.PmtInf(\\[\\d+\\])?\\.PmtMtd$",
+        "type": "expression",
+        "expression": "VALUE == 'TRF'",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Payment Method (PmtMtd) must be 'TRF' for pain.001 (Customer Credit Transfer Initiation).",
+        "fix": "Set <PmtMtd>TRF</PmtMtd>."
+    },
+    {
+        "rule_id": "PAIN001_PMTINF_REQUIRED",
+        "description": "pain.001: At least one PmtInf block is mandatory.",
+        "condition": "exists(Document.CstmrCdtTrfInitn)",
+        "mandatory_fields": [
+            "Document.CstmrCdtTrfInitn.PmtInf"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PAIN001_DBTR_NM_REQUIRED",
+        "description": "pain.001: PmtInf.Dbtr.Nm is mandatory.",
+        "selector": "^Document\\.CstmrCdtTrfInitn\\.PmtInf(\\[\\d+\\])?\\.Dbtr$",
+        "type": "expression",
+        "expression": "exists(KEY + '.Nm')",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "PmtInf.Dbtr requires a <Nm> element.",
+        "fix": "Add <Nm>Debtor Name</Nm> inside <Dbtr>."
+    },
+    {
+        "rule_id": "PAIN001_REQDEXCTNDT_REQUIRED",
+        "description": "pain.001: PmtInf.ReqdExctnDt is mandatory.",
+        "selector": "^Document\\.CstmrCdtTrfInitn\\.PmtInf(\\[\\d+\\])?$",
+        "type": "expression",
+        "expression": "exists(KEY + '.ReqdExctnDt') or exists(KEY + '.ReqdExctnDt.Dt') or exists(KEY + '.ReqdExctnDt.DtTm')",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "PmtInf must contain <ReqdExctnDt> (Requested Execution Date).",
+        "fix": "Add <ReqdExctnDt><Dt>YYYY-MM-DD</Dt></ReqdExctnDt> inside each <PmtInf>."
+    },
+    {
+        "rule_id": "PAIN001_SEPA_CCY_EUR",
+        "description": "pain.001: If Service Level is SEPA, Settlement Currency must be EUR.",
+        "selector": "^Document\\.CstmrCdtTrfInitn\\.PmtInf(\\[\\d+\\])?\\.PmtTpInf\\.SvcLvl\\.Cd$",
+        "type": "expression",
+        "expression": "VALUE != 'SEPA' or all(v == 'EUR' for k, v in DATA.items() if k.endswith('.InstdAmt@Ccy'))",
+        "severity": "WARNING",
+        "layer": 3,
+        "errorMessage": "SEPA payments must use EUR as the instructed amount currency.",
+        "fix": "Either change the currency to EUR or use a non-SEPA Service Level."
+    },
+    {
+        "rule_id": "PAIN001_CHRGBR_REQUIRED",
+        "description": "pain.001: ChrgBr is mandatory.",
+        "selector": "^Document\\.CstmrCdtTrfInitn\\.PmtInf(\\[\\d+\\])?$",
+        "type": "expression",
+        "expression": "exists(KEY + '.ChrgBr')",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "PmtInf must contain <ChrgBr> (Charge Bearer).",
+        "fix": "Add <ChrgBr> with one of DEBT, CRED, SHAR, or SLEV."
+    },
+    {
+        "rule_id": "PAIN001_BTCHBOOKG_BOOLEAN",
+        "description": "pain.001: BtchBookg must be a valid boolean ('true' or 'false').",
+        "selector": "^Document\\.CstmrCdtTrfInitn\\.PmtInf(\\[\\d+\\])?\\.BtchBookg$",
+        "type": "expression",
+        "expression": "str(VALUE).lower() in ['true', 'false', '1', '0']",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "BtchBookg must be a boolean value (true or false).",
+        "fix": "Set <BtchBookg>true</BtchBookg> or <BtchBookg>false</BtchBookg>."
+    },
+    {
+        "rule_id": "PAIN008_PMTMTD_MUST_BE_DD",
+        "description": "pain.008: Payment Method must be 'DD' for direct debit initiation.",
+        "selector": "^Document\\.CstmrDrctDbtInitn\\.PmtInf(\\[\\d+\\])?\\.PmtMtd$",
+        "type": "expression",
+        "expression": "VALUE == 'DD'",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Payment Method (PmtMtd) must be 'DD' for pain.008 (Customer Direct Debit Initiation).",
+        "fix": "Set <PmtMtd>DD</PmtMtd>."
+    },
+    {
+        "rule_id": "PAIN008_MNDTID_REQUIRED",
+        "description": "pain.008: Mandate ID (MndtRltdInf.MndtId) is mandatory inside each direct debit transaction.",
+        "selector": "^Document\\.CstmrDrctDbtInitn\\.PmtInf(\\[\\d+\\])?\\.DrctDbtTxInf(\\[\\d+\\])?\\.DrctDbtTx\\.MndtRltdInf$",
+        "type": "expression",
+        "expression": "exists(KEY + '.MndtId')",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Mandate Related Information must contain <MndtId>.",
+        "fix": "Add <MndtId>UNIQUE-MANDATE-ID</MndtId> inside <MndtRltdInf>."
+    },
+    {
+        "rule_id": "PAIN002_GRPSTS_REQUIRED",
+        "description": "pain.002: OrgnlGrpInfAndSts must contain a status.",
+        "selector": "^Document\\.CstmrPmtStsRpt\\.OrgnlGrpInfAndSts$",
+        "type": "expression",
+        "expression": "exists(KEY + '.GrpSts') or exists(KEY + '.StsRsnInf')",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "OrgnlGrpInfAndSts must contain GrpSts or StsRsnInf.",
+        "fix": "Add <GrpSts>ACSC|ACCP|ACSP|PART|RJCT|PDNG|...</GrpSts>."
+    },
+    {
+        "rule_id": "PAIN002_GRPSTS_VALID",
+        "description": "pain.002: Group Status (GrpSts) must be a valid ExternalPaymentTransactionStatus code.",
+        "selector": "^Document\\.CstmrPmtStsRpt\\.OrgnlGrpInfAndSts\\.GrpSts$",
+        "type": "codelist",
+        "list_name": "status_code",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PAIN002_TXSTS_VALID",
+        "description": "pain.002: Transaction Status (TxSts) must be a valid ExternalPaymentTransactionStatus code.",
+        "selector": "^Document\\.CstmrPmtStsRpt\\.OrgnlPmtInfAndSts(\\[\\d+\\])?\\.TxInfAndSts(\\[\\d+\\])?\\.TxSts$",
+        "type": "codelist",
+        "list_name": "status_code",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PAIN002_RJCT_REQUIRES_RSN",
+        "description": "pain.002: If TxSts = RJCT, StsRsnInf is mandatory.",
+        "selector": "^Document\\.CstmrPmtStsRpt\\.OrgnlPmtInfAndSts(\\[\\d+\\])?\\.TxInfAndSts(\\[\\d+\\])?\\.TxSts$",
+        "type": "expression",
+        "expression": "VALUE != 'RJCT' or any(k.startswith(KEY.rsplit('.TxSts',1)[0] + '.StsRsnInf') for k in DATA.keys())",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "When TxSts = RJCT, a <StsRsnInf> block with the rejection reason is mandatory.",
+        "fix": "Add <StsRsnInf><Rsn><Cd>...</Cd></Rsn></StsRsnInf> alongside <TxSts>RJCT</TxSts>."
+    }
+]

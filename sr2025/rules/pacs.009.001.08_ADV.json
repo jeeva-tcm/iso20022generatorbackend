@@ -1,0 +1,136 @@
+[
+    {
+        "rule_id": "CBPR_R8",
+        "name": "CBPR_Business_Service_Usage_ADV",
+        "description": "BizSvc must have the value 'swift.cbprplus.adv.03' for pacs.009 ADV.",
+        "selector": "AppHdr.BizSvc",
+        "type": "expression",
+        "expression": "VALUE == 'swift.cbprplus.adv.03'",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "AppHdr <BizSvc> must be 'swift.cbprplus.adv.03' for pacs.009 ADV.",
+        "fix": "Set <BizSvc>swift.cbprplus.adv.03</BizSvc> in AppHdr."
+    },
+    {
+        "rule_id": "CBPR_R8B",
+        "name": "CBPR_Message_Definition_Identifier_ADV",
+        "description": "MsgDefIdr must be 'pacs.009.001.08' for pacs.009 ADV messages.",
+        "condition": "exists(AppHdr.MsgDefIdr)",
+        "expression": "AppHdr.MsgDefIdr == 'pacs.009.001.08'",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "AppHdr <MsgDefIdr> must be 'pacs.009.001.08' for pacs.009 ADV messages.",
+        "fix": "Set <MsgDefIdr>pacs.009.001.08</MsgDefIdr> in AppHdr."
+    },
+    {
+        "rule_id": "ADV_STTLM_MTD_COVE_ONLY",
+        "description": "Settlement Method (SttlmMtd) for pacs.009 ADV must be COVE.",
+        "selector": ".*\\.GrpHdr\\.SttlmInf\\.SttlmMtd$",
+        "expression": "VALUE == 'COVE'",
+        "errorMessage": "For pacs.009 ADV messages, Settlement Method must be COVE. INDA, INGA, and CLRG are not allowed.",
+        "fix": "Change <SttlmMtd> to COVE and provide the required reimbursement agent details.",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "ADV_MSG_ID_NOT_BLANK",
+        "description": "Message ID (MsgId) must not be blank.",
+        "selector": ".*\\.MsgId$",
+        "expression": "len(str(VALUE).strip()) > 0",
+        "errorMessage": "Message ID (MsgId) cannot be empty or whitespace.",
+        "fix": "Provide a unique identification for the message.",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "ADV_NB_OF_TXS_ONE",
+        "description": "Number of Transactions (NbOfTxs) must be equal to 1 for Advantage messages.",
+        "selector": ".*\\.NbOfTxs$",
+        "expression": "str(VALUE) == '1'",
+        "errorMessage": "pacs.009 ADV message must contain exactly one transaction.",
+        "fix": "Set <NbOfTxs> to 1 and ensure only one <CdtTrfTxInf> block is present.",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "ADV_INTR_BK_STTLM_AMT_POSITIVE",
+        "description": "Interbank Settlement Amount must be strictly positive.",
+        "selector": ".*\\.IntrBkSttlmAmt$",
+        "expression": "float(VALUE) > 0",
+        "errorMessage": "Settlement amount must be greater than zero.",
+        "fix": "Enter a positive number for the settlement amount.",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "ADV_CCY_FORMAT",
+        "description": "Currency (Ccy) must be a valid 3-letter uppercase ISO code.",
+        "selector": ".*@Ccy$",
+        "expression": "re.match(r'^[A-Z]{3}$', str(VALUE))",
+        "errorMessage": "Invalid currency code format.",
+        "fix": "Use a standard 3-letter uppercase ISO currency code (e.g., USD, EUR, GBP).",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "ADV_ISODATE_FORMAT",
+        "description": "Date fields must follow ISO 8601 format (YYYY-MM-DD).",
+        "selector": ".*(Dt|DtTm)$",
+        "expression": "re.match(r'^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}.*)?$', str(VALUE))",
+        "errorMessage": "Invalid date format.",
+        "fix": "Ensure the date follows the YYYY-MM-DD format.",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "ADV_BICFI_FORMAT",
+        "description": "BICFI must be 8 or 11 uppercase alphanumeric characters.",
+        "selector": ".*\\.BICFI$",
+        "expression": "re.match(r'^[A-Z0-9]{8}([A-Z0-9]{3})?$', str(VALUE))",
+        "errorMessage": "Invalid BICFI format.",
+        "fix": "Provide a valid 8 or 11 character Bank Identifier Code.",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "ADV_UETR_FORMAT",
+        "description": "UETR must follow UUID v4 format.",
+        "selector": ".*\\.UETR$",
+        "expression": "re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$', str(VALUE).lower())",
+        "errorMessage": "Invalid UETR format.",
+        "fix": "Use a valid UUID v4 for the UETR field.",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "ADV_INSTR_ID_VAL",
+        "description": "Instruction ID (InstrId) must not be blank and max 16 chars.",
+        "selector": ".*\\.InstrId$",
+        "expression": "len(str(VALUE).strip()) > 0 and len(str(VALUE)) <= 16",
+        "errorMessage": "Invalid Instruction ID.",
+        "fix": "Provide a non-blank Instruction ID up to 16 characters.",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "ADV_END_TO_END_ID_VAL",
+        "description": "End to End ID must not be blank and max 35 chars.",
+        "selector": ".*\\.EndToEndId$",
+        "expression": "len(str(VALUE).strip()) > 0 and len(str(VALUE)) <= 35",
+        "errorMessage": "Invalid End to End ID.",
+        "fix": "Provide a non-blank End to End ID up to 35 characters.",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "ADV_DUPLICATE_CHECK",
+        "description": "Combined check for MsgId + UETR duplication.",
+        "condition": "exists(Document.FICdtTrf.GrpHdr.MsgId) and exists(Document.FICdtTrf.CdtTrfTxInf.PmtId.UETR)",
+        "expression": "check_msg_uetr_duplicate(DATA.get('Document.FICdtTrf.GrpHdr.MsgId'), DATA.get('Document.FICdtTrf.CdtTrfTxInf.PmtId.UETR'))",
+        "errorMessage": "Duplicate MsgId and UETR combination detected in history.",
+        "fix": "Ensure the combination of Message ID and UETR is unique for every transaction.",
+        "severity": "WARNING",
+        "layer": 3
+    }
+]

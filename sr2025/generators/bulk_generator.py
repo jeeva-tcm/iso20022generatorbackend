@@ -2615,50 +2615,7 @@ def _gen_pain008(selected: set, idx: int) -> str:
 
 # ── Single Message Generator ───────────────────────────────────────────────────
 
-def post_process_xml_for_sr2026(xml: str, message_type: str) -> str:
-    """Post-processor for SR2026 XML messages to update BizSvc in BAH."""
-    msg_lower = message_type.lower()
-    
-    # Update BizSvc version mapping
-    if "pacs.009" in msg_lower:
-        if "cov" in msg_lower:
-            xml = xml.replace("<BizSvc>swift.cbprplus.cov.02</BizSvc>", "<BizSvc>swift.cbprplus.cov.04</BizSvc>")
-            xml = xml.replace("<BizSvc>swift.cbprplus.cov.03</BizSvc>", "<BizSvc>swift.cbprplus.cov.04</BizSvc>")
-        elif "adv" in msg_lower:
-            xml = xml.replace("<BizSvc>swift.cbprplus.adv.02</BizSvc>", "<BizSvc>swift.cbprplus.adv.04</BizSvc>")
-            xml = xml.replace("<BizSvc>swift.cbprplus.adv.03</BizSvc>", "<BizSvc>swift.cbprplus.adv.04</BizSvc>")
-        else:
-            xml = xml.replace("<BizSvc>swift.cbprplus.02</BizSvc>", "<BizSvc>swift.cbprplus.04</BizSvc>")
-            xml = xml.replace("<BizSvc>swift.cbprplus.03</BizSvc>", "<BizSvc>swift.cbprplus.04</BizSvc>")
-    elif "pacs.003" in msg_lower:
-        xml = xml.replace("<BizSvc>swift.cbprplus.02</BizSvc>", "<BizSvc>swift.cbprplus.03</BizSvc>")
-    else:
-        # Standard fallback for other types (pacs.008, pacs.004, pacs.002, pacs.010, camt.*, pain.*)
-        # Note: pacs.008, pacs.004, pacs.002, pacs.010 all require swift.cbprplus.04 under SR2026.
-        # camt.052, camt.053, camt.054, camt.055, camt.056, camt.058, camt.060, camt.105 all require swift.cbprplus.03.
-        if any(c in msg_lower for c in ["camt.052", "camt.053", "camt.054", "camt.055", "camt.056", "camt.058", "camt.060", "camt.105"]):
-            xml = xml.replace("<BizSvc>swift.cbprplus.02</BizSvc>", "<BizSvc>swift.cbprplus.03</BizSvc>")
-            xml = xml.replace("<BizSvc>swift.cbprplus.03</BizSvc>", "<BizSvc>swift.cbprplus.03</BizSvc>")
-        else:
-            xml = xml.replace("<BizSvc>swift.cbprplus.02</BizSvc>", "<BizSvc>swift.cbprplus.04</BizSvc>")
-            xml = xml.replace("<BizSvc>swift.cbprplus.03</BizSvc>", "<BizSvc>swift.cbprplus.04</BizSvc>")
-
-    return xml
-
-
 def generate_single_xml(
-    message_type: str,
-    selected_blocks: List[str],
-    idx: int,
-    version: str = "SR2025"
-) -> str:
-    xml = _generate_single_xml_raw(message_type, selected_blocks, idx)
-    if version == "SR2026":
-        xml = post_process_xml_for_sr2026(xml, message_type)
-    return xml
-
-
-def _generate_single_xml_raw(
     message_type: str,
     selected_blocks: List[str],
     idx: int
@@ -2809,14 +2766,13 @@ def _generate_single_xml_raw(
 def generate_bulk_messages(
     message_type: str,
     count: int,
-    selected_blocks: List[str],
-    version: str = "SR2025"
+    selected_blocks: List[str]
 ) -> List[Dict[str, Any]]:
     
     results = []
     for i in range(1, count + 1):
         try:
-            xml = generate_single_xml(message_type, selected_blocks, i, version=version)
+            xml = generate_single_xml(message_type, selected_blocks, i)
             results.append({
                 "index": i,
                 "xml": xml,

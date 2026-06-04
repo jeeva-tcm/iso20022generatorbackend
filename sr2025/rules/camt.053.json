@@ -1,0 +1,51 @@
+[
+    {
+        "rule_id": "CAMT053_001",
+        "description": "Bank Statement: Account Owner identification must include Name, Postal Address, or ID.",
+        "condition": "exists(Document.BkToCstmrStmt.Stmt.Acct.Ownr)",
+        "expression": "exists(Document.BkToCstmrStmt.Stmt.Acct.Ownr.Nm) or exists(Document.BkToCstmrStmt.Stmt.Acct.Ownr.PstlAdr) or exists(Document.BkToCstmrStmt.Stmt.Acct.Ownr.Id)",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "CAMT053_STMT_ID_REQUIRED",
+        "description": "Each Statement must have an Id.",
+        "selector": "^Document\\.BkToCstmrStmt\\.Stmt(\\[\\d+\\])?$",
+        "type": "expression",
+        "expression": "exists(KEY + '.Id')",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Statement must contain <Id>.",
+        "fix": "Add <Id>STMT-YYYYMMDD-NNN</Id> inside <Stmt>."
+    },
+    {
+        "rule_id": "CAMT053_ENTRY_STATUS_VALID",
+        "description": "Entry status code (Sts.Cd) must be a valid ExternalEntryStatus code.",
+        "selector": "^Document\\.BkToCstmrStmt\\.Stmt(\\[\\d+\\])?\\.Ntry(\\[\\d+\\])?\\.Sts\\.Cd$",
+        "type": "codelist",
+        "list_name": "entry_status",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "CAMT053_ENTRY_CDTDBT_VALID",
+        "description": "Entry CdtDbtInd must be CRDT or DBIT.",
+        "selector": "^Document\\.BkToCstmrStmt\\.Stmt(\\[\\d+\\])?\\.Ntry(\\[\\d+\\])?\\.CdtDbtInd$",
+        "type": "expression",
+        "expression": "VALUE in ('CRDT', 'DBIT')",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtDbtInd must be 'CRDT' (credit) or 'DBIT' (debit).",
+        "fix": "Set <CdtDbtInd>CRDT</CdtDbtInd> or <CdtDbtInd>DBIT</CdtDbtInd>."
+    },
+    {
+        "rule_id": "CAMT053_PRD_DATES_ORDERED",
+        "description": "Statement period FrDtTm must be ≤ ToDtTm.",
+        "condition": "exists(Document.BkToCstmrStmt.Stmt.FrToDt.FrDtTm) and exists(Document.BkToCstmrStmt.Stmt.FrToDt.ToDtTm)",
+        "expression": "Document.BkToCstmrStmt.Stmt.FrToDt.FrDtTm <= Document.BkToCstmrStmt.Stmt.FrToDt.ToDtTm",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Statement period 'From' date/time is after 'To' date/time.",
+        "fix": "Ensure <FrDtTm> ≤ <ToDtTm> in <FrToDt>."
+    }
+]

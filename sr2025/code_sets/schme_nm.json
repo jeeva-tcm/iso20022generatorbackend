@@ -1,0 +1,105 @@
+{
+  "schmeNm_validation": {
+    "valid_cd_codes": [
+      { 
+        "code": "LEI", 
+        "meaning": "Legal Entity Identifier", 
+        "recommended": true,
+        "usage": "Best for identifying legal entities globally",
+        "validation": {
+          "length": 20,
+          "pattern": "^[A-Z0-9]{20}$",
+          "algorithm": "ISO 7064 MOD 97-10",
+          "fix": "Ensure LEI has exactly 20 characters (A-Z, 0-9) and correct checksum (last 2 digits)."
+        }
+      },
+      { 
+        "code": "TXID", 
+        "meaning": "Tax Identification", 
+        "recommended": false,
+        "usage": "Used for tax identification numbers" 
+      },
+      { 
+        "code": "BANK", 
+        "meaning": "Bank Identifier", 
+        "recommended": false,
+        "usage": "Used for bank identification"
+      },
+      { 
+        "code": "CUST", 
+        "meaning": "Customer ID", 
+        "recommended": true,
+        "usage": "Safe fallback for customer identifiers"
+      },
+      { 
+        "code": "COID", 
+        "meaning": "Company Identifier", 
+        "recommended": false,
+        "usage": "Used for company identification"
+      },
+      { 
+        "code": "TXNR", 
+        "meaning": "Tax Number", 
+        "recommended": false,
+        "usage": "Used for tax number references"
+      },
+      { 
+        "code": "DUNS", 
+        "meaning": "Dun & Bradstreet Number", 
+        "recommended": false,
+        "usage": "Business credit and identity verification"
+      },
+      { 
+        "code": "GIIN", 
+        "meaning": "Global Intermediary Identification Number", 
+        "recommended": false,
+        "usage": "Used for FATCA compliance identification"
+      }
+    ],
+    "invalid_cd_codes": [
+      { "code": "Passport", "reason": "Used for individuals, not organizations", "fix": "Use LEI or CUST instead" },
+      { "code": "PAN",      "reason": "Not a standard ISO scheme", "fix": "Use TXID for tax-related identification" },
+      { "code": "AADHAR",   "reason": "Not ISO compliant, region-specific individual ID", "fix": "Use LEI for organization identification" },
+      { "code": "ID123",    "reason": "Random custom code, not recognized by ISO", "fix": "Use <Prtry> tag instead for custom codes" },
+      { "code": "ABC",      "reason": "Not a recognized ISO scheme code", "fix": "Use <Prtry>ABC</Prtry> if custom value is needed" },
+      { "code": "TEST",     "reason": "Not valid for production environments", "fix": "Replace with LEI or CUST for production use" },
+      { "code": "12345",    "reason": "Numeric only values are not allowed in <Cd>", "fix": "Use alphabetic ISO code like LEI or TXID" },
+      { "code": "NAME",     "reason": "NAME is not an ID scheme, it is a data field", "fix": "Use COID or LEI for organization identification" }
+    ],
+    "prtry_rules": {
+      "allowed": true,
+      "accepts_any_non_empty_string": true,
+      "examples": ["CUST", "INTERNAL", "LOCALID"],
+      "note": "Prtry bypasses ISO Cd restrictions — use for custom identifiers"
+    },
+    "structure_rules": [
+      {
+        "rule": "mutually_exclusive",
+        "description": "Only one of <Cd> or <Prtry> allowed — never both",
+        "fix": "Use either <Cd> or <Prtry>, never both"
+      },
+      {
+        "rule": "required_when_othr_present",
+        "description": "<SchmeNm> is required whenever <Othr> block is used",
+        "fix": "Add <SchmeNm><Cd>LEI</Cd></SchmeNm> inside <Othr>"
+      },
+      {
+        "rule": "cd_must_match_allowlist",
+        "description": "<Cd> value must exist in valid_cd_codes list"
+      }
+    ],
+    "errors": {
+      "invalid_scheme":       "Invalid scheme code in <Cd>",
+      "missing_schmenm":      "<SchmeNm> is required when <Othr> is present",
+      "both_cd_and_prtry":    "Mutually exclusive elements conflict",
+      "empty_prtry":          "<Prtry> value must not be empty",
+      "missing_element":      "<SchmeNm> must contain either <Cd> or <Prtry>",
+      "not_supported":        "<SchmeNm> is not supported for this identifier type"
+    },
+    "defaults": {
+      "preferred_cd":    "LEI",
+      "fallback_prtry":  "CUST",
+      "note": "LEI and CUST pass most CBPR+ / SWIFT validators"
+    }
+  }
+}

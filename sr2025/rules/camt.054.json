@@ -1,0 +1,41 @@
+[
+    {
+        "rule_id": "CAMT054_001",
+        "description": "Debit/Credit Notification: Debtor/Creditor should identify with Name and/or ID.",
+        "condition": "exists(Document.BkToCstmrDbtCdtNtfctn.Ntfctn.Ntry)",
+        "expression": "all(exists(k + '.RltdPties.Dbtr.Nm') or exists(k + '.RltdPties.Dbtr.Id') for k in DATA.keys() if k.endswith('.Ntry'))",
+        "severity": "WARNING",
+        "layer": 3
+    },
+    {
+        "rule_id": "CAMT054_NTFCTN_ID_REQUIRED",
+        "description": "Each Notification must have an Id.",
+        "selector": "^Document\\.BkToCstmrDbtCdtNtfctn\\.Ntfctn(\\[\\d+\\])?$",
+        "type": "expression",
+        "expression": "exists(KEY + '.Id')",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Notification must contain <Id>.",
+        "fix": "Add <Id>NTF-YYYYMMDD-NNN</Id> inside <Ntfctn>."
+    },
+    {
+        "rule_id": "CAMT054_ENTRY_STATUS_VALID",
+        "description": "Entry status code (Sts.Cd) must be a valid ExternalEntryStatus code.",
+        "selector": "^Document\\.BkToCstmrDbtCdtNtfctn\\.Ntfctn(\\[\\d+\\])?\\.Ntry(\\[\\d+\\])?\\.Sts\\.Cd$",
+        "type": "codelist",
+        "list_name": "entry_status",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "CAMT054_ENTRY_CDTDBT_VALID",
+        "description": "Entry CdtDbtInd must be CRDT or DBIT.",
+        "selector": "^Document\\.BkToCstmrDbtCdtNtfctn\\.Ntfctn(\\[\\d+\\])?\\.Ntry(\\[\\d+\\])?\\.CdtDbtInd$",
+        "type": "expression",
+        "expression": "VALUE in ('CRDT', 'DBIT')",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtDbtInd must be 'CRDT' (credit) or 'DBIT' (debit).",
+        "fix": "Set <CdtDbtInd>CRDT</CdtDbtInd> or <CdtDbtInd>DBIT</CdtDbtInd>."
+    }
+]

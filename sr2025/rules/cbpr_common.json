@@ -1,0 +1,135 @@
+[
+    {
+        "rule_id": "CBPR_COM_R1",
+        "name": "CBPR_Character_Set_Usage",
+        "description": "All text values must use only CBPR+ permitted characters: A-Z, a-z, 0-9, space, and /\\-?:().,'+",
+        "type": "expression",
+        "expression": "all(re.match(r'^[A-Za-z0-9 /\\-?:().,\\'+]*$', str(v)) for k, v in DATA.items() if isinstance(v, str) and not k.endswith('@Ccy') and not k.endswith('@Tp') and not re.search(r'(IBAN|BIC|LEI|UETR|MsgId|BizMsgIdr|CreDtTm|IntrBkSttlmDt)', k))",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Character set used does not comply with CBPR Plus UHB specifications. Only A-Z, a-z, 0-9, space and /\\-?:().,\\' are permitted.",
+        "fix": "Remove characters outside the CBPR+ permitted set from all text fields."
+    },
+    {
+        "rule_id": "CBPR_COM_R2",
+        "name": "CBPR_Business_Message_Identifier",
+        "description": "BizMsgIdr must match the MsgId from the GroupHeader where available.",
+        "condition": "exists(AppHdr.BizMsgIdr)",
+        "expression": "not any(k.endswith('.GrpHdr.MsgId') for k in DATA.keys()) or any(DATA[k] == AppHdr.BizMsgIdr for k in DATA.keys() if k.endswith('.GrpHdr.MsgId'))",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "AppHdr <BizMsgIdr> must match the underlying message <GrpHdr/MsgId> where available.",
+        "fix": "Set <BizMsgIdr> to the same value as <GrpHdr><MsgId>."
+    },
+    {
+        "rule_id": "CBPR_COM_R3",
+        "name": "CBPR_Message_Definition_Identifier",
+        "description": "MsgDefIdr must be formatted exactly as it appears in the namespace of the Business Message instance (e.g. 'pacs.008.001.08').",
+        "condition": "exists(AppHdr.MsgDefIdr)",
+        "expression": "re.match(r'^[a-z]{4}\\.[0-9]{3}\\.[0-9]{3}\\.[0-9]{2}$', str(AppHdr.MsgDefIdr)) != None",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "AppHdr <MsgDefIdr> must match the namespace format exactly (e.g. 'pacs.008.001.08').",
+        "fix": "Set <MsgDefIdr> to the correct ISO 20022 message identifier matching the document namespace."
+    },
+    {
+        "rule_id": "CBPR_COM_R4",
+        "name": "CBPR_Business_Service_TextualRule",
+        "description": "BizSvc may be used by SWIFT for differentiated processing. Reserved values apply for SWIFT-administered services. User-specific values require alignment with Service Administrator.",
+        "type": "textual",
+        "severity": "WARNING",
+        "layer": 3,
+        "errorMessage": "BizSvc value must be aligned with Service Administrator if using a user-specific value."
+    },
+    {
+        "rule_id": "CBPR_COM_R5",
+        "name": "CBPR_Business_Service_Usage_TextualRule",
+        "description": "BizSvc must match the expected CBPR+ service pattern (e.g. swift.cbprplus.02).",
+        "selector": "AppHdr.BizSvc",
+        "type": "regex",
+        "pattern": "^[a-z0-9]{1,10}\\.([a-z0-9]{1,10}\\.)+\\d\\d$",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "<BizSvc> must match the pattern [a-z0-9]{1,10}\\.([a-z0-9]{1,10}\\.)+\\d\\d",
+        "fix": "Ensure <BizSvc> is correctly formatted, e.g. swift.cbprplus.02."
+    },
+    {
+        "rule_id": "CBPR_COM_R6",
+        "name": "CBPR_Market_Practice_TextualRule",
+        "description": "MktPrctc may be used by SWIFT on SWIFT-administered services. User-specific values require Service Administrator alignment.",
+        "type": "textual",
+        "severity": "WARNING",
+        "layer": 3,
+        "errorMessage": "MktPrctc value must be aligned with Service Administrator if user-specific."
+    },
+    {
+        "rule_id": "CBPR_COM_R7",
+        "name": "CBPR_Related_Business_Application_Header",
+        "description": "If RltdBizMsg is present, it must at minimum carry Fr, To, BizMsgIdr, MsgDefIdr, and CreDtTm mirroring the referenced BAH.",
+        "condition": "exists(AppHdr.RltdBizMsg)",
+        "expression": "exists(AppHdr.RltdBizMsg.Fr) and exists(AppHdr.RltdBizMsg.To) and exists(AppHdr.RltdBizMsg.BizMsgIdr) and exists(AppHdr.RltdBizMsg.MsgDefIdr) and exists(AppHdr.RltdBizMsg.CreDtTm)",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "AppHdr <RltdBizMsg> must contain <Fr>, <To>, <BizMsgIdr>, <MsgDefIdr>, and <CreDtTm> from the referenced Business Application Header.",
+        "fix": "Populate all mandatory BAH fields inside <RltdBizMsg>: Fr, To, BizMsgIdr, MsgDefIdr, CreDtTm."
+    },
+    {
+        "rule_id": "CBPR_COM_R8",
+        "name": "CBPR_Related_BAH_Business_Service_TextualRule",
+        "description": "If RltdBizMsg is present, it should carry the BizSvc element.",
+        "condition": "exists(\"AppHdr.RltdBizMsg\")",
+        "expression": "exists(\"AppHdr.RltdBizMsg.BizSvc\")",
+        "type": "expression",
+        "severity": "WARNING",
+        "layer": 3,
+        "errorMessage": "RltdBizMsg should include <BizSvc> when present.",
+        "fix": "Add <BizSvc> inside <RltdBizMsg>."
+    },
+    {
+        "rule_id": "CBPR_COM_R9",
+        "name": "CBPR_Agent_BICFI_Exclusive_FormalRule",
+        "description": "If FinInstnId.BICFI is present, Nm and PstlAdr are NOT allowed (CBPR+ BICFI exclusivity rule, applies to all agent roles across all message types).",
+        "type": "expression",
+        "expression": "all(not(robust_exists(k.replace('.BICFI', '.Nm')) or robust_exists(k.replace('.BICFI', '.PstlAdr'))) for k in DATA.keys() if k.endswith('.FinInstnId.BICFI'))",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "If BICFI is present, then Name & Postal Address are NOT allowed.",
+        "fix": "Remove <Nm> and <PstlAdr> if <BICFI> is provided."
+    },
+    {
+        "rule_id": "CBPR_COM_R10",
+        "name": "CBPR_Agent_Name_Address_Required_FormalRule",
+        "description": "If FinInstnId.BICFI is absent and Othr is also absent, Nm and PstlAdr MUST both be present (CBPR+ agent identification completeness rule).",
+        "type": "expression",
+        "expression": "all(robust_exists(k.replace('.FinInstnId', '.FinInstnId.Nm')) and robust_exists(k.replace('.FinInstnId', '.FinInstnId.PstlAdr')) for k in DATA.keys() if k.endswith('.FinInstnId') and not robust_exists(k + '.BICFI') and not robust_exists(k + '.Othr'))",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "If BICFI is absent, Name and Postal Address must be present.",
+        "fix": "Provide both <Nm> and <PstlAdr> inside <FinInstnId> if <BICFI> is not used."
+    },
+    {
+        "rule_id": "CBPR_COM_R11",
+        "name": "CBPR_Party_AnyBIC_Exclusive_FormalRule",
+        "description": "If Id.OrgId.AnyBIC is present, Nm and PstlAdr are NOT allowed (CBPR+ AnyBIC exclusivity rule, applies to all party roles across all message types).",
+        "type": "expression",
+        "expression": "all(not(robust_exists(k.replace('.Id.OrgId.AnyBIC', '.Nm')) or robust_exists(k.replace('.Id.OrgId.AnyBIC', '.PstlAdr'))) for k in DATA.keys() if k.endswith('.Id.OrgId.AnyBIC'))",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "If AnyBIC is present, Name and Postal Address are NOT allowed.",
+        "fix": "Remove <Nm> and <PstlAdr> if <AnyBIC> is provided."
+    },
+    {
+        "rule_id": "CBPR_COM_R12",
+        "name": "CBPR_Party_Name_Address_Recommended",
+        "description": "If Name is present on a party (Dbtr, Cdtr, UltmtDbtr, UltmtCdtr, InitgPty), it is recommended to also provide Postal Address.",
+        "type": "expression",
+        "expression": "all(robust_exists(k.replace('.Nm', '.PstlAdr')) for k in DATA.keys() if k.endswith('.Nm') and (k.endswith('Dbtr.Nm') or k.endswith('Cdtr.Nm') or k.endswith('UltmtDbtr.Nm') or k.endswith('UltmtCdtr.Nm') or k.endswith('InitgPty.Nm')))",
+        "severity": "WARNING",
+        "layer": 3,
+        "errorMessage": "If Name is present, it is recommended to use Postal Address.",
+        "fix": "Provide <PstlAdr> to complement the party's Name."
+    }
+]

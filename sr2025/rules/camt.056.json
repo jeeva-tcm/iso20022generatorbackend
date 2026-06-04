@@ -1,0 +1,52 @@
+[
+    {
+        "rule_id": "CAMT056_CASE_ID_REQUIRED",
+        "description": "FIToFI Payment Cancellation Request must contain a Case.Id.",
+        "condition": "exists(Document.FIToFIPmtCxlReq.Case)",
+        "mandatory_fields": [
+            "Document.FIToFIPmtCxlReq.Case.Id"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "CAMT056_CXLRSN_VALID",
+        "description": "Cancellation reason code (CxlRsnInf.Rsn.Cd) must be a valid ExternalCancellationReason code.",
+        "selector": ".*\\.CxlRsnInf(\\[\\d+\\])?\\.Rsn\\.Cd$",
+        "type": "codelist",
+        "list_name": "cancellation_reason",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "CAMT056_ASSGNR_REQUIRED",
+        "description": "Cancellation request must identify the Assigner (Assgnmt.Assgnr).",
+        "condition": "exists(Document.FIToFIPmtCxlReq.Assgnmt)",
+        "mandatory_fields": [
+            "Document.FIToFIPmtCxlReq.Assgnmt.Assgnr"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "CAMT056_ASSGNE_REQUIRED",
+        "description": "Cancellation request must identify the Assignee (Assgnmt.Assgne).",
+        "condition": "exists(Document.FIToFIPmtCxlReq.Assgnmt)",
+        "mandatory_fields": [
+            "Document.FIToFIPmtCxlReq.Assgnmt.Assgne"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "CAMT056_ORGNLUETR_REQUIRED",
+        "description": "Each Underlying transaction must reference an OrgnlUETR.",
+        "selector": "^Document\\.FIToFIPmtCxlReq\\.Undrlyg(\\[\\d+\\])?\\.TxInf(\\[\\d+\\])?$",
+        "type": "expression",
+        "expression": "exists(KEY + '.OrgnlUETR') or exists(KEY + '.OrgnlTxId')",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Underlying transaction must reference an OrgnlUETR (or at minimum OrgnlTxId) for the cancellation to be processable.",
+        "fix": "Add <OrgnlUETR>uuid-v4</OrgnlUETR> identifying the payment being cancelled."
+    }
+]

@@ -1,0 +1,161 @@
+
+<h2 class="sr-only">pacs.003 FIToFICustomerDirectDebit SR2025 vs SR2026 full tag comparison table</h2>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:1rem 0;font-family:var(--font-sans)}
+.sec{font-size:12px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--color-text-secondary);margin:1.5rem 0 .5rem;padding-bottom:5px;border-bottom:.5px solid var(--color-border-tertiary)}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:.5rem}
+th{text-align:left;padding:7px 10px;font-size:11.5px;font-weight:500;color:var(--color-text-secondary);border-bottom:.5px solid var(--color-border-secondary);background:var(--color-background-secondary)}
+td{padding:7px 10px;border-bottom:.5px solid var(--color-border-tertiary);vertical-align:top;color:var(--color-text-primary);line-height:1.5}
+tr:last-child td{border-bottom:none}
+.tag{display:inline-block;font-size:11px;font-weight:500;padding:2px 7px;border-radius:4px;white-space:nowrap}
+.new{background:var(--color-background-success);color:var(--color-text-success)}
+.rem{background:var(--color-background-danger);color:var(--color-text-danger)}
+.chg{background:var(--color-background-warning);color:var(--color-text-warning)}
+.mand{background:var(--color-background-info);color:var(--color-text-info)}
+.mono{font-family:var(--font-mono);font-size:11.5px;background:var(--color-background-secondary);padding:1px 5px;border-radius:3px;border:.5px solid var(--color-border-tertiary)}
+.note{font-size:11.5px;color:var(--color-text-secondary);font-style:italic}
+</style>
+<div class="wrap">
+
+<div class="sec">1 · Fixed values &amp; service version</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th style="width:200px">Element / Path</th><th>SR2025</th><th>SR2026</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">&lt;BizSvc&gt;</span></td><td>BAH / BusinessService</td><td>Type: <span class="mono">UsageIdentifierPatternText</span><br>Fixed value: implicit via CBPR_Business_Service_Usage_TextualRule ("swift.cbprplus.02")<br>CBPR_Business_Service_TextualRule + Usage_TextualRule present</td><td>Type: <span class="mono">Max35Text</span> (standard)<br>Fixed value: <span class="mono">swift.cbprplus.03</span><br>Both textual rules removed</td><td><span class="tag chg">Changed</span></td></tr>
+<tr><td><span class="mono">&lt;MsgDefIdr&gt;</span></td><td>BAH / MessageDefinitionIdentifier</td><td>CBPR_Message_Definition_Identifier_TextualRule present<br>No fixed value constraint</td><td>Textual rule removed<br>New fixed value: <span class="mono">pacs.003.001.08</span></td><td><span class="tag chg">Changed</span></td></tr>
+<tr><td><span class="mono">&lt;BizMsgIdr&gt;</span></td><td>BAH / BusinessMessageIdentifier</td><td>Type: <span class="mono">Max35Text</span><br>CBPR_Business_Message_Identifier_TextualRule + Comment: "must contain MsgId from GroupHeader"</td><td>Type: <span class="mono">CBPR_RestrictedFINXMax35Text</span><br>Textual rule + comment removed; new type restriction applied</td><td><span class="tag chg">Changed</span></td></tr>
+<tr><td><span class="mono">&lt;NbOfTxs&gt;</span></td><td>GrpHdr / NumberOfTransactions</td><td>Fixed value: <span class="mono">1</span> (present, different formatting)</td><td>Fixed value: <span class="mono">1</span> (confirmed, Restriction Summary page updated)</td><td><span class="tag chg">Reformatted</span></td></tr>
+</table>
+
+<div class="sec">2 · Datatype changes — BAH / Header fields</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th style="width:200px">Element / Path</th><th>SR2025 Type</th><th>SR2026 Type</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">&lt;BizMsgIdr&gt;</span></td><td>BAH / BusinessMessageIdentifier</td><td><span class="mono">Max35Text</span></td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;BizMsgIdr&gt;</span></td><td>BAH / Related / BusinessMessageIdentifier</td><td>No CBPR restriction</td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">&lt;BizSvc&gt;</span></td><td>BAH / Related / BusinessService</td><td>No CBPR restriction</td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">&lt;MsgDefIdr&gt;</span></td><td>BAH / Related / MessageDefinitionIdentifier</td><td>No CBPR restriction</td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">&lt;Prty&gt;</span></td><td>BAH / Related / Priority</td><td>No CBPR restriction</td><td><span class="mono">Priority2Code</span></td><td><span class="tag new">New</span></td></tr>
+</table>
+
+<div class="sec">3 · Datatype changes — pacs.003 message fields (all ISODate → CBPR_Date)</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th>Element name</th><th>Full path</th><th>SR2025</th><th>SR2026</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">&lt;IntrBkSttlmDt&gt;</span></td><td>InterbankSettlementDate</td><td>DDTxInf / InterbankSettlementDate</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;ReqdColltnDt&gt;</span></td><td>RequestedCollectionDate</td><td>DDTxInf / RequestedCollectionDate</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;DtOfSgntr&gt;</span></td><td>DateOfSignature</td><td>DDTxInf / DDTx / MndtRltdInf / DtOfSgntr</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;FrstColltnDt&gt;</span></td><td>FirstCollectionDate</td><td>DDTxInf / DDTx / MndtRltdInf / FrstColltnDt</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;FnlColltnDt&gt;</span></td><td>FinalCollectionDate</td><td>DDTxInf / DDTx / MndtRltdInf / FnlColltnDt</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;OrgnlFnlColltnDt&gt;</span></td><td>OriginalFinalCollectionDate</td><td>DDTxInf / DDTx / MndtRltdInf / AmdmntInfDtls / OrgnlFnlColltnDt</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;PreNtfctnDt&gt;</span></td><td>PreNotificationDate</td><td>DDTxInf / DDTx / PreNtfctnDt</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;FrDt&gt;</span></td><td>FromDate</td><td>DatePeriod / FrDt (Remittance)</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;ToDt&gt;</span></td><td>ToDate</td><td>DatePeriod / ToDt (Remittance)</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;Dt&gt;</span></td><td>Date</td><td>RegulatoryReporting / Details / Dt</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;RltdDt&gt;</span></td><td>RelatedDate</td><td>RmtInf / Strd / RfrdDocInf / RltdDt</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;Yr&gt;</span></td><td>Year</td><td>RmtInf / Strd / TaxRmt / TaxPrd / Yr</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+</table>
+
+<div class="sec">4 · Other datatype changes (non-date)</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th>Element / Path</th><th>SR2025 Type</th><th>SR2026 Type</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">&lt;BldgNb&gt;</span></td><td>DDTxInf / Debtor / PostalAddress / BuildingNumber</td><td><span class="mono">CBPR_RestrictedFINXMax16Text</span></td><td><span class="mono">CBPR_RestrictedFINXMax16Text_Extended</span></td><td><span class="tag chg">Extended</span></td></tr>
+<tr><td><span class="mono">&lt;Flr&gt;</span></td><td>DDTxInf / UltimateCreditor / PostalAddress / Floor</td><td>No explicit CBPR restriction</td><td><span class="mono">CBPR_RestrictedFINXMax70Text_Extended</span></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">&lt;Prtry&gt;</span></td><td>DDTxInf / DebtorAccount / Proxy / Type / Proprietary</td><td>No explicit CBPR restriction</td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">&lt;Amt&gt;</span></td><td>DDTxInf / RegulatoryReporting / Details / Amount</td><td>No explicit CBPR restriction</td><td><span class="mono">CBPR_Amount</span></td><td><span class="tag new">New</span></td></tr>
+</table>
+
+<div class="sec">5 · Newly mandatory elements in SR2026</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th>Element / Path</th><th>SR2025</th><th>SR2026</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">&lt;InstdAmt&gt;</span></td><td>DDTxInf / InstructedAmount</td><td>Optional [0..1]</td><td>Mandatory [1..1]</td><td><span class="tag mand">Mandatory</span></td></tr>
+<tr><td><span class="mono">&lt;Ctry&gt;</span></td><td>DDTxInf / Debtor / PostalAddress / Country</td><td>Optional</td><td>Mandatory</td><td><span class="tag mand">Mandatory</span></td></tr>
+<tr><td><span class="mono">&lt;TwnNm&gt;</span></td><td>DDTxInf / Debtor / PostalAddress / TownName</td><td>Optional</td><td>Mandatory</td><td><span class="tag mand">Mandatory</span></td></tr>
+<tr><td><span class="mono">&lt;Ctry&gt;</span></td><td>DDTxInf / Creditor / PostalAddress / Country</td><td>Optional</td><td>Mandatory</td><td><span class="tag mand">Mandatory</span></td></tr>
+<tr><td><span class="mono">&lt;TwnNm&gt;</span></td><td>DDTxInf / Creditor / PostalAddress / TownName</td><td>Optional</td><td>Mandatory</td><td><span class="tag mand">Mandatory</span></td></tr>
+<tr><td><span class="mono">&lt;Tp&gt;</span></td><td>DDTxInf / DebtorAccount / Proxy / Type</td><td>Optional</td><td>Mandatory</td><td><span class="tag mand">Mandatory</span></td></tr>
+<tr><td><span class="mono">&lt;Tp&gt;</span></td><td>DDTxInf / CreditorAccount / Proxy / Type</td><td>Optional</td><td>Mandatory</td><td><span class="tag mand">Mandatory</span></td></tr>
+<tr><td><span class="mono">&lt;Tp&gt;</span></td><td>DDTxInf / DebtorAgentAccount / Proxy / Type</td><td>Optional</td><td>Mandatory</td><td><span class="tag mand">Mandatory</span></td></tr>
+<tr><td><span class="mono">&lt;Tp&gt;</span></td><td>DDTxInf / CreditorAgentAccount / Proxy / Type</td><td>Optional</td><td>Mandatory</td><td><span class="tag mand">Mandatory</span></td></tr>
+<tr><td><span class="mono">&lt;Tp&gt;</span></td><td>GrpHdr / SettlementInformation / SettlementAccount / Proxy / Type</td><td>Optional</td><td>Mandatory</td><td><span class="tag mand">Mandatory</span></td></tr>
+</table>
+
+<div class="sec">6 · Multiplicity (max occurrence) changes</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th>Element / Path</th><th>SR2025 Max</th><th>SR2026 Max</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">&lt;AdrLine&gt;</span></td><td>DDTxInf / Debtor / PostalAddress / AddressLine</td><td>3</td><td>2</td><td><span class="tag chg">Reduced</span></td></tr>
+<tr><td><span class="mono">&lt;AdrLine&gt;</span></td><td>DDTxInf / Creditor / PostalAddress / AddressLine</td><td>3</td><td>2</td><td><span class="tag chg">Reduced</span></td></tr>
+</table>
+
+<div class="sec">7 · New CBPR+ rules added in SR2026</div>
+<table>
+<tr><th>Rule name</th><th>Description</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">CBPR_BusinessMessageIdentifier_FormalRule</span></td><td>BAH BusinessMessageIdentifier must equal GroupHeader/MessageIdentification</td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">CBPR_From_Instructing_Agent_BIC_FormalRule</span></td><td>BAH "From" BIC must always match InstructingAgent BIC (unconditional, no CopyDuplicate exception)</td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">CBPR_To_Instructed_Agent_BIC_1_FormalRule</span></td><td>BAH "To" BIC must match InstructedAgent BIC except where CopyDuplicate = COPY or CODU</td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">CBPR_To_Instructed_Agent_BIC_2_FormalRule</span></td><td>BAH "To" BIC must match InstructedAgent BIC if CopyDuplicate is absent</td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">CBPR_Structured_RemittanceInformation_TextualRule</span></td><td>Structured Remittance can repeat but total business data (excl. tags) must not exceed 9,000 characters</td><td><span class="tag new">New</span></td></tr>
+</table>
+
+<div class="sec">8 · CBPR+ rules removed in SR2026</div>
+<table>
+<tr><th>Rule name</th><th>What it did in SR2025</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">CBPR_From_To_Instructing_Instructed_Agent_BIC_1_FormalRule</span></td><td>Checked both BAH From (InstructingAgent) and To (InstructedAgent) BIC together when CopyDuplicate ≠ COPY/CODU</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_From_To_Instructing_Instructed_Agent_BIC_2_FormalRule</span></td><td>Checked both BAH From + To BIC together when CopyDuplicate absent</td><td><span class="tag rem">Removed</span> <span class="note">(split into separate rules)</span></td></tr>
+<tr><td><span class="mono">CBPR_Name_Postal_Address_FormalRule</span></td><td>If PostalAddress is present for UltimateCreditor, then Name is mandatory — <em>pacs.003 specific</em></td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_GracePeriod_Hybrid_FormalRule</span></td><td>If AddressLine + other postal elements present: TownName &amp; Country mandatory; max 2 AddressLines</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_GracePeriod_Structured_FormalRule</span></td><td>If PostalAddress used without AddressLine, TownName &amp; Country must be present</td><td><span class="tag rem">Removed</span> <span class="note">(replaced by TownName/Country mandatory)</span></td></tr>
+<tr><td><span class="mono">CBPR_GracePeriod_Unstructured_FormalRule</span></td><td>If only AddressLine present in PostalAddress, each line ≤ 35 characters</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_Remittance_Rules_TextualRule</span></td><td>(1) Structured Remittance must be bilaterally agreed; (2) total data ≤ 9,000 chars</td><td><span class="tag rem">Removed</span> <span class="note">(bilateral requirement dropped; 9k cap retained via new rule)</span></td></tr>
+<tr><td><span class="mono">CBPR_Business_Service_TextualRule</span></td><td>Explained use of BizSvc for differentiated SWIFT processing</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_Business_Service_Usage_TextualRule</span></td><td>Specified required BizSvc value for CBPRPlus</td><td><span class="tag rem">Removed</span> <span class="note">(replaced by fixed value)</span></td></tr>
+<tr><td><span class="mono">CBPR_Character_Set_Usage_TextualRule</span></td><td>Pointed to CBPR+ UHB for CharacterSet usage on &lt;CharSet&gt;</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_Market_Practice_TextualRule</span></td><td>Usage guidance text for &lt;MktPrctc&gt;</td><td><span class="tag rem">Removed</span></td></tr>
+</table>
+
+<div class="sec">9 · Usage guideline text removed from elements (lost "!" indicator)</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th>Element</th><th>What was in SR2025</th><th>SR2026 status</th></tr>
+<tr><td><span class="mono">&lt;CharSet&gt;</span></td><td>BAH / CharacterSet</td><td>CBPR_Character_Set_Usage_TextualRule (pointed to UHB)</td><td><span class="tag rem">No guideline</span></td></tr>
+<tr><td><span class="mono">&lt;Fr&gt;</span></td><td>BAH / From</td><td>Inline usage guideline details present</td><td><span class="tag rem">No guideline</span></td></tr>
+<tr><td><span class="mono">&lt;To&gt;</span></td><td>BAH / To</td><td>Inline usage guideline details present</td><td><span class="tag rem">No guideline</span></td></tr>
+<tr><td><span class="mono">&lt;MktPrctc&gt;</span></td><td>BAH / MarketPractice</td><td>CBPR_Market_Practice_TextualRule present</td><td><span class="tag rem">No guideline</span></td></tr>
+<tr><td><span class="mono">&lt;RmtInf&gt;</span></td><td>DDTxInf / RemittanceInformation</td><td>CBPR_Remittance_Rules_TextualRule (bilateral agreement + 9k limit)</td><td><span class="tag rem">Rule removed</span></td></tr>
+<tr><td><span class="mono">&lt;Sgntr&gt;</span></td><td>BAH / Signature</td><td>Removed + Comment: "Available at SWIFTNet Header level"</td><td><span class="tag rem">Comment removed</span> (element still removed)</td></tr>
+</table>
+
+<div class="sec">10 · Usage guideline text added in SR2026 (gained "!" indicator)</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th>Element</th><th>New guideline in SR2026</th></tr>
+<tr><td><span class="mono">&lt;Strd&gt;</span></td><td>RmtInf / Structured</td><td>CBPR_Structured_RemittanceInformation_TextualRule: total business data for all Strd occurrences (excl. tags) must not exceed 9,000 characters</td></tr>
+<tr><td><span class="mono">&lt;IntrBkSttlmDt&gt;</span></td><td>DDTxInf / InterbankSettlementDate</td><td>Type changed to CBPR_Date (strict YYYY-MM-DD, no UTC offset)</td></tr>
+<tr><td><span class="mono">&lt;ReqdColltnDt&gt;</span></td><td>DDTxInf / RequestedCollectionDate</td><td>Type changed to CBPR_Date</td></tr>
+<tr><td><span class="mono">&lt;DtOfSgntr&gt;</span></td><td>MndtRltdInf / DateOfSignature</td><td>Type changed to CBPR_Date</td></tr>
+<tr><td><span class="mono">&lt;FrstColltnDt&gt;</span></td><td>MndtRltdInf / FirstCollectionDate</td><td>Type changed to CBPR_Date</td></tr>
+<tr><td><span class="mono">&lt;FnlColltnDt&gt;</span></td><td>MndtRltdInf / FinalCollectionDate</td><td>Type changed to CBPR_Date</td></tr>
+<tr><td><span class="mono">&lt;OrgnlFnlColltnDt&gt;</span></td><td>AmdmntInfDtls / OriginalFinalCollectionDate</td><td>Type changed to CBPR_Date</td></tr>
+<tr><td><span class="mono">&lt;PreNtfctnDt&gt;</span></td><td>DDTx / PreNotificationDate</td><td>Type changed to CBPR_Date</td></tr>
+<tr><td><span class="mono">&lt;FrDt&gt; / &lt;ToDt&gt;</span></td><td>DatePeriod / FromDate / ToDate</td><td>Type changed to CBPR_Date</td></tr>
+<tr><td><span class="mono">&lt;Dt&gt;</span></td><td>RegulatoryReporting / Details / Date</td><td>Type changed to CBPR_Date</td></tr>
+<tr><td><span class="mono">&lt;RltdDt&gt;</span></td><td>RfrdDocInf / RelatedDate</td><td>Type changed to CBPR_Date</td></tr>
+<tr><td><span class="mono">&lt;Yr&gt;</span></td><td>TaxPeriod / Year</td><td>Type changed to CBPR_Date</td></tr>
+</table>
+
+<div class="sec">11 · BAH formal rule restructuring (root-level)</div>
+<table>
+<tr><th>SR2025 Rule</th><th>SR2026 Equivalent</th><th>Change</th></tr>
+<tr><td><span class="mono">CBPR_From_To_Instructing_Instructed_Agent_BIC_1_FormalRule</span><br><span class="note">(checked both From+To together, CopyDuplicate exceptions for both)</span></td><td><span class="mono">CBPR_To_Instructed_Agent_BIC_1_FormalRule</span> + <span class="mono">CBPR_From_Instructing_Agent_BIC_FormalRule</span><br><span class="note">(To rule has CopyDuplicate exception; From is unconditional)</span></td><td><span class="tag chg">Split &amp; tightened</span></td></tr>
+<tr><td><span class="mono">CBPR_From_To_Instructing_Instructed_Agent_BIC_2_FormalRule</span><br><span class="note">(both From+To when CopyDuplicate absent)</span></td><td><span class="mono">CBPR_To_Instructed_Agent_BIC_2_FormalRule</span><br><span class="note">(To only — From covered by unconditional rule)</span></td><td><span class="tag chg">Split</span></td></tr>
+</table>
+
+<div class="sec">12 · Document-level statistics</div>
+<table>
+<tr><th>Item</th><th>SR2025</th><th>SR2026</th></tr>
+<tr><td>Message type</td><td colspan="2">pacs.003.001.08 — FIToFICustomerDirectDebit</td></tr>
+<tr><td>Publication date</td><td>21 March 2025</td><td>20 February 2026</td></tr>
+<tr><td>Release</td><td>CBPRPlus SR2025 — live November 2025; 31 UGs (incl. admi.024, camt.025)</td><td>CBPRPlus SR2026 — live November 2026; 30 UGs</td></tr>
+<tr><td>Total document pages</td><td>390</td><td>383</td></tr>
+<tr><td>Comments section in Restriction Summary</td><td>Present (pages 14, 15, 16, 19, 50, 50, 53, 206, 206…)</td><td>n.a. — all comments removed</td></tr>
+<tr><td>Fixed values in Restriction Summary</td><td>1 (page 169 — NbOfTxs=1)</td><td>3 (pages 15, 16, 164 — MsgDefIdr, BizSvc, NbOfTxs)</td></tr>
+<tr><td>Formal rule pages in Restriction Summary</td><td>Many (GracePeriod rules across postal address elements)</td><td>Reduced — GracePeriod rules removed; replaced by hard mandatory constraints</td></tr>
+</table>
+
+</div>

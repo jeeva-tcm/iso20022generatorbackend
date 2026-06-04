@@ -1,0 +1,17 @@
+{
+    "description": "ExternalProxyAccountType1Code (Acct.Prxy.Tp.Cd)",
+    "codes": [
+        "TELE",
+        "EMAL",
+        "DNAM",
+        "CINC",
+        "COTX",
+        "DRLC",
+        "CPAN",
+        "BIID",
+        "BANK",
+        "SHID",
+        "USCC",
+        "OTHR"
+    ]
+}

@@ -4,7 +4,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8')
 
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Response
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -22,12 +22,22 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.schemas import validation as schemas
+<<<<<<< Updated upstream
 from app.services.validator import ISOValidator
 from app.services.firebase_service import FirebaseHistoryService
 from app.services.schema_generator import SchemaGenerator
 from app.services.mt_mx_converter import MT2MXConverter
 from app.services.bic_refresh_service import BicRefreshService
 from app.services.bulk_generator import generate_single_xml, get_blocks_for_message
+=======
+from app.schemas.api_validation import ApiValidateRequest, ApiValidateResponse, ApiIssue
+from app.services.validation.validator import ISOValidator
+from app.services.external.firebase_service import FirebaseHistoryService
+from app.services.generation.schema_generator import SchemaGenerator
+from app.services.conversion.mt_mx_converter import MT2MXConverter
+from app.services.external.bic_refresh_service import BicRefreshService
+from app.services.generation.bulk_generator import generate_single_xml, get_blocks_for_message
+>>>>>>> Stashed changes
 from app.chatbot.routes import router as chatbot_router
 from app.chatbot.chat_service import chat_service
 
@@ -113,19 +123,102 @@ async def shutdown_event():
         scheduler.shutdown(wait=False)
         print("[BIC Refresh] Scheduler stopped.")
 
+@app.post("/api/validate", response_model=ApiValidateResponse)
+async def api_validate(request: ApiValidateRequest):
+    if request.version == "SR2025":
+        from sr2025.validators.validator import ISOValidator as OriginalSR2025Validator
+        
+        class PatchedSR2025Validator(OriginalSR2025Validator):
+            def __init__(self, history_service=None):
+                self.history_service = history_service
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+                backend_root = os.path.normpath(os.path.join(base_dir, "../"))
+                
+                self.xsd_path = os.path.join(backend_root, "xsds", "extracted")
+                self.rules_path = os.path.join(backend_root, "app", "resources", "rules")
+                self.codelists_path = os.path.join(backend_root, "app", "resources", "codelists")
+                self.bics_path = os.path.join(backend_root, "bics")
+                self.config_path = os.path.join(backend_root, "app", "resources", "config.json")
+                self.config = self._load_config()
+                
+                self.cutoff_config_path = os.path.join(backend_root, "app", "resources", "cutoff_timings.json")
+                self.cutoff_config = {}
+                if os.path.exists(self.cutoff_config_path):
+                    try:
+                        with open(self.cutoff_config_path, 'r') as f:
+                            self.cutoff_config = json.load(f)
+                    except Exception as e:
+                        print(f"Error loading cutoff config: {e}")
+                
+                self.sr_mapping = self.config.get("sr_versions", {
+                    "pacs.008.001.08": "SR2025",
+                    "pacs.009.001.08": "SR2025"
+                })
+                self._message_type_cache = []
+                self._last_cache_update = 0
+                self._cache_duration = 3600
+                self._ensure_xsds_extracted()
+                self.supported_bics = self._load_bics()
+                self.codelists = self._load_codelists()
+                
+        val2025 = PatchedSR2025Validator(history_service=history_service)
+        report = await val2025.validate(request.xml, mode="Full 1-3", message_type=request.messageType)
+        report_dict = report.to_dict()
+        
+        errors = []
+        warnings = []
+        info = []
+        for issue in report_dict.get("details", []):
+            issue_item = ApiIssue(
+                code=issue.get("code", "ERROR"),
+                path=issue.get("path", "/"),
+                message=issue.get("message", ""),
+                line=issue.get("line"),
+                fix=issue.get("fix_suggestion") or ""
+            )
+            severity = issue.get("severity", "ERROR")
+            if severity == "ERROR":
+                errors.append(issue_item)
+            elif severity == "WARNING":
+                warnings.append(issue_item)
+            else:
+                info.append(issue_item)
+                
+        return ApiValidateResponse(
+            status="PASSED" if report_dict.get("status") == "PASS" else "FAILED",
+            errors=errors,
+            warnings=warnings,
+            info=info
+        )
+    elif request.version == "SR2026":
+        from sr2026.validators.validator import SR2026Validator
+        val2026 = SR2026Validator(history_service=history_service)
+        return await val2026.validate(request.xml, request.messageType)
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported version: {request.version}")
+
 @app.post("/validate", response_model=schemas.ValidationResponse)
 async def validate_message(
-    request: schemas.ValidationRequest
+    request: schemas.ValidationRequest,
+    raw_request: Request
 ):
-    report = await validator.validate(request.xml_content, request.mode, request.message_type, validation_id=request.batch_id)
-    report_dict = report.to_dict()
+    version = raw_request.headers.get("x-sr-version") or "SR2025"
     
+    report = await validator.validate(
+        request.xml_content,
+        request.mode,
+        request.message_type,
+        validation_id=request.batch_id,
+        version=version
+    )
+    report_dict = report.to_dict()
+        
     # Attach file_id and batch_id to the report dict for frontend display
     if request.file_id:
         report_dict["file_id"] = request.file_id
     if request.batch_id:
         report_dict["batch_id"] = request.batch_id
-    
+        
     if request.store_in_history:
         record = {
             "validation_id": report_dict["validation_id"],
@@ -139,14 +232,16 @@ async def validate_message(
             "execution_time_ms": report_dict["total_time_ms"],
             "report_json": report_dict,
             "original_message": request.xml_content,
-            "origin": request.origin or "Pasted"
+            "origin": request.origin or "Pasted",
+            "version": version
         }
         history_service.save_history(record)
-    
+        
     return report_dict
 
 @app.post("/validate-file", response_model=schemas.ValidationResponse)
 async def validate_file(
+    raw_request: Request,
     file: UploadFile = File(...),
     mode: str = Form("Full 1-3"),
     message_type: str = Form("Auto-detect"),
@@ -155,10 +250,11 @@ async def validate_file(
     file_id: Optional[str] = Form(None),
     origin: Optional[str] = Form("Uploaded")
 ):
+    version = raw_request.headers.get("x-sr-version") or "SR2025"
     content = await file.read()
     xml_content = content.decode("utf-8")
     
-    report = await validator.validate(xml_content, mode, message_type, filename=file.filename, validation_id=batch_id)
+    report = await validator.validate(xml_content, mode, message_type, filename=file.filename, validation_id=batch_id, version=version)
     report_dict = report.to_dict()
     
     # Attach file_id and batch_id to the report dict
@@ -180,21 +276,23 @@ async def validate_file(
             "execution_time_ms": report_dict["total_time_ms"],
             "report_json": report_dict,
             "original_message": xml_content,
-            "origin": origin or "Uploaded"
+            "origin": origin or "Uploaded",
+            "version": version
         }
         history_service.save_history(record)
     
     return report_dict
 
 @app.post("/convert-mt-to-mx")
-async def convert_mt_to_mx(request: schemas.MTConversionRequest):
+async def convert_mt_to_mx(request: schemas.MTConversionRequest, raw_request: Request):
+    version = raw_request.headers.get("x-sr-version") or "SR2025"
     try:
         result = mt_mx_converter.validate_and_convert(request.mt_message, forced_mt_type=request.target_mt_type)
         
         # Always include a validation report if conversion didn't fail at the pre-parsing/MT level
         mx_message = result.get("mx_message", "")
         if mx_message:
-            validation_report = await validator.validate(mx_message, mode="Full 1-3", message_type="Auto-detect", filename="conversion.xml")
+            validation_report = await validator.validate(mx_message, mode="Full 1-3", message_type="Auto-detect", filename="conversion.xml", version=version)
             report_dict = validation_report.to_dict()
             result["validation_report"] = report_dict
             
@@ -212,7 +310,8 @@ async def convert_mt_to_mx(request: schemas.MTConversionRequest):
                     "execution_time_ms": report_dict["total_time_ms"],
                     "report_json": report_dict,
                     "original_message": mx_message,
-                    "origin": "MT to MX"
+                    "origin": "MT to MX",
+                    "version": version
                 }
                 history_service.save_history(record)
             
@@ -339,9 +438,18 @@ def get_messages():
     return validator.get_supported_messages()
 
 @app.get("/messages/{message_type}/schema")
-def get_message_schema(message_type: str):
+def get_message_schema(
+    message_type: str,
+    raw_request: Request
+):
     """Dynamically extract the schema tree for a specific MX message type"""
-    xsd_path = validator._get_xsd_path(message_type)
+    version = raw_request.headers.get("x-sr-version") or "SR2025"
+    if version == "SR2026":
+        from sr2026.validators.layer2 import Layer2Validator
+        msg_type_clean = message_type.split('.')[0] + '.' + message_type.split('.')[1] if '.' in message_type else message_type
+        xsd_path = Layer2Validator._resolve_xsd_path(msg_type_clean)
+    else:
+        xsd_path = validator._get_xsd_path(message_type)
     if not xsd_path or not os.path.exists(xsd_path):
         raise HTTPException(status_code=404, detail=f"Schema not found for {message_type}")
     
@@ -361,7 +469,7 @@ def get_bulk_blocks(message_type: str):
 
 
 @app.post("/bulk-generate")
-async def bulk_generate(request: dict):
+async def bulk_generate(request: dict, raw_request: Request):
     """
     Generate exactly N VALID ISO 20022 messages of the given type with selected optional blocks.
 
@@ -386,6 +494,7 @@ async def bulk_generate(request: dict):
     message_type = request.get("message_type")
     count = int(request.get("count", 1))
     selected_blocks = request.get("selected_blocks", [])
+    version = raw_request.headers.get("x-sr-version") or request.get("version") or "SR2025"
 
     if count < 1 or (count > 500 and not os.environ.get("UNLIMITED_BULK")):
         raise HTTPException(status_code=400, detail="count must be between 1 and 500")
@@ -393,7 +502,7 @@ async def bulk_generate(request: dict):
         raise HTTPException(status_code=400, detail="message_type is required")
 
     print(f"\n{'='*70}")
-    print(f"[Bulk Gen] START — Type: {message_type}, Requested: {count}, Blocks: {selected_blocks}")
+    print(f"[Bulk Gen] START — Type: {message_type}, Requested: {count}, Blocks: {selected_blocks}, Version: {version}")
     print(f"{'='*70}")
 
     valid_messages: list = []
@@ -424,8 +533,8 @@ async def bulk_generate(request: dict):
         None), error (str | None), reason (str), error_codes (list[str]).
         """
         try:
-            xml = generate_single_xml(message_type, selected_blocks, attempt_idx)
-            report = await validator.validate(xml, mode="Full 1-3", message_type="Auto-detect")
+            xml = generate_single_xml(message_type, selected_blocks, attempt_idx, version=version)
+            report = await validator.validate(xml, mode="Full 1-3", message_type="Auto-detect", version=version)
             if report.status == "PASS":
                 return {"ok": True, "xml": xml, "report": report,
                         "error": None, "reason": "", "error_codes": []}
@@ -527,7 +636,7 @@ async def bulk_generate(request: dict):
 
 
 @app.post("/bulk-generate/stream")
-async def bulk_generate_stream(request: dict):
+async def bulk_generate_stream(request: dict, raw_request: Request):
     """
     SSE variant of /bulk-generate. Streams per-attempt progress events so the
     UI can show "Generated X/Y, retrying Z failures..." in real time instead
@@ -544,6 +653,7 @@ async def bulk_generate_stream(request: dict):
     message_type = request.get("message_type")
     count = int(request.get("count", 1))
     selected_blocks = request.get("selected_blocks", [])
+    version = raw_request.headers.get("x-sr-version") or request.get("version") or "SR2025"
 
     if count < 1 or (count > 500 and not os.environ.get("UNLIMITED_BULK")):
         raise HTTPException(status_code=400, detail="count must be between 1 and 500")
@@ -566,8 +676,8 @@ async def bulk_generate_stream(request: dict):
 
         async def _one_attempt(i: int):
             try:
-                xml = generate_single_xml(message_type, selected_blocks, i)
-                report = await validator.validate(xml, mode="Full 1-3", message_type="Auto-detect")
+                xml = generate_single_xml(message_type, selected_blocks, i, version=version)
+                report = await validator.validate(xml, mode="Full 1-3", message_type="Auto-detect", version=version)
                 if report.status == "PASS":
                     return {"ok": True, "xml": xml, "report": report, "reason": ""}
                 issues = report.to_dict().get("details", [])
@@ -644,8 +754,23 @@ async def bulk_generate_stream(request: dict):
 
 
 @app.get("/codelists/{list_name}")
-def get_codelist(list_name: str):
-    """Serve JSON codelists (like country.json, currency.json) to the frontend"""
+def get_codelist(list_name: str, raw_request: Request):
+    """Serve JSON codelists (like country.json, currency.json) to the frontend.
+
+    Checks x-sr-version header: SR2026 → serve from sr2026/code_sets/ first,
+    fall back to app/resources/codelists/ if not found there.
+    SR2025 (or absent) → always serve from app/resources/codelists/.
+    """
+    version = raw_request.headers.get("x-sr-version") or "SR2025"
+    backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    if version == "SR2026":
+        sr2026_path = os.path.join(backend_root, "sr2026", "code_sets", f"{list_name}.json")
+        if os.path.exists(sr2026_path):
+            with open(sr2026_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+
+    # SR2025 default (or SR2026 fallback when codelist not in sr2026/code_sets/)
     codelist_dir = os.path.join(os.path.dirname(__file__), "resources", "codelists")
     file_path = os.path.join(codelist_dir, f"{list_name}.json")
     if not os.path.exists(file_path):

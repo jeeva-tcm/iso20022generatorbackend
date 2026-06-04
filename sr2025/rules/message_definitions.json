@@ -1,0 +1,124 @@
+{
+    "messages": {
+        "pacs.008": {
+            "AppHdr": [
+                "BizMsgIdr",
+                "CreDtTm",
+                "BICFI"
+            ],
+            "GrpHdr": [
+                "MsgId",
+                "CreDtTm",
+                "NbOfTxs"
+            ],
+            "CdtTrfTxInf": [
+                "InstrId",
+                "EndToEndId",
+                "TxId",
+                "UETR",
+                "InstrPrty",
+                "ClrChanl",
+                "IntrBkSttlmAmt",
+                "IntrBkSttlmDt",
+                "InstdAmt",
+                "SttlmPrty",
+                "ChrgBr",
+                "Nm",
+                "IBAN",
+                "BICFI",
+                "Ustrd"
+            ]
+        },
+        "pacs.009": {
+            "AppHdr": [
+                "BizMsgIdr",
+                "CreDtTm",
+                "BICFI"
+            ],
+            "GrpHdr": [
+                "MsgId",
+                "CreDtTm",
+                "NbOfTxs"
+            ],
+            "CdtTrfTxInf": [
+                "InstrId",
+                "EndToEndId",
+                "TxId",
+                "UETR",
+                "InstrPrty",
+                "ClrChanl",
+                "IntrBkSttlmAmt",
+                "IntrBkSttlmDt",
+                "SttlmPrty",
+                "ClrSysRef"
+            ]
+        },
+        "pacs.009.cov": {
+            "AppHdr": [
+                "BizMsgIdr",
+                "CreDtTm",
+                "BICFI"
+            ],
+            "GrpHdr": [
+                "MsgId",
+                "CreDtTm"
+            ],
+            "CdtTrfTxInf": [
+                "TxId",
+                "IntrBkSttlmAmt",
+                "IntrBkSttlmDt"
+            ],
+            "UndrlygCstmrCdtTrf": [
+                "InstrId",
+                "EndToEndId",
+                "Nm",
+                "IBAN"
+            ]
+        },
+        "pacs.004": {
+            "AppHdr": [
+                "BizMsgIdr",
+                "CreDtTm",
+                "BICFI"
+            ],
+            "GrpHdr": [
+                "MsgId",
+                "CreDtTm",
+                "NbOfTxs",
+                "SttlmInf"
+            ],
+            "TxInf": [
+                "RtrId",
+                "OrgnlInstrId",
+                "OrgnlEndToEndId",
+                "OrgnlTxId",
+                "OrgnlUETR",
+                "RtrdIntrBkSttlmAmt",
+                "IntrBkSttlmDt",
+                "ChrgBr",
+                "RtrRsnInf",
+                "RtrChain"
+            ]
+        },
+        "camt.057": {
+            "AppHdr": [
+                "BizMsgIdr",
+                "CreDtTm"
+            ],
+            "GrpHdr": [
+                "MsgId",
+                "CreDtTm",
+                "NbOfNtfctns"
+            ],
+            "Ntfctn": [
+                "Id",
+                "CreDtTm",
+                "Dbtr",
+                "dbtrOrgAnyBIC",
+                "dbtrOrgLEI",
+                "dbtrOrgClrSysCd",
+                "dbtrOrgClrSysMmbId"
+            ]
+        }
+    }
+}

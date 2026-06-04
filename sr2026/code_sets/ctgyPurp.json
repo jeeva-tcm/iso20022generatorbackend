@@ -1,0 +1,20 @@
+{
+    "name":  "ExternalCategoryPurpose1Code",
+    "codes":  [
+                  "BONU",
+                  "CASH",
+                  "CORT",
+                  "DIVI",
+                  "GOVT",
+                  "INTC",
+                  "LOAN",
+                  "PENS",
+                  "SALA",
+                  "SECU",
+                  "SUPP",
+                  "TAXS",
+                  "TRAD",
+                  "TREA",
+                  "OTHER"
+              ]
+}
