@@ -6,7 +6,6 @@
         "companion_kb": "Global SWIFT CBPR+ business/XSD KB v2.1 (field_constraints, error_code_catalogue, dependencies, tag_templates).",
         "golden_rule": "Always FIX the syntax of an existing value in place; never invent a new business value to paper over a syntax fault. Stripping a stray comma, escaping an &, or trimming a space must PRESERVE the original intended content. Only after this KB's repairs leave the document well-formed should the global business KB be consulted."
     },
-
     "scope_and_precedence": {
         "_doc": "Defines what this KB owns, what it must not touch, and the order in which a fixer applies it relative to the global KB.",
         "this_kb_owns": [
@@ -38,7 +37,6 @@
         ],
         "critical_note": "If a fault is BOTH syntactic and business (e.g. an amount with a thousands separator that, once cleaned, also has too many decimals), this KB only removes the separator; the decimal-precision/business judgement belongs to the global KB (R12 / D00007). Hand off cleanly; do not double-fix."
     },
-
     "detection_strategy": {
         "_doc": "How the AI should hunt for syntactic faults. Scan in this order and report every hit; do not stop at the first.",
         "steps": [
@@ -55,238 +53,892 @@
         ],
         "reporting": "Emit one finding per distinct fault with: error_code (from this KB's error_code_catalogue), the offending xpath or byte offset, the exact offending character/sequence (quoted), and the deterministic fix."
     },
-
     "field_class_policy": {
         "_doc": "Every element value falls into one class. The class dictates the whitespace and character rules this KB enforces. Element-to-class mapping examples are illustrative, not exhaustive.",
         "strict_token": {
             "description": "No whitespace anywhere (not leading, trailing, or internal). Restricted character set. A single stray space or hidden character makes the value invalid.",
-            "examples": ["BICFI", "AnyBIC", "IBAN", "LEI", "UETR", "Ccy (attribute)", "Ctry", "Dt (date)", "DtTm (datetime)", "Cd (any code)", "CdtDbtInd", "amount values", "NbOfTxs", "PgNb"],
+            "examples": [
+                "BICFI",
+                "AnyBIC",
+                "IBAN",
+                "LEI",
+                "UETR",
+                "Ccy (attribute)",
+                "Ctry",
+                "Dt (date)",
+                "DtTm (datetime)",
+                "Cd (any code)",
+                "CdtDbtInd",
+                "amount values",
+                "NbOfTxs",
+                "PgNb"
+            ],
             "whitespace": "FORBIDDEN entirely. Trim and strip all spaces, tabs, newlines, NBSP, zero-width.",
             "charset": "Per-type (see global field_constraints). No punctuation beyond the type's own grammar (e.g. '-' and ':' in datetimes, '.' in amounts).",
-            "common_faults": ["leading/trailing space from copy-paste", "internal space in BIC ('DEUT DEFF')", "thousands comma in amount", "NBSP inside IBAN", "newline+indent captured around the value"]
+            "common_faults": [
+                "leading/trailing space from copy-paste",
+                "internal space in BIC ('DEUT DEFF')",
+                "thousands comma in amount",
+                "NBSP inside IBAN",
+                "newline+indent captured around the value"
+            ]
         },
         "identifier": {
             "description": "FIN-X character set, no leading/trailing whitespace; internal spaces are generally invalid for ID fields and must be removed (global KB notes 'No spaces' for MsgId/BizMsgIdr).",
-            "examples": ["MsgId", "BizMsgIdr", "InstrId", "EndToEndId", "TxId", "ClrSysRef", "OrgnlMsgId", "OrgnlEndToEndId", "Id (account/report/case)"],
+            "examples": [
+                "MsgId",
+                "BizMsgIdr",
+                "InstrId",
+                "EndToEndId",
+                "TxId",
+                "ClrSysRef",
+                "OrgnlMsgId",
+                "OrgnlEndToEndId",
+                "Id (account/report/case)"
+            ],
             "whitespace": "No leading/trailing. Internal spaces: remove (or replace with '-') — they are not part of the intended reference.",
             "charset": "FIN-X: A-Z a-z 0-9 / - ? : ( ) . , ' + and SPACE. Anything else (e.g. @ # % & < > \" *) is a charset fault; escape if it is one of the XML-special five, otherwise strip/transliterate."
         },
         "numeric_amount": {
             "description": "Decimal number; dot is the ONLY decimal separator; no grouping separators; no currency symbol; no spaces; no leading '+'.",
-            "examples": ["Amt", "InstdAmt", "IntrBkSttlmAmt", "CtrlSum", "Sum", "XchgRate", "TtlIntrBkSttlmAmt"],
+            "examples": [
+                "Amt",
+                "InstdAmt",
+                "IntrBkSttlmAmt",
+                "CtrlSum",
+                "Sum",
+                "XchgRate",
+                "TtlIntrBkSttlmAmt"
+            ],
             "whitespace": "FORBIDDEN.",
             "charset": "[0-9] and at most one '.'; optional leading '-' only where the schema allows negatives (most ISO amounts are non-negative)."
         },
         "datetime": {
             "description": "ISO 8601 lexical shape. This KB fixes ONLY the separator/spacing shape; the Z/offset/milliseconds business rules belong to the global KB.",
-            "examples": ["CreDt", "CreDtTm", "DtTm", "Dt", "FrDtTm", "ToDtTm", "ActlDt"],
+            "examples": [
+                "CreDt",
+                "CreDtTm",
+                "DtTm",
+                "Dt",
+                "FrDtTm",
+                "ToDtTm",
+                "ActlDt"
+            ],
             "whitespace": "FORBIDDEN. No space between date and time — use 'T'.",
             "charset": "Date: YYYY-MM-DD with '-' separators only. DateTime: date + 'T' + HH:MM:SS + offset. Slash/dot separators and spaces are lexical faults."
         },
         "text": {
             "description": "Human-readable fields using the CBPR+ EXTENDED character set. These MAY legitimately contain & < > and other symbols, but those MUST be XML-escaped. Accented Latin letters are allowed in CBPR+ Nm/Adr/RmtInf, but invisible/smart/zero-width characters are never wanted.",
-            "examples": ["Nm", "AdrLine", "StrtNm", "TwnNm", "Ustrd", "AddtlInf", "AddtlNtryInf", "AddtlRptInf", "AddtlStmtInf"],
+            "examples": [
+                "Nm",
+                "AdrLine",
+                "StrtNm",
+                "TwnNm",
+                "Ustrd",
+                "AddtlInf",
+                "AddtlNtryInf",
+                "AddtlRptInf",
+                "AddtlStmtInf"
+            ],
             "whitespace": "Leading/trailing should be trimmed; collapse runs of 2+ internal spaces to one; never allow tab/newline/NBSP/zero-width inside the value.",
             "charset": "Extended FIN-X plus !#$&%*=^_`{|}~\";<>@[\\]. The characters & < > MUST be written as &amp; &lt; &gt;. Smart quotes/dashes/ellipsis must be normalised to ASCII equivalents."
         }
     },
-
     "character_blocklist": {
         "_doc": "Catalogue of individual characters/sequences that commonly contaminate messages, with the code point, why it breaks things, and the deterministic fix. 'escape' = replace with XML entity; 'strip' = delete; 'transliterate' = replace with ASCII equivalent; 'context' = depends on field_class.",
         "xml_special_five": [
-            {"char": "&", "code_point": "U+0026", "name": "ampersand", "breaks": "Starts an entity reference; a bare & is a fatal well-formedness error unless it begins a valid entity.", "fix": "escape", "replace_with": "&amp;", "error_code": "WF_UNESCAPED_AMPERSAND", "note": "Do NOT double-escape an already-correct &amp;/&lt;/&gt;/&quot;/&apos; or a valid numeric reference &#nnn;."},
-            {"char": "<", "code_point": "U+003C", "name": "less-than", "breaks": "Opens a tag; a literal < inside text/attribute content is fatal.", "fix": "escape", "replace_with": "&lt;", "error_code": "WF_UNESCAPED_LT"},
-            {"char": ">", "code_point": "U+003E", "name": "greater-than", "breaks": "Required to be escaped in text per CBPR+ and after ']]'; a literal > is unsafe.", "fix": "escape", "replace_with": "&gt;", "error_code": "WF_UNESCAPED_GT"},
-            {"char": "\"", "code_point": "U+0022", "name": "double-quote", "breaks": "Inside a double-quoted attribute value it terminates the value prematurely.", "fix": "escape", "replace_with": "&quot;", "error_code": "WF_UNESCAPED_QUOTE_IN_ATTR", "note": "Only an issue inside attribute values; in element text a literal \" is legal but CBPR+ text fields treat it as part of the extended set."},
-            {"char": "'", "code_point": "U+0027", "name": "apostrophe", "breaks": "Inside a single-quoted attribute value it terminates the value; legal in element text (FIN-X allows it).", "fix": "context", "replace_with": "&apos; (only inside single-quoted attributes)", "error_code": "WF_UNESCAPED_APOS_IN_ATTR"}
+            {
+                "char": "&",
+                "code_point": "U+0026",
+                "name": "ampersand",
+                "breaks": "Starts an entity reference; a bare & is a fatal well-formedness error unless it begins a valid entity.",
+                "fix": "escape",
+                "replace_with": "&amp;",
+                "error_code": "WF_UNESCAPED_AMPERSAND",
+                "note": "Do NOT double-escape an already-correct &amp;/&lt;/&gt;/&quot;/&apos; or a valid numeric reference &#nnn;."
+            },
+            {
+                "char": "<",
+                "code_point": "U+003C",
+                "name": "less-than",
+                "breaks": "Opens a tag; a literal < inside text/attribute content is fatal.",
+                "fix": "escape",
+                "replace_with": "&lt;",
+                "error_code": "WF_UNESCAPED_LT"
+            },
+            {
+                "char": ">",
+                "code_point": "U+003E",
+                "name": "greater-than",
+                "breaks": "Required to be escaped in text per CBPR+ and after ']]'; a literal > is unsafe.",
+                "fix": "escape",
+                "replace_with": "&gt;",
+                "error_code": "WF_UNESCAPED_GT"
+            },
+            {
+                "char": "\"",
+                "code_point": "U+0022",
+                "name": "double-quote",
+                "breaks": "Inside a double-quoted attribute value it terminates the value prematurely.",
+                "fix": "escape",
+                "replace_with": "&quot;",
+                "error_code": "WF_UNESCAPED_QUOTE_IN_ATTR",
+                "note": "Only an issue inside attribute values; in element text a literal \" is legal but CBPR+ text fields treat it as part of the extended set."
+            },
+            {
+                "char": "'",
+                "code_point": "U+0027",
+                "name": "apostrophe",
+                "breaks": "Inside a single-quoted attribute value it terminates the value; legal in element text (FIN-X allows it).",
+                "fix": "context",
+                "replace_with": "&apos; (only inside single-quoted attributes)",
+                "error_code": "WF_UNESCAPED_APOS_IN_ATTR"
+            }
         ],
         "html_entities_misused": [
-            {"sequence": "&nbsp;", "breaks": "Undefined entity in XML (only the five predefined exist).", "fix": "replace", "replace_with": "a normal space ' ' or &#160; if a non-breaking space is truly intended (but NBSP should usually be stripped from financial fields).", "error_code": "WF_UNDEFINED_ENTITY"},
-            {"sequence": "&mdash; / &ndash; / &hellip; / &copy; / &reg; / &trade;", "breaks": "Undefined XML entities (these are HTML).", "fix": "transliterate", "replace_with": "ASCII equivalent ('-', '...', '(c)', etc.) or numeric character reference.", "error_code": "WF_UNDEFINED_ENTITY"},
-            {"sequence": "& followed by space or non-entity text", "breaks": "Bare ampersand.", "fix": "escape", "replace_with": "&amp;", "error_code": "WF_UNESCAPED_AMPERSAND"}
+            {
+                "sequence": "&nbsp;",
+                "breaks": "Undefined entity in XML (only the five predefined exist).",
+                "fix": "replace",
+                "replace_with": "a normal space ' ' or &#160; if a non-breaking space is truly intended (but NBSP should usually be stripped from financial fields).",
+                "error_code": "WF_UNDEFINED_ENTITY"
+            },
+            {
+                "sequence": "&mdash; / &ndash; / &hellip; / &copy; / &reg; / &trade;",
+                "breaks": "Undefined XML entities (these are HTML).",
+                "fix": "transliterate",
+                "replace_with": "ASCII equivalent ('-', '...', '(c)', etc.) or numeric character reference.",
+                "error_code": "WF_UNDEFINED_ENTITY"
+            },
+            {
+                "sequence": "& followed by space or non-entity text",
+                "breaks": "Bare ampersand.",
+                "fix": "escape",
+                "replace_with": "&amp;",
+                "error_code": "WF_UNESCAPED_AMPERSAND"
+            }
         ],
         "smart_and_typographic": [
-            {"char": "\u201C \u201D", "code_point": "U+201C / U+201D", "name": "curly double quotes (Word autocorrect)", "fix": "transliterate", "replace_with": "straight ASCII quote \" (or remove)", "error_code": "LEX_SMART_QUOTE"},
-            {"char": "\u2018 \u2019", "code_point": "U+2018 / U+2019", "name": "curly single quotes / typographic apostrophe", "fix": "transliterate", "replace_with": "straight ASCII apostrophe '", "error_code": "LEX_SMART_QUOTE"},
-            {"char": "\u2013", "code_point": "U+2013", "name": "en dash", "fix": "transliterate", "replace_with": "hyphen-minus '-'", "error_code": "LEX_TYPOGRAPHIC_DASH"},
-            {"char": "\u2014", "code_point": "U+2014", "name": "em dash", "fix": "transliterate", "replace_with": "hyphen-minus '-'", "error_code": "LEX_TYPOGRAPHIC_DASH"},
-            {"char": "\u2212", "code_point": "U+2212", "name": "minus sign (math)", "fix": "transliterate", "replace_with": "hyphen-minus '-' (critical in amounts/rates)", "error_code": "LEX_TYPOGRAPHIC_DASH"},
-            {"char": "\u2026", "code_point": "U+2026", "name": "horizontal ellipsis", "fix": "transliterate", "replace_with": "three dots '...'", "error_code": "LEX_TYPOGRAPHIC_ELLIPSIS"},
-            {"char": "\u00B4 \u0060", "code_point": "U+00B4 / U+0060", "name": "acute accent / grave accent (backtick)", "fix": "context", "replace_with": "ASCII apostrophe ' in identifier/strict fields; backtick ` is in the extended text set but is almost always a stray character — strip unless clearly intended.", "error_code": "LEX_STRAY_ACCENT_BACKTICK"}
+            {
+                "char": "“ ”",
+                "code_point": "U+201C / U+201D",
+                "name": "curly double quotes (Word autocorrect)",
+                "fix": "transliterate",
+                "replace_with": "straight ASCII quote \" (or remove)",
+                "error_code": "LEX_SMART_QUOTE"
+            },
+            {
+                "char": "‘ ’",
+                "code_point": "U+2018 / U+2019",
+                "name": "curly single quotes / typographic apostrophe",
+                "fix": "transliterate",
+                "replace_with": "straight ASCII apostrophe '",
+                "error_code": "LEX_SMART_QUOTE"
+            },
+            {
+                "char": "–",
+                "code_point": "U+2013",
+                "name": "en dash",
+                "fix": "transliterate",
+                "replace_with": "hyphen-minus '-'",
+                "error_code": "LEX_TYPOGRAPHIC_DASH"
+            },
+            {
+                "char": "—",
+                "code_point": "U+2014",
+                "name": "em dash",
+                "fix": "transliterate",
+                "replace_with": "hyphen-minus '-'",
+                "error_code": "LEX_TYPOGRAPHIC_DASH"
+            },
+            {
+                "char": "−",
+                "code_point": "U+2212",
+                "name": "minus sign (math)",
+                "fix": "transliterate",
+                "replace_with": "hyphen-minus '-' (critical in amounts/rates)",
+                "error_code": "LEX_TYPOGRAPHIC_DASH"
+            },
+            {
+                "char": "…",
+                "code_point": "U+2026",
+                "name": "horizontal ellipsis",
+                "fix": "transliterate",
+                "replace_with": "three dots '...'",
+                "error_code": "LEX_TYPOGRAPHIC_ELLIPSIS"
+            },
+            {
+                "char": "´ `",
+                "code_point": "U+00B4 / U+0060",
+                "name": "acute accent / grave accent (backtick)",
+                "fix": "context",
+                "replace_with": "ASCII apostrophe ' in identifier/strict fields; backtick ` is in the extended text set but is almost always a stray character — strip unless clearly intended.",
+                "error_code": "LEX_STRAY_ACCENT_BACKTICK"
+            }
         ],
         "invisible_and_control": [
-            {"char": "BOM mid-document", "code_point": "U+FEFF (ZERO WIDTH NO-BREAK SPACE)", "breaks": "Legal only as the leading byte-order mark; anywhere else it is an invisible character that corrupts tokens.", "fix": "strip", "error_code": "ENC_ZWNBSP_INLINE"},
-            {"char": "Zero-width space", "code_point": "U+200B", "fix": "strip", "error_code": "LEX_ZERO_WIDTH"},
-            {"char": "Zero-width non-joiner / joiner", "code_point": "U+200C / U+200D", "fix": "strip", "error_code": "LEX_ZERO_WIDTH"},
-            {"char": "Non-breaking space", "code_point": "U+00A0", "breaks": "Looks like a space, is not a space; contaminates strict tokens and amounts.", "fix": "context", "replace_with": "strip in strict_token/numeric/datetime; convert to normal space in text fields", "error_code": "LEX_NBSP"},
-            {"char": "Narrow/again no-break, thin, hair spaces", "code_point": "U+202F / U+2009 / U+200A", "fix": "context", "replace_with": "strip in strict fields; collapse in text", "error_code": "LEX_EXOTIC_SPACE"},
-            {"char": "Soft hyphen", "code_point": "U+00AD", "fix": "strip", "error_code": "LEX_SOFT_HYPHEN"},
-            {"char": "Tab / vertical tab / form feed inside a value", "code_point": "U+0009 (in value) / U+000B / U+000C", "breaks": "U+000B and U+000C are illegal XML 1.0 characters; tab inside a strict value is contamination.", "fix": "context", "replace_with": "strip from strict/numeric/datetime; collapse to space in text. U+000B/U+000C must always be stripped.", "error_code": "LEX_CONTROL_WHITESPACE"},
-            {"char": "C0 control characters", "code_point": "U+0000\u2013U+0008, U+000E\u2013U+001F", "breaks": "Illegal in XML 1.0 entirely; will not parse.", "fix": "strip", "error_code": "ENC_ILLEGAL_CONTROL_CHAR"},
-            {"char": "C1 control characters", "code_point": "U+0080\u2013U+009F", "breaks": "Discouraged/illegal; usually mojibake from a Latin-1 \u2192 UTF-8 mis-decode.", "fix": "strip_or_recode", "error_code": "ENC_C1_CONTROL_CHAR"},
-            {"char": "Replacement character", "code_point": "U+FFFD", "breaks": "Indicates an earlier decoding failure; the real character was lost.", "fix": "investigate", "replace_with": "re-decode from source bytes if possible; otherwise strip and flag for human review.", "error_code": "ENC_REPLACEMENT_CHAR"}
+            {
+                "char": "BOM mid-document",
+                "code_point": "U+FEFF (ZERO WIDTH NO-BREAK SPACE)",
+                "breaks": "Legal only as the leading byte-order mark; anywhere else it is an invisible character that corrupts tokens.",
+                "fix": "strip",
+                "error_code": "ENC_ZWNBSP_INLINE"
+            },
+            {
+                "char": "Zero-width space",
+                "code_point": "U+200B",
+                "fix": "strip",
+                "error_code": "LEX_ZERO_WIDTH"
+            },
+            {
+                "char": "Zero-width non-joiner / joiner",
+                "code_point": "U+200C / U+200D",
+                "fix": "strip",
+                "error_code": "LEX_ZERO_WIDTH"
+            },
+            {
+                "char": "Non-breaking space",
+                "code_point": "U+00A0",
+                "breaks": "Looks like a space, is not a space; contaminates strict tokens and amounts.",
+                "fix": "context",
+                "replace_with": "strip in strict_token/numeric/datetime; convert to normal space in text fields",
+                "error_code": "LEX_NBSP"
+            },
+            {
+                "char": "Narrow/again no-break, thin, hair spaces",
+                "code_point": "U+202F / U+2009 / U+200A",
+                "fix": "context",
+                "replace_with": "strip in strict fields; collapse in text",
+                "error_code": "LEX_EXOTIC_SPACE"
+            },
+            {
+                "char": "Soft hyphen",
+                "code_point": "U+00AD",
+                "fix": "strip",
+                "error_code": "LEX_SOFT_HYPHEN"
+            },
+            {
+                "char": "Tab / vertical tab / form feed inside a value",
+                "code_point": "U+0009 (in value) / U+000B / U+000C",
+                "breaks": "U+000B and U+000C are illegal XML 1.0 characters; tab inside a strict value is contamination.",
+                "fix": "context",
+                "replace_with": "strip from strict/numeric/datetime; collapse to space in text. U+000B/U+000C must always be stripped.",
+                "error_code": "LEX_CONTROL_WHITESPACE"
+            },
+            {
+                "char": "C0 control characters",
+                "code_point": "U+0000–U+0008, U+000E–U+001F",
+                "breaks": "Illegal in XML 1.0 entirely; will not parse.",
+                "fix": "strip",
+                "error_code": "ENC_ILLEGAL_CONTROL_CHAR"
+            },
+            {
+                "char": "C1 control characters",
+                "code_point": "U+0080–U+009F",
+                "breaks": "Discouraged/illegal; usually mojibake from a Latin-1 → UTF-8 mis-decode.",
+                "fix": "strip_or_recode",
+                "error_code": "ENC_C1_CONTROL_CHAR"
+            },
+            {
+                "char": "Replacement character",
+                "code_point": "U+FFFD",
+                "breaks": "Indicates an earlier decoding failure; the real character was lost.",
+                "fix": "investigate",
+                "replace_with": "re-decode from source bytes if possible; otherwise strip and flag for human review.",
+                "error_code": "ENC_REPLACEMENT_CHAR"
+            }
         ],
         "stray_punctuation_in_strict_fields": [
-            {"chars": ", (comma)", "where": "amounts, BICs, IBANs, dates, codes", "breaks": "A grouping/decimal comma in an amount, or a stray comma in a BIC/IBAN/date, is a lexical fault.", "fix": "see numeric_amount_syntax_errors / strip", "error_code": "LEX_STRAY_COMMA"},
-            {"chars": "@ # % * = ^ _ { } | ~ ; [ ] \\ ` $ !", "where": "strict_token & identifier fields", "breaks": "Outside the FIN-X set for these field classes (some are valid ONLY in extended text fields).", "fix": "strip or transliterate; if the character is one of & < > it must instead be escaped", "error_code": "LEX_DISALLOWED_SYMBOL"},
-            {"chars": "space inside a token", "where": "BICFI/IBAN/UETR/Ccy/Dt/amount", "breaks": "Splits the token.", "fix": "strip", "error_code": "LEX_INTERNAL_SPACE_IN_TOKEN"}
+            {
+                "chars": ", (comma)",
+                "where": "amounts, BICs, IBANs, dates, codes",
+                "breaks": "A grouping/decimal comma in an amount, or a stray comma in a BIC/IBAN/date, is a lexical fault.",
+                "fix": "see numeric_amount_syntax_errors / strip",
+                "error_code": "LEX_STRAY_COMMA"
+            },
+            {
+                "chars": "@ # % * = ^ _ { } | ~ ; [ ] \\ ` $ !",
+                "where": "strict_token & identifier fields",
+                "breaks": "Outside the FIN-X set for these field classes (some are valid ONLY in extended text fields).",
+                "fix": "strip or transliterate; if the character is one of & < > it must instead be escaped",
+                "error_code": "LEX_DISALLOWED_SYMBOL"
+            },
+            {
+                "chars": "space inside a token",
+                "where": "BICFI/IBAN/UETR/Ccy/Dt/amount",
+                "breaks": "Splits the token.",
+                "fix": "strip",
+                "error_code": "LEX_INTERNAL_SPACE_IN_TOKEN"
+            }
         ]
     },
-
     "xml_wellformedness_errors": {
         "_doc": "Parser-fatal structural faults. These prevent the document from parsing at all, so they must be fixed before anything else downstream.",
-        "WF_UNESCAPED_AMPERSAND": {"root_cause": "A literal & that does not start a valid entity (e.g. 'Smith & Co', 'a&b').", "detect": "& not matching &(amp|lt|gt|quot|apos|#[0-9]+|#x[0-9a-fA-F]+);", "fix": "Replace the bare & with &amp;, preserving surrounding text. Do not touch already-valid entities."},
-        "WF_UNESCAPED_LT": {"root_cause": "A literal < inside element text or an attribute value (e.g. 'qty < 10').", "fix": "Replace the literal < with &lt;."},
-        "WF_UNESCAPED_GT": {"root_cause": "A literal > inside text where CBPR+ requires escaping.", "fix": "Replace the literal > with &gt;."},
-        "WF_UNESCAPED_QUOTE_IN_ATTR": {"root_cause": "A \" inside a double-quoted attribute value, or a ' inside a single-quoted attribute value.", "fix": "Escape as &quot; / &apos;, or switch the attribute's delimiter to the other quote style."},
-        "WF_UNDEFINED_ENTITY": {"root_cause": "An entity reference other than the five predefined ones (e.g. &nbsp;, &mdash;, &foo;).", "fix": "Replace HTML/custom entities with their literal ASCII or a numeric character reference (&#160; etc.); escape a stray & as &amp;."},
-        "WF_MALFORMED_ENTITY": {"root_cause": "An entity started with & but never terminated with ; (e.g. '&amp ' or '&#x' truncated).", "fix": "Terminate the entity with ';' or escape the bare & as &amp;."},
-        "WF_INVALID_CHAR_REFERENCE": {"root_cause": "A numeric character reference pointing to a code point illegal in XML (e.g. &#0; &#8; &#xB;).", "fix": "Remove the reference; XML 1.0 forbids these code points even as references."},
-        "WF_UNCLOSED_TAG": {"root_cause": "A start tag with no matching end tag before its parent closes (e.g. <Amt>100.00 missing </Amt>).", "fix": "Insert the matching end tag at the correct position, or self-close if the element is genuinely empty and the schema permits."},
-        "WF_MISMATCHED_TAG": {"root_cause": "End tag name differs from the start tag, including CASE differences (XML is case-sensitive): <Amt>...</amt>, <BICFI>...</Bicfi>.", "fix": "Make the end tag exactly match the start tag's name and case."},
-        "WF_OVERLAPPING_TAGS": {"root_cause": "Improper nesting: <a><b></a></b>.", "fix": "Re-order close tags so elements nest strictly (close the most recently opened first)."},
-        "WF_ATTR_NOT_QUOTED": {"root_cause": "Attribute value missing quotes (e.g. <Amt Ccy=USD>).", "fix": "Wrap the value in double quotes: Ccy=\"USD\"."},
-        "WF_ATTR_MISMATCHED_QUOTES": {"root_cause": "Opening and closing quote characters differ (Ccy=\"USD').", "fix": "Use matching double quotes on both sides."},
-        "WF_DUPLICATE_ATTRIBUTE": {"root_cause": "The same attribute name appears twice on one element (Ccy=\"USD\" Ccy=\"EUR\").", "fix": "Keep the correct single occurrence; remove the duplicate."},
-        "WF_INVALID_TAG_NAME": {"root_cause": "Element/attribute name starts with a digit, contains a space, or contains an illegal character (e.g. <2Amt>, <Amt Foo>).", "fix": "Correct the name to a legal XML Name; in ISO 20022 this almost always means a typo to repair against the schema element name."},
-        "WF_STRAY_TEXT_BETWEEN_ELEMENTS": {"root_cause": "Unexpected text nodes between child elements where only elements are allowed (e.g. stray punctuation like ,.?\"{}; typed or pasted after a closing tag inside an element-only container such as <Document> or <FIToFIPmtStsRpt>). The parser records this as element.tail or parent.text, and the XSD schema rejects it with 'Character content other than whitespace is not allowed because the content type is element-only'.", "detect": "XSD error 'Character content other than whitespace is not allowed' on the named container; inspect child.tail and parent.text for non-whitespace.", "fix": "Strip every non-whitespace child.tail inside the offending container and clear parent.text if it is non-whitespace. Set these to None (not to an empty string). Do NOT remove or modify child elements.", "do_not": "Do not escape the stray characters — they are structural noise. Do not remove child elements.", "auto_fixable": true},
-        "WF_TEXT_BEFORE_PROLOG": {"root_cause": "Any character (space, blank line, BOM-as-text, stray text) before the '<?xml' declaration.", "fix": "Delete everything before '<?xml' (or before the first '<' if no declaration). The declaration must be the very first content."},
-        "WF_MALFORMED_DECLARATION": {"root_cause": "Broken XML declaration: missing '?', wrong order, version!=1.0, or encoding token malformed.", "fix": "Normalise to <?xml version=\"1.0\" encoding=\"UTF-8\"?>."},
-        "WF_MULTIPLE_ROOT_ELEMENTS": {"root_cause": "More than one top-level element, or content after the root element's close tag.", "fix": "Ensure exactly one root element (e.g. <BusMsgEnvlp>...</BusMsgEnvlp>); remove or re-parent stray top-level content; delete trailing garbage after the final close tag."},
-        "WF_UNCLOSED_COMMENT": {"root_cause": "A comment opened with <!-- but not closed, or containing '--' inside.", "fix": "Close the comment with -->, remove internal '--', or delete the comment entirely (comments are not needed in production messages)."},
-        "WF_UNCLOSED_CDATA": {"root_cause": "A CDATA section opened with <![CDATA[ but not closed with ]]>, or a stray ]]> in content.", "fix": "Close the CDATA, or remove CDATA wrapping (ISO 20022 messages do not use CDATA) and escape the content normally."},
-        "WF_PROCESSING_INSTRUCTION_MISUSE": {"root_cause": "A malformed or unexpected processing instruction.", "fix": "Remove it; ISO 20022 business messages should contain only the XML declaration as a PI."}
+        "WF_UNESCAPED_AMPERSAND": {
+            "root_cause": "A literal & that does not start a valid entity (e.g. 'Smith & Co', 'a&b').",
+            "detect": "& not matching &(amp|lt|gt|quot|apos|#[0-9]+|#x[0-9a-fA-F]+);",
+            "fix": "Replace the bare & with &amp;, preserving surrounding text. Do not touch already-valid entities."
+        },
+        "WF_UNESCAPED_LT": {
+            "root_cause": "A literal < inside element text or an attribute value (e.g. 'qty < 10').",
+            "fix": "Replace the literal < with &lt;."
+        },
+        "WF_UNESCAPED_GT": {
+            "root_cause": "A literal > inside text where CBPR+ requires escaping.",
+            "fix": "Replace the literal > with &gt;."
+        },
+        "WF_UNESCAPED_QUOTE_IN_ATTR": {
+            "root_cause": "A \" inside a double-quoted attribute value, or a ' inside a single-quoted attribute value.",
+            "fix": "Escape as &quot; / &apos;, or switch the attribute's delimiter to the other quote style."
+        },
+        "WF_UNDEFINED_ENTITY": {
+            "root_cause": "An entity reference other than the five predefined ones (e.g. &nbsp;, &mdash;, &foo;).",
+            "fix": "Replace HTML/custom entities with their literal ASCII or a numeric character reference (&#160; etc.); escape a stray & as &amp;."
+        },
+        "WF_MALFORMED_ENTITY": {
+            "root_cause": "An entity started with & but never terminated with ; (e.g. '&amp ' or '&#x' truncated).",
+            "fix": "Terminate the entity with ';' or escape the bare & as &amp;."
+        },
+        "WF_INVALID_CHAR_REFERENCE": {
+            "root_cause": "A numeric character reference pointing to a code point illegal in XML (e.g. &#0; &#8; &#xB;).",
+            "fix": "Remove the reference; XML 1.0 forbids these code points even as references."
+        },
+        "WF_UNCLOSED_TAG": {
+            "root_cause": "A start tag with no matching end tag before its parent closes (e.g. <Amt>100.00 missing </Amt>).",
+            "fix": "Insert the matching end tag immediately before the conflicting closing tag named in the error message. The lxml parser names the unclosed tag and the line of the conflicting close — use both to place </X> precisely. Self-close only if the element is genuinely empty and the schema permits.",
+            "auto_fixable": true
+        },
+        "WF_MISSING_OPENING_TAG": {
+            "root_cause": "A closing tag </X> appears in the document but the corresponding opening tag <X> was never written. This is the inverse of WF_UNCLOSED_TAG. Common in CBPR+ messages when the opening tag of a structural container (AppHdr, Document, GrpHdr, TxInf, Ntfctn, Ntry, Acct, BkTxCd, Fr, To, FinInstnId, PstlAdr, etc.) is accidentally deleted while its closing tag remains. The XML parser reports this as 'Unclosed tag <PARENT> ... before the closing tag </X>'.",
+            "detect": "Parser error says 'Unclosed tag <PARENT> ... before the closing tag </X> at line N'. Confirm that <X> (without attributes) does NOT appear anywhere earlier in the document. If <X> is absent, this is WF_MISSING_OPENING_TAG; if it is present but mis-nested, it is WF_OVERLAPPING_TAGS.",
+            "fix": "Use indentation depth to locate the insertion point: (1) measure the indentation of </X> at line N — this is the expected child-indent of X's parent; (2) scan backward to find the parent element (first content line with less indentation); (3) scan forward from the parent to the first content line after it — that is where <X> belongs. Add xmlns only for namespace-declaring elements: AppHdr → xmlns='urn:iso:std:iso:20022:tech:xsd:head.001.001.02'; Document → xmlns='urn:iso:std:iso:20022:tech:xsd:<MsgDefIdr_value>'. All other elements inherit the parent namespace — no xmlns attribute needed.",
+            "examples": [
+                "Missing <AppHdr xmlns='urn:iso:std:iso:20022:tech:xsd:head.001.001.02'> — insert before <Fr>/<To>/<BizMsgIdr>",
+                "Missing <Document xmlns='urn:iso:std:iso:20022:tech:xsd:camt.054.001.08'> — insert before <BkToCstmrDbtCdtNtfctn>",
+                "Missing <GrpHdr> — insert before <MsgId>; no xmlns (inherits Document namespace)",
+                "Missing <Ntfctn> — insert before <Id>/<CreDtTm>/<Acct>",
+                "Missing <Ntry> — insert before <NtryRef>/<Amt>/<CdtDbtInd>",
+                "Missing <TxInf> — insert before <StsId>/<OrgnlInstrId>/<OrgnlEndToEndId>",
+                "Missing <Fr> or <To> — insert before <FIId>; no xmlns"
+            ],
+            "auto_fixable": true
+        },
+        "WF_MISMATCHED_TAG": {
+            "root_cause": "End tag name differs from the start tag, including CASE differences (XML is case-sensitive): <Amt>...</amt>, <BICFI>...</Bicfi>.",
+            "fix": "Make the end tag exactly match the start tag's name and case."
+        },
+        "WF_OVERLAPPING_TAGS": {
+            "root_cause": "Improper nesting: <a><b></a></b>.",
+            "fix": "Re-order close tags so elements nest strictly (close the most recently opened first)."
+        },
+        "WF_ATTR_NOT_QUOTED": {
+            "root_cause": "Attribute value missing quotes (e.g. <Amt Ccy=USD>).",
+            "fix": "Wrap the value in double quotes: Ccy=\"USD\"."
+        },
+        "WF_ATTR_MISMATCHED_QUOTES": {
+            "root_cause": "Opening and closing quote characters differ (Ccy=\"USD').",
+            "fix": "Use matching double quotes on both sides."
+        },
+        "WF_DUPLICATE_ATTRIBUTE": {
+            "root_cause": "The same attribute name appears twice on one element (Ccy=\"USD\" Ccy=\"EUR\").",
+            "fix": "Keep the correct single occurrence; remove the duplicate."
+        },
+        "WF_INVALID_TAG_NAME": {
+            "root_cause": "Element/attribute name starts with a digit, contains a space, or contains an illegal character (e.g. <2Amt>, <Amt Foo>).",
+            "fix": "Correct the name to a legal XML Name; in ISO 20022 this almost always means a typo to repair against the schema element name."
+        },
+        "WF_STRAY_TEXT_BETWEEN_ELEMENTS": {
+            "root_cause": "Unexpected text nodes between child elements where only elements are allowed (e.g. stray punctuation like ,.?\"{}; typed or pasted after a closing tag inside an element-only container such as <Document> or <FIToFIPmtStsRpt>). The parser records this as element.tail or parent.text, and the XSD schema rejects it with 'Character content other than whitespace is not allowed because the content type is element-only'.",
+            "detect": "XSD error 'Character content other than whitespace is not allowed' on the named container; inspect child.tail and parent.text for non-whitespace.",
+            "fix": "Strip every non-whitespace child.tail inside the offending container and clear parent.text if it is non-whitespace. Set these to None (not to an empty string). Do NOT remove or modify child elements.",
+            "do_not": "Do not escape the stray characters — they are structural noise. Do not remove child elements.",
+            "auto_fixable": true
+        },
+        "WF_TEXT_BEFORE_PROLOG": {
+            "root_cause": "Any character (space, blank line, BOM-as-text, stray text) before the '<?xml' declaration.",
+            "fix": "Delete everything before '<?xml' (or before the first '<' if no declaration). The declaration must be the very first content."
+        },
+        "WF_MALFORMED_DECLARATION": {
+            "root_cause": "Broken XML declaration: missing '?', wrong order, version!=1.0, or encoding token malformed.",
+            "fix": "Normalise to <?xml version=\"1.0\" encoding=\"UTF-8\"?>."
+        },
+        "WF_MULTIPLE_ROOT_ELEMENTS": {
+            "root_cause": "More than one top-level element, or content after the root element's close tag.",
+            "fix": "Ensure exactly one root element (e.g. <BusMsgEnvlp>...</BusMsgEnvlp>); remove or re-parent stray top-level content; delete trailing garbage after the final close tag."
+        },
+        "WF_UNCLOSED_COMMENT": {
+            "root_cause": "A comment opened with <!-- but not closed, or containing '--' inside.",
+            "fix": "Close the comment with -->, remove internal '--', or delete the comment entirely (comments are not needed in production messages)."
+        },
+        "WF_UNCLOSED_CDATA": {
+            "root_cause": "A CDATA section opened with <![CDATA[ but not closed with ]]>, or a stray ]]> in content.",
+            "fix": "Close the CDATA, or remove CDATA wrapping (ISO 20022 messages do not use CDATA) and escape the content normally."
+        },
+        "WF_PROCESSING_INSTRUCTION_MISUSE": {
+            "root_cause": "A malformed or unexpected processing instruction.",
+            "fix": "Remove it; ISO 20022 business messages should contain only the XML declaration as a PI."
+        },
+        "DTD_FORBIDDEN": {
+            "root_cause": "A DOCTYPE declaration (<!DOCTYPE ...>) is present. ISO 20022 CBPR+ messages must not contain DTD declarations. Parsers with DTD processing enabled are vulnerable to XXE (XML External Entity) injection.",
+            "fix": "Remove the entire <!DOCTYPE ...> block (including all ELEMENT, ATTLIST, and ENTITY declarations within it). Do not relocate it; delete completely.",
+            "auto_fixable": true
+        },
+        "ENTITY_FORBIDDEN": {
+            "root_cause": "A custom entity declaration (<!ENTITY ...>) is present. Custom entities are forbidden. They can be used for entity expansion (Billion Laughs) DoS attacks.",
+            "fix": "Remove the <!ENTITY ...> declaration. Replace any &entityname; references in the content with their literal text values.",
+            "auto_fixable": true
+        }
     },
-
     "encoding_and_invisible_chars": {
         "_doc": "Byte- and encoding-level faults that either stop parsing or silently corrupt values.",
-        "ENC_BOM_PRESENT": {"root_cause": "A UTF-8 BOM (EF BB BF) precedes the XML declaration.", "severity": "warning", "fix": "Many parsers tolerate a leading UTF-8 BOM, but some SWIFT/MQ pipelines reject it. Strip the leading BOM unless the receiving system explicitly requires it. A BOM anywhere other than the first bytes is always an error (see ENC_ZWNBSP_INLINE)."},
-        "ENC_WRONG_BOM": {"root_cause": "A UTF-16/UTF-32 BOM (FF FE / FE FF / 00 00 FE FF) on a document declared UTF-8.", "fix": "Re-encode the document to UTF-8 without BOM and align the encoding declaration."},
-        "ENC_DECLARATION_MISMATCH": {"root_cause": "The declaration says encoding=\"UTF-8\" but the bytes are actually Latin-1/Windows-1252 (typical symptom: accented letters appear as two garbled characters, e.g. 'Ã¼' for 'ü').", "fix": "Re-decode the bytes from their true encoding and re-save as UTF-8, OR correct the encoding declaration to match the real bytes. Verify by checking that accented names render correctly afterwards."},
-        "ENC_INVALID_UTF8_SEQUENCE": {"root_cause": "Byte sequences that are not valid UTF-8 (lone continuation bytes, overlong encodings).", "fix": "Re-decode from the source encoding; if unknown, strip the offending bytes and flag for human review (data loss risk)."},
-        "ENC_ILLEGAL_CONTROL_CHAR": {"root_cause": "A C0 control character (U+0000\u2013U+0008, U+000B, U+000C, U+000E\u2013U+001F) appears in the document; these are illegal in XML 1.0 and the parser will reject the file.", "fix": "Strip the character. If it sits inside a value, ensure the surrounding text still reads correctly."},
-        "ENC_C1_CONTROL_CHAR": {"root_cause": "C1 controls (U+0080\u2013U+009F), usually mojibake.", "fix": "Strip, or re-decode if part of a mis-decoded multibyte sequence."},
-        "ENC_ZWNBSP_INLINE": {"root_cause": "U+FEFF appearing inside the document body rather than as the leading BOM.", "fix": "Strip every inline U+FEFF; it is an invisible character that splits tokens."},
-        "ENC_REPLACEMENT_CHAR": {"root_cause": "U+FFFD present, marking a character lost in an earlier decode.", "fix": "Re-decode from original bytes if available; otherwise strip and flag — the original character cannot be recovered from U+FFFD."}
+        "ENC_BOM_PRESENT": {
+            "root_cause": "A UTF-8 BOM (EF BB BF) precedes the XML declaration.",
+            "severity": "warning",
+            "fix": "Many parsers tolerate a leading UTF-8 BOM, but some SWIFT/MQ pipelines reject it. Strip the leading BOM unless the receiving system explicitly requires it. A BOM anywhere other than the first bytes is always an error (see ENC_ZWNBSP_INLINE)."
+        },
+        "ENC_WRONG_BOM": {
+            "root_cause": "A UTF-16/UTF-32 BOM (FF FE / FE FF / 00 00 FE FF) on a document declared UTF-8.",
+            "fix": "Re-encode the document to UTF-8 without BOM and align the encoding declaration."
+        },
+        "ENC_DECLARATION_MISMATCH": {
+            "root_cause": "The declaration says encoding=\"UTF-8\" but the bytes are actually Latin-1/Windows-1252 (typical symptom: accented letters appear as two garbled characters, e.g. 'Ã¼' for 'ü').",
+            "fix": "Re-decode the bytes from their true encoding and re-save as UTF-8, OR correct the encoding declaration to match the real bytes. Verify by checking that accented names render correctly afterwards."
+        },
+        "ENC_INVALID_UTF8_SEQUENCE": {
+            "root_cause": "Byte sequences that are not valid UTF-8 (lone continuation bytes, overlong encodings).",
+            "fix": "Re-decode from the source encoding; if unknown, strip the offending bytes and flag for human review (data loss risk)."
+        },
+        "ENC_ILLEGAL_CONTROL_CHAR": {
+            "root_cause": "A C0 control character (U+0000–U+0008, U+000B, U+000C, U+000E–U+001F) appears in the document; these are illegal in XML 1.0 and the parser will reject the file.",
+            "fix": "Strip the character. If it sits inside a value, ensure the surrounding text still reads correctly."
+        },
+        "ENC_C1_CONTROL_CHAR": {
+            "root_cause": "C1 controls (U+0080–U+009F), usually mojibake.",
+            "fix": "Strip, or re-decode if part of a mis-decoded multibyte sequence."
+        },
+        "ENC_ZWNBSP_INLINE": {
+            "root_cause": "U+FEFF appearing inside the document body rather than as the leading BOM.",
+            "fix": "Strip every inline U+FEFF; it is an invisible character that splits tokens."
+        },
+        "ENC_REPLACEMENT_CHAR": {
+            "root_cause": "U+FFFD present, marking a character lost in an earlier decode.",
+            "fix": "Re-decode from original bytes if available; otherwise strip and flag — the original character cannot be recovered from U+FFFD."
+        }
     },
-
     "whitespace_errors": {
         "_doc": "Whitespace contamination by field_class. The most common real-world cause is copy-paste and XML pretty-printing leaking indentation into element text.",
-        "WS_LEADING_TRAILING": {"root_cause": "A value has leading or trailing spaces/tabs/newlines (e.g. <BICFI> DEUTDEFFXXX </BICFI>).", "applies_to": "all classes", "fix": "Trim leading and trailing whitespace. For strict_token/numeric/datetime there must be ZERO whitespace; for text, trim outer whitespace."},
-        "WS_PRETTYPRINT_LEAKAGE": {"root_cause": "A newline + indentation was captured as the element's text because the value was placed on its own line and indented (e.g. <MsgId>\\n        B123\\n      </MsgId>).", "fix": "Collapse the element to a single line with no surrounding whitespace: <MsgId>B123</MsgId>. Critical for strict tokens — the leaked whitespace makes the value invalid."},
-        "WS_INTERNAL_IN_TOKEN": {"root_cause": "Whitespace inside a strict token (BIC 'DEUT DEFF XXX', IBAN 'DE89 3704 0044', amount '1 000.00', date '2026 -06-01', code 'IN GA').", "applies_to": "strict_token, numeric_amount, datetime", "fix": "Remove ALL internal whitespace, rejoining the token. 'DEUT DEFF XXX' \u2192 'DEUTDEFFXXX'; 'DE89 3704 0044' \u2192 'DE8937040044'."},
-        "WS_MULTIPLE_SPACES_IN_TEXT": {"root_cause": "Runs of 2+ spaces inside a name/address (often from tab expansion or merged fields).", "applies_to": "text", "fix": "Collapse internal runs of whitespace to a single ASCII space."},
-        "WS_TAB_OR_NEWLINE_IN_VALUE": {"root_cause": "A tab or newline embedded inside a value.", "fix": "Strip from strict/numeric/datetime; replace with a single space in text fields, then collapse."},
-        "WS_EMPTY_OR_WHITESPACE_ONLY": {"root_cause": "An element present but empty or containing only whitespace (e.g. <Ccy></Ccy>, <BkTxCd>   </BkTxCd>) where content is required.", "fix": "This KB removes the whitespace and FLAGS the element as effectively empty; the decision of what value belongs there (or whether to delete the element) is a business question \u2014 hand off to the global KB (MISSING_MANDATORY_FIELD / MISSING_EXPECTED_ELEMENT). Do not invent a value here."}
+        "WS_LEADING_TRAILING": {
+            "root_cause": "A value has leading or trailing spaces/tabs/newlines (e.g. <BICFI> DEUTDEFFXXX </BICFI>).",
+            "applies_to": "all classes",
+            "fix": "Trim leading and trailing whitespace. For strict_token/numeric/datetime there must be ZERO whitespace; for text, trim outer whitespace."
+        },
+        "WS_PRETTYPRINT_LEAKAGE": {
+            "root_cause": "A newline + indentation was captured as the element's text because the value was placed on its own line and indented (e.g. <MsgId>\\n        B123\\n      </MsgId>).",
+            "fix": "Collapse the element to a single line with no surrounding whitespace: <MsgId>B123</MsgId>. Critical for strict tokens — the leaked whitespace makes the value invalid."
+        },
+        "WS_INTERNAL_IN_TOKEN": {
+            "root_cause": "Whitespace inside a strict token (BIC 'DEUT DEFF XXX', IBAN 'DE89 3704 0044', amount '1 000.00', date '2026 -06-01', code 'IN GA').",
+            "applies_to": "strict_token, numeric_amount, datetime",
+            "fix": "Remove ALL internal whitespace, rejoining the token. 'DEUT DEFF XXX' → 'DEUTDEFFXXX'; 'DE89 3704 0044' → 'DE8937040044'."
+        },
+        "WS_MULTIPLE_SPACES_IN_TEXT": {
+            "root_cause": "Runs of 2+ spaces inside a name/address (often from tab expansion or merged fields).",
+            "applies_to": "text",
+            "fix": "Collapse internal runs of whitespace to a single ASCII space."
+        },
+        "WS_TAB_OR_NEWLINE_IN_VALUE": {
+            "root_cause": "A tab or newline embedded inside a value.",
+            "fix": "Strip from strict/numeric/datetime; replace with a single space in text fields, then collapse."
+        },
+        "WS_EMPTY_OR_WHITESPACE_ONLY": {
+            "root_cause": "An element present but empty or containing only whitespace (e.g. <Ccy></Ccy>, <BkTxCd>   </BkTxCd>) where content is required.",
+            "fix": "This KB removes the whitespace and FLAGS the element as effectively empty; the decision of what value belongs there (or whether to delete the element) is a business question — hand off to the global KB (MISSING_MANDATORY_FIELD / MISSING_EXPECTED_ELEMENT). Do not invent a value here."
+        }
     },
-
     "numeric_amount_syntax_errors": {
         "_doc": "Amounts/rates/numbers must be a plain decimal with a single dot and no decoration. These are among the most frequent real-world faults (locale formatting leaking from spreadsheets).",
-        "NUM_THOUSANDS_SEPARATOR_COMMA": {"root_cause": "Anglo grouping commas in an amount (e.g. '1,200.00', '10,000,000.00').", "fix": "Remove every grouping comma, keeping the dot decimal: '1,200.00' \u2192 '1200.00'.", "do_not": "Do not confuse the grouping comma with a decimal comma \u2014 see the European case."},
-        "NUM_DECIMAL_COMMA": {"root_cause": "European decimal comma (e.g. '1200,50' or '1.200,50' meaning one-thousand-two-hundred and fifty).", "fix": "If the value matches '#.###,##' (dot groups + comma decimal), remove dots and convert the comma to a dot: '1.200,50' \u2192 '1200.50'. If the value is simply 'NNN,NN', convert the comma to a dot: '1200,50' \u2192 '1200.50'.", "disambiguation": "Decide grouping-vs-decimal by position: a separator followed by exactly 2 digits at the end is the decimal mark; separators every 3 digits are grouping."},
-        "NUM_CURRENCY_SYMBOL": {"root_cause": "A currency symbol or code embedded in the amount text ('$1200.00', '\u20AC1.200,00', '1200.00 USD', 'USD1200').", "fix": "Strip the symbol/letters from the amount NODE. The currency belongs only in the Ccy ATTRIBUTE: <Amt Ccy=\"USD\">1200.00</Amt>. If the embedded code conflicts with the existing Ccy attribute, flag for review rather than guessing."},
-        "NUM_INTERNAL_SPACE": {"root_cause": "Space grouping (French/SI style): '1 200,00' or '1 200.00'.", "fix": "Remove all spaces (including NBSP/thin spaces), then apply the decimal-separator rule: '1 200,00' \u2192 '1200.00'."},
-        "NUM_LEADING_PLUS": {"root_cause": "A leading '+' sign ('+1200.00').", "fix": "Remove the leading '+'."},
-        "NUM_TYPOGRAPHIC_MINUS": {"root_cause": "A Unicode minus U+2212 or dash instead of ASCII '-' on a negative value.", "fix": "Replace with ASCII '-'. (Whether a negative is even allowed is a schema/business matter \u2014 hand off.)"},
-        "NUM_SCIENTIFIC_NOTATION": {"root_cause": "Exponential form ('1.2E3', '1.2e+3').", "fix": "Expand to plain decimal ('1200')."},
-        "NUM_MULTIPLE_DECIMAL_POINTS": {"root_cause": "More than one '.' ('1.200.50' from a botched locale conversion).", "fix": "Interpret using grouping/decimal disambiguation and reduce to a single decimal point: '1.200.50' \u2192 '1200.50'."},
-        "NUM_TRAILING_DOT_OR_BARE": {"root_cause": "Trailing decimal point ('1200.') or naked separator.", "fix": "Remove a trailing dot ('1200.' \u2192 '1200'); add nothing else."},
-        "NUM_NON_DIGIT_CHARS": {"root_cause": "Stray letters/symbols mixed into a number ('12O0.00' with letter O, '1200.00*').", "fix": "Correct obvious OCR/typo confusions (letter O \u2192 digit 0, letter l \u2192 digit 1) only when unambiguous; otherwise strip trailing symbols and flag."},
-        "_handoff_note": "After lexical normalisation, decimal-place COUNT versus the currency's minor unit (e.g. USD max 2, JPY 0) is a BUSINESS rule \u2014 hand off to the global KB (R12 / D00007). This KB only fixes the lexical form."
+        "NUM_THOUSANDS_SEPARATOR_COMMA": {
+            "root_cause": "Anglo grouping commas in an amount (e.g. '1,200.00', '10,000,000.00').",
+            "fix": "Remove every grouping comma, keeping the dot decimal: '1,200.00' → '1200.00'.",
+            "do_not": "Do not confuse the grouping comma with a decimal comma — see the European case."
+        },
+        "NUM_DECIMAL_COMMA": {
+            "root_cause": "European decimal comma (e.g. '1200,50' or '1.200,50' meaning one-thousand-two-hundred and fifty).",
+            "fix": "If the value matches '#.###,##' (dot groups + comma decimal), remove dots and convert the comma to a dot: '1.200,50' → '1200.50'. If the value is simply 'NNN,NN', convert the comma to a dot: '1200,50' → '1200.50'.",
+            "disambiguation": "Decide grouping-vs-decimal by position: a separator followed by exactly 2 digits at the end is the decimal mark; separators every 3 digits are grouping."
+        },
+        "NUM_CURRENCY_SYMBOL": {
+            "root_cause": "A currency symbol or code embedded in the amount text ('$1200.00', '€1.200,00', '1200.00 USD', 'USD1200').",
+            "fix": "Strip the symbol/letters from the amount NODE. The currency belongs only in the Ccy ATTRIBUTE: <Amt Ccy=\"USD\">1200.00</Amt>. If the embedded code conflicts with the existing Ccy attribute, flag for review rather than guessing."
+        },
+        "NUM_INTERNAL_SPACE": {
+            "root_cause": "Space grouping (French/SI style): '1 200,00' or '1 200.00'.",
+            "fix": "Remove all spaces (including NBSP/thin spaces), then apply the decimal-separator rule: '1 200,00' → '1200.00'."
+        },
+        "NUM_LEADING_PLUS": {
+            "root_cause": "A leading '+' sign ('+1200.00').",
+            "fix": "Remove the leading '+'."
+        },
+        "NUM_TYPOGRAPHIC_MINUS": {
+            "root_cause": "A Unicode minus U+2212 or dash instead of ASCII '-' on a negative value.",
+            "fix": "Replace with ASCII '-'. (Whether a negative is even allowed is a schema/business matter — hand off.)"
+        },
+        "NUM_SCIENTIFIC_NOTATION": {
+            "root_cause": "Exponential form ('1.2E3', '1.2e+3').",
+            "fix": "Expand to plain decimal ('1200')."
+        },
+        "NUM_MULTIPLE_DECIMAL_POINTS": {
+            "root_cause": "More than one '.' ('1.200.50' from a botched locale conversion).",
+            "fix": "Interpret using grouping/decimal disambiguation and reduce to a single decimal point: '1.200.50' → '1200.50'."
+        },
+        "NUM_TRAILING_DOT_OR_BARE": {
+            "root_cause": "Trailing decimal point ('1200.') or naked separator.",
+            "fix": "Remove a trailing dot ('1200.' → '1200'); add nothing else."
+        },
+        "NUM_NON_DIGIT_CHARS": {
+            "root_cause": "Stray letters/symbols mixed into a number ('12O0.00' with letter O, '1200.00*').",
+            "fix": "Correct obvious OCR/typo confusions (letter O → digit 0, letter l → digit 1) only when unambiguous; otherwise strip trailing symbols and flag."
+        },
+        "_handoff_note": "After lexical normalisation, decimal-place COUNT versus the currency's minor unit (e.g. USD max 2, JPY 0) is a BUSINESS rule — hand off to the global KB (R12 / D00007). This KB only fixes the lexical form."
     },
-
     "datetime_lexical_errors": {
-        "_doc": "LEXICAL shape of dates/datetimes only. The Z-suffix, milliseconds, and offset-presence rules are owned by the GLOBAL KB (CBPR_DATETIME_Z_FORBIDDEN / CBPR_DATETIME_MILLISECONDS / CBPR_DATETIME_NO_TIMEZONE) and must NOT be re-decided here \u2014 only cross-referenced.",
-        "DT_WRONG_DATE_SEPARATOR": {"root_cause": "Date uses '/' or '.' instead of '-' ('2026/06/01', '01.06.2026').", "fix": "Convert to YYYY-MM-DD with hyphens. If the order is also wrong (DD/MM/YYYY or MM/DD/YYYY), reorder to YYYY-MM-DD \u2014 but flag ambiguous DD-vs-MM cases for review rather than guessing."},
-        "DT_SPACE_INSTEAD_OF_T": {"root_cause": "Date and time separated by a space instead of 'T' ('2026-06-01 06:21:38+00:00').", "fix": "Replace the space with 'T': '2026-06-01T06:21:38+00:00'."},
-        "DT_MISSING_T": {"root_cause": "Date and time concatenated with no separator ('2026-06-0106:21:38').", "fix": "Insert 'T' between the date and time components."},
-        "DT_INTERNAL_SPACE": {"root_cause": "Stray spaces inside the value ('2026-06-01 T 06:21:38', '06 :21:38').", "fix": "Remove all internal whitespace."},
-        "DT_WRONG_TIME_SEPARATOR": {"root_cause": "Time uses '.' or '-' instead of ':' ('06.21.38').", "fix": "Convert time component separators to ':'."},
-        "DT_TRAILING_GARBAGE": {"root_cause": "Trailing characters after the datetime ('2026-06-01T06:21:38+00:00Z', a stray comma, or text).", "fix": "Remove trailing garbage. NOTE: a trailing 'Z' alongside an offset, or a 'Z' suffix generally, is the GLOBAL KB's call (CBPR_DATETIME_Z_FORBIDDEN) \u2014 strip only obviously stray characters here and hand off the Z/offset decision."}
+        "_doc": "LEXICAL shape of dates/datetimes only. The Z-suffix, milliseconds, and offset-presence rules are owned by the GLOBAL KB (CBPR_DATETIME_Z_FORBIDDEN / CBPR_DATETIME_MILLISECONDS / CBPR_DATETIME_NO_TIMEZONE) and must NOT be re-decided here — only cross-referenced.",
+        "DT_WRONG_DATE_SEPARATOR": {
+            "root_cause": "Date uses '/' or '.' instead of '-' ('2026/06/01', '01.06.2026').",
+            "fix": "Convert to YYYY-MM-DD with hyphens. If the order is also wrong (DD/MM/YYYY or MM/DD/YYYY), reorder to YYYY-MM-DD — but flag ambiguous DD-vs-MM cases for review rather than guessing."
+        },
+        "DT_SPACE_INSTEAD_OF_T": {
+            "root_cause": "Date and time separated by a space instead of 'T' ('2026-06-01 06:21:38+00:00').",
+            "fix": "Replace the space with 'T': '2026-06-01T06:21:38+00:00'."
+        },
+        "DT_MISSING_T": {
+            "root_cause": "Date and time concatenated with no separator ('2026-06-0106:21:38').",
+            "fix": "Insert 'T' between the date and time components."
+        },
+        "DT_INTERNAL_SPACE": {
+            "root_cause": "Stray spaces inside the value ('2026-06-01 T 06:21:38', '06 :21:38').",
+            "fix": "Remove all internal whitespace."
+        },
+        "DT_WRONG_TIME_SEPARATOR": {
+            "root_cause": "Time uses '.' or '-' instead of ':' ('06.21.38').",
+            "fix": "Convert time component separators to ':'."
+        },
+        "DT_TRAILING_GARBAGE": {
+            "root_cause": "Trailing characters after the datetime ('2026-06-01T06:21:38+00:00Z', a stray comma, or text).",
+            "fix": "Remove trailing garbage. NOTE: a trailing 'Z' alongside an offset, or a 'Z' suffix generally, is the GLOBAL KB's call (CBPR_DATETIME_Z_FORBIDDEN) — strip only obviously stray characters here and hand off the Z/offset decision."
+        }
     },
-
     "namespace_and_attribute_syntax_errors": {
         "_doc": "Prefix/namespace and attribute lexical faults that block parsing or schema location.",
-        "NS_UNDECLARED_PREFIX": {"root_cause": "An element/attribute uses a namespace prefix that was never declared with xmlns:prefix (e.g. <ns2:Amt> with no xmlns:ns2).", "fix": "Either declare the prefix on an ancestor (xmlns:ns2=\"...the correct ISO namespace...\") or remove the prefix if the default namespace already applies. For ISO 20022, the Document namespace is the message URI (e.g. urn:iso:std:iso:20022:tech:xsd:camt.052.001.08)."},
-        "NS_PREFIX_MISMATCH_ON_CLOSE": {"root_cause": "Close tag prefix differs from the open tag (<ns2:Amt>...</ns3:Amt>).", "fix": "Make the close-tag prefix identical to the open-tag prefix."},
-        "NS_MISSING_DEFAULT_NAMESPACE": {"root_cause": "The AppHdr or Document element lacks its xmlns default declaration, so children are in no namespace and the schema cannot bind.", "fix": "Restore the correct default namespace on AppHdr (urn:iso:std:iso:20022:tech:xsd:head.001.001.02) and Document (the message URI). NOTE: the exact URI/version is a SCHEMA matter \u2014 confirm against the global KB's MsgDefIdr/namespace mapping; this KB only flags the missing/malformed declaration syntax."},
-        "NS_TYPO_IN_URI": {"root_cause": "A typo in the namespace URI (e.g. 'urn:iso:std:iso:20022:tech:xsd:camt.052.001.8' missing a zero, or 'xds' for 'xsd').", "fix": "Correct the URI string to the exact, well-formed namespace token. Cross-check the message-id portion against the global KB."},
-        "ATTR_CCY_LEXICAL": {"root_cause": "The Ccy attribute has stray whitespace or lowercase ('Ccy=\" usd \"', 'Ccy=\"usd\"').", "fix": "Trim whitespace and upper-case to 3 letters: Ccy=\"USD\". (Whether 'USD' is a VALID ISO 4217 code is a business check \u2014 hand off; this KB only fixes spacing/casing of the token.)"},
-        "ATTR_STRAY_CHARS": {"root_cause": "Stray characters or smart quotes around an attribute value (Ccy=\u201CUSD\u201D using curly quotes).", "fix": "Replace curly quotes with straight ASCII double quotes; remove stray characters."}
+        "NS_UNDECLARED_PREFIX": {
+            "root_cause": "An element/attribute uses a namespace prefix that was never declared with xmlns:prefix (e.g. <ns2:Amt> with no xmlns:ns2).",
+            "fix": "Either declare the prefix on an ancestor (xmlns:ns2=\"...the correct ISO namespace...\") or remove the prefix if the default namespace already applies. For ISO 20022, the Document namespace is the message URI (e.g. urn:iso:std:iso:20022:tech:xsd:camt.052.001.08)."
+        },
+        "NS_PREFIX_MISMATCH_ON_CLOSE": {
+            "root_cause": "Close tag prefix differs from the open tag (<ns2:Amt>...</ns3:Amt>).",
+            "fix": "Make the close-tag prefix identical to the open-tag prefix."
+        },
+        "NS_MISSING_DEFAULT_NAMESPACE": {
+            "root_cause": "The AppHdr or Document element lacks its xmlns default declaration, so children are in no namespace and the schema cannot bind.",
+            "fix": "Restore the correct default namespace on AppHdr (urn:iso:std:iso:20022:tech:xsd:head.001.001.02) and Document (the message URI). NOTE: the exact URI/version is a SCHEMA matter — confirm against the global KB's MsgDefIdr/namespace mapping; this KB only flags the missing/malformed declaration syntax."
+        },
+        "NS_TYPO_IN_URI": {
+            "root_cause": "A typo in the namespace URI (e.g. 'urn:iso:std:iso:20022:tech:xsd:camt.052.001.8' missing a zero, or 'xds' for 'xsd').",
+            "fix": "Correct the URI string to the exact, well-formed namespace token. Cross-check the message-id portion against the global KB."
+        },
+        "ATTR_CCY_LEXICAL": {
+            "root_cause": "The Ccy attribute has stray whitespace or lowercase ('Ccy=\" usd \"', 'Ccy=\"usd\"').",
+            "fix": "Trim whitespace and upper-case to 3 letters: Ccy=\"USD\". (Whether 'USD' is a VALID ISO 4217 code is a business check — hand off; this KB only fixes spacing/casing of the token.)"
+        },
+        "ATTR_STRAY_CHARS": {
+            "root_cause": "Stray characters or smart quotes around an attribute value (Ccy=“USD” using curly quotes).",
+            "fix": "Replace curly quotes with straight ASCII double quotes; remove stray characters."
+        }
     },
-
     "error_code_catalogue": {
-        "_doc": "Flat lookup of every syntactic error code in this KB \u2192 one-line root cause + fix. The fixer checks THIS catalogue for any parser/lexical error and only falls through to the global business catalogue for element/codelist/dependency errors.",
-        "WF_UNESCAPED_AMPERSAND": {"root_cause": "Bare & not starting a valid entity.", "fix": "Replace with &amp; (skip already-valid entities)."},
-        "WF_UNESCAPED_LT": {"root_cause": "Literal < in text/attribute.", "fix": "Replace with &lt;."},
-        "WF_UNESCAPED_GT": {"root_cause": "Literal > in text.", "fix": "Replace with &gt;."},
-        "WF_UNESCAPED_QUOTE_IN_ATTR": {"root_cause": "Active quote char inside an attribute value.", "fix": "Escape as &quot;/&apos; or switch delimiter."},
-        "WF_UNDEFINED_ENTITY": {"root_cause": "Non-predefined entity (e.g. &nbsp;).", "fix": "Replace with literal/numeric reference; escape stray & as &amp;."},
-        "WF_MALFORMED_ENTITY": {"root_cause": "Entity missing terminating ';'.", "fix": "Terminate with ';' or escape the &."},
-        "WF_INVALID_CHAR_REFERENCE": {"root_cause": "Numeric reference to an XML-illegal code point.", "fix": "Remove the reference."},
-        "WF_UNCLOSED_TAG": {"root_cause": "Start tag with no matching end tag.", "fix": "Insert the matching end tag in the right place."},
-        "WF_MISMATCHED_TAG": {"root_cause": "End tag name/case differs from start tag.", "fix": "Match name and case exactly."},
-        "WF_OVERLAPPING_TAGS": {"root_cause": "Improper nesting.", "fix": "Close most-recently-opened element first."},
-        "WF_ATTR_NOT_QUOTED": {"root_cause": "Unquoted attribute value.", "fix": "Wrap in double quotes."},
-        "WF_ATTR_MISMATCHED_QUOTES": {"root_cause": "Open/close quotes differ.", "fix": "Use matching double quotes."},
-        "WF_DUPLICATE_ATTRIBUTE": {"root_cause": "Same attribute twice on one element.", "fix": "Remove the duplicate."},
-        "WF_INVALID_TAG_NAME": {"root_cause": "Illegal XML element/attribute name.", "fix": "Repair to the legal schema name."},
-        "WF_STRAY_TEXT_BETWEEN_ELEMENTS": {"root_cause": "Unexpected text/character between child elements.", "fix": "Remove the stray text."},
-        "WF_TEXT_BEFORE_PROLOG": {"root_cause": "Content before <?xml.", "fix": "Delete everything before the declaration/first '<'."},
-        "WF_MALFORMED_DECLARATION": {"root_cause": "Broken XML declaration.", "fix": "Normalise to <?xml version=\"1.0\" encoding=\"UTF-8\"?>."},
-        "WF_MULTIPLE_ROOT_ELEMENTS": {"root_cause": "More than one root / trailing content.", "fix": "Keep one root; remove trailing garbage."},
-        "WF_UNCLOSED_COMMENT": {"root_cause": "Comment not closed / contains '--'.", "fix": "Close with --> or delete the comment."},
-        "WF_UNCLOSED_CDATA": {"root_cause": "CDATA not closed / stray ]]>.", "fix": "Close or remove CDATA; escape content normally."},
-        "WF_PROCESSING_INSTRUCTION_MISUSE": {"root_cause": "Unexpected/malformed PI.", "fix": "Remove it."},
-        "ENC_BOM_PRESENT": {"root_cause": "Leading UTF-8 BOM.", "fix": "Strip unless the receiver requires it."},
-        "ENC_WRONG_BOM": {"root_cause": "UTF-16/32 BOM on a UTF-8 doc.", "fix": "Re-encode to UTF-8 (no BOM)."},
-        "ENC_DECLARATION_MISMATCH": {"root_cause": "Declared encoding \u2260 actual bytes.", "fix": "Re-decode/re-save as UTF-8 or fix the declaration."},
-        "ENC_INVALID_UTF8_SEQUENCE": {"root_cause": "Invalid UTF-8 bytes.", "fix": "Re-decode from source; else strip + flag."},
-        "ENC_ILLEGAL_CONTROL_CHAR": {"root_cause": "C0 control char illegal in XML 1.0.", "fix": "Strip the character."},
-        "ENC_C1_CONTROL_CHAR": {"root_cause": "C1 control (mojibake).", "fix": "Strip or re-decode."},
-        "ENC_ZWNBSP_INLINE": {"root_cause": "U+FEFF inside the body.", "fix": "Strip every inline occurrence."},
-        "ENC_REPLACEMENT_CHAR": {"root_cause": "U+FFFD (lost character).", "fix": "Re-decode if possible; else strip + flag."},
-        "LEX_SMART_QUOTE": {"root_cause": "Curly quotes from Word/Office.", "fix": "Replace with straight ASCII quote/apostrophe."},
-        "LEX_TYPOGRAPHIC_DASH": {"root_cause": "En/em dash or Unicode minus.", "fix": "Replace with ASCII '-'."},
-        "LEX_TYPOGRAPHIC_ELLIPSIS": {"root_cause": "U+2026 ellipsis.", "fix": "Replace with '...'."},
-        "LEX_STRAY_ACCENT_BACKTICK": {"root_cause": "Acute/grave accent or backtick used as apostrophe.", "fix": "Replace with ASCII ' in ID fields; strip stray backticks."},
-        "LEX_ZERO_WIDTH": {"root_cause": "Zero-width space/joiner (U+200B/C/D).", "fix": "Strip."},
-        "LEX_NBSP": {"root_cause": "Non-breaking space (U+00A0).", "fix": "Strip in strict fields; convert to normal space in text."},
-        "LEX_EXOTIC_SPACE": {"root_cause": "Thin/hair/narrow no-break spaces.", "fix": "Strip in strict fields; collapse in text."},
-        "LEX_SOFT_HYPHEN": {"root_cause": "Soft hyphen (U+00AD).", "fix": "Strip."},
-        "LEX_CONTROL_WHITESPACE": {"root_cause": "Tab/VT/FF inside a value.", "fix": "Strip from strict; collapse to space in text; always strip VT/FF."},
-        "LEX_STRAY_COMMA": {"root_cause": "Comma where the field grammar forbids it.", "fix": "Remove (amounts: see NUM_* rules)."},
-        "LEX_DISALLOWED_SYMBOL": {"root_cause": "Symbol outside the field-class charset (@ # % * = ^ _ { } | ~ ; [ ] \\ ` $ ! in strict/identifier fields).", "fix": "Strip or transliterate; if it is & < > escape instead."},
-        "LEX_INTERNAL_SPACE_IN_TOKEN": {"root_cause": "Space inside a strict token.", "fix": "Remove all internal whitespace."},
-        "WS_LEADING_TRAILING": {"root_cause": "Outer whitespace on a value.", "fix": "Trim."},
-        "WS_PRETTYPRINT_LEAKAGE": {"root_cause": "Newline+indent captured as value text.", "fix": "Collapse element to one line, no surrounding whitespace."},
-        "WS_INTERNAL_IN_TOKEN": {"root_cause": "Whitespace inside BIC/IBAN/amount/date/code.", "fix": "Remove all internal whitespace."},
-        "WS_MULTIPLE_SPACES_IN_TEXT": {"root_cause": "Runs of spaces in a name/address.", "fix": "Collapse to single spaces."},
-        "WS_TAB_OR_NEWLINE_IN_VALUE": {"root_cause": "Tab/newline inside a value.", "fix": "Strip (strict) / collapse to space (text)."},
-        "WS_EMPTY_OR_WHITESPACE_ONLY": {"root_cause": "Element empty or whitespace-only where content is required.", "fix": "Strip whitespace and FLAG; hand the missing-value decision to the global KB."},
-        "NUM_THOUSANDS_SEPARATOR_COMMA": {"root_cause": "Grouping commas in an amount.", "fix": "Remove grouping commas, keep dot decimal."},
-        "NUM_DECIMAL_COMMA": {"root_cause": "European decimal comma.", "fix": "Remove dot groups, convert comma to dot."},
-        "NUM_CURRENCY_SYMBOL": {"root_cause": "Currency symbol/code inside the amount node.", "fix": "Strip from node; currency lives only in the Ccy attribute."},
-        "NUM_INTERNAL_SPACE": {"root_cause": "Space grouping in a number.", "fix": "Remove spaces, then fix decimal mark."},
-        "NUM_LEADING_PLUS": {"root_cause": "Leading '+'.", "fix": "Remove it."},
-        "NUM_TYPOGRAPHIC_MINUS": {"root_cause": "Unicode minus/dash on a negative.", "fix": "Replace with ASCII '-'."},
-        "NUM_SCIENTIFIC_NOTATION": {"root_cause": "Exponential form.", "fix": "Expand to plain decimal."},
-        "NUM_MULTIPLE_DECIMAL_POINTS": {"root_cause": "More than one '.'.", "fix": "Reduce to a single decimal point."},
-        "NUM_TRAILING_DOT_OR_BARE": {"root_cause": "Trailing decimal point.", "fix": "Remove the trailing dot."},
-        "NUM_NON_DIGIT_CHARS": {"root_cause": "Letters/symbols mixed into a number.", "fix": "Fix unambiguous OCR confusions; else strip + flag."},
-        "DT_WRONG_DATE_SEPARATOR": {"root_cause": "'/' or '.' in a date.", "fix": "Convert to YYYY-MM-DD with '-'."},
-        "DT_SPACE_INSTEAD_OF_T": {"root_cause": "Space between date and time.", "fix": "Replace with 'T'."},
-        "DT_MISSING_T": {"root_cause": "No date/time separator.", "fix": "Insert 'T'."},
-        "DT_INTERNAL_SPACE": {"root_cause": "Stray spaces in a datetime.", "fix": "Remove internal whitespace."},
-        "DT_WRONG_TIME_SEPARATOR": {"root_cause": "Wrong time separator.", "fix": "Use ':'."},
-        "DT_TRAILING_GARBAGE": {"root_cause": "Trailing characters after a datetime.", "fix": "Remove stray trailing chars; hand off Z/offset decisions to the global KB."},
-        "NS_UNDECLARED_PREFIX": {"root_cause": "Prefix used but not declared.", "fix": "Declare it or drop it in favour of the default namespace."},
-        "NS_PREFIX_MISMATCH_ON_CLOSE": {"root_cause": "Close-tag prefix \u2260 open-tag prefix.", "fix": "Match the prefixes."},
-        "NS_MISSING_DEFAULT_NAMESPACE": {"root_cause": "AppHdr/Document missing xmlns.", "fix": "Restore the correct default namespace (verify URI via global KB)."},
-        "NS_TYPO_IN_URI": {"root_cause": "Typo in a namespace URI.", "fix": "Correct the URI token."},
-        "ATTR_CCY_LEXICAL": {"root_cause": "Whitespace/casing in the Ccy attribute.", "fix": "Trim + upper-case to 3 letters."},
-        "ATTR_STRAY_CHARS": {"root_cause": "Smart quotes/stray chars around an attribute.", "fix": "Use straight ASCII quotes; remove stray chars."},
-
+        "_doc": "Flat lookup of every syntactic error code in this KB → one-line root cause + fix. The fixer checks THIS catalogue for any parser/lexical error and only falls through to the global business catalogue for element/codelist/dependency errors.",
+        "WF_UNESCAPED_AMPERSAND": {
+            "root_cause": "Bare & not starting a valid entity.",
+            "fix": "Replace with &amp; (skip already-valid entities)."
+        },
+        "WF_UNESCAPED_LT": {
+            "root_cause": "Literal < in text/attribute.",
+            "fix": "Replace with &lt;."
+        },
+        "WF_UNESCAPED_GT": {
+            "root_cause": "Literal > in text.",
+            "fix": "Replace with &gt;."
+        },
+        "WF_UNESCAPED_QUOTE_IN_ATTR": {
+            "root_cause": "Active quote char inside an attribute value.",
+            "fix": "Escape as &quot;/&apos; or switch delimiter."
+        },
+        "WF_UNDEFINED_ENTITY": {
+            "root_cause": "Non-predefined entity (e.g. &nbsp;).",
+            "fix": "Replace with literal/numeric reference; escape stray & as &amp;."
+        },
+        "WF_MALFORMED_ENTITY": {
+            "root_cause": "Entity missing terminating ';'.",
+            "fix": "Terminate with ';' or escape the &."
+        },
+        "WF_INVALID_CHAR_REFERENCE": {
+            "root_cause": "Numeric reference to an XML-illegal code point.",
+            "fix": "Remove the reference."
+        },
+        "WF_UNCLOSED_TAG": {
+            "root_cause": "Start tag with no matching end tag.",
+            "fix": "Insert the matching end tag immediately before the conflicting closing tag named in the parser error.",
+            "auto_fixable": true
+        },
+        "WF_MISSING_OPENING_TAG": {
+            "root_cause": "Closing tag </X> present but opening <X> is absent (inverse of WF_UNCLOSED_TAG).",
+            "fix": "Scan backward from </X> to find the parent (first line with less indentation), then forward to the first content line after the parent — insert <X [xmlns='...']> there. Add xmlns for AppHdr (head.001.001.02) and Document (message-type URI); omit xmlns for all other elements.",
+            "auto_fixable": true
+        },
+        "WF_MISMATCHED_TAG": {
+            "root_cause": "End tag name/case differs from start tag.",
+            "fix": "Match name and case exactly."
+        },
+        "WF_OVERLAPPING_TAGS": {
+            "root_cause": "Improper nesting.",
+            "fix": "Close most-recently-opened element first."
+        },
+        "WF_ATTR_NOT_QUOTED": {
+            "root_cause": "Unquoted attribute value.",
+            "fix": "Wrap in double quotes."
+        },
+        "WF_ATTR_MISMATCHED_QUOTES": {
+            "root_cause": "Open/close quotes differ.",
+            "fix": "Use matching double quotes."
+        },
+        "WF_DUPLICATE_ATTRIBUTE": {
+            "root_cause": "Same attribute twice on one element.",
+            "fix": "Remove the duplicate."
+        },
+        "WF_INVALID_TAG_NAME": {
+            "root_cause": "Illegal XML element/attribute name.",
+            "fix": "Repair to the legal schema name."
+        },
+        "WF_STRAY_TEXT_BETWEEN_ELEMENTS": {
+            "root_cause": "Unexpected text/character between child elements.",
+            "fix": "Remove the stray text."
+        },
+        "WF_TEXT_BEFORE_PROLOG": {
+            "root_cause": "Content before <?xml.",
+            "fix": "Delete everything before the declaration/first '<'."
+        },
+        "WF_MALFORMED_DECLARATION": {
+            "root_cause": "Broken XML declaration.",
+            "fix": "Normalise to <?xml version=\"1.0\" encoding=\"UTF-8\"?>."
+        },
+        "WF_MULTIPLE_ROOT_ELEMENTS": {
+            "root_cause": "More than one root / trailing content.",
+            "fix": "Keep one root; remove trailing garbage."
+        },
+        "WF_UNCLOSED_COMMENT": {
+            "root_cause": "Comment not closed / contains '--'.",
+            "fix": "Close with --> or delete the comment."
+        },
+        "WF_UNCLOSED_CDATA": {
+            "root_cause": "CDATA not closed / stray ]]>.",
+            "fix": "Close or remove CDATA; escape content normally."
+        },
+        "WF_PROCESSING_INSTRUCTION_MISUSE": {
+            "root_cause": "Unexpected/malformed PI.",
+            "fix": "Remove it."
+        },
+        "ENC_BOM_PRESENT": {
+            "root_cause": "Leading UTF-8 BOM.",
+            "fix": "Strip unless the receiver requires it."
+        },
+        "ENC_WRONG_BOM": {
+            "root_cause": "UTF-16/32 BOM on a UTF-8 doc.",
+            "fix": "Re-encode to UTF-8 (no BOM)."
+        },
+        "ENC_DECLARATION_MISMATCH": {
+            "root_cause": "Declared encoding ≠ actual bytes.",
+            "fix": "Re-decode/re-save as UTF-8 or fix the declaration."
+        },
+        "ENC_INVALID_UTF8_SEQUENCE": {
+            "root_cause": "Invalid UTF-8 bytes.",
+            "fix": "Re-decode from source; else strip + flag."
+        },
+        "ENC_ILLEGAL_CONTROL_CHAR": {
+            "root_cause": "C0 control char illegal in XML 1.0.",
+            "fix": "Strip the character."
+        },
+        "ENC_C1_CONTROL_CHAR": {
+            "root_cause": "C1 control (mojibake).",
+            "fix": "Strip or re-decode."
+        },
+        "ENC_ZWNBSP_INLINE": {
+            "root_cause": "U+FEFF inside the body.",
+            "fix": "Strip every inline occurrence."
+        },
+        "ENC_REPLACEMENT_CHAR": {
+            "root_cause": "U+FFFD (lost character).",
+            "fix": "Re-decode if possible; else strip + flag."
+        },
+        "LEX_SMART_QUOTE": {
+            "root_cause": "Curly quotes from Word/Office.",
+            "fix": "Replace with straight ASCII quote/apostrophe."
+        },
+        "LEX_TYPOGRAPHIC_DASH": {
+            "root_cause": "En/em dash or Unicode minus.",
+            "fix": "Replace with ASCII '-'."
+        },
+        "LEX_TYPOGRAPHIC_ELLIPSIS": {
+            "root_cause": "U+2026 ellipsis.",
+            "fix": "Replace with '...'."
+        },
+        "LEX_STRAY_ACCENT_BACKTICK": {
+            "root_cause": "Acute/grave accent or backtick used as apostrophe.",
+            "fix": "Replace with ASCII ' in ID fields; strip stray backticks."
+        },
+        "LEX_ZERO_WIDTH": {
+            "root_cause": "Zero-width space/joiner (U+200B/C/D).",
+            "fix": "Strip."
+        },
+        "LEX_NBSP": {
+            "root_cause": "Non-breaking space (U+00A0).",
+            "fix": "Strip in strict fields; convert to normal space in text."
+        },
+        "LEX_EXOTIC_SPACE": {
+            "root_cause": "Thin/hair/narrow no-break spaces.",
+            "fix": "Strip in strict fields; collapse in text."
+        },
+        "LEX_SOFT_HYPHEN": {
+            "root_cause": "Soft hyphen (U+00AD).",
+            "fix": "Strip."
+        },
+        "LEX_CONTROL_WHITESPACE": {
+            "root_cause": "Tab/VT/FF inside a value.",
+            "fix": "Strip from strict; collapse to space in text; always strip VT/FF."
+        },
+        "LEX_STRAY_COMMA": {
+            "root_cause": "Comma where the field grammar forbids it.",
+            "fix": "Remove (amounts: see NUM_* rules)."
+        },
+        "LEX_DISALLOWED_SYMBOL": {
+            "root_cause": "Symbol outside the field-class charset (@ # % * = ^ _ { } | ~ ; [ ] \\ ` $ ! in strict/identifier fields).",
+            "fix": "Strip or transliterate; if it is & < > escape instead."
+        },
+        "LEX_INTERNAL_SPACE_IN_TOKEN": {
+            "root_cause": "Space inside a strict token.",
+            "fix": "Remove all internal whitespace."
+        },
+        "WS_LEADING_TRAILING": {
+            "root_cause": "Outer whitespace on a value.",
+            "fix": "Trim."
+        },
+        "WS_PRETTYPRINT_LEAKAGE": {
+            "root_cause": "Newline+indent captured as value text.",
+            "fix": "Collapse element to one line, no surrounding whitespace."
+        },
+        "WS_INTERNAL_IN_TOKEN": {
+            "root_cause": "Whitespace inside BIC/IBAN/amount/date/code.",
+            "fix": "Remove all internal whitespace."
+        },
+        "WS_MULTIPLE_SPACES_IN_TEXT": {
+            "root_cause": "Runs of spaces in a name/address.",
+            "fix": "Collapse to single spaces."
+        },
+        "WS_TAB_OR_NEWLINE_IN_VALUE": {
+            "root_cause": "Tab/newline inside a value.",
+            "fix": "Strip (strict) / collapse to space (text)."
+        },
+        "WS_EMPTY_OR_WHITESPACE_ONLY": {
+            "root_cause": "Element empty or whitespace-only where content is required.",
+            "fix": "Strip whitespace and FLAG; hand the missing-value decision to the global KB."
+        },
+        "NUM_THOUSANDS_SEPARATOR_COMMA": {
+            "root_cause": "Grouping commas in an amount.",
+            "fix": "Remove grouping commas, keep dot decimal."
+        },
+        "NUM_DECIMAL_COMMA": {
+            "root_cause": "European decimal comma.",
+            "fix": "Remove dot groups, convert comma to dot."
+        },
+        "NUM_CURRENCY_SYMBOL": {
+            "root_cause": "Currency symbol/code inside the amount node.",
+            "fix": "Strip from node; currency lives only in the Ccy attribute."
+        },
+        "NUM_INTERNAL_SPACE": {
+            "root_cause": "Space grouping in a number.",
+            "fix": "Remove spaces, then fix decimal mark."
+        },
+        "NUM_LEADING_PLUS": {
+            "root_cause": "Leading '+'.",
+            "fix": "Remove it."
+        },
+        "NUM_TYPOGRAPHIC_MINUS": {
+            "root_cause": "Unicode minus/dash on a negative.",
+            "fix": "Replace with ASCII '-'."
+        },
+        "NUM_SCIENTIFIC_NOTATION": {
+            "root_cause": "Exponential form.",
+            "fix": "Expand to plain decimal."
+        },
+        "NUM_MULTIPLE_DECIMAL_POINTS": {
+            "root_cause": "More than one '.'.",
+            "fix": "Reduce to a single decimal point."
+        },
+        "NUM_TRAILING_DOT_OR_BARE": {
+            "root_cause": "Trailing decimal point.",
+            "fix": "Remove the trailing dot."
+        },
+        "NUM_NON_DIGIT_CHARS": {
+            "root_cause": "Letters/symbols mixed into a number.",
+            "fix": "Fix unambiguous OCR confusions; else strip + flag."
+        },
+        "DT_WRONG_DATE_SEPARATOR": {
+            "root_cause": "'/' or '.' in a date.",
+            "fix": "Convert to YYYY-MM-DD with '-'."
+        },
+        "DT_SPACE_INSTEAD_OF_T": {
+            "root_cause": "Space between date and time.",
+            "fix": "Replace with 'T'."
+        },
+        "DT_MISSING_T": {
+            "root_cause": "No date/time separator.",
+            "fix": "Insert 'T'."
+        },
+        "DT_INTERNAL_SPACE": {
+            "root_cause": "Stray spaces in a datetime.",
+            "fix": "Remove internal whitespace."
+        },
+        "DT_WRONG_TIME_SEPARATOR": {
+            "root_cause": "Wrong time separator.",
+            "fix": "Use ':'."
+        },
+        "DT_TRAILING_GARBAGE": {
+            "root_cause": "Trailing characters after a datetime.",
+            "fix": "Remove stray trailing chars; hand off Z/offset decisions to the global KB."
+        },
+        "NS_UNDECLARED_PREFIX": {
+            "root_cause": "Prefix used but not declared.",
+            "fix": "Declare it or drop it in favour of the default namespace."
+        },
+        "NS_PREFIX_MISMATCH_ON_CLOSE": {
+            "root_cause": "Close-tag prefix ≠ open-tag prefix.",
+            "fix": "Match the prefixes."
+        },
+        "NS_MISSING_DEFAULT_NAMESPACE": {
+            "root_cause": "AppHdr/Document missing xmlns.",
+            "fix": "Restore the correct default namespace (verify URI via global KB)."
+        },
+        "NS_TYPO_IN_URI": {
+            "root_cause": "Typo in a namespace URI.",
+            "fix": "Correct the URI token."
+        },
+        "ATTR_CCY_LEXICAL": {
+            "root_cause": "Whitespace/casing in the Ccy attribute.",
+            "fix": "Trim + upper-case to 3 letters."
+        },
+        "ATTR_STRAY_CHARS": {
+            "root_cause": "Smart quotes/stray chars around an attribute.",
+            "fix": "Use straight ASCII quotes; remove stray chars."
+        },
         "SCHEMA_VAL_STRAY_TEXT": {
             "root_cause": "Non-whitespace character content (e.g. stray punctuation like ',.?\"' '{}' or a word typed by mistake) appears directly inside an element whose XSD content type is 'element-only' (e.g. <Document>, <FIToFIPmtStsRpt>, <GrpHdr>). These characters become a text node or a child-tail in the parsed tree and the schema rejects them with 'Character content other than whitespace is not allowed because the content type is element-only'. Common cause: the user typed or pasted special characters next to a closing tag in the editor.",
             "detect": "lxml/XSD validation emits: \"Character content other than whitespace is not allowed because the content type is 'element-only'\" for the named container element.",
@@ -299,26 +951,92 @@
             ],
             "auto_fixable": true
         },
-
         "WF_STRAY_TEXT_AFTER_CLOSE_TAG": {
             "root_cause": "Characters typed or pasted after a closing tag but before the parent's closing tag (e.g. </FIToFIPmtStsRpt> ,.?\"} </Document>). The parser records these as the tail of the child element, which lands as character content inside the parent — a schema violation for element-only parents.",
             "detect": "The XSD validator reports 'Character content other than whitespace is not allowed' on the parent; inspecting child.tail values reveals the stray text.",
             "fix": "Strip the tail of each child element whose tail contains non-whitespace characters. Set child.tail = None (or a clean newline/indent if the document is pretty-printed).",
             "do_not": "Do not escape the tail text — it is not content that belongs in the message.",
             "auto_fixable": true
+        },
+        "DTD_FORBIDDEN": {
+            "root_cause": "DOCTYPE declaration present. Forbidden in ISO 20022.",
+            "fix": "Remove the entire <!DOCTYPE ...> block.",
+            "auto_fixable": true,
+            "security_note": "XXE injection risk."
+        },
+        "ENTITY_FORBIDDEN": {
+            "root_cause": "Entity declaration present. Forbidden in ISO 20022.",
+            "fix": "Remove <!ENTITY ...> and replace entity references with literal values.",
+            "auto_fixable": true,
+            "security_note": "Entity expansion (Billion Laughs) attack risk."
         }
     },
-
     "transliteration_map": {
-        "_doc": "Deterministic ASCII replacements for common non-ASCII characters when a field class requires plain ASCII (strict_token, identifier) OR when the global INVALID_CHARSETS rule applies. In CBPR+ TEXT fields (Nm/Adr/RmtInf) accented Latin letters are permitted and need NOT be transliterated \u2014 only invisible/smart/zero-width characters are cleaned there.",
-        "smart_quotes": {"\u201C": "\"", "\u201D": "\"", "\u2018": "'", "\u2019": "'", "\u00AB": "\"", "\u00BB": "\""},
-        "dashes": {"\u2013": "-", "\u2014": "-", "\u2212": "-", "\u2010": "-", "\u2011": "-"},
-        "spaces": {"\u00A0": " ", "\u2009": " ", "\u200A": " ", "\u202F": " ", "\u3000": " "},
-        "punctuation": {"\u2026": "...", "\u00B4": "'", "\u0060": "'", "\u02BC": "'"},
-        "latin_accents_for_strict_fields_only": {"\u00E0": "a", "\u00E1": "a", "\u00E2": "a", "\u00E3": "a", "\u00E4": "ae", "\u00E5": "a", "\u00E7": "c", "\u00E8": "e", "\u00E9": "e", "\u00EA": "e", "\u00EB": "e", "\u00EC": "i", "\u00ED": "i", "\u00EE": "i", "\u00EF": "i", "\u00F1": "n", "\u00F2": "o", "\u00F3": "o", "\u00F4": "o", "\u00F5": "o", "\u00F6": "oe", "\u00F8": "o", "\u00F9": "u", "\u00FA": "u", "\u00FB": "u", "\u00FC": "ue", "\u00FD": "y", "\u00FF": "y", "\u00DF": "ss", "\u00C4": "AE", "\u00D6": "OE", "\u00DC": "UE"},
-        "note": "Use latin_accents_for_strict_fields_only ONLY when the target field class is strict_token/identifier, or when the validator raised the global INVALID_CHARSETS code for a field that does not permit accents. NEVER transliterate accents inside CBPR+ Nm/AdrLine/Ustrd text fields just because they are non-ASCII \u2014 they are valid there."
+        "_doc": "Deterministic ASCII replacements for common non-ASCII characters when a field class requires plain ASCII (strict_token, identifier) OR when the global INVALID_CHARSETS rule applies. In CBPR+ TEXT fields (Nm/Adr/RmtInf) accented Latin letters are permitted and need NOT be transliterated — only invisible/smart/zero-width characters are cleaned there.",
+        "smart_quotes": {
+            "“": "\"",
+            "”": "\"",
+            "‘": "'",
+            "’": "'",
+            "«": "\"",
+            "»": "\""
+        },
+        "dashes": {
+            "–": "-",
+            "—": "-",
+            "−": "-",
+            "‐": "-",
+            "‑": "-"
+        },
+        "spaces": {
+            " ": " ",
+            " ": " ",
+            " ": " ",
+            " ": " ",
+            "　": " "
+        },
+        "punctuation": {
+            "…": "...",
+            "´": "'",
+            "`": "'",
+            "ʼ": "'"
+        },
+        "latin_accents_for_strict_fields_only": {
+            "à": "a",
+            "á": "a",
+            "â": "a",
+            "ã": "a",
+            "ä": "ae",
+            "å": "a",
+            "ç": "c",
+            "è": "e",
+            "é": "e",
+            "ê": "e",
+            "ë": "e",
+            "ì": "i",
+            "í": "i",
+            "î": "i",
+            "ï": "i",
+            "ñ": "n",
+            "ò": "o",
+            "ó": "o",
+            "ô": "o",
+            "õ": "o",
+            "ö": "oe",
+            "ø": "o",
+            "ù": "u",
+            "ú": "u",
+            "û": "u",
+            "ü": "ue",
+            "ý": "y",
+            "ÿ": "y",
+            "ß": "ss",
+            "Ä": "AE",
+            "Ö": "OE",
+            "Ü": "UE"
+        },
+        "note": "Use latin_accents_for_strict_fields_only ONLY when the target field class is strict_token/identifier, or when the validator raised the global INVALID_CHARSETS code for a field that does not permit accents. NEVER transliterate accents inside CBPR+ Nm/AdrLine/Ustrd text fields just because they are non-ASCII — they are valid there."
     },
-
     "escaping_rules": {
         "_doc": "The ONLY five characters that have XML entity escapes. Everything else is either a literal, a numeric character reference, or must be stripped/transliterated.",
         "predefined_entities": {
@@ -329,42 +1047,113 @@
             "'": "&apos;"
         },
         "when_to_escape": [
-            "& \u2014 ALWAYS escape in both text and attribute values unless it already begins a valid entity.",
-            "< \u2014 ALWAYS escape in text and attribute values.",
-            "> \u2014 escape in text (CBPR+ requires it; XML strictly requires it only after ']]').",
-            "\" \u2014 escape inside double-quoted attribute values (optional in element text).",
-            "' \u2014 escape inside single-quoted attribute values (legal as a literal in element text and in FIN-X identifier fields)."
+            "& — ALWAYS escape in both text and attribute values unless it already begins a valid entity.",
+            "< — ALWAYS escape in text and attribute values.",
+            "> — escape in text (CBPR+ requires it; XML strictly requires it only after ']]').",
+            "\" — escape inside double-quoted attribute values (optional in element text).",
+            "' — escape inside single-quoted attribute values (legal as a literal in element text and in FIN-X identifier fields)."
         ],
         "idempotency_guard": "Before escaping, detect existing valid entities (&amp; &lt; &gt; &quot; &apos; &#nnn; &#xHH;) and skip them, so the fixer never produces &amp;amp;.",
         "do_not": [
-            "Do NOT use HTML entities (&nbsp; &mdash; &copy; ...) \u2014 they are undefined in XML.",
-            "Do NOT escape characters that are not one of the five (e.g. do not turn @ into an entity \u2014 either it is allowed in the field, or it should be stripped).",
-            "Do NOT wrap values in CDATA to avoid escaping \u2014 ISO 20022 messages do not use CDATA."
+            "Do NOT use HTML entities (&nbsp; &mdash; &copy; ...) — they are undefined in XML.",
+            "Do NOT escape characters that are not one of the five (e.g. do not turn @ into an entity — either it is allowed in the field, or it should be stripped).",
+            "Do NOT wrap values in CDATA to avoid escaping — ISO 20022 messages do not use CDATA."
         ]
     },
-
     "worked_examples": {
         "_doc": "Concrete before/after pairs spanning the categories, for the fixer to pattern-match against. Each shows ONLY the syntactic repair this KB is responsible for.",
-        "unescaped_ampersand_in_name": {"before": "<Nm>Smith & Co Ltd</Nm>", "after": "<Nm>Smith &amp; Co Ltd</Nm>", "code": "WF_UNESCAPED_AMPERSAND"},
-        "less_than_in_remittance": {"before": "<Ustrd>qty < 10 units</Ustrd>", "after": "<Ustrd>qty &lt; 10 units</Ustrd>", "code": "WF_UNESCAPED_LT"},
-        "smart_quotes_in_name": {"before": "<Nm>\u201CACME\u201D Corp</Nm>", "after": "<Nm>\"ACME\" Corp</Nm>", "code": "LEX_SMART_QUOTE"},
-        "nbsp_in_bic": {"before": "<BICFI>DEUT\u00A0DEFF\u00A0XXX</BICFI>", "after": "<BICFI>DEUTDEFFXXX</BICFI>", "code": "LEX_NBSP / WS_INTERNAL_IN_TOKEN"},
-        "thousands_comma_amount": {"before": "<Amt Ccy=\"USD\">1,200.00</Amt>", "after": "<Amt Ccy=\"USD\">1200.00</Amt>", "code": "NUM_THOUSANDS_SEPARATOR_COMMA"},
-        "european_decimal_amount": {"before": "<Amt Ccy=\"EUR\">1.200,50</Amt>", "after": "<Amt Ccy=\"EUR\">1200.50</Amt>", "code": "NUM_DECIMAL_COMMA"},
-        "currency_symbol_in_amount": {"before": "<Amt Ccy=\"USD\">$1200.00</Amt>", "after": "<Amt Ccy=\"USD\">1200.00</Amt>", "code": "NUM_CURRENCY_SYMBOL"},
-        "prettyprint_leak_in_msgid": {"before": "<MsgId>\n            B1780294898738\n          </MsgId>", "after": "<MsgId>B1780294898738</MsgId>", "code": "WS_PRETTYPRINT_LEAKAGE"},
-        "trailing_space_in_ccy_attr": {"before": "<Amt Ccy=\" usd \">1200.00</Amt>", "after": "<Amt Ccy=\"USD\">1200.00</Amt>", "code": "ATTR_CCY_LEXICAL"},
-        "slash_date": {"before": "<Dt>2026/06/01</Dt>", "after": "<Dt>2026-06-01</Dt>", "code": "DT_WRONG_DATE_SEPARATOR"},
-        "space_datetime": {"before": "<CreDtTm>2026-06-01 06:21:38+00:00</CreDtTm>", "after": "<CreDtTm>2026-06-01T06:21:38+00:00</CreDtTm>", "code": "DT_SPACE_INSTEAD_OF_T"},
-        "mismatched_case_tag": {"before": "<BICFI>DEUTDEFFXXX</Bicfi>", "after": "<BICFI>DEUTDEFFXXX</BICFI>", "code": "WF_MISMATCHED_TAG"},
-        "unquoted_attribute": {"before": "<Amt Ccy=USD>1200.00</Amt>", "after": "<Amt Ccy=\"USD\">1200.00</Amt>", "code": "WF_ATTR_NOT_QUOTED"},
-        "html_entity_misuse": {"before": "<Nm>ACME&nbsp;Corp</Nm>", "after": "<Nm>ACME Corp</Nm>", "code": "WF_UNDEFINED_ENTITY"},
-        "stray_comma_between_elements": {"before": "</Amt>,<CdtDbtInd>CRDT</CdtDbtInd>", "after": "</Amt><CdtDbtInd>CRDT</CdtDbtInd>", "code": "WF_STRAY_TEXT_BETWEEN_ELEMENTS"},
-        "bom_before_declaration": {"before": "\uFEFF<?xml version=\"1.0\" encoding=\"UTF-8\"?>", "after": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>", "code": "ENC_BOM_PRESENT"},
-        "zero_width_in_iban": {"before": "<IBAN>DE89\u200B370400440532013000</IBAN>", "after": "<IBAN>DE89370400440532013000</IBAN>", "code": "LEX_ZERO_WIDTH"},
-        "at_symbol_in_msgid": {"before": "<MsgId>MSG@2026#001</MsgId>", "after": "<MsgId>MSG2026001</MsgId>", "code": "LEX_DISALLOWED_SYMBOL", "note": "@ and # are outside the FIN-X identifier set; strip them (do not escape \u2014 escaping only applies to & < > \" ')."}
+        "unescaped_ampersand_in_name": {
+            "before": "<Nm>Smith & Co Ltd</Nm>",
+            "after": "<Nm>Smith &amp; Co Ltd</Nm>",
+            "code": "WF_UNESCAPED_AMPERSAND"
+        },
+        "less_than_in_remittance": {
+            "before": "<Ustrd>qty < 10 units</Ustrd>",
+            "after": "<Ustrd>qty &lt; 10 units</Ustrd>",
+            "code": "WF_UNESCAPED_LT"
+        },
+        "smart_quotes_in_name": {
+            "before": "<Nm>“ACME” Corp</Nm>",
+            "after": "<Nm>\"ACME\" Corp</Nm>",
+            "code": "LEX_SMART_QUOTE"
+        },
+        "nbsp_in_bic": {
+            "before": "<BICFI>DEUT DEFF XXX</BICFI>",
+            "after": "<BICFI>DEUTDEFFXXX</BICFI>",
+            "code": "LEX_NBSP / WS_INTERNAL_IN_TOKEN"
+        },
+        "thousands_comma_amount": {
+            "before": "<Amt Ccy=\"USD\">1,200.00</Amt>",
+            "after": "<Amt Ccy=\"USD\">1200.00</Amt>",
+            "code": "NUM_THOUSANDS_SEPARATOR_COMMA"
+        },
+        "european_decimal_amount": {
+            "before": "<Amt Ccy=\"EUR\">1.200,50</Amt>",
+            "after": "<Amt Ccy=\"EUR\">1200.50</Amt>",
+            "code": "NUM_DECIMAL_COMMA"
+        },
+        "currency_symbol_in_amount": {
+            "before": "<Amt Ccy=\"USD\">$1200.00</Amt>",
+            "after": "<Amt Ccy=\"USD\">1200.00</Amt>",
+            "code": "NUM_CURRENCY_SYMBOL"
+        },
+        "prettyprint_leak_in_msgid": {
+            "before": "<MsgId>\n            B1780294898738\n          </MsgId>",
+            "after": "<MsgId>B1780294898738</MsgId>",
+            "code": "WS_PRETTYPRINT_LEAKAGE"
+        },
+        "trailing_space_in_ccy_attr": {
+            "before": "<Amt Ccy=\" usd \">1200.00</Amt>",
+            "after": "<Amt Ccy=\"USD\">1200.00</Amt>",
+            "code": "ATTR_CCY_LEXICAL"
+        },
+        "slash_date": {
+            "before": "<Dt>2026/06/01</Dt>",
+            "after": "<Dt>2026-06-01</Dt>",
+            "code": "DT_WRONG_DATE_SEPARATOR"
+        },
+        "space_datetime": {
+            "before": "<CreDtTm>2026-06-01 06:21:38+00:00</CreDtTm>",
+            "after": "<CreDtTm>2026-06-01T06:21:38+00:00</CreDtTm>",
+            "code": "DT_SPACE_INSTEAD_OF_T"
+        },
+        "mismatched_case_tag": {
+            "before": "<BICFI>DEUTDEFFXXX</Bicfi>",
+            "after": "<BICFI>DEUTDEFFXXX</BICFI>",
+            "code": "WF_MISMATCHED_TAG"
+        },
+        "unquoted_attribute": {
+            "before": "<Amt Ccy=USD>1200.00</Amt>",
+            "after": "<Amt Ccy=\"USD\">1200.00</Amt>",
+            "code": "WF_ATTR_NOT_QUOTED"
+        },
+        "html_entity_misuse": {
+            "before": "<Nm>ACME&nbsp;Corp</Nm>",
+            "after": "<Nm>ACME Corp</Nm>",
+            "code": "WF_UNDEFINED_ENTITY"
+        },
+        "stray_comma_between_elements": {
+            "before": "</Amt>,<CdtDbtInd>CRDT</CdtDbtInd>",
+            "after": "</Amt><CdtDbtInd>CRDT</CdtDbtInd>",
+            "code": "WF_STRAY_TEXT_BETWEEN_ELEMENTS"
+        },
+        "bom_before_declaration": {
+            "before": "﻿<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+            "after": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+            "code": "ENC_BOM_PRESENT"
+        },
+        "zero_width_in_iban": {
+            "before": "<IBAN>DE89​370400440532013000</IBAN>",
+            "after": "<IBAN>DE89370400440532013000</IBAN>",
+            "code": "LEX_ZERO_WIDTH"
+        },
+        "at_symbol_in_msgid": {
+            "before": "<MsgId>MSG@2026#001</MsgId>",
+            "after": "<MsgId>MSG2026001</MsgId>",
+            "code": "LEX_DISALLOWED_SYMBOL",
+            "note": "@ and # are outside the FIN-X identifier set; strip them (do not escape — escaping only applies to & < > \" ')."
+        }
     },
-
     "guardrails": {
         "_doc": "Hard rules to stop the fixer from causing damage while repairing syntax.",
         "rules": [
@@ -372,7 +1161,7 @@
             "NO BUSINESS INVENTION: never substitute a dummy BIC/IBAN/code/amount to make a syntactically broken value 'valid'. If a value is unrecoverable, strip the contamination and flag for the global KB / human review.",
             "IDEMPOTENT ESCAPING: never double-escape; detect existing valid entities first.",
             "DISAMBIGUATE NUMBERS CAREFULLY: when a separator could be grouping or decimal, decide by the 3-digit grouping vs 2-digit-tail heuristic; if still ambiguous, flag rather than guess.",
-            "DATETIME HAND-OFF: fix only separators/spacing here; never add, remove, or rewrite the 'Z'/offset/milliseconds \u2014 that is the global KB's CBPR_DATETIME_* domain.",
+            "DATETIME HAND-OFF: fix only separators/spacing here; never add, remove, or rewrite the 'Z'/offset/milliseconds — that is the global KB's CBPR_DATETIME_* domain.",
             "ACCENTS IN TEXT FIELDS: do not transliterate valid accented Latin letters inside CBPR+ Nm/Adr/RmtInf; only clean invisible/smart/zero-width characters there.",
             "ONE FAULT, ONE FIX: report and fix each syntactic fault independently; do not bundle a syntactic fix with a business fix.",
             "REVALIDATE: after applying this KB's fixes, the document MUST be well-formed XML before the global business KB is consulted."
