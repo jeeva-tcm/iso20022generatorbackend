@@ -5482,33 +5482,73 @@ class FixSuggester:
 
             # 1. Explicit expected currency stated in message/fix_hint
             _combined = f"{msg} {fix_hint}"
-            _iban_ccy_m = re.search(
-                r"(?:expected currency|transaction currency to|update.*to)\s+([A-Z]{3})\b",
+
+            # Pattern A: "from 'USD' to 'DKK'" or "from USD to DKK" (quoted or bare)
+            # Handles CHRG_CCY_MISMATCH fix_hint style exactly.
+            _pair_m = re.search(
+                r"from\s+'?([A-Z]{3})'?\s+to\s+'?([A-Z]{3})'?",
                 _combined, re.I,
             )
-            if _iban_ccy_m:
-                _candidate = _iban_ccy_m.group(1).upper()
+            if _pair_m:
+                _candidate = _pair_m.group(2).upper()
                 if not valid_currencies or _candidate in valid_currencies:
                     new_value = _candidate
 
-            # 2. Walk the doc for another element with a valid @Ccy attribute
+            # Pattern B: "update to DKK" / "expected currency DKK" /
+            #            "transaction currency is DKK" / "set ... to 'DKK'"
+            if new_value is None:
+                _direct_m = re.search(
+                    r"(?:expected\s+currency|transaction\s+currency\s+(?:is\s+)?|"
+                    r"update\s+(?:\S+\s+)?to\s+|set\s+(?:\S+\s+)?to\s+)'?([A-Z]{3})'?",
+                    _combined, re.I,
+                )
+                if _direct_m:
+                    _candidate = _direct_m.group(1).upper()
+                    if not valid_currencies or _candidate in valid_currencies:
+                        new_value = _candidate
+
+            # 2. Walk the doc — prefer IntrBkSttlmAmt (authoritative tx currency)
+            #    then InstdAmt, then any other Ccy that differs from the bad one.
             if new_value is None:
                 try:
                     root = el.getroottree().getroot()
                 except Exception:
                     root = None
                 if root is not None:
+                    # Priority 1: IntrBkSttlmAmt Ccy — the canonical settlement currency
                     for sib in root.iter():
                         if not isinstance(sib.tag, str):
                             continue
-                        sib_ccy = (sib.get("Ccy") or "").strip().upper()
-                        if sib_ccy and sib_ccy != cur_bad:
-                            if not valid_currencies or sib_ccy in valid_currencies:
+                        if etree.QName(sib.tag).localname == "IntrBkSttlmAmt":
+                            sib_ccy = (sib.get("Ccy") or "").strip().upper()
+                            if sib_ccy and (not valid_currencies or sib_ccy in valid_currencies):
                                 new_value = sib_ccy
                                 break
+                    # Priority 2: InstdAmt Ccy
+                    if new_value is None:
+                        for sib in root.iter():
+                            if not isinstance(sib.tag, str):
+                                continue
+                            if etree.QName(sib.tag).localname == "InstdAmt":
+                                sib_ccy = (sib.get("Ccy") or "").strip().upper()
+                                if sib_ccy and (not valid_currencies or sib_ccy in valid_currencies):
+                                    new_value = sib_ccy
+                                    break
+                    # Priority 3: any other element with a different, valid Ccy
+                    if new_value is None:
+                        for sib in root.iter():
+                            if not isinstance(sib.tag, str):
+                                continue
+                            sib_ccy = (sib.get("Ccy") or "").strip().upper()
+                            if sib_ccy and sib_ccy != cur_bad:
+                                if not valid_currencies or sib_ccy in valid_currencies:
+                                    new_value = sib_ccy
+                                    break
 
             if new_value is None:
-                new_value = "USD"  # safe ISO 4217 default
+                # No currency found anywhere — leave unchanged rather than
+                # hardcoding a wrong currency like USD.
+                new_value = cur_bad if cur_bad else "EUR"
 
             # 3. After choosing a valid currency, also fix the amount text
             #    if it has wrong decimal precision for that currency.
