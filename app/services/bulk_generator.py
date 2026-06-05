@@ -744,7 +744,7 @@ MESSAGE_BLOCKS: Dict[str, List[Dict]] = {
         {"id": "creditor",                   "label": "Creditor",                    "mandatory": True},
         {"id": "creditor_account",           "label": "Creditor Account",            "mandatory": True,  "requires": ["creditor"]},
         {"id": "creditor_agent_account",     "label": "Creditor Agent Account",      "mandatory": False, "requires": ["creditor_agent"]},
-        {"id": "direct_debit_transaction",   "label": "Direct Debit Transaction",    "mandatory": False},
+        {"id": "direct_debit_transaction",   "label": "Direct Debit Transaction",    "mandatory": True},
         {"id": "intermediary_agent_1",       "label": "Intermediary Agent 1",        "mandatory": False},
         {"id": "intermediary_agent_2",       "label": "Intermediary Agent 2",        "mandatory": False, "requires": ["intermediary_agent_1"]},
         {"id": "intermediary_agent_3",       "label": "Intermediary Agent 3",        "mandatory": False, "requires": ["intermediary_agent_2"]},
@@ -1126,14 +1126,24 @@ def _gen_pacs009(selected: set, idx: int, is_cov: bool = False, is_adv: bool = F
     uetr = scenario.uetr
     cre_dt = rng_datetime()
     sttlm_dt = rng_date(1)
-    # SttlmMtd is restricted to the INDA/INGA enum here; COVE is not a valid
-    # value for this settlement-method field, so ADV/COV variants use it too.
-    sttlm_mtd = random.choice(SETTLEMENT_METHODS)
+    # pacs.009.adv XSD (SettlementInstruction7__1) restricts SttlmMtd to COVE
+    # only, and has no SttlmAcct child at all.  Base / COV use INDA/INGA.
+    if is_adv:
+        sttlm_mtd = "COVE"
+    else:
+        sttlm_mtd = random.choice(SETTLEMENT_METHODS)
     amount = rng_amount(ccy)
 
     sttlm_inf = f"\t\t\t\t\t<SttlmMtd>{xe(sttlm_mtd)}</SttlmMtd>"
-    if sttlm_mtd in ["INDA", "INGA"] and random.random() < 0.5:
+    if not is_adv and sttlm_mtd in ["INDA", "INGA"] and random.random() < 0.5:
         sttlm_inf += f"\n\t\t\t\t\t<SttlmAcct>\n\t\t\t\t\t\t<Id>\n\t\t\t\t\t\t\t<IBAN>{xe(scenario.debtor.iban)}</IBAN>\n\t\t\t\t\t\t</Id>\n\t\t\t\t\t</SttlmAcct>"
+    # CBPR+ ADV rule: SttlmMtd=COVE requires at least one reimbursement agent
+    if is_adv:
+        _adv_choice = random.choice(["instg", "instd", "both"])
+        if _adv_choice in ("instg", "both"):
+            sttlm_inf += "\n" + agent_xml("InstgRmbrsmntAgt", scenario.make_intermediary_agent().bic, 5).rstrip("\n")
+        if _adv_choice in ("instd", "both"):
+            sttlm_inf += "\n" + agent_xml("InstdRmbrsmntAgt", scenario.make_intermediary_agent().bic, 5).rstrip("\n")
 
     tx = ""
 

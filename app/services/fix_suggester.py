@@ -4331,7 +4331,9 @@ class FixSuggester:
                     _ccy_a = _ccy_a.upper()
                     # Use currency.json precision; cap at 5 (XSD fractionDigits=5)
                     _prec_a = min(_ccy_precision(_ccy_a), 5)
-                    _num_a = float(_cur_a)
+                    # Strip trailing decimal point before parsing: "307845.85." → "307845.85"
+                    _parse_a = _cur_a[:-1] if _cur_a.endswith(".") and len(_cur_a) > 1 else _cur_a
+                    _num_a = float(_parse_a)
                     _repaired_a = f"{_num_a:.{_prec_a}f}"
                     if re.match(r"^\d{1,13}(\.\d{1,5})?$", _repaired_a):
                         return _repaired_a
@@ -5871,8 +5873,24 @@ class FixSuggester:
         _is_amt_el = (el_local.endswith("Amt") or el_local == "Amt"
                       or el.get("Ccy") is not None)
         if (_is_amt_el or "decimal" in msg_l or "precision" in msg_l
-                or code == "INVALID_DECIMAL_PRECISION") and not list(el) and el.text:
+                or code in ("INVALID_DECIMAL_PRECISION", "NUM_TRAILING_DOT_OR_BARE")) and not list(el) and el.text:
             _amt_cur = (el.text or "").strip()
+            # Trailing decimal point: "307845.85." → "307845.85" (NUM_TRAILING_DOT_OR_BARE)
+            # float() rejects this form, so handle it before the generic float() path.
+            if _amt_cur.endswith(".") and len(_amt_cur) > 1:
+                _stripped_td = _amt_cur[:-1]
+                try:
+                    _num_td = float(_stripped_td)
+                    _ccy_td = (el.get("Ccy") or "").upper()
+                    _prec_td = _ccy_precision(_ccy_td)
+                    _repaired_td = f"{_num_td:.{_prec_td}f}"
+                    if re.match(r"^\d{1,13}(\.\d{1,5})?$", _repaired_td):
+                        _el_copy = self._copy(el)
+                        _el_copy.text = _repaired_td
+                        return FixSuggestion(xpath, original_fragment,
+                                             self._serialize(_el_copy), code, msg, "high")
+                except (ValueError, TypeError):
+                    pass
             try:
                 _num = float(_amt_cur)
                 _ccy = (el.get("Ccy") or "").upper()
@@ -6882,6 +6900,123 @@ class FixSuggester:
         except Exception:
             return xml_str
 
+    # Namespaces for tags that declare their own xmlns when they appear as
+    # direct children of BusMsgEnvlp (or as top-level elements).
+    # All other tags inherit the parent namespace — no xmlns attribute needed.
+    _KNOWN_TAG_NS: dict = {
+        "AppHdr": "urn:iso:std:iso:20022:tech:xsd:head.001.001.02",
+    }
+
+    def _try_missing_opening_tag_fix(self, xml: str, msg: str) -> Optional[str]:
+        """
+        Repair a missing OPENING tag — the inverse of Stage-0 surgical fix.
+
+        Error format:
+          "Unclosed tag <X> ... before the closing tag </Y> at line N."
+
+        When </Y> is present but <Y> was never opened, Stage-0 (which inserts
+        </X> before </Y>) produces invalid XML and returns None.  This method
+        detects that case for ANY tag name and inserts the opening tag at the
+        right position using an indentation-depth heuristic:
+
+          1. Measure the indentation of the closing </Y> line (= expected indent
+             of direct children of Y's parent).
+          2. Scan BACKWARD to find the parent line — first content line with
+             LESS indentation (that is the parent's opening tag).
+          3. Scan FORWARD from the parent to find the first content line after
+             the parent's opening (that is where Y's content begins → insertion
+             point for <Y ...>).
+          4. Add xmlns only for well-known namespace-declaring elements (AppHdr,
+             Document).  All other elements inherit the parent namespace.
+
+        Works for: AppHdr, Document, GrpHdr, TxInf, CdtTrfTxInf, Fr, To, Ntfctn,
+        Ntry, Acct, BkTxCd, PstlAdr, FinInstnId — any tag that lxml's error
+        message identifies as having an orphaned closing tag.
+        """
+        m = re.search(
+            r"Unclosed\s+tag\s+<([\w:]+)>.*?"
+            r"before\s+the\s+closing\s+tag\s+</([\w:]+)>.*?at\s+line\s+(\d+)",
+            msg, re.I | re.S,
+        )
+        if not m:
+            return None
+
+        conflict_tag = m.group(2)   # the orphaned closing tag, e.g. "AppHdr"
+        conflict_ln  = int(m.group(3))
+
+        lines = xml.splitlines(keepends=True)
+        if not (1 <= conflict_ln <= len(lines)):
+            return None
+
+        # Only proceed when the opening tag is truly absent from the source.
+        open_pat = re.compile(r"<" + re.escape(conflict_tag) + r"[\s>/]")
+        if open_pat.search(xml):
+            return None  # Opening tag exists — a different structural error.
+
+        conflict_idx  = conflict_ln - 1   # 0-based
+        close_indent  = len(re.match(r"(\s*)", lines[conflict_idx]).group(1))
+
+        # ── Find parent line (first content line with less indentation) ──────
+        parent_idx = None
+        for i in range(conflict_idx - 1, -1, -1):
+            s = lines[i].strip()
+            if not s or s.startswith("<!--") or s.startswith("<?"):
+                continue
+            if len(re.match(r"(\s*)", lines[i]).group(1)) < close_indent:
+                parent_idx = i
+                break
+
+        if parent_idx is None:
+            return None
+
+        # ── Find insertion point (first content line after parent) ───────────
+        insert_before = None
+        for i in range(parent_idx + 1, conflict_idx):
+            s = lines[i].strip()
+            if s and not s.startswith("<!--") and not s.startswith("<?"):
+                insert_before = i
+                break
+
+        if insert_before is None:
+            return None
+
+        # ── Determine namespace for the opening tag ──────────────────────────
+        ns: Optional[str] = self._KNOWN_TAG_NS.get(conflict_tag)
+
+        # AppHdr: prefer any head.001 xmlns already in the document
+        if conflict_tag == "AppHdr":
+            ns_m = re.search(
+                r'xmlns(?::\w+)?="(urn:iso:std:iso:20022:tech:xsd:head\.[^"]+)"', xml)
+            if ns_m:
+                ns = ns_m.group(1)
+
+        # Document: derive namespace from <MsgDefIdr> in the same document
+        if conflict_tag == "Document":
+            mdi_m = re.search(r"<MsgDefIdr[^>]*>([^<]+)</MsgDefIdr>", xml)
+            if mdi_m:
+                ns = f"urn:iso:std:iso:20022:tech:xsd:{mdi_m.group(1).strip()}"
+            else:
+                # Fall back to any ISO 20022 namespace already declared
+                iso_m = re.search(
+                    r'xmlns(?::\w+)?="(urn:iso:std:iso:20022:tech:xsd:[^"]+)"', xml)
+                if iso_m:
+                    ns = iso_m.group(1)
+
+        indent_str = re.match(r"(\s*)", lines[insert_before]).group(1)
+        opening = (f'{indent_str}<{conflict_tag} xmlns="{ns}">\n'
+                   if ns else f'{indent_str}<{conflict_tag}>\n')
+
+        fixed_lines = lines[:insert_before] + [opening] + lines[insert_before:]
+        fixed_xml   = "".join(fixed_lines)
+
+        try:
+            etree.fromstring(fixed_xml.encode("utf-8"))
+            return fixed_xml
+        except etree.XMLSyntaxError:
+            return None
+
+        return None
+
     def _try_xml_recovery(self, xml: str, code: str, msg: str) -> Optional["FixSuggestion"]:
         """
         Repair malformed XML in three stages, returning the first that
@@ -6921,6 +7056,17 @@ class FixSuggester:
             surgical = self._try_surgical_unclosed_tag_fix(xml, msg)
             if surgical is not None:
                 return _make_suggestion(surgical)
+
+        # ── Stage 0b: missing opening tag insert ─────────────────────────────
+        # Stage 0 above inserts a missing CLOSING tag.  A different but equally
+        # common structural break is a missing OPENING tag — e.g. </AppHdr>
+        # appears in the XML but <AppHdr> never opened, which lxml/Stage-2
+        # repair would silently discard, leaving Fr/To/etc unwrapped at the
+        # wrong nesting level.  Detect this pattern and insert the opening tag.
+        if "unclosed" in msg.lower():
+            opening_fix = self._try_missing_opening_tag_fix(xml, msg)
+            if opening_fix is not None:
+                return _make_suggestion(opening_fix)
 
         # ── Stage 1: escape unescaped reserved characters ────────────────────
         escaped = None  # initialise so Stage 2 can safely reference it

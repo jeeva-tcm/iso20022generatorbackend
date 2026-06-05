@@ -827,6 +827,1715 @@
         "Ntfctn/Acct"
       ],
       "fix": "Add or correct the Ccy attribute on Itm/Amt to a valid ISO 4217 code matching the account currency."
+    },
+    {
+      "rule_id": "L3_CURRENCY_001",
+      "rule": "Currency Decimal Precision Check",
+      "affected_tags": [
+        "Amt"
+      ],
+      "fix": "Review the L3_CURRENCY_001 constraint and correct the relevant field.",
+      "xml_example": "<IntrBkSttlmAmt Ccy=\"USD\">1000.00</IntrBkSttlmAmt>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_COUNTRY_001",
+      "rule": "Country Code Compliance (ISO 3166-1 Alpha-2)",
+      "affected_tags": [
+        "Ctry"
+      ],
+      "fix": "Review the L3_COUNTRY_001 constraint and correct the relevant field.",
+      "xml_example": "<Ctry>US</Ctry>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_CHRGBR_001",
+      "rule": "Charge Bearer Code Validation",
+      "affected_tags": [
+        "ChrgBr"
+      ],
+      "fix": "Review the L3_CHRGBR_001 constraint and correct the relevant field.",
+      "xml_example": "<ChrgBr>SHAR</ChrgBr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "E001",
+      "rule": "Postal Address Coexistence Rule: If Address Line is absent, Town Name and Country must be present.",
+      "affected_tags": [
+        "PstlAdr"
+      ],
+      "fix": "Review the E001 constraint and correct the relevant field.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "W005",
+      "rule": "Instruction ID is unusually long",
+      "affected_tags": [
+        "InstrId"
+      ],
+      "fix": "Review the W005 constraint and correct the relevant field.",
+      "xml_example": "<InstrId>INSTR001</InstrId>",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_BIC_DIRECTORY_001",
+      "rule": "BIC Existence in SWIFT Directory",
+      "affected_tags": [
+        "BIC|AnyBIC"
+      ],
+      "fix": "Review the L3_BIC_DIRECTORY_001 constraint and correct the relevant field.",
+      "xml_example": "<BICFI>NDEAFIHH</BICFI>",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_URGENT_DATE_001",
+      "rule": "Urgent payments should normally be settled on the current date.",
+      "affected_tags": [
+        "L3_URGENT_DATE_001"
+      ],
+      "fix": "Review the L3_URGENT_DATE_001 constraint and correct the relevant field.",
+      "xml_example": "<IntrBkSttlmDt>2026-06-05</IntrBkSttlmDt>",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3-PURPOSE-LIMIT",
+      "rule": "Conditional Amount Limit based on Purpose Code",
+      "affected_tags": [
+        "Purp.Cd"
+      ],
+      "fix": "Review the L3-PURPOSE-LIMIT constraint and correct the relevant field.",
+      "xml_example": "<Purp><Cd>SALA</Cd></Purp>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_IBAN_CURR_001",
+      "rule": "IBAN Based Currency Validation",
+      "affected_tags": [
+        "DbtrAcct.Id.IBAN"
+      ],
+      "fix": "Review the L3_IBAN_CURR_001 constraint and correct the relevant field.",
+      "xml_example": "<IBAN>GB29NWBK60161331926819</IBAN>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_LEI_NOT_BIC",
+      "rule": "LEI cannot replace BIC for financial institution agents. CBPR+ requires BICFI.",
+      "affected_tags": [
+        "FinInstnId.LEI"
+      ],
+      "fix": "Review the L3_LEI_NOT_BIC constraint and correct the relevant field.",
+      "xml_example": "<FinInstnId><BICFI>NDEAFIHH</BICFI></FinInstnId>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_INTRMY_ORDER_1",
+      "rule": "IntrmyAgt2 cannot exist without IntrmyAgt1.",
+      "affected_tags": [
+        "L3_INTRMY_ORDER_1"
+      ],
+      "fix": "Review the L3_INTRMY_ORDER_1 constraint and correct the relevant field.",
+      "xml_example": "<IntrmyAgt1><FinInstnId><BICFI>AAAAGB2L</BICFI></FinInstnId></IntrmyAgt1>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_INTRMY_ORDER_2",
+      "rule": "IntrmyAgt3 cannot exist without IntrmyAgt2.",
+      "affected_tags": [
+        "L3_INTRMY_ORDER_2"
+      ],
+      "fix": "Review the L3_INTRMY_ORDER_2 constraint and correct the relevant field.",
+      "xml_example": "<IntrmyAgt2><FinInstnId><BICFI>BBBBUS33</BICFI></FinInstnId></IntrmyAgt2>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_PURPOSE_001",
+      "rule": "ISO Purpose Code Validation (SR2025)",
+      "affected_tags": [
+        "Purp.Cd"
+      ],
+      "fix": "Review the L3_PURPOSE_001 constraint and correct the relevant field.",
+      "xml_example": "<Purp><Cd>SALA</Cd></Purp>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_CTGYPURP_001",
+      "rule": "ISO Category Purpose Code Validation (SR2025)",
+      "affected_tags": [
+        "CtgyPurp.Cd"
+      ],
+      "fix": "Review the L3_CTGYPURP_001 constraint and correct the relevant field.",
+      "xml_example": "<CtgyPurp><Cd>CASH</Cd></CtgyPurp>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_STTLM_CLRG_001",
+      "rule": "If Settlement Method is CLRG (Clearing System), Clearing System (ClrSys) identity must be present.",
+      "affected_tags": [
+        "L3_STTLM_CLRG_001"
+      ],
+      "fix": "Review the L3_STTLM_CLRG_001 constraint and correct the relevant field.",
+      "xml_example": "<SttlmInf><SttlmMtd>CLRG</SttlmMtd><ClrSys><Cd>T2</Cd></ClrSys></SttlmInf>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_PARTY_EXCLUSIVITY",
+      "rule": "Party Identification: Organization ID (/OrgId) and Private ID (/PrvtId) are mutually exclusive. Both cannot be present.",
+      "affected_tags": [
+        "Pty.Id|.Dbtr.Id|.Cdtr.Id|.UltmtDbtr.Id|.UltmtCdtr.Id"
+      ],
+      "fix": "Review the L3_PARTY_EXCLUSIVITY constraint and correct the relevant field.",
+      "xml_example": "<Id><OrgId><Othr><Id>12345</Id></Othr></OrgId></Id>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_FININSTNID_COMPLETENESS",
+      "rule": "Financial Institution Identification: Must contain either a BICFI or a Clearing System Member identification.",
+      "affected_tags": [
+        "FinInstnId"
+      ],
+      "fix": "Review the L3_FININSTNID_COMPLETENESS constraint and correct the relevant field.",
+      "xml_example": "<FinInstnId><BICFI>NDEAFIHH</BICFI></FinInstnId>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_NAME_FOR_ID",
+      "rule": "Party Identification: When an ID (Organisation /OrgId or Private /PrvtId) is provided, the Name field (/Nm) should also be included for reference.",
+      "affected_tags": [
+        "Pty|.Dbtr|.Cdtr|.UltmtDbtr|.UltmtCdtr"
+      ],
+      "fix": "Review the L3_NAME_FOR_ID constraint and correct the relevant field.",
+      "xml_example": "<Dbtr><Nm>John Doe</Nm><Id><PrvtId><Othr><Id>ABC123</Id></Othr></PrvtId></Id></Dbtr>",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_ORG_SCHEME_VALIDATION",
+      "rule": "Validation of scheme code for Organisation Identification. Allowed: LEI, DUNS, VAT, TXID, GIIN, CRN.",
+      "affected_tags": [
+        "OrgId.Othr.SchmeNm.Cd"
+      ],
+      "fix": "Use a valid Organisation scheme code like 'LEI' or 'DUNS'.",
+      "xml_example": "<SchmeNm><Cd>LEI</Cd></SchmeNm>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_PRVT_SCHEME_VALIDATION",
+      "rule": "Validation of scheme code for Private Identification. Allowed: CCPT, DRLC, NIDN, SSSN, PASSPORT, NATIONALID.",
+      "affected_tags": [
+        "PrvtId.Othr.SchmeNm.Cd"
+      ],
+      "fix": "Use a valid Private scheme code like 'CCPT' (Passport) or 'NIDN'.",
+      "xml_example": "<SchmeNm><Cd>CCPT</Cd></SchmeNm>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_SETTLEMENT_METHOD",
+      "rule": "Settlement Method must be one of the ISO 20022 standard codes: INDA, INGA, CLRG, COVE",
+      "affected_tags": [
+        "SttlmMtd"
+      ],
+      "fix": "Review the L3_SETTLEMENT_METHOD constraint and correct the relevant field.",
+      "xml_example": "<SttlmMtd>INDA</SttlmMtd>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3-BIZ-PARTY-NAME-ENTITY-MATCH-ORG",
+      "rule": "Organisation identification cannot accompany personal name and vice versa (ENTITY_MISMATCH).",
+      "affected_tags": [
+        "Dbtr|.Cdtr|.UltmtDbtr|.UltmtCdtr|.InitgPty|.RltdPties"
+      ],
+      "fix": "Ensure the <Nm> tag includes a corporate indicator like 'Ltd', 'Corp', or 'Inc', or use <PrvtId> if this is an individual.",
+      "xml_example": "<Dbtr><Nm>Acme Corp Ltd</Nm><Id><OrgId><Othr><Id>123</Id></Othr></OrgId></Id></Dbtr>",
+      "severity": "CRITICAL",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3-BIZ-PARTY-NAME-ENTITY-MATCH-PRVT",
+      "rule": "Organisation identification cannot accompany personal name and vice versa (ENTITY_MISMATCH).",
+      "affected_tags": [
+        "Dbtr|.Cdtr|.UltmtDbtr|.UltmtCdtr|.InitgPty|.RltdPties"
+      ],
+      "fix": "Remove corporate keywords (e.g., 'Ltd', 'Corp') from the <Nm> field, or use <OrgId> if this is a company identification.",
+      "xml_example": "<Dbtr><Nm>John Smith</Nm><Id><PrvtId><Othr><Id>P001</Id></Othr></PrvtId></Id></Dbtr>",
+      "severity": "CRITICAL",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3-MANDATORY-PAYMENT-PARTIES",
+      "rule": "Debtor and Creditor are mandatory for all payment messages. For customer credit transfers (pacs.008, pacs.003), Debtor Agent and Creditor Agent are also required.",
+      "affected_tags": [
+        "L3-MANDATORY-PAYMENT-PARTIES"
+      ],
+      "fix": "Ensure <Dbtr> and <Cdtr> blocks are included. For pacs.008/pacs.003, also include <DbtrAgt> and <CdtrAgt>.",
+      "xml_example": "<Dbtr><Nm>John Doe</Nm></Dbtr><Cdtr><Nm>Jane Roe</Nm></Cdtr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_APPHDR_PRTY_001",
+      "rule": "AppHdr Priority Validation (HIGH, NORM, LOW)",
+      "affected_tags": [
+        "AppHdr.Prty"
+      ],
+      "fix": "Review the L3_APPHDR_PRTY_001 constraint and correct the relevant field.",
+      "xml_example": "<Prty>NORM</Prty>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_SVCLVL_CODE",
+      "rule": "Service Level Code (SvcLvl/Cd) must be a valid ExternalServiceLevel1Code.",
+      "affected_tags": [
+        "SvcLvl.Cd"
+      ],
+      "fix": "Review the L3_SVCLVL_CODE constraint and correct the relevant field.",
+      "xml_example": "<SvcLvl><Cd>SEPA</Cd></SvcLvl>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_LCLINSTRM_CODE",
+      "rule": "Local Instrument Code (LclInstrm/Cd) must be a valid ExternalLocalInstrument1Code.",
+      "affected_tags": [
+        "LclInstrm.Cd"
+      ],
+      "fix": "Review the L3_LCLINSTRM_CODE constraint and correct the relevant field.",
+      "xml_example": "<LclInstrm><Cd>TRF</Cd></LclInstrm>",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_CLRSYS_CODE",
+      "rule": "Clearing System Identification Code (ClrSys/Cd or ClrSysId/Cd) must be a valid ExternalCashClearingSystem1Code.",
+      "affected_tags": [
+        "ClrSys|ClrSysId.Cd"
+      ],
+      "fix": "Review the L3_CLRSYS_CODE constraint and correct the relevant field.",
+      "xml_example": "<ClrSys><Cd>T2</Cd></ClrSys>",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_ACCT_TYPE_CODE",
+      "rule": "Cash Account Type Code (Acct/Tp/Cd) must be a valid ExternalCashAccountType1Code.",
+      "affected_tags": [
+        "Acct.Tp.Cd"
+      ],
+      "fix": "Review the L3_ACCT_TYPE_CODE constraint and correct the relevant field.",
+      "xml_example": "<Tp><Cd>CACC</Cd></Tp>",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_ENTRY_STATUS_CODE",
+      "rule": "Entry Status Code (Sts/Cd) must be a valid ExternalEntryStatus1Code.",
+      "affected_tags": [
+        "Ntry[d+]?.Sts.Cd"
+      ],
+      "fix": "Review the L3_ENTRY_STATUS_CODE constraint and correct the relevant field.",
+      "xml_example": "<Sts><Cd>BOOK</Cd></Sts>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_BIC_LENGTH",
+      "rule": "BIC must be exactly 8 or 11 characters (XSD pattern allows it; this gives a clearer error).",
+      "affected_tags": [
+        "BICFI|.AnyBIC"
+      ],
+      "fix": "A valid BIC is 8 chars (e.g. NDEAFIHH) or 11 chars including a 3-char branch (e.g. NDEAFIHHXXX).",
+      "xml_example": "<BICFI>NDEAFIHH</BICFI>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_LEI_FORMAT",
+      "rule": "LEI must be exactly 20 alphanumeric characters (ISO 17442).",
+      "affected_tags": [
+        "LEI"
+      ],
+      "fix": "Review the L3_LEI_FORMAT constraint and correct the relevant field.",
+      "xml_example": "<LEI>529900T8BM49AURSDO55</LEI>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_FRACTIONDIGITS_JPY",
+      "rule": "JPY amounts cannot have decimal places.",
+      "affected_tags": [
+        "Amt"
+      ],
+      "fix": "Remove the decimal portion from the JPY amount (e.g. use '1000' instead of '1000.00').",
+      "xml_example": "<IntrBkSttlmAmt Ccy=\"JPY\">10000</IntrBkSttlmAmt>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_IBAN_UPPERCASE",
+      "rule": "IBAN must contain only uppercase A-Z and digits 0-9.",
+      "affected_tags": [
+        "IBAN"
+      ],
+      "fix": "Remove any lowercase letters or whitespace from the IBAN value.",
+      "xml_example": "<IBAN>GB29NWBK60161331926819</IBAN>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_NM_NOT_EQ_BIC",
+      "rule": "Party Name (Nm) should not be a BIC code — likely a mapping error.",
+      "affected_tags": [
+        "Nm"
+      ],
+      "fix": "Move the BIC value into <BICFI> and put the actual party name in <Nm>.",
+      "xml_example": "<Nm>Acme Bank Limited</Nm>",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "L3_FAR_FUTURE_DATE",
+      "rule": "Settlement / execution dates more than 1 year in the future are unusual.",
+      "affected_tags": [
+        "IntrBkSttlmDt|ReqdExctnDt|ReqdColltnDt|SttlmDt"
+      ],
+      "fix": "Verify the date is correct. Future-dated payments beyond 12 months are unusual and may be rejected by clearing systems.",
+      "xml_example": "<IntrBkSttlmDt>2026-06-05</IntrBkSttlmDt>",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "GLOBAL_INTRMY_AGT1_REQUIRES_CDTR_AGT",
+      "rule": "When IntrmyAgt1 is present, CdtrAgt must also be present. CBPR+ dependency rule: an intermediary agent requires a creditor agent to define the end of the payment chain.",
+      "affected_tags": [
+        "GLOBAL_INTRMY_AGT1_REQUIRES_CDTR_AGT"
+      ],
+      "fix": "Add <CdtrAgt><FinInstnId><BICFI>CREDITOR_BIC</BICFI></FinInstnId></CdtrAgt> to the transaction, or remove <IntrmyAgt1> if no intermediary routing is required.",
+      "xml_example": "<CdtrAgt><FinInstnId><BICFI>AAAAGB2L</BICFI></FinInstnId></CdtrAgt>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CAMT057_001",
+      "rule": "Notification to Receive: Financial Institution identification must be a FinInstnId.",
+      "affected_tags": [
+        "CAMT057_001"
+      ],
+      "fix": "Review the CAMT057_001 constraint and correct the relevant field.",
+      "xml_example": "<Agt><FinInstnId><BICFI>NDEAFIHH</BICFI></FinInstnId></Agt>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CAMT057_ITM_REQUIRED",
+      "rule": "Notification must contain at least one Item (Ntfctn.Itm).",
+      "affected_tags": [
+        "CAMT057_ITM_REQUIRED"
+      ],
+      "fix": "Add at least one <Itm> block describing the funds to be received.",
+      "xml_example": "<Itm><Id>ITM001</Id><Amt Ccy=\"EUR\">1000.00</Amt></Itm>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CAMT057_ITM_AMT_REQUIRED",
+      "rule": "Each Item must carry an Amt.",
+      "affected_tags": [
+        "Document.NtfctnToRcv.Ntfctn.Itm[d+]?"
+      ],
+      "fix": "Add <Amt Ccy=\"USD\">12345.67</Amt> inside the <Itm> block.",
+      "xml_example": "<Itm><Amt Ccy=\"EUR\">1000.00</Amt></Itm>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CAMT057_ITM_EXPCTDVALDT_NOT_PAST",
+      "rule": "Expected Value Date should not be in the past (operational warning).",
+      "affected_tags": [
+        "Document.NtfctnToRcv.Ntfctn.Itm[d+]?.XpctdValDt"
+      ],
+      "fix": "Review the CAMT057_ITM_EXPCTDVALDT_NOT_PAST constraint and correct the relevant field.",
+      "xml_example": "<XpctdValDt>2026-06-10</XpctdValDt>",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_Character_Set_Usage_TextualRule",
+      "rule": "For further description on the usage of the field, pls refer to the CBPR Plus UHB.",
+      "affected_tags": [
+        "CBPR_Character_Set_Usage_TextualRule"
+      ],
+      "fix": "Review the CBPR_Character_Set_Usage_TextualRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_Character_Set_Usage_TextualRule -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_Business_Message_Identifier_TextualRule",
+      "rule": "The Business Message Identifier is the unique identifier of the Business Message instance that is being transported with this header, as defined by the sending application or system. \r\n\r\nMust contain the Message Identification element from the Group Header of the underlying message, where available (as is typically the case with pacs, pain, and camt messages, for example). If Message Identification is not available in the underlying message, then this field must contain the unique identifier of the Business Message instance.",
+      "affected_tags": [
+        "CBPR_Business_Message_Identifier_TextualRule"
+      ],
+      "fix": "Review the CBPR_Business_Message_Identifier_TextualRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_Business_Message_Identifier_TextualRule -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_Message_Definition_Identifier_TextualRule",
+      "rule": "The Message Definition Identifier of the Business Message instance that is being transported with this header. In general, it must be formatted exactly as it appears in the namespace of the Business Message instance.",
+      "affected_tags": [
+        "CBPR_Message_Definition_Identifier_TextualRule"
+      ],
+      "fix": "Review the CBPR_Message_Definition_Identifier_TextualRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_Message_Definition_Identifier_TextualRule -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_Business_Service_TextualRule",
+      "rule": "This field may be used by SWIFT to support differentiated processing on SWIFT-administered services such as FINplus. For a description of reserved values, please refer to the Service Description for your service. \r\n\r\nTo support differentiated processing on CBPRPlus, for example, SWIFT reserves a set of values that conform to a specific format.\r\n\r\nA user-specific value may be used, but please contact your Service Administrator before doing so to ensure alignment with general practice on your service.",
+      "affected_tags": [
+        "CBPR_Business_Service_TextualRule"
+      ],
+      "fix": "Review the CBPR_Business_Service_TextualRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_Business_Service_TextualRule -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_Business_Service_Usage_TextualRule",
+      "rule": "The value \"swift.cbprplus.03\" must be used.",
+      "affected_tags": [
+        "CBPR_Business_Service_Usage_TextualRule"
+      ],
+      "fix": "Review the CBPR_Business_Service_Usage_TextualRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_Business_Service_Usage_TextualRule -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_Market_Practice_TextualRule",
+      "rule": "This field may be used by SWIFT on SWIFT-administered services. For a description of reserved values, please refer to the Service Description for your service. Contact your Service Administrator for further clarification, if necessary.\r\n\r\nA user-specific value may be used, but please contact your Service Administrator before doing so to ensure alignment with general practice on your service.",
+      "affected_tags": [
+        "CBPR_Market_Practice_TextualRule"
+      ],
+      "fix": "Review the CBPR_Market_Practice_TextualRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_Market_Practice_TextualRule -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_Party_Name_Postal_Address_FormalRule",
+      "rule": "If Postal Address is present then Name is mandatory.",
+      "affected_tags": [
+        "CBPR_Party_Name_Postal_Address_FormalRule"
+      ],
+      "fix": "Review the CBPR_Party_Name_Postal_Address_FormalRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_Party_Name_Postal_Address_FormalRule -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_GracePeriod_Structured_FormalRule",
+      "rule": "If Postal Address is used, and if Address Line is absent, then Town Name and Country must be present.",
+      "affected_tags": [
+        "CBPR_GracePeriod_Structured_FormalRule"
+      ],
+      "fix": "Review the CBPR_GracePeriod_Structured_FormalRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_GracePeriod_Structured_FormalRule -->",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_GracePeriod_Hybrid_FormalRule",
+      "rule": "If Address Line is present and any other Postal Address element(s) are present, then Town Name and Country are mandatory in Postal Address and a maximum of two occurrences of Address Line are allowed.",
+      "affected_tags": [
+        "CBPR_GracePeriod_Hybrid_FormalRule"
+      ],
+      "fix": "Review the CBPR_GracePeriod_Hybrid_FormalRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_GracePeriod_Hybrid_FormalRule -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_Duplication_Postal_Address_TextualRule",
+      "rule": "Hybrid mode is supported: TwnNm + Ctry + AdrLine may coexist. However, detail structured fields (StrtNm, BldgNb, PstCd etc.) must not be repeated or duplicated in AdrLine content.",
+      "affected_tags": [
+        "CBPR_Duplication_Postal_Address_TextualRule"
+      ],
+      "fix": "Review the CBPR_Duplication_Postal_Address_TextualRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_Duplication_Postal_Address_TextualRule -->",
+      "severity": "INFO",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_GracePeriod_Unstructured_FormalRule",
+      "rule": "If Postal Address is present and if no other element than Address Line is present then every occurrence of Address Line must not exceed 35 characters.",
+      "affected_tags": [
+        "CBPR_GracePeriod_Unstructured_FormalRule"
+      ],
+      "fix": "Review the CBPR_GracePeriod_Unstructured_FormalRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_GracePeriod_Unstructured_FormalRule -->",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_Agent_Option_3_TextualRule",
+      "rule": "Name AND (Unstructured OR [Structured postal address with minimum Town Name and Country] OR [Hybrid postal address with minimum Town Name and Country]). It is recommended to also add the post code when available.",
+      "affected_tags": [
+        "CBPR_Agent_Option_3_TextualRule"
+      ],
+      "fix": "Review the CBPR_Agent_Option_3_TextualRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_Agent_Option_3_TextualRule -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_Agent_Option_1_TextualRule",
+      "rule": "BICFI, complemented optionally with a LEI (preferred option)",
+      "affected_tags": [
+        "CBPR_Agent_Option_1_TextualRule"
+      ],
+      "fix": "Review the CBPR_Agent_Option_1_TextualRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_Agent_Option_1_TextualRule -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_Agent_Option_2_TextualRule",
+      "rule": "(Clearing Code OR LEI)  AND (Name AND (Unstructured postal address OR [Structured postal address with minimum Town Name and Country] OR [Hybrid postal address with minimum Town Name and Country]). It is recommended to also add the post code when available.",
+      "affected_tags": [
+        "CBPR_Agent_Option_2_TextualRule"
+      ],
+      "fix": "Review the CBPR_Agent_Option_2_TextualRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_Agent_Option_2_TextualRule -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_Agent_Name_Postal_Address_FormalRule",
+      "rule": "Name and Address must always be present together.",
+      "affected_tags": [
+        "CBPR_Agent_Name_Postal_Address_FormalRule"
+      ],
+      "fix": "Review the CBPR_Agent_Name_Postal_Address_FormalRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_Agent_Name_Postal_Address_FormalRule -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_Expected_Value_Date_FormalRule",
+      "rule": "If Notification/ExpectedValueDate is absent, then item/ExpectedValueDate must be present.",
+      "affected_tags": [
+        "CBPR_Expected_Value_Date_FormalRule"
+      ],
+      "fix": "Review the CBPR_Expected_Value_Date_FormalRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_Expected_Value_Date_FormalRule -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_Name_Any_BIC_FormalRule",
+      "rule": "If AnyBIC is Absent Then Name is mandatory.",
+      "affected_tags": [
+        "CBPR_Name_Any_BIC_FormalRule"
+      ],
+      "fix": "Review the CBPR_Name_Any_BIC_FormalRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_Name_Any_BIC_FormalRule -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_Total_Amount_Currency_FormalRule",
+      "rule": "The codes XAU, XAG, XPD and XPT are not allowed, as these are codes are only used for commodities.",
+      "affected_tags": [
+        "CBPR_Total_Amount_Currency_FormalRule"
+      ],
+      "fix": "Review the CBPR_Total_Amount_Currency_FormalRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_Total_Amount_Currency_FormalRule -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_Debtor_Option_3_Jurisdictions_only_TextualRule",
+      "rule": "For Jurisdictional transactions,  Debtor/ Name is mandatory with either Debtor Account OR Debtor Identification (that is within a country or for regions under same legislations – eg EAA)\r\n\r\nCountries impacted by the Jurisdictional rule:\r\nBelgium, Bulgaria, Czechia, Denmark, Germany, Estonia, Ireland, Greece, Spain, France, Croatia, Italy, Cyprus, Latvia, Lithuania, Luxembourg, Hungary, Malta, Netherlands, Austria, Poland, Portugal, Romania, Slovenia, Slovakia, Finland, Sweden- Iceland, Liechtenstein, Norway.\r\n\r\nNote: The jurisdictional rules apply only when all agents in the payment chain underly the same jurisdiction.",
+      "affected_tags": [
+        "CBPR_Debtor_Option_3_Jurisdictions_only_TextualRule"
+      ],
+      "fix": "Review the CBPR_Debtor_Option_3_Jurisdictions_only_TextualRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_Debtor_Option_3_Jurisdictions_only_TextualRule -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_Party_Name_Any_BIC_FormalRule",
+      "rule": "If AnyBIC is absent then Name is mandatory and it is recommended to also provide the Postal Address.",
+      "affected_tags": [
+        "CBPR_Party_Name_Any_BIC_FormalRule"
+      ],
+      "fix": "Review the CBPR_Party_Name_Any_BIC_FormalRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_Party_Name_Any_BIC_FormalRule -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_Debtor_BIC_Presence_TextualRule",
+      "rule": "If Any BIC is present, then (Name and Postale Address) is NOT allowed (other elements remain optional) - However, in case of conflicting information, AnyBIC will always take precedence.",
+      "affected_tags": [
+        "CBPR_Debtor_BIC_Presence_TextualRule"
+      ],
+      "fix": "Review the CBPR_Debtor_BIC_Presence_TextualRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_Debtor_BIC_Presence_TextualRule -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_Agent_Point_To_Point_On_SWIFT_TextualRule",
+      "rule": "If the transaction is exchanged on the SWIFT network (ie if the sender and receiver of the message are on SWIFT), then BIC is mandatory and other elements are optional, eg LEI",
+      "affected_tags": [
+        "CBPR_Agent_Point_To_Point_On_SWIFT_TextualRule"
+      ],
+      "fix": "Review the CBPR_Agent_Point_To_Point_On_SWIFT_TextualRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_Agent_Point_To_Point_On_SWIFT_TextualRule -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_Agent_National_only_TextualRule",
+      "rule": "Whenever Debtor Agent, Creditor Agent and all agents in between are located within the same country, the clearing code only may be used.",
+      "affected_tags": [
+        "CBPR_Agent_National_only_TextualRule"
+      ],
+      "fix": "Review the CBPR_Agent_National_only_TextualRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_Agent_National_only_TextualRule -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_Notification_Item_TextualRule",
+      "rule": "Single Notification item should be sent unless bilaterally agreed.",
+      "affected_tags": [
+        "CBPR_Notification_Item_TextualRule"
+      ],
+      "fix": "Review the CBPR_Notification_Item_TextualRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_Notification_Item_TextualRule -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_Amount_Currency_FormalRule",
+      "rule": "The codes XAU, XAG, XPD and XPT are not allowed, as these are codes are only used for commodities.",
+      "affected_tags": [
+        "CBPR_Amount_Currency_FormalRule"
+      ],
+      "fix": "Review the CBPR_Amount_Currency_FormalRule constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_Amount_Currency_FormalRule -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_R1",
+      "rule": "If AppHdr/Prty and CdtTrfTxInf/PmtTpInf/InstrPrty are both present, their values must be identical.",
+      "affected_tags": [
+        "AppHdr"
+      ],
+      "fix": "Align <Prty> in AppHdr with <InstrPrty> in <PmtTpInf>.",
+      "xml_example": "<!-- Correct XML for CBPR_R1 -->",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R2",
+      "rule": "When AppHdr/CpyDplct is not COPY or CODU: AppHdr/Fr BICFI must match CdtTrfTxInf/InstgAgt BICFI, and AppHdr/To BICFI must match CdtTrfTxInf/InstdAgt BICFI.",
+      "affected_tags": [
+        "AppHdr"
+      ],
+      "fix": "Align AppHdr <Fr>/<To> BICFIs with CdtTrfTxInf <InstgAgt>/<InstdAgt> BICFIs.",
+      "xml_example": "<!-- Correct XML for CBPR_R2 -->",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R3",
+      "rule": "When AppHdr/CpyDplct is absent: AppHdr/Fr BICFI must match CdtTrfTxInf/InstgAgt BICFI, and AppHdr/To BICFI must match CdtTrfTxInf/InstdAgt BICFI.",
+      "affected_tags": [
+        "AppHdr"
+      ],
+      "fix": "Align AppHdr <Fr>/<To> BICFIs with CdtTrfTxInf <InstgAgt>/<InstdAgt> BICFIs.",
+      "xml_example": "<!-- Correct XML for CBPR_R3 -->",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R5",
+      "rule": "BizMsgIdr must contain the MsgId from the GroupHeader of the underlying message where available.",
+      "affected_tags": [
+        "CBPR_R5"
+      ],
+      "fix": "Set <BizMsgIdr> equal to <GrpHdr><MsgId>.",
+      "xml_example": "<!-- Correct XML for CBPR_R5 -->",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R6",
+      "rule": "MsgDefIdr must be 'camt.057.001.06' for camt.057 messages.",
+      "affected_tags": [
+        "CBPR_R6"
+      ],
+      "fix": "Set <MsgDefIdr>camt.057.001.06</MsgDefIdr> in AppHdr.",
+      "xml_example": "<!-- Correct XML for CBPR_R6 -->",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R8",
+      "rule": "BizSvc must have the value 'swift.cbprplus.03'.",
+      "affected_tags": [
+        "AppHdr.BizSvc"
+      ],
+      "fix": "Set <BizSvc>swift.cbprplus.03</BizSvc> in AppHdr.",
+      "xml_example": "<!-- Correct XML for CBPR_R8 -->",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R12",
+      "rule": "Each code value in CdtTrfTxInf/InstrForCdtrAgt/Cd can only be used once.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.InstrForCdtrAgt"
+      ],
+      "fix": "Remove duplicate code values from <InstrForCdtrAgt>.",
+      "xml_example": "<!-- Correct XML for CBPR_R12 -->",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R13",
+      "rule": "CdtTrfTxInf/PmtId/InstrId must not start or end with '/' and must not contain '//'.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.PmtId.InstrId"
+      ],
+      "fix": "Remove leading/trailing slashes and consecutive double slashes from <InstrId>.",
+      "xml_example": "<!-- Correct XML for CBPR_R13 -->",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R14",
+      "rule": "In pacs.009 CORE, the End-to-End identification is provided by the Debtor (Agent).",
+      "affected_tags": [
+        "CBPR_R14"
+      ],
+      "fix": "Review the CBPR_R14 constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_R14 -->",
+      "severity": "INFO",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_R15",
+      "rule": "CdtTrfTxInf/PmtId/EndToEndId: in the first 16 characters, position 1 and position 16 cannot be '/', and the string must not contain '//'.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.PmtId.EndToEndId"
+      ],
+      "fix": "Ensure first 16 characters of <EndToEndId> do not start/end with '/' or contain '//'.",
+      "xml_example": "<!-- Correct XML for CBPR_R15 -->",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R16",
+      "rule": "If pacs.009 CORE covers pacs.009 ADV, EndToEndId should carry the InstrId of the underlying pacs.009 ADV.",
+      "affected_tags": [
+        "CBPR_R16"
+      ],
+      "fix": "Review the CBPR_R16 constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_R16 -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_R17",
+      "rule": "If pacs.009 is used to settle a pacs.009 Advice, the UETR should transport the UETR of the underlying pacs.009 Advice.",
+      "affected_tags": [
+        "CBPR_R17"
+      ],
+      "fix": "Review the CBPR_R17 constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_R17 -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_R18",
+      "rule": "LclInstrm: coded information (Cd) is preferred over proprietary (Prtry).",
+      "affected_tags": [
+        "CBPR_R18"
+      ],
+      "fix": "Review the CBPR_R18 constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_R18 -->",
+      "severity": "INFO",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_R19",
+      "rule": "CtgyPurp: coded information (Cd) is preferred over proprietary (Prtry).",
+      "affected_tags": [
+        "CBPR_R19"
+      ],
+      "fix": "Review the CBPR_R19 constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_R19 -->",
+      "severity": "INFO",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_R20",
+      "rule": "CdtTrfTxInf/IntrBkSttlmAmt/Ccy must not be XAU, XAG, XPD, or XPT (commodity codes).",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.IntrBkSttlmAmt"
+      ],
+      "fix": "Use a valid ISO 4217 currency code other than commodity codes.",
+      "xml_example": "<!-- Correct XML for CBPR_R20 -->",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R21",
+      "rule": "When DbtrAgt, CdtrAgt and all agents in between are in the same country, clearing code alone may be used.",
+      "affected_tags": [
+        "CBPR_R21"
+      ],
+      "fix": "Review the CBPR_R21 constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_R21 -->",
+      "severity": "INFO",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_R22",
+      "rule": "Agent identification option 1 (preferred): BICFI, optionally complemented with LEI.",
+      "affected_tags": [
+        "CBPR_R22"
+      ],
+      "fix": "Review the CBPR_R22 constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_R22 -->",
+      "severity": "INFO",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_R23",
+      "rule": "Agent option 2: if ClrSysMmbId OR LEI is present (without BICFI), then both Nm AND PstlAdr must also be present.",
+      "affected_tags": [
+        "CBPR_R23"
+      ],
+      "fix": "Add <Nm> and <PstlAdr> inside <FinInstnId> when using ClrSysMmbId or LEI without BICFI.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R24",
+      "rule": "Agent option 3: if Nm is present (without BICFI, ClrSysMmbId, or LEI), PstlAdr must be present.",
+      "affected_tags": [
+        "CBPR_R24"
+      ],
+      "fix": "Add <PstlAdr> with at least <TwnNm> and <Ctry> inside <FinInstnId> when using Name-only identification.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R25",
+      "rule": "In CdtTrfTxInf/PrvsInstgAgt1/FinInstnId: Nm and PstlAdr must always be present together.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.PrvsInstgAgt1.FinInstnId"
+      ],
+      "fix": "Add both <Nm> and <PstlAdr>, or remove both.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R26",
+      "rule": "In CdtTrfTxInf/PrvsInstgAgt1/FinInstnId/PstlAdr: if AdrLine absent, TwnNm and Ctry must be present.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.PrvsInstgAgt1.FinInstnId.PstlAdr"
+      ],
+      "fix": "Add <TwnNm> and <Ctry> inside <PstlAdr>.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R27",
+      "rule": "In CdtTrfTxInf/PrvsInstgAgt1/FinInstnId/PstlAdr: if AdrLine and other element present, TwnNm and Ctry mandatory; max 2 AdrLine.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.PrvsInstgAgt1.FinInstnId.PstlAdr"
+      ],
+      "fix": "Add <TwnNm> and <Ctry>; limit <AdrLine> to 2 occurrences.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R28",
+      "rule": "Hybrid address mode: when AdrLine is present, TwnNm and Ctry are mandatory. Detail structural fields (StrtNm, BldgNb, BldgNm, Flr, PstBx, Room, PstCd, Dept, SubDept, TwnLctnNm, DstrctNm, CtrySubDvsn) must NOT coexist with AdrLine.",
+      "affected_tags": [
+        "CBPR_R28"
+      ],
+      "fix": "Remove StrtNm/BldgNb/PstCd/etc. and keep only TwnNm + Ctry alongside AdrLine, or remove AdrLine and use fully structured fields.",
+      "xml_example": "<Nm>Acme Bank Ltd</Nm>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R28b",
+      "rule": "Hybrid address mode: when AdrLine is present, TwnNm and Ctry are both mandatory.",
+      "affected_tags": [
+        "CBPR_R28b"
+      ],
+      "fix": "Add <TwnNm> and <Ctry> to the PstlAdr block that contains <AdrLine>.",
+      "xml_example": "<Nm>Acme Bank Ltd</Nm>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R29",
+      "rule": "In CdtTrfTxInf/PrvsInstgAgt1/FinInstnId/PstlAdr: if only AdrLine present, each must not exceed 35 characters.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.PrvsInstgAgt1.FinInstnId.PstlAdr.AdrLine"
+      ],
+      "fix": "Reduce each <AdrLine> to 35 characters or fewer.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R30",
+      "rule": "In CdtTrfTxInf/PrvsInstgAgt2/FinInstnId: Nm and PstlAdr must always be present together.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.PrvsInstgAgt2.FinInstnId"
+      ],
+      "fix": "Add both <Nm> and <PstlAdr>, or remove both.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R31",
+      "rule": "In CdtTrfTxInf/PrvsInstgAgt2/FinInstnId/PstlAdr: if AdrLine absent, TwnNm and Ctry must be present.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.PrvsInstgAgt2.FinInstnId.PstlAdr"
+      ],
+      "fix": "Add <TwnNm> and <Ctry> inside <PstlAdr>.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R32",
+      "rule": "In CdtTrfTxInf/PrvsInstgAgt2/FinInstnId/PstlAdr: if AdrLine and other element present, TwnNm and Ctry mandatory; max 2 AdrLine.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.PrvsInstgAgt2.FinInstnId.PstlAdr"
+      ],
+      "fix": "Add <TwnNm> and <Ctry>; limit <AdrLine> to 2 occurrences.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R33",
+      "rule": "In CdtTrfTxInf/PrvsInstgAgt2/FinInstnId/PstlAdr: if only AdrLine present, each must not exceed 35 characters.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.PrvsInstgAgt2.FinInstnId.PstlAdr.AdrLine"
+      ],
+      "fix": "Reduce each <AdrLine> to 35 characters or fewer.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R34",
+      "rule": "In CdtTrfTxInf/PrvsInstgAgt3/FinInstnId: Nm and PstlAdr must always be present together.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.PrvsInstgAgt3.FinInstnId"
+      ],
+      "fix": "Add both <Nm> and <PstlAdr>, or remove both.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R35",
+      "rule": "In CdtTrfTxInf/PrvsInstgAgt3/FinInstnId/PstlAdr: if AdrLine absent, TwnNm and Ctry must be present.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.PrvsInstgAgt3.FinInstnId.PstlAdr"
+      ],
+      "fix": "Add <TwnNm> and <Ctry> inside <PstlAdr>.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R36",
+      "rule": "In CdtTrfTxInf/PrvsInstgAgt3/FinInstnId/PstlAdr: if AdrLine and other element present, TwnNm and Ctry mandatory; max 2 AdrLine.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.PrvsInstgAgt3.FinInstnId.PstlAdr"
+      ],
+      "fix": "Add <TwnNm> and <Ctry>; limit <AdrLine> to 2 occurrences.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R37",
+      "rule": "In CdtTrfTxInf/PrvsInstgAgt3/FinInstnId/PstlAdr: if only AdrLine present, each must not exceed 35 characters.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.PrvsInstgAgt3.FinInstnId.PstlAdr.AdrLine"
+      ],
+      "fix": "Reduce each <AdrLine> to 35 characters or fewer.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R38",
+      "rule": "In CdtTrfTxInf/IntrmyAgt1/FinInstnId: Nm and PstlAdr must always be present together.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.IntrmyAgt1.FinInstnId"
+      ],
+      "fix": "Add both <Nm> and <PstlAdr>, or remove both.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R39",
+      "rule": "In CdtTrfTxInf/IntrmyAgt1/FinInstnId/PstlAdr: if AdrLine absent, TwnNm and Ctry must be present.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.IntrmyAgt1.FinInstnId.PstlAdr"
+      ],
+      "fix": "Add <TwnNm> and <Ctry> inside <PstlAdr>.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R40",
+      "rule": "In CdtTrfTxInf/IntrmyAgt1/FinInstnId/PstlAdr: if AdrLine and other element present, TwnNm and Ctry mandatory; max 2 AdrLine.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.IntrmyAgt1.FinInstnId.PstlAdr"
+      ],
+      "fix": "Add <TwnNm> and <Ctry>; limit <AdrLine> to 2 occurrences.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R41",
+      "rule": "In CdtTrfTxInf/IntrmyAgt1/FinInstnId/PstlAdr: if only AdrLine present, each must not exceed 35 characters.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.IntrmyAgt1.FinInstnId.PstlAdr.AdrLine"
+      ],
+      "fix": "Reduce each <AdrLine> to 35 characters or fewer.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R42",
+      "rule": "In CdtTrfTxInf/IntrmyAgt2/FinInstnId: Nm and PstlAdr must always be present together.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.IntrmyAgt2.FinInstnId"
+      ],
+      "fix": "Add both <Nm> and <PstlAdr>, or remove both.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R43",
+      "rule": "In CdtTrfTxInf/IntrmyAgt2/FinInstnId/PstlAdr: if AdrLine absent, TwnNm and Ctry must be present.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.IntrmyAgt2.FinInstnId.PstlAdr"
+      ],
+      "fix": "Add <TwnNm> and <Ctry> inside <PstlAdr>.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R44",
+      "rule": "In CdtTrfTxInf/IntrmyAgt2/FinInstnId/PstlAdr: if AdrLine and other element present, TwnNm and Ctry mandatory; max 2 AdrLine.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.IntrmyAgt2.FinInstnId.PstlAdr"
+      ],
+      "fix": "Add <TwnNm> and <Ctry>; limit <AdrLine> to 2 occurrences.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R45",
+      "rule": "In CdtTrfTxInf/IntrmyAgt2/FinInstnId/PstlAdr: if only AdrLine present, each must not exceed 35 characters.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.IntrmyAgt2.FinInstnId.PstlAdr.AdrLine"
+      ],
+      "fix": "Reduce each <AdrLine> to 35 characters or fewer.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R46",
+      "rule": "In CdtTrfTxInf/IntrmyAgt3/FinInstnId: Nm and PstlAdr must always be present together.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.IntrmyAgt3.FinInstnId"
+      ],
+      "fix": "Add both <Nm> and <PstlAdr>, or remove both.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R47",
+      "rule": "In CdtTrfTxInf/IntrmyAgt3/FinInstnId/PstlAdr: if AdrLine absent, TwnNm and Ctry must be present.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.IntrmyAgt3.FinInstnId.PstlAdr"
+      ],
+      "fix": "Add <TwnNm> and <Ctry> inside <PstlAdr>.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R48",
+      "rule": "In CdtTrfTxInf/IntrmyAgt3/FinInstnId/PstlAdr: if AdrLine and other element present, TwnNm and Ctry mandatory; max 2 AdrLine.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.IntrmyAgt3.FinInstnId.PstlAdr"
+      ],
+      "fix": "Add <TwnNm> and <Ctry>; limit <AdrLine> to 2 occurrences.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R49",
+      "rule": "In CdtTrfTxInf/IntrmyAgt3/FinInstnId/PstlAdr: if only AdrLine present, each must not exceed 35 characters.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.IntrmyAgt3.FinInstnId.PstlAdr.AdrLine"
+      ],
+      "fix": "Reduce each <AdrLine> to 35 characters or fewer.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R50",
+      "rule": "In CdtTrfTxInf/Dbtr/FinInstnId: Nm and PstlAdr must always be present together.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.Dbtr.FinInstnId"
+      ],
+      "fix": "Add both <Nm> and <PstlAdr>, or remove both.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R51",
+      "rule": "In CdtTrfTxInf/Dbtr/FinInstnId/PstlAdr: if AdrLine absent, TwnNm and Ctry must be present.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.Dbtr.FinInstnId.PstlAdr"
+      ],
+      "fix": "Add <TwnNm> and <Ctry> inside <PstlAdr>.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R52",
+      "rule": "In CdtTrfTxInf/Dbtr/FinInstnId/PstlAdr: if AdrLine and other element present, TwnNm and Ctry mandatory; max 2 AdrLine.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.Dbtr.FinInstnId.PstlAdr"
+      ],
+      "fix": "Add <TwnNm> and <Ctry>; limit <AdrLine> to 2 occurrences.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R53",
+      "rule": "In CdtTrfTxInf/Dbtr/FinInstnId/PstlAdr: if only AdrLine present, each must not exceed 35 characters.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.Dbtr.FinInstnId.PstlAdr.AdrLine"
+      ],
+      "fix": "Reduce each <AdrLine> to 35 characters or fewer.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R54",
+      "rule": "In CdtTrfTxInf/DbtrAgt/FinInstnId: Nm and PstlAdr must always be present together.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.DbtrAgt.FinInstnId"
+      ],
+      "fix": "Add both <Nm> and <PstlAdr>, or remove both.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R55",
+      "rule": "In CdtTrfTxInf/DbtrAgt/FinInstnId/PstlAdr: if AdrLine absent, TwnNm and Ctry must be present.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.DbtrAgt.FinInstnId.PstlAdr"
+      ],
+      "fix": "Add <TwnNm> and <Ctry> inside <PstlAdr>.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R56",
+      "rule": "In CdtTrfTxInf/DbtrAgt/FinInstnId/PstlAdr: if AdrLine and other element present, TwnNm and Ctry mandatory; max 2 AdrLine.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.DbtrAgt.FinInstnId.PstlAdr"
+      ],
+      "fix": "Add <TwnNm> and <Ctry>; limit <AdrLine> to 2 occurrences.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R57",
+      "rule": "In CdtTrfTxInf/DbtrAgt/FinInstnId/PstlAdr: if only AdrLine present, each must not exceed 35 characters.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.DbtrAgt.FinInstnId.PstlAdr.AdrLine"
+      ],
+      "fix": "Reduce each <AdrLine> to 35 characters or fewer.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R58",
+      "rule": "In CdtTrfTxInf/CdtrAgt/FinInstnId: Nm and PstlAdr must always be present together.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.CdtrAgt.FinInstnId"
+      ],
+      "fix": "Add both <Nm> and <PstlAdr>, or remove both.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R59",
+      "rule": "In CdtTrfTxInf/CdtrAgt/FinInstnId/PstlAdr: if AdrLine absent, TwnNm and Ctry must be present.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.CdtrAgt.FinInstnId.PstlAdr"
+      ],
+      "fix": "Add <TwnNm> and <Ctry> inside <PstlAdr>.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R60",
+      "rule": "In CdtTrfTxInf/CdtrAgt/FinInstnId/PstlAdr: if AdrLine and other element present, TwnNm and Ctry mandatory; max 2 AdrLine.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.CdtrAgt.FinInstnId.PstlAdr"
+      ],
+      "fix": "Add <TwnNm> and <Ctry>; limit <AdrLine> to 2 occurrences.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R61",
+      "rule": "In CdtTrfTxInf/CdtrAgt/FinInstnId/PstlAdr: if only AdrLine present, each must not exceed 35 characters.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.CdtrAgt.FinInstnId.PstlAdr.AdrLine"
+      ],
+      "fix": "Reduce each <AdrLine> to 35 characters or fewer.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R62",
+      "rule": "In CdtTrfTxInf/Cdtr/FinInstnId: Nm and PstlAdr must always be present together.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.Cdtr.FinInstnId"
+      ],
+      "fix": "Add both <Nm> and <PstlAdr>, or remove both.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R63",
+      "rule": "In CdtTrfTxInf/Cdtr/FinInstnId/PstlAdr: if AdrLine absent, TwnNm and Ctry must be present.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.Cdtr.FinInstnId.PstlAdr"
+      ],
+      "fix": "Add <TwnNm> and <Ctry> inside <PstlAdr>.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R64",
+      "rule": "In CdtTrfTxInf/Cdtr/FinInstnId/PstlAdr: if AdrLine and other element present, TwnNm and Ctry mandatory; max 2 AdrLine.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.Cdtr.FinInstnId.PstlAdr"
+      ],
+      "fix": "Add <TwnNm> and <Ctry>; limit <AdrLine> to 2 occurrences.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R65",
+      "rule": "In CdtTrfTxInf/Cdtr/FinInstnId/PstlAdr: if only AdrLine present, each must not exceed 35 characters.",
+      "affected_tags": [
+        "Document.FICtDt.CdtTrfTxInf.Cdtr.FinInstnId.PstlAdr.AdrLine"
+      ],
+      "fix": "Reduce each <AdrLine> to 35 characters or fewer.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "camt.057.001.06"
+      ]
+    },
+    {
+      "rule_id": "CBPR_R66",
+      "rule": "If pacs.009 settles a pacs.009 Advice, the last available occurrence of InstrForCdtrAgt/InstrInf preceded by /UDLC/ must capture the underlying creditor (/UDLC/) from the pacs.009 Advice.",
+      "affected_tags": [
+        "CBPR_R66"
+      ],
+      "fix": "Review the CBPR_R66 constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_R66 -->",
+      "severity": "WARNING",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_R67",
+      "rule": "Purp: coded information (Cd) is preferred over proprietary (Prtry).",
+      "affected_tags": [
+        "CBPR_R67"
+      ],
+      "fix": "Review the CBPR_R67 constraint and correct the relevant field.",
+      "xml_example": "<!-- Correct XML for CBPR_R67 -->",
+      "severity": "INFO",
+      "applies_to": [
+        "camt.057.001.06"
+      ],
+      "note": "Textual/informational rule — manual review required, no automated fix."
     }
   ],
   "tag_insertion_order": {
