@@ -887,6 +887,56 @@
     },
 
     {
+      "tag": "Undrlyg/OrgnlPmtInfAndCxl/TxInf/OrgnlInstdAmt",
+      "xml_element": "OrgnlInstdAmt",
+      "xpath": "/Document/CstmrPmtCxlReq/Undrlyg/OrgnlPmtInfAndCxl/TxInf/OrgnlInstdAmt",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "xsd_type": "ActiveOrHistoricCurrencyAndAmount",
+      "description": "Amount of the original transaction. When present must be a valid xs:decimal with a mandatory Ccy attribute. The decimal separator is always a dot; no thousands separators, currency symbols, or trailing punctuation allowed.",
+      "errors": [
+        {
+          "error_id": "ORGNLINSTDAMT_TRAILING_DOT",
+          "error_code": "NUM_TRAILING_DOT_OR_BARE",
+          "severity": "Fatal",
+          "description": "OrgnlInstdAmt text has a trailing decimal point (e.g. '307845.85.'). Not a valid xs:decimal; fails XSD validation.",
+          "example_fault": "<OrgnlInstdAmt Ccy=\"USD\">307845.85.</OrgnlInstdAmt>",
+          "example_fix": "<OrgnlInstdAmt Ccy=\"USD\">307845.85</OrgnlInstdAmt>",
+          "affected_tags": ["Undrlyg/OrgnlPmtInfAndCxl/TxInf/OrgnlInstdAmt"],
+          "possible_fixes": [
+            "Strip the trailing dot: '307845.85.' → '307845.85'.",
+            "AI fix: remove trailing period and reformat to ISO 4217 decimal precision for the Ccy attribute (USD → 2 d.p., JPY → 0 d.p.)."
+          ]
+        },
+        {
+          "error_id": "ORGNLINSTDAMT_INVALID_DECIMAL_PRECISION",
+          "error_code": "INVALID_DECIMAL_PRECISION",
+          "severity": "Fatal",
+          "description": "OrgnlInstdAmt decimal places do not match the ISO 4217 precision for the Ccy (e.g. '307845.850000' for USD, or '1000.50' for JPY).",
+          "affected_tags": ["Undrlyg/OrgnlPmtInfAndCxl/TxInf/OrgnlInstdAmt"],
+          "possible_fixes": [
+            "Reformat to correct decimal places for the Ccy (USD/EUR → 2, JPY → 0).",
+            "AI fix: look up ISO 4217 precision for the Ccy attribute and reformat in place."
+          ]
+        },
+        {
+          "error_id": "ORGNLINSTDAMT_NON_NUMERIC",
+          "error_code": "INVALID_AMOUNT",
+          "severity": "Fatal",
+          "description": "OrgnlInstdAmt text is not a valid decimal (e.g. contains currency symbol $, comma thousands separator, or non-numeric text).",
+          "example_fault": "<OrgnlInstdAmt Ccy=\"USD\">$307,845.85</OrgnlInstdAmt>",
+          "example_fix": "<OrgnlInstdAmt Ccy=\"USD\">307845.85</OrgnlInstdAmt>",
+          "affected_tags": ["Undrlyg/OrgnlPmtInfAndCxl/TxInf/OrgnlInstdAmt"],
+          "possible_fixes": [
+            "Remove currency symbols and thousands separators.",
+            "Use dot (not comma) as decimal separator.",
+            "AI fix: strip non-numeric decoration and reparse."
+          ]
+        }
+      ]
+    },
+
+    {
       "tag": "Undrlyg/OrgnlPmtInfAndCxl/TxInf/CxlRsnInf",
       "xml_element": "CxlRsnInf",
       "xpath": "/Document/CstmrPmtCxlReq/Undrlyg/OrgnlPmtInfAndCxl/TxInf/CxlRsnInf",

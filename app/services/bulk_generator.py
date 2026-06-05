@@ -744,7 +744,7 @@ MESSAGE_BLOCKS: Dict[str, List[Dict]] = {
         {"id": "creditor",                   "label": "Creditor",                    "mandatory": True},
         {"id": "creditor_account",           "label": "Creditor Account",            "mandatory": True,  "requires": ["creditor"]},
         {"id": "creditor_agent_account",     "label": "Creditor Agent Account",      "mandatory": False, "requires": ["creditor_agent"]},
-        {"id": "direct_debit_transaction",   "label": "Direct Debit Transaction",    "mandatory": False},
+        {"id": "direct_debit_transaction",   "label": "Direct Debit Transaction",    "mandatory": True},
         {"id": "intermediary_agent_1",       "label": "Intermediary Agent 1",        "mandatory": False},
         {"id": "intermediary_agent_2",       "label": "Intermediary Agent 2",        "mandatory": False, "requires": ["intermediary_agent_1"]},
         {"id": "intermediary_agent_3",       "label": "Intermediary Agent 3",        "mandatory": False, "requires": ["intermediary_agent_2"]},

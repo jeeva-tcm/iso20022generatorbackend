@@ -4317,7 +4317,9 @@ class FixSuggester:
                     _ccy_a = _ccy_a.upper()
                     # Use currency.json precision; cap at 5 (XSD fractionDigits=5)
                     _prec_a = min(_ccy_precision(_ccy_a), 5)
-                    _num_a = float(_cur_a)
+                    # Strip trailing decimal point before parsing: "307845.85." → "307845.85"
+                    _parse_a = _cur_a[:-1] if _cur_a.endswith(".") and len(_cur_a) > 1 else _cur_a
+                    _num_a = float(_parse_a)
                     _repaired_a = f"{_num_a:.{_prec_a}f}"
                     if re.match(r"^\d{1,13}(\.\d{1,5})?$", _repaired_a):
                         return _repaired_a
@@ -5852,8 +5854,24 @@ class FixSuggester:
         _is_amt_el = (el_local.endswith("Amt") or el_local == "Amt"
                       or el.get("Ccy") is not None)
         if (_is_amt_el or "decimal" in msg_l or "precision" in msg_l
-                or code == "INVALID_DECIMAL_PRECISION") and not list(el) and el.text:
+                or code in ("INVALID_DECIMAL_PRECISION", "NUM_TRAILING_DOT_OR_BARE")) and not list(el) and el.text:
             _amt_cur = (el.text or "").strip()
+            # Trailing decimal point: "307845.85." → "307845.85" (NUM_TRAILING_DOT_OR_BARE)
+            # float() rejects this form, so handle it before the generic float() path.
+            if _amt_cur.endswith(".") and len(_amt_cur) > 1:
+                _stripped_td = _amt_cur[:-1]
+                try:
+                    _num_td = float(_stripped_td)
+                    _ccy_td = (el.get("Ccy") or "").upper()
+                    _prec_td = _ccy_precision(_ccy_td)
+                    _repaired_td = f"{_num_td:.{_prec_td}f}"
+                    if re.match(r"^\d{1,13}(\.\d{1,5})?$", _repaired_td):
+                        _el_copy = self._copy(el)
+                        _el_copy.text = _repaired_td
+                        return FixSuggestion(xpath, original_fragment,
+                                             self._serialize(_el_copy), code, msg, "high")
+                except (ValueError, TypeError):
+                    pass
             try:
                 _num = float(_amt_cur)
                 _ccy = (el.get("Ccy") or "").upper()

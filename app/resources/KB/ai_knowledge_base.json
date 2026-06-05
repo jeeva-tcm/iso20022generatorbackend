@@ -2,7 +2,7 @@
     "_meta": {
         "purpose": "Consolidated knowledge base the AI fix suggester consults BEFORE inventing values. Combines: field constraints (regex/length), tag templates (exact XML structures per message type), dependency rules (cross-field invariants), error-code catalogue with fix recipes, date-fix rules, tag insertion-order maps, and high-quality dummy data. Always prefer this file's data over hallucinated values.",
         "version": "2.2",
-        "last_updated": "2026-06-03",
+        "last_updated": "2026-06-04",
         "xsd_version_coverage": "Rules derived from: pacs.008.001.13, pacs.009.001.12, pacs.003.001.11, pacs.002.001.12, pacs.010.001.06, pain.001.001.12, pain.002.001.14, pain.008.001.11, camt.052/053/054.001.13, camt.055.001.12, camt.056.001.11, camt.057.001.08. All rules are backward-compatible — they also apply to older minor versions (e.g. pacs.008.001.08, pacs.008.001.09, pacs.008.001.12) unless explicitly noted otherwise.",
         "bizsvc_note": "SR2023/SR2024 uses BizSvc='swift.cbprplus.02'. SR2025 uses BizSvc='swift.cbprplus.03'. Both are valid — the validator enforces the version that matches the document's namespace URI. The BIZSVC_V03_TO_V02 auto_fix_rule only triggers when the validator is configured for SR2023/SR2024 compliance. Do NOT apply this rule blindly for SR2025 documents."
     },
@@ -600,12 +600,13 @@
             "fix": "Replace with 'SHAR'."
         },
         "CHRGSINF_CCY_MISMATCH": {
-            "root_cause": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
-            "fix": "Update ChrgsInf/Amt/@Ccy to match IntrBkSttlmAmt/@Ccy."
+            "root_cause": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency. Charges must always be expressed in the same currency as the interbank settlement amount.",
+            "affected_messages": ["pacs.008", "pacs.003"],
+            "fix": "Update ChrgsInf/Amt/@Ccy to match IntrBkSttlmAmt/@Ccy. Example: If IntrBkSttlmAmt has Ccy='SEK' but ChrgsInf/Amt has Ccy='USD', change the Ccy attribute in ChrgsInf/Amt to 'SEK'."
         },
         "XCHGRATE_REQUIRED": {
-            "root_cause": "InstdAmt currency differs from IntrBkSttlmAmt currency but XchgRate is absent.",
-            "fix": "Insert <XchgRate>1.0</XchgRate> inside the CdtTrfTxInf block, after InstdAmt."
+            "root_cause": "InstdAmt currency differs from IntrBkSttlmAmt currency but XchgRate is absent. This applies to both PACS.008 (credit transfers) and PACS.003 (direct debits).",
+            "fix": "Insert <XchgRate>1.0</XchgRate> inside the transaction block (CdtTrfTxInf for pacs.008 or DrctDbtTxInf for pacs.003), after InstdAmt. Use the actual exchange rate value (e.g., 1.1234) with up to 10 decimal places. If the currencies are actually the same, remove InstdAmt entirely instead."
         },
         "XCHGRATE_FORBIDDEN": {
             "root_cause": "InstdAmt currency equals IntrBkSttlmAmt currency but XchgRate is present.",

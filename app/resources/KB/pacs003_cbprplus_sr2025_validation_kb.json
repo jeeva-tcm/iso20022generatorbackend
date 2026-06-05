@@ -1149,6 +1149,22 @@
           "possible_fixes": [
             "Set InstdAmt to a positive decimal amount greater than zero."
           ]
+        },
+        {
+          "error_id": "INSTDAMT_XCHGRATE_REQUIRED",
+          "error_code": "XCHGRATE_REQUIRED",
+          "severity": "Fatal",
+          "description": "InstdAmt currency differs from IntrBkSttlmAmt currency but XchgRate is absent. Invalid message content for exchange rate when instructed amount is present.",
+          "affected_tags": [
+            "DrctDbtTxInf/InstdAmt",
+            "DrctDbtTxInf/IntrBkSttlmAmt",
+            "DrctDbtTxInf/XchgRate"
+          ],
+          "possible_fixes": [
+            "Insert <XchgRate>{rate}</XchgRate> inside DrctDbtTxInf after InstdAmt when InstdAmt.Ccy differs from IntrBkSttlmAmt.Ccy.",
+            "If the currencies are the same, remove InstdAmt element entirely.",
+            "The exchange rate value must be a positive decimal (e.g., 1.1234) with up to 10 fraction digits."
+          ]
         }
       ]
     },
@@ -2200,13 +2216,15 @@
           "error_id": "CHRGSINF_CCY_MISMATCH",
           "error_code": "CHRGSINF_CCY_MISMATCH",
           "severity": "Fatal",
-          "description": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
+          "description": "Charges currency does not match the transaction currency. ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
           "affected_tags": [
             "DrctDbtTxInf/ChrgsInf/Amt",
             "DrctDbtTxInf/IntrBkSttlmAmt"
           ],
           "possible_fixes": [
-            "Update ChrgsInf/Amt/@Ccy to match IntrBkSttlmAmt/@Ccy."
+            "Update ChrgsInf/Amt/@Ccy to match IntrBkSttlmAmt/@Ccy.",
+            "Example: If IntrBkSttlmAmt Ccy='SEK' but ChrgsInf/Amt Ccy='USD', change ChrgsInf/Amt Ccy to 'SEK'.",
+            "Charges must always be expressed in the same currency as the settlement amount."
           ]
         }
       ]
@@ -2488,6 +2506,760 @@
         "DrctDbtTxInf/IntrBkSttlmAmt"
       ],
       "fix": "Recompute the total from the transaction amounts and set TtlIntrBkSttlmAmt (with matching Ccy)."
+    },
+    {
+      "rule_id": "L3_CURRENCY_001",
+      "rule": "Currency Decimal Precision Check",
+      "affected_tags": [
+        "Amt"
+      ],
+      "fix": "Review the L3_CURRENCY_001 constraint and correct the relevant field.",
+      "xml_example": "<IntrBkSttlmAmt Ccy=\"USD\">1000.00</IntrBkSttlmAmt>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_COUNTRY_001",
+      "rule": "Country Code Compliance (ISO 3166-1 Alpha-2)",
+      "affected_tags": [
+        "Ctry"
+      ],
+      "fix": "Review the L3_COUNTRY_001 constraint and correct the relevant field.",
+      "xml_example": "<Ctry>US</Ctry>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_CHRGBR_001",
+      "rule": "Charge Bearer Code Validation",
+      "affected_tags": [
+        "ChrgBr"
+      ],
+      "fix": "Review the L3_CHRGBR_001 constraint and correct the relevant field.",
+      "xml_example": "<ChrgBr>SHAR</ChrgBr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "E001",
+      "rule": "Postal Address Coexistence Rule: If Address Line is absent, Town Name and Country must be present.",
+      "affected_tags": [
+        "PstlAdr"
+      ],
+      "fix": "Review the E001 constraint and correct the relevant field.",
+      "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "W005",
+      "rule": "Instruction ID is unusually long",
+      "affected_tags": [
+        "InstrId"
+      ],
+      "fix": "Review the W005 constraint and correct the relevant field.",
+      "xml_example": "<InstrId>INSTR001</InstrId>",
+      "severity": "WARNING",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_BIC_DIRECTORY_001",
+      "rule": "BIC Existence in SWIFT Directory",
+      "affected_tags": [
+        "BIC|AnyBIC"
+      ],
+      "fix": "Review the L3_BIC_DIRECTORY_001 constraint and correct the relevant field.",
+      "xml_example": "<BICFI>NDEAFIHH</BICFI>",
+      "severity": "WARNING",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_URGENT_DATE_001",
+      "rule": "Urgent payments should normally be settled on the current date.",
+      "affected_tags": [
+        "L3_URGENT_DATE_001"
+      ],
+      "fix": "Review the L3_URGENT_DATE_001 constraint and correct the relevant field.",
+      "xml_example": "<IntrBkSttlmDt>2026-06-05</IntrBkSttlmDt>",
+      "severity": "WARNING",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3-PURPOSE-LIMIT",
+      "rule": "Conditional Amount Limit based on Purpose Code",
+      "affected_tags": [
+        "Purp.Cd"
+      ],
+      "fix": "Review the L3-PURPOSE-LIMIT constraint and correct the relevant field.",
+      "xml_example": "<Purp><Cd>SALA</Cd></Purp>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_IBAN_CURR_001",
+      "rule": "IBAN Based Currency Validation",
+      "affected_tags": [
+        "DbtrAcct.Id.IBAN"
+      ],
+      "fix": "Review the L3_IBAN_CURR_001 constraint and correct the relevant field.",
+      "xml_example": "<IBAN>GB29NWBK60161331926819</IBAN>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_LEI_NOT_BIC",
+      "rule": "LEI cannot replace BIC for financial institution agents. CBPR+ requires BICFI.",
+      "affected_tags": [
+        "FinInstnId.LEI"
+      ],
+      "fix": "Review the L3_LEI_NOT_BIC constraint and correct the relevant field.",
+      "xml_example": "<FinInstnId><BICFI>NDEAFIHH</BICFI></FinInstnId>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_INTRMY_ORDER_1",
+      "rule": "IntrmyAgt2 cannot exist without IntrmyAgt1.",
+      "affected_tags": [
+        "L3_INTRMY_ORDER_1"
+      ],
+      "fix": "Review the L3_INTRMY_ORDER_1 constraint and correct the relevant field.",
+      "xml_example": "<IntrmyAgt1><FinInstnId><BICFI>AAAAGB2L</BICFI></FinInstnId></IntrmyAgt1>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_INTRMY_ORDER_2",
+      "rule": "IntrmyAgt3 cannot exist without IntrmyAgt2.",
+      "affected_tags": [
+        "L3_INTRMY_ORDER_2"
+      ],
+      "fix": "Review the L3_INTRMY_ORDER_2 constraint and correct the relevant field.",
+      "xml_example": "<IntrmyAgt2><FinInstnId><BICFI>BBBBUS33</BICFI></FinInstnId></IntrmyAgt2>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_PURPOSE_001",
+      "rule": "ISO Purpose Code Validation (SR2025)",
+      "affected_tags": [
+        "Purp.Cd"
+      ],
+      "fix": "Review the L3_PURPOSE_001 constraint and correct the relevant field.",
+      "xml_example": "<Purp><Cd>SALA</Cd></Purp>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_CTGYPURP_001",
+      "rule": "ISO Category Purpose Code Validation (SR2025)",
+      "affected_tags": [
+        "CtgyPurp.Cd"
+      ],
+      "fix": "Review the L3_CTGYPURP_001 constraint and correct the relevant field.",
+      "xml_example": "<CtgyPurp><Cd>CASH</Cd></CtgyPurp>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_STTLM_CLRG_001",
+      "rule": "If Settlement Method is CLRG (Clearing System), Clearing System (ClrSys) identity must be present.",
+      "affected_tags": [
+        "L3_STTLM_CLRG_001"
+      ],
+      "fix": "Review the L3_STTLM_CLRG_001 constraint and correct the relevant field.",
+      "xml_example": "<SttlmInf><SttlmMtd>CLRG</SttlmMtd><ClrSys><Cd>T2</Cd></ClrSys></SttlmInf>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_PARTY_EXCLUSIVITY",
+      "rule": "Party Identification: Organization ID (/OrgId) and Private ID (/PrvtId) are mutually exclusive. Both cannot be present.",
+      "affected_tags": [
+        "Pty.Id|.Dbtr.Id|.Cdtr.Id|.UltmtDbtr.Id|.UltmtCdtr.Id"
+      ],
+      "fix": "Review the L3_PARTY_EXCLUSIVITY constraint and correct the relevant field.",
+      "xml_example": "<Id><OrgId><Othr><Id>12345</Id></Othr></OrgId></Id>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_FININSTNID_COMPLETENESS",
+      "rule": "Financial Institution Identification: Must contain either a BICFI or a Clearing System Member identification.",
+      "affected_tags": [
+        "FinInstnId"
+      ],
+      "fix": "Review the L3_FININSTNID_COMPLETENESS constraint and correct the relevant field.",
+      "xml_example": "<FinInstnId><BICFI>NDEAFIHH</BICFI></FinInstnId>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_NAME_FOR_ID",
+      "rule": "Party Identification: When an ID (Organisation /OrgId or Private /PrvtId) is provided, the Name field (/Nm) should also be included for reference.",
+      "affected_tags": [
+        "Pty|.Dbtr|.Cdtr|.UltmtDbtr|.UltmtCdtr"
+      ],
+      "fix": "Review the L3_NAME_FOR_ID constraint and correct the relevant field.",
+      "xml_example": "<Dbtr><Nm>John Doe</Nm><Id><PrvtId><Othr><Id>ABC123</Id></Othr></PrvtId></Id></Dbtr>",
+      "severity": "WARNING",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_ORG_SCHEME_VALIDATION",
+      "rule": "Validation of scheme code for Organisation Identification. Allowed: LEI, DUNS, VAT, TXID, GIIN, CRN.",
+      "affected_tags": [
+        "OrgId.Othr.SchmeNm.Cd"
+      ],
+      "fix": "Use a valid Organisation scheme code like 'LEI' or 'DUNS'.",
+      "xml_example": "<SchmeNm><Cd>LEI</Cd></SchmeNm>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_PRVT_SCHEME_VALIDATION",
+      "rule": "Validation of scheme code for Private Identification. Allowed: CCPT, DRLC, NIDN, SSSN, PASSPORT, NATIONALID.",
+      "affected_tags": [
+        "PrvtId.Othr.SchmeNm.Cd"
+      ],
+      "fix": "Use a valid Private scheme code like 'CCPT' (Passport) or 'NIDN'.",
+      "xml_example": "<SchmeNm><Cd>CCPT</Cd></SchmeNm>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_SETTLEMENT_METHOD",
+      "rule": "Settlement Method must be one of the ISO 20022 standard codes: INDA, INGA, CLRG, COVE",
+      "affected_tags": [
+        "SttlmMtd"
+      ],
+      "fix": "Review the L3_SETTLEMENT_METHOD constraint and correct the relevant field.",
+      "xml_example": "<SttlmMtd>INDA</SttlmMtd>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3-BIZ-PARTY-NAME-ENTITY-MATCH-ORG",
+      "rule": "Organisation identification cannot accompany personal name and vice versa (ENTITY_MISMATCH).",
+      "affected_tags": [
+        "Dbtr|.Cdtr|.UltmtDbtr|.UltmtCdtr|.InitgPty|.RltdPties"
+      ],
+      "fix": "Ensure the <Nm> tag includes a corporate indicator like 'Ltd', 'Corp', or 'Inc', or use <PrvtId> if this is an individual.",
+      "xml_example": "<Dbtr><Nm>Acme Corp Ltd</Nm><Id><OrgId><Othr><Id>123</Id></Othr></OrgId></Id></Dbtr>",
+      "severity": "CRITICAL",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3-BIZ-PARTY-NAME-ENTITY-MATCH-PRVT",
+      "rule": "Organisation identification cannot accompany personal name and vice versa (ENTITY_MISMATCH).",
+      "affected_tags": [
+        "Dbtr|.Cdtr|.UltmtDbtr|.UltmtCdtr|.InitgPty|.RltdPties"
+      ],
+      "fix": "Remove corporate keywords (e.g., 'Ltd', 'Corp') from the <Nm> field, or use <OrgId> if this is a company identification.",
+      "xml_example": "<Dbtr><Nm>John Smith</Nm><Id><PrvtId><Othr><Id>P001</Id></Othr></PrvtId></Id></Dbtr>",
+      "severity": "CRITICAL",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3-MANDATORY-PAYMENT-PARTIES",
+      "rule": "Debtor and Creditor are mandatory for all payment messages. For customer credit transfers (pacs.008, pacs.003), Debtor Agent and Creditor Agent are also required.",
+      "affected_tags": [
+        "L3-MANDATORY-PAYMENT-PARTIES"
+      ],
+      "fix": "Ensure <Dbtr> and <Cdtr> blocks are included. For pacs.008/pacs.003, also include <DbtrAgt> and <CdtrAgt>.",
+      "xml_example": "<Dbtr><Nm>John Doe</Nm></Dbtr><Cdtr><Nm>Jane Roe</Nm></Cdtr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_APPHDR_PRTY_001",
+      "rule": "AppHdr Priority Validation (HIGH, NORM, LOW)",
+      "affected_tags": [
+        "AppHdr.Prty"
+      ],
+      "fix": "Review the L3_APPHDR_PRTY_001 constraint and correct the relevant field.",
+      "xml_example": "<Prty>NORM</Prty>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_SVCLVL_CODE",
+      "rule": "Service Level Code (SvcLvl/Cd) must be a valid ExternalServiceLevel1Code.",
+      "affected_tags": [
+        "SvcLvl.Cd"
+      ],
+      "fix": "Review the L3_SVCLVL_CODE constraint and correct the relevant field.",
+      "xml_example": "<SvcLvl><Cd>SEPA</Cd></SvcLvl>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_LCLINSTRM_CODE",
+      "rule": "Local Instrument Code (LclInstrm/Cd) must be a valid ExternalLocalInstrument1Code.",
+      "affected_tags": [
+        "LclInstrm.Cd"
+      ],
+      "fix": "Review the L3_LCLINSTRM_CODE constraint and correct the relevant field.",
+      "xml_example": "<LclInstrm><Cd>TRF</Cd></LclInstrm>",
+      "severity": "WARNING",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_CLRSYS_CODE",
+      "rule": "Clearing System Identification Code (ClrSys/Cd or ClrSysId/Cd) must be a valid ExternalCashClearingSystem1Code.",
+      "affected_tags": [
+        "ClrSys|ClrSysId.Cd"
+      ],
+      "fix": "Review the L3_CLRSYS_CODE constraint and correct the relevant field.",
+      "xml_example": "<ClrSys><Cd>T2</Cd></ClrSys>",
+      "severity": "WARNING",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_ACCT_TYPE_CODE",
+      "rule": "Cash Account Type Code (Acct/Tp/Cd) must be a valid ExternalCashAccountType1Code.",
+      "affected_tags": [
+        "Acct.Tp.Cd"
+      ],
+      "fix": "Review the L3_ACCT_TYPE_CODE constraint and correct the relevant field.",
+      "xml_example": "<Tp><Cd>CACC</Cd></Tp>",
+      "severity": "WARNING",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_ENTRY_STATUS_CODE",
+      "rule": "Entry Status Code (Sts/Cd) must be a valid ExternalEntryStatus1Code.",
+      "affected_tags": [
+        "Ntry[d+]?.Sts.Cd"
+      ],
+      "fix": "Review the L3_ENTRY_STATUS_CODE constraint and correct the relevant field.",
+      "xml_example": "<Sts><Cd>BOOK</Cd></Sts>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_BIC_LENGTH",
+      "rule": "BIC must be exactly 8 or 11 characters (XSD pattern allows it; this gives a clearer error).",
+      "affected_tags": [
+        "BICFI|.AnyBIC"
+      ],
+      "fix": "A valid BIC is 8 chars (e.g. NDEAFIHH) or 11 chars including a 3-char branch (e.g. NDEAFIHHXXX).",
+      "xml_example": "<BICFI>NDEAFIHH</BICFI>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_LEI_FORMAT",
+      "rule": "LEI must be exactly 20 alphanumeric characters (ISO 17442).",
+      "affected_tags": [
+        "LEI"
+      ],
+      "fix": "Review the L3_LEI_FORMAT constraint and correct the relevant field.",
+      "xml_example": "<LEI>529900T8BM49AURSDO55</LEI>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_FRACTIONDIGITS_JPY",
+      "rule": "JPY amounts cannot have decimal places.",
+      "affected_tags": [
+        "Amt"
+      ],
+      "fix": "Remove the decimal portion from the JPY amount (e.g. use '1000' instead of '1000.00').",
+      "xml_example": "<IntrBkSttlmAmt Ccy=\"JPY\">10000</IntrBkSttlmAmt>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_IBAN_UPPERCASE",
+      "rule": "IBAN must contain only uppercase A-Z and digits 0-9.",
+      "affected_tags": [
+        "IBAN"
+      ],
+      "fix": "Remove any lowercase letters or whitespace from the IBAN value.",
+      "xml_example": "<IBAN>GB29NWBK60161331926819</IBAN>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_NM_NOT_EQ_BIC",
+      "rule": "Party Name (Nm) should not be a BIC code — likely a mapping error.",
+      "affected_tags": [
+        "Nm"
+      ],
+      "fix": "Move the BIC value into <BICFI> and put the actual party name in <Nm>.",
+      "xml_example": "<Nm>Acme Bank Limited</Nm>",
+      "severity": "WARNING",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3_FAR_FUTURE_DATE",
+      "rule": "Settlement / execution dates more than 1 year in the future are unusual.",
+      "affected_tags": [
+        "IntrBkSttlmDt|ReqdExctnDt|ReqdColltnDt|SttlmDt"
+      ],
+      "fix": "Verify the date is correct. Future-dated payments beyond 12 months are unusual and may be rejected by clearing systems.",
+      "xml_example": "<IntrBkSttlmDt>2026-06-05</IntrBkSttlmDt>",
+      "severity": "WARNING",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "GLOBAL_INTRMY_AGT1_REQUIRES_CDTR_AGT",
+      "rule": "When IntrmyAgt1 is present, CdtrAgt must also be present. CBPR+ dependency rule: an intermediary agent requires a creditor agent to define the end of the payment chain.",
+      "affected_tags": [
+        "GLOBAL_INTRMY_AGT1_REQUIRES_CDTR_AGT"
+      ],
+      "fix": "Add <CdtrAgt><FinInstnId><BICFI>CREDITOR_BIC</BICFI></FinInstnId></CdtrAgt> to the transaction, or remove <IntrmyAgt1> if no intermediary routing is required.",
+      "xml_example": "<CdtrAgt><FinInstnId><BICFI>AAAAGB2L</BICFI></FinInstnId></CdtrAgt>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3-PACS-MATCH-FR",
+      "rule": "Header Sender BIC (From) must match the Instructing Agent BIC in the Business Message.",
+      "affected_tags": [
+        "L3-PACS-MATCH-FR"
+      ],
+      "fix": "Review the L3-PACS-MATCH-FR constraint and correct the relevant field.",
+      "xml_example": "<Fr><FIId><FinInstnId><BICFI>NDEAFIHH</BICFI></FinInstnId></FIId></Fr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "L3-PACS-MATCH-TO",
+      "rule": "Header Receiver BIC (To) must match the Instructed Agent BIC in the Business Message.",
+      "affected_tags": [
+        "L3-PACS-MATCH-TO"
+      ],
+      "fix": "Review the L3-PACS-MATCH-TO constraint and correct the relevant field.",
+      "xml_example": "<To><FIId><FinInstnId><BICFI>BBBBUS33</BICFI></FinInstnId></FIId></To>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "PACS003_UETR_REQUIRED",
+      "rule": "CBPR+: UETR is mandatory in pacs.003 even though the XSD declares it optional.",
+      "affected_tags": [
+        "PACS003_UETR_REQUIRED"
+      ],
+      "fix": "Add a valid UUID v4 to <PmtId><UETR> (e.g., 4a1a0945-5772-409a-83ba-240e666e0267).",
+      "xml_example": "<UETR>4a1a0945-5772-409a-83ba-240e666e0267</UETR>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "PACS003_PMTID_REQUIRED",
+      "rule": "CBPR+: InstrId and EndToEndId are mandatory in pacs.003 PmtId.",
+      "affected_tags": [
+        "PACS003_PMTID_REQUIRED"
+      ],
+      "fix": "Add <InstrId> and <EndToEndId> inside <PmtId> (Max16Text / Max35Text identifiers).",
+      "xml_example": "<PmtId><InstrId>INSTR001</InstrId><EndToEndId>E2E001</EndToEndId></PmtId>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "PACS003_DBTR_REQUIRED",
+      "rule": "CBPR+: Debtor is mandatory in pacs.003.",
+      "affected_tags": [
+        "PACS003_DBTR_REQUIRED"
+      ],
+      "fix": "Review the PACS003_DBTR_REQUIRED constraint and correct the relevant field.",
+      "xml_example": "<Dbtr><Nm>John Doe</Nm></Dbtr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "PACS003_CDTR_REQUIRED",
+      "rule": "CBPR+: Creditor is mandatory in pacs.003.",
+      "affected_tags": [
+        "PACS003_CDTR_REQUIRED"
+      ],
+      "fix": "Review the PACS003_CDTR_REQUIRED constraint and correct the relevant field.",
+      "xml_example": "<Cdtr><Nm>Jane Roe</Nm></Cdtr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "PACS003_DBTR_NM_REQUIRED",
+      "rule": "CBPR+: Debtor Name is mandatory in pacs.003.",
+      "affected_tags": [
+        "PACS003_DBTR_NM_REQUIRED"
+      ],
+      "fix": "Review the PACS003_DBTR_NM_REQUIRED constraint and correct the relevant field.",
+      "xml_example": "<Dbtr><Nm>John Doe</Nm></Dbtr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "PACS003_CDTR_NM_REQUIRED",
+      "rule": "CBPR+: Creditor Name is mandatory in pacs.003.",
+      "affected_tags": [
+        "PACS003_CDTR_NM_REQUIRED"
+      ],
+      "fix": "Review the PACS003_CDTR_NM_REQUIRED constraint and correct the relevant field.",
+      "xml_example": "<Cdtr><Nm>Jane Roe</Nm></Cdtr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "PACS003_DBTRACCT_REQUIRED",
+      "rule": "CBPR+: Debtor Account is mandatory in pacs.003.",
+      "affected_tags": [
+        "PACS003_DBTRACCT_REQUIRED"
+      ],
+      "fix": "Add <DbtrAcct><Id><IBAN>...</IBAN></Id></DbtrAcct> (or <Othr><Id>...</Id></Othr> for non-IBAN accounts).",
+      "xml_example": "<DbtrAcct><Id><IBAN>GB29NWBK60161331926819</IBAN></Id></DbtrAcct>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "PACS003_CDTRACCT_REQUIRED",
+      "rule": "CBPR+: Creditor Account is mandatory in pacs.003.",
+      "affected_tags": [
+        "PACS003_CDTRACCT_REQUIRED"
+      ],
+      "fix": "Add <CdtrAcct><Id><IBAN>...</IBAN></Id></CdtrAcct> (or <Othr><Id>...</Id></Othr> for non-IBAN accounts).",
+      "xml_example": "<CdtrAcct><Id><IBAN>GB29NWBK60161331926820</IBAN></Id></CdtrAcct>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "PACS003_CHRGBR_REQUIRED",
+      "rule": "CBPR+: ChrgBr (Charge Bearer) is mandatory in pacs.003.",
+      "affected_tags": [
+        "PACS003_CHRGBR_REQUIRED"
+      ],
+      "fix": "Review the PACS003_CHRGBR_REQUIRED constraint and correct the relevant field.",
+      "xml_example": "<ChrgBr>SHAR</ChrgBr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "PACS003_MANDATE_REQUIRED",
+      "rule": "CBPR+: MndtRltdInf (Mandate Related Information) is mandatory when DrctDbtTx is present.",
+      "affected_tags": [
+        "PACS003_MANDATE_REQUIRED"
+      ],
+      "fix": "Add <MndtRltdInf><MndtId>...</MndtId><DtOfSgntr>YYYY-MM-DD</DtOfSgntr></MndtRltdInf>.",
+      "xml_example": "<MndtRltdInf><MndtId>MNDT001</MndtId><DtOfSgntr>2025-01-15</DtOfSgntr></MndtRltdInf>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "PACS003_INTR_BK_STTLM_AMT_REQUIRED",
+      "rule": "CBPR+: IntrBkSttlmAmt is mandatory in pacs.003.",
+      "affected_tags": [
+        "PACS003_INTR_BK_STTLM_AMT_REQUIRED"
+      ],
+      "fix": "Review the PACS003_INTR_BK_STTLM_AMT_REQUIRED constraint and correct the relevant field.",
+      "xml_example": "<IntrBkSttlmAmt Ccy=\"EUR\">1500.00</IntrBkSttlmAmt>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "PACS003_CHARGES_CURRENCY_MISMATCH",
+      "rule": "Charges currency must match the Interbank Settlement Amount currency. If ChrgsInf is present, ChrgsInf/Amt/@Ccy must equal IntrBkSttlmAmt/@Ccy.",
+      "affected_tags": [
+        "PACS003_CHARGES_CURRENCY_MISMATCH"
+      ],
+      "fix": "Update ChrgsInf/Amt/@Ccy to match IntrBkSttlmAmt/@Ccy. Example: If IntrBkSttlmAmt Ccy='SEK' but ChrgsInf/Amt Ccy='USD', change ChrgsInf/Amt Ccy to 'SEK'.",
+      "xml_example": "<ChrgsInf><Amt Ccy=\"EUR\">5.00</Amt></ChrgsInf>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "PACS003_XCHGRATE_REQUIRED_WHEN_INSTD_DIFF",
+      "rule": "Exchange rate is mandatory when InstdAmt currency differs from IntrBkSttlmAmt currency. If InstdAmt.Ccy != IntrBkSttlmAmt.Ccy, then XchgRate must be present.",
+      "affected_tags": [
+        "PACS003_XCHGRATE_REQUIRED_WHEN_INSTD_DIFF"
+      ],
+      "fix": "Insert <XchgRate>{rate}</XchgRate> inside DrctDbtTxInf after InstdAmt when InstdAmt.Ccy differs from IntrBkSttlmAmt.Ccy. The exchange rate value must be a positive decimal (e.g., 1.1234) with up to 10 fraction digits. Alternatively, if the currencies should be the same, remove InstdAmt element entirely.",
+      "xml_example": "<XchgRate>1.1234</XchgRate>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "PACS003_XCHGRATE_FORBIDDEN_WHEN_INSTD_SAME",
+      "rule": "Exchange rate must NOT be present when InstdAmt currency equals IntrBkSttlmAmt currency.",
+      "affected_tags": [
+        "PACS003_XCHGRATE_FORBIDDEN_WHEN_INSTD_SAME"
+      ],
+      "fix": "Remove the <XchgRate> element. XchgRate is only required when currencies differ.",
+      "xml_example": "<!-- Remove XchgRate when InstdAmt and IntrBkSttlmAmt have same currency -->",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "PACS003_CHRG_BR_VALID_VALUES",
+      "rule": "ChrgBr must be one of the valid CBPR+ values: SHAR, SLEV, CRED, DEBT.",
+      "affected_tags": [
+        "PACS003_CHRG_BR_VALID_VALUES"
+      ],
+      "fix": "Review the PACS003_CHRG_BR_VALID_VALUES constraint and correct the relevant field.",
+      "xml_example": "<ChrgBr>SHAR</ChrgBr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "PACS003_MANDATE_ID_REQUIRED",
+      "rule": "CBPR+: MndtId is mandatory in MndtRltdInf when present.",
+      "affected_tags": [
+        "PACS003_MANDATE_ID_REQUIRED"
+      ],
+      "fix": "Review the PACS003_MANDATE_ID_REQUIRED constraint and correct the relevant field.",
+      "xml_example": "<MndtId>MNDT-2025-001</MndtId>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "PACS003_MANDATE_SIGN_DATE_REQUIRED",
+      "rule": "CBPR+: DtOfSgntr is mandatory in MndtRltdInf when present.",
+      "affected_tags": [
+        "PACS003_MANDATE_SIGN_DATE_REQUIRED"
+      ],
+      "fix": "Review the PACS003_MANDATE_SIGN_DATE_REQUIRED constraint and correct the relevant field.",
+      "xml_example": "<DtOfSgntr>2025-01-15</DtOfSgntr>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "PACS003_CHRG_BR_CRED_CHRGS_INF",
+      "rule": "If ChrgBr = CRED, ChrgsInf block must be present with Amt and Agt.",
+      "affected_tags": [
+        "PACS003_CHRG_BR_CRED_CHRGS_INF"
+      ],
+      "fix": "Insert <ChrgsInf><Amt Ccy=\"{CCY}\">0.00</Amt><Agt><FinInstnId><BICFI>{BIC}</BICFI></FinInstnId></Agt></ChrgsInf>.",
+      "xml_example": "<ChrgsInf><Amt Ccy=\"EUR\">5.00</Amt><Agt><FinInstnId><BICFI>NDEAFIHH</BICFI></FinInstnId></Agt></ChrgsInf>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
+    },
+    {
+      "rule_id": "PACS003_CHRG_INF_AGT_REQUIRED",
+      "rule": "If ChrgsInf is present, Agt (Agent Details) must be included.",
+      "affected_tags": [
+        "PACS003_CHRG_INF_AGT_REQUIRED"
+      ],
+      "fix": "Add <Agt><FinInstnId><BICFI>{agent_BIC}</BICFI></FinInstnId></Agt> inside ChrgsInf.",
+      "xml_example": "<Agt><FinInstnId><BICFI>NDEAFIHH</BICFI></FinInstnId></Agt>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.003.001.08"
+      ]
     }
   ],
   "tag_insertion_order": {
