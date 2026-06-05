@@ -129,7 +129,8 @@
         ],
         "severity": "ERROR",
         "layer": 3,
-        "errorMessage": "IntrBkSttlmAmt (Interbank Settlement Amount) is mandatory in pacs.003."
+        "errorMessage": "IntrBkSttlmAmt (Interbank Settlement Amount) is mandatory in pacs.003.",
+        "fix": "Add <IntrBkSttlmAmt Ccy=\"USD\">0.00</IntrBkSttlmAmt> inside DrctDbtTxInf."
     },
     {
         "rule_id": "PACS003_CHARGES_CURRENCY_MISMATCH",
@@ -198,7 +199,8 @@
         ],
         "severity": "ERROR",
         "layer": 3,
-        "errorMessage": "MndtId is mandatory in MndtRltdInf."
+        "errorMessage": "MndtId is mandatory in MndtRltdInf.",
+        "fix": "Add <MndtId>MANDATE-ID</MndtId> inside MndtRltdInf."
     },
     {
         "rule_id": "PACS003_MANDATE_SIGN_DATE_REQUIRED",
@@ -209,7 +211,8 @@
         ],
         "severity": "ERROR",
         "layer": 3,
-        "errorMessage": "DtOfSgntr (Date of Signature) is mandatory in MndtRltdInf."
+        "errorMessage": "DtOfSgntr (Date of Signature) is mandatory in MndtRltdInf.",
+        "fix": "Add <DtOfSgntr>YYYY-MM-DD</DtOfSgntr> inside MndtRltdInf."
     },
     {
         "rule_id": "PACS003_CHRG_BR_CRED_CHRGS_INF",

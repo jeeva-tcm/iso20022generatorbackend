@@ -604,6 +604,9 @@ class Layer3Mixin:
                                 if extracted_path != "/":
                                     break
 
+                        if extracted_path and extracted_path != "/" and "." in extracted_path:
+                            extracted_path = "//" + extracted_path.replace(".", "/")
+
                         report.add_issue(ValidationIssue(severity, layer, rule_id, extracted_path, error_msg, fix_suggestion, line=fallback_line))
                 else:
                     # Non-transaction-scoped rules evaluated once for entire data
@@ -652,6 +655,9 @@ class Layer3Mixin:
                                             break
                                 if extracted_path != "/":
                                     break
+
+                        if extracted_path and extracted_path != "/" and "." in extracted_path:
+                            extracted_path = "//" + extracted_path.replace(".", "/")
 
                         report.add_issue(ValidationIssue(severity, layer, rule_id, extracted_path, error_msg, fix_suggestion, line=fallback_line))
 

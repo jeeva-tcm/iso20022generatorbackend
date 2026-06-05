@@ -933,20 +933,27 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
 
             # The Rule: If <Nm> exists, <PstlAdr> MUST exist.
             if has_nm and not has_pstl_adr:
+                xpath = root.getroottree().getpath(elem)
+                # Cleanup XPath for better readability in UI
+                xpath = xpath.replace('/*', '/').replace('[1]', '')
                 report.add_issue(ValidationIssue(
-                    "ERROR", 3, "NAME_ADDRESS_COEXISTENCE", str(nm_line),
+                    "ERROR", 3, "NAME_ADDRESS_COEXISTENCE", xpath,
                     "Error: Name and Address must always be present together",
                     f"The element <{tag_local}> contains a Name <Nm> but is missing a Postal Address <PstlAdr>. "
-                    "For CBPR+ compliance, if a name is provided, the full postal address must also be included."
+                    "For CBPR+ compliance, if a name is provided, the full postal address must also be included.",
+                    line=nm_line
                 ))
             
             # (Optional inverse) If <PstlAdr> exists, <Nm> MUST exist.
             elif has_pstl_adr and not has_nm:
+                xpath = root.getroottree().getpath(elem)
+                xpath = xpath.replace('/*', '/').replace('[1]', '')
                 report.add_issue(ValidationIssue(
-                    "ERROR", 3, "NAME_ADDRESS_COEXISTENCE", str(elem.sourceline or 1),
+                    "ERROR", 3, "NAME_ADDRESS_COEXISTENCE", xpath,
                     "Error: Name and Address must always be present together",
                     f"The element <{tag_local}> contains a Postal Address <PstlAdr> but is missing a Name <Nm>. "
-                    "For CBPR+ compliance, if an address is provided, the name of the party must also be included."
+                    "For CBPR+ compliance, if an address is provided, the name of the party must also be included.",
+                    line=elem.sourceline or 1
                 ))
 
     def _validate_empty_required_containers(self, xml_content: str, report: ValidationReport) -> None:
