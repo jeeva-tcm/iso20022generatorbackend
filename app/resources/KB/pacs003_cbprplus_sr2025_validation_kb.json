@@ -1112,6 +1112,26 @@
             "Insert a ChrgsInf block with Amt and Agt elements when ChrgBr = CRED.",
             "Alternatively change ChrgBr to SHAR to avoid the requirement."
           ]
+        },
+        {
+          "error_id": "PACS003_CHRGBR_REQUIRED",
+          "error_code": "PACS003_CHRGBR_REQUIRED",
+          "severity": "ERROR",
+          "description": "ChrgBr is mandatory in pacs.003.",
+          "possible_fixes": [
+            "Add <ChrgBr>SLEV</ChrgBr> inside DrctDbtTxInf.",
+            "Valid values: SHAR, SLEV, CRED, DEBT. SLEV recommended for CBPR+ direct debits."
+          ]
+        },
+        {
+          "error_id": "PACS003_CHRG_BR_VALID_VALUES",
+          "error_code": "PACS003_CHRG_BR_VALID_VALUES",
+          "severity": "ERROR",
+          "description": "ChrgBr has an invalid value. Allowed: SHAR, SLEV, CRED, DEBT.",
+          "possible_fixes": [
+            "Set <ChrgBr> to SLEV (recommended for CBPR+ direct debits).",
+            "Allowed values: SHAR, SLEV, CRED, DEBT."
+          ]
         }
       ]
     },
@@ -1681,6 +1701,26 @@
             "Escalate to compliance team; do not process.",
             "Replace sanctioned country code or name with compliant values where permitted."
           ]
+        },
+        {
+          "error_id": "PACS003_CDTR_REQUIRED",
+          "error_code": "PACS003_CDTR_REQUIRED",
+          "severity": "ERROR",
+          "description": "Creditor is mandatory in pacs.003.",
+          "possible_fixes": [
+            "Add <Cdtr><Nm>Sample Name</Nm></Cdtr> inside DrctDbtTxInf.",
+            "At minimum provide <Cdtr><Nm>Creditor Name</Nm></Cdtr>."
+          ]
+        },
+        {
+          "error_id": "PACS003_CDTR_NM_REQUIRED",
+          "error_code": "PACS003_CDTR_NM_REQUIRED",
+          "severity": "ERROR",
+          "description": "Creditor Name is mandatory in pacs.003 unless creditor identified by AnyBIC.",
+          "possible_fixes": [
+            "Add <Nm>Sample Name</Nm> as first child of <Cdtr>.",
+            "Provide a non-empty name string (Max140Text)."
+          ]
         }
       ]
     },
@@ -1828,6 +1868,26 @@
           "possible_fixes": [
             "Remove Nm and PstlAdr from Dbtr when AnyBIC is present in OrgId.",
             "Or remove AnyBIC and retain Nm/PstlAdr."
+          ]
+        },
+        {
+          "error_id": "PACS003_DBTR_REQUIRED",
+          "error_code": "PACS003_DBTR_REQUIRED",
+          "severity": "ERROR",
+          "description": "Debtor is mandatory in pacs.003.",
+          "possible_fixes": [
+            "Add <Dbtr><Nm>Sample Name</Nm></Dbtr> inside DrctDbtTxInf.",
+            "At minimum provide <Dbtr><Nm>Debtor Name</Nm></Dbtr>."
+          ]
+        },
+        {
+          "error_id": "PACS003_DBTR_NM_REQUIRED",
+          "error_code": "PACS003_DBTR_NM_REQUIRED",
+          "severity": "ERROR",
+          "description": "Debtor Name is mandatory in pacs.003 unless debtor identified by AnyBIC.",
+          "possible_fixes": [
+            "Add <Nm>Sample Name</Nm> as first child of <Dbtr>.",
+            "Provide a non-empty name string (Max140Text)."
           ]
         }
       ]

@@ -2299,6 +2299,75 @@
           ]
         }
       ]
+    },
+    {
+      "tag": "UltmtDbtr",
+      "xml_element": "UltmtDbtr",
+      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/UltmtDbtr",
+      "occurrence": "[0..0]",
+      "mandatory": false,
+      "description": "Ultimate Debtor: NOT allowed in pacs.009 CORE per CBPR+ MyStandards.",
+      "errors": [
+        {
+          "error_id": "PACS009_010",
+          "error_code": "PACS009_010",
+          "severity": "ERROR",
+          "description": "UltmtDbtr is not permitted in pacs.009 CORE.",
+          "affected_tags": [
+            "UltmtDbtr"
+          ],
+          "possible_fixes": [
+            "Remove the <UltmtDbtr> element entirely from CdtTrfTxInf.",
+            "UltmtDbtr is only allowed in pacs.009 COV/ADV variants, not in CORE."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "UltmtCdtr",
+      "xml_element": "UltmtCdtr",
+      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/UltmtCdtr",
+      "occurrence": "[0..0]",
+      "mandatory": false,
+      "description": "Ultimate Creditor: NOT allowed in pacs.009 CORE per CBPR+ MyStandards.",
+      "errors": [
+        {
+          "error_id": "PACS009_011",
+          "error_code": "PACS009_011",
+          "severity": "ERROR",
+          "description": "UltmtCdtr is not permitted in pacs.009 CORE.",
+          "affected_tags": [
+            "UltmtCdtr"
+          ],
+          "possible_fixes": [
+            "Remove the <UltmtCdtr> element entirely from CdtTrfTxInf.",
+            "UltmtCdtr is only allowed in pacs.009 COV/ADV variants, not in CORE."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "SplmtryData",
+      "xml_element": "SplmtryData",
+      "xpath": "/Document/FICdtTrf/SplmtryData",
+      "occurrence": "[0..0]",
+      "mandatory": false,
+      "description": "Supplementary Data: NOT allowed in pacs.009 per CBPR+ MyStandards.",
+      "errors": [
+        {
+          "error_id": "PACS009_018",
+          "error_code": "PACS009_018",
+          "severity": "ERROR",
+          "description": "SplmtryData is not permitted in pacs.009.",
+          "affected_tags": [
+            "SplmtryData"
+          ],
+          "possible_fixes": [
+            "Remove the <SplmtryData> element entirely from the message.",
+            "Supplementary data is not supported in CBPR+ pacs.009."
+          ]
+        }
+      ]
     }
   ],
   "cross_tag_dependency_rules": [

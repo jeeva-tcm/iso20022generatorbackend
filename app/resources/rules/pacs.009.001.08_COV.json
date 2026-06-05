@@ -108,7 +108,8 @@
         "type": "textual",
         "severity": "WARNING",
         "layer": 3,
-        "errorMessage": "E2E in pacs.009 COV should match underlying pacs.008 instruction ID."
+        "errorMessage": "EndToEndId in pacs.009 COV should match the underlying pacs.008 instruction.",
+        "fix": "Set EndToEndId to match the E2E from the underlying pacs.008 CdtTrfTxInf/PmtId/EndToEndId."
     },
     {
         "rule_id": "CBPR_R16",
@@ -130,7 +131,8 @@
         "type": "textual",
         "severity": "WARNING",
         "layer": 3,
-        "errorMessage": "UETR in pacs.009 COV should match underlying pacs.008 UETR."
+        "errorMessage": "UETR in pacs.009 COV should match the underlying pacs.008 UETR.",
+        "fix": "Set <UETR> to match the UETR from the underlying pacs.008 transaction."
     },
     {
         "rule_id": "CBPR_R18",
@@ -139,7 +141,8 @@
         "type": "textual",
         "severity": "INFO",
         "layer": 3,
-        "errorMessage": "LocalInstrument should use coded information (<Cd>)."
+        "errorMessage": "LclInstrm: use coded form <Cd> instead of <Prtry>.",
+        "fix": "Replace <Prtry>...</Prtry> with <Cd>SDVA</Cd> inside <LclInstrm>."
     },
     {
         "rule_id": "CBPR_R19",
@@ -148,7 +151,8 @@
         "type": "textual",
         "severity": "INFO",
         "layer": 3,
-        "errorMessage": "CategoryPurpose should use coded information (<Cd>)."
+        "errorMessage": "CtgyPurp: use coded form <Cd> instead of <Prtry>.",
+        "fix": "Replace <Prtry>...</Prtry> with <Cd>SUPP</Cd> inside <CtgyPurp>."
     },
     {
         "rule_id": "CBPR_R20",
@@ -171,7 +175,8 @@
         "type": "textual",
         "severity": "INFO",
         "layer": 3,
-        "errorMessage": "Agent (national): ClrSysMmbId alone is permitted when all agents are in the same country."
+        "errorMessage": "Agent national option: use ClrSysMmbId when all agents are in same country.",
+        "fix": "Use <ClrSysMmbId><ClrSysId><Cd>GBDSC</Cd></ClrSysId><MmbId>123456</MmbId></ClrSysMmbId> for national agents."
     },
     {
         "rule_id": "CBPR_R22",
@@ -180,7 +185,8 @@
         "type": "textual",
         "severity": "INFO",
         "layer": 3,
-        "errorMessage": "Agent Option 1 (preferred): use <BICFI>, optionally with <LEI>."
+        "errorMessage": "Agent Option 1 (preferred): use BICFI for agent identification.",
+        "fix": "Use <BICFI>BANKGB2LXXX</BICFI> as the primary agent identification method."
     },
     {
         "rule_id": "CBPR_R23",
@@ -224,7 +230,8 @@
         "type": "textual",
         "severity": "INFO",
         "layer": 3,
-        "errorMessage": "Purpose should use coded information (<Cd>)."
+        "errorMessage": "Purp: use coded form <Cd> instead of <Prtry>.",
+        "fix": "Replace <Prtry>...</Prtry> with <Cd>SUPP</Cd> inside <Purp>."
     },
     {
         "rule_id": "CBPR_R67",
@@ -233,7 +240,8 @@
         "type": "textual",
         "severity": "WARNING",
         "layer": 3,
-        "errorMessage": "UltimateDebtor: Name and/or Identification required for jurisdictional transactions."
+        "errorMessage": "UltimateDebtor Name and/or Identification required for jurisdictional transactions.",
+        "fix": "Add <Nm>Ultimate Debtor Name</Nm> inside <UltmtDbtr> for jurisdictional transactions."
     },
     {
         "rule_id": "CBPR_R68",
@@ -307,7 +315,8 @@
         "type": "textual",
         "severity": "WARNING",
         "layer": 3,
-        "errorMessage": "Debtor: Name mandatory with Account or Identification for jurisdictional transactions."
+        "errorMessage": "Debtor Name mandatory with Account or Identification for jurisdictional transactions.",
+        "fix": "Add <Nm>Debtor Name</Nm> inside <Dbtr> when account or ID is present."
     },
     {
         "rule_id": "CBPR_R74",
@@ -381,7 +390,8 @@
         "type": "textual",
         "severity": "WARNING",
         "layer": 3,
-        "errorMessage": "Creditor: Name mandatory with Account or Identification for jurisdictional transactions."
+        "errorMessage": "Creditor Name mandatory with Account or Identification for jurisdictional transactions.",
+        "fix": "Add <Nm>Creditor Name</Nm> inside <Cdtr> when account or ID is present."
     },
     {
         "rule_id": "CBPR_R115",
@@ -455,7 +465,8 @@
         "type": "textual",
         "severity": "WARNING",
         "layer": 3,
-        "errorMessage": "UltimateCreditor: Name and/or Identification required for jurisdictional transactions."
+        "errorMessage": "UltimateCreditor Name and/or Identification required for jurisdictional transactions.",
+        "fix": "Add <Nm>Ultimate Creditor Name</Nm> inside <UltmtCdtr> for jurisdictional transactions."
     },
     {
         "rule_id": "CBPR_R124",
@@ -477,6 +488,7 @@
         "type": "textual",
         "severity": "WARNING",
         "layer": 3,
-        "errorMessage": "Structured Remittance total content exceeds 9000 characters or bilateral agreement not documented."
+        "errorMessage": "Structured Remittance total content exceeds 9000 characters.",
+        "fix": "Reduce structured remittance content. Total Strd elements content must not exceed 9000 chars."
     }
 ]

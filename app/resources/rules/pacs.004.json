@@ -5,7 +5,9 @@
         "condition": "exists(Document.PmtRtr.TxInf.OrgnlTxRef.Dbtr)",
         "expression": "exists(Document.PmtRtr.TxInf.OrgnlTxRef.Dbtr.Nm) or exists(Document.PmtRtr.TxInf.OrgnlTxRef.Dbtr.PstlAdr) or exists(Document.PmtRtr.TxInf.OrgnlTxRef.Dbtr.Id)",
         "severity": "WARNING",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "Debtor party identification rules not met in pacs.004.",
+        "fix": "Ensure <Dbtr> has <Nm> or standard identification (OrgId/PrvtId) when present."
     },
     {
         "rule_id": "PACS004_RSN_CODE_VALID",
@@ -14,7 +16,9 @@
         "type": "codelist",
         "list_name": "return_reason",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "Return reason code (RtrRsnInf/Rsn/Cd) is not a valid ExternalReturnReason1Code.",
+        "fix": "Set <Cd> inside <RtrRsnInf><Rsn> to a valid code, e.g. FOCR (Following Cancellation Request), AC01 (Incorrect Account Number), or CUST (Requested by Customer)."
     },
     {
         "rule_id": "PACS004_RTRDAMT_LE_ORGNLAMT",
@@ -32,7 +36,9 @@
         "condition": "exists(Document.PmtRtr.TxInf.RtrdIntrBkSttlmAmt)",
         "expression": "float(Document.PmtRtr.TxInf.RtrdIntrBkSttlmAmt) > 0",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "Returned amount (RtrdAmt) must be greater than zero.",
+        "fix": "Set <RtrdAmt Ccy=\"EUR\">1000.00</RtrdAmt> to a positive amount greater than 0."
     },
     {
         "rule_id": "PACS004_NO_PRTRY_RSN",
@@ -53,6 +59,8 @@
             "Document.PmtRtr.TxInf.OrgnlUETR"
         ],
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "OrgnlUETR is mandatory in pacs.004 TxInf to identify the original transaction.",
+        "fix": "Add <OrgnlUETR>4a1a0945-5772-409a-83ba-240e666e0267</OrgnlUETR> with the UUID v4 from the original transaction."
     }
 ]

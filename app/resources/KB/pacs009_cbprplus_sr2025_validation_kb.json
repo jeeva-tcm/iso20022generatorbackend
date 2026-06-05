@@ -672,6 +672,16 @@
             "Remove GrpHdr/InstgAgt if agent is already specified at transaction level.",
             "Remove CdtTrfTxInf/InstgAgt if agent is specified at group level."
           ]
+        },
+        {
+          "error_id": "PACS009_005",
+          "error_code": "PACS009_005",
+          "severity": "ERROR",
+          "description": "InstgAgt/FinInstnId contains forbidden elements in pacs.009.",
+          "possible_fixes": [
+            "Remove Nm, PstlAdr, Othr, and BrnchId from InstgAgt/FinInstnId.",
+            "Use only BICFI or ClrSysMmbId for agent identification."
+          ]
         }
       ]
     },
@@ -695,6 +705,16 @@
           "possible_fixes": [
             "Remove GrpHdr/InstdAgt if agent is specified at transaction level.",
             "Remove CdtTrfTxInf/InstdAgt if agent is specified at group level."
+          ]
+        },
+        {
+          "error_id": "PACS009_006",
+          "error_code": "PACS009_006",
+          "severity": "ERROR",
+          "description": "InstdAgt/FinInstnId contains forbidden elements in pacs.009.",
+          "possible_fixes": [
+            "Remove Nm, PstlAdr, Othr, and BrnchId from InstdAgt/FinInstnId.",
+            "Use only BICFI or ClrSysMmbId for agent identification."
           ]
         }
       ]
@@ -1343,6 +1363,15 @@
           "possible_fixes": [
             "Remove the BrnchId element from DbtrAgt entirely."
           ]
+        },
+        {
+          "error_id": "PACS009_013",
+          "error_code": "PACS009_013",
+          "severity": "ERROR",
+          "description": "DbtrAgt/FinInstnId contains forbidden sub-elements in pacs.009.",
+          "possible_fixes": [
+            "Remove ClrSysId/Prtry, Othr, and BrnchId from DbtrAgt/FinInstnId."
+          ]
         }
       ]
     },
@@ -1417,6 +1446,15 @@
           ],
           "possible_fixes": [
             "Remove the BrnchId element from CdtrAgt entirely."
+          ]
+        },
+        {
+          "error_id": "PACS009_014",
+          "error_code": "PACS009_014",
+          "severity": "ERROR",
+          "description": "CdtrAgt/FinInstnId contains forbidden sub-elements in pacs.009.",
+          "possible_fixes": [
+            "Remove ClrSysId/Prtry, Othr, and BrnchId from CdtrAgt/FinInstnId."
           ]
         }
       ]
@@ -1518,6 +1556,15 @@
           "possible_fixes": [
             "Remove Nm and PstlAdr from Dbtr/FinInstnId when BICFI is present.",
             "Or remove BICFI and retain Nm/PstlAdr."
+          ]
+        },
+        {
+          "error_id": "PACS009_012",
+          "error_code": "PACS009_012",
+          "severity": "ERROR",
+          "description": "Dbtr/FinInstnId contains forbidden sub-elements in pacs.009.",
+          "possible_fixes": [
+            "Remove ClrSysId/Prtry, Othr, and BrnchId from Dbtr/FinInstnId."
           ]
         }
       ]
@@ -1630,6 +1677,15 @@
           "possible_fixes": [
             "Replace sanctioned country code or institution identifier with non-sanctioned values for testing.",
             "For production: escalate to compliance team; do not process."
+          ]
+        },
+        {
+          "error_id": "PACS009_015",
+          "error_code": "PACS009_015",
+          "severity": "ERROR",
+          "description": "Cdtr/FinInstnId contains forbidden sub-elements in pacs.009.",
+          "possible_fixes": [
+            "Remove ClrSysId/Prtry, Othr, and BrnchId from Cdtr/FinInstnId."
           ]
         }
       ]
@@ -1881,6 +1937,15 @@
             "Insert IntrmyAgt2 before IntrmyAgt3.",
             "Or remove IntrmyAgt3 if only two intermediaries are needed."
           ]
+        },
+        {
+          "error_id": "PACS009_007",
+          "error_code": "PACS009_007",
+          "severity": "ERROR",
+          "description": "IntrmyAgt1/FinInstnId contains forbidden elements in pacs.009.",
+          "possible_fixes": [
+            "Remove Othr and BrnchId from IntrmyAgt1/FinInstnId."
+          ]
         }
       ]
     },
@@ -2022,6 +2087,15 @@
           "possible_fixes": [
             "Set FinInstnId/BICFI to a valid 8 or 11 character BIC."
           ]
+        },
+        {
+          "error_id": "PACS009_008",
+          "error_code": "PACS009_008",
+          "severity": "ERROR",
+          "description": "IntrmyAgt2/FinInstnId contains forbidden elements in pacs.009.",
+          "possible_fixes": [
+            "Remove Othr and BrnchId from IntrmyAgt2/FinInstnId."
+          ]
         }
       ]
     },
@@ -2045,6 +2119,15 @@
           "possible_fixes": [
             "Insert IntrmyAgt2 before IntrmyAgt3, or remove IntrmyAgt3."
           ]
+        },
+        {
+          "error_id": "PACS009_009",
+          "error_code": "PACS009_009",
+          "severity": "ERROR",
+          "description": "IntrmyAgt3/FinInstnId contains forbidden elements in pacs.009.",
+          "possible_fixes": [
+            "Remove Othr and BrnchId from IntrmyAgt3/FinInstnId."
+          ]
         }
       ]
     },
@@ -2066,6 +2149,121 @@
           ],
           "possible_fixes": [
             "Set FinInstnId/BICFI to a valid 8 or 11 character BIC; remove BrnchId (CBPR+ branch removed)."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "UltmtDbtr",
+      "xml_element": "UltmtDbtr",
+      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/UltmtDbtr",
+      "occurrence": "[0..0]",
+      "mandatory": false,
+      "description": "Ultimate Debtor: NOT allowed in pacs.009 CORE per CBPR+ MyStandards.",
+      "errors": [
+        {
+          "error_id": "PACS009_010",
+          "error_code": "PACS009_010",
+          "severity": "ERROR",
+          "description": "UltmtDbtr is not permitted in pacs.009 CORE.",
+          "affected_tags": [
+            "UltmtDbtr"
+          ],
+          "possible_fixes": [
+            "Remove the <UltmtDbtr> element entirely from CdtTrfTxInf.",
+            "UltmtDbtr is only allowed in pacs.009 COV/ADV variants, not in CORE."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "UltmtCdtr",
+      "xml_element": "UltmtCdtr",
+      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/UltmtCdtr",
+      "occurrence": "[0..0]",
+      "mandatory": false,
+      "description": "Ultimate Creditor: NOT allowed in pacs.009 CORE per CBPR+ MyStandards.",
+      "errors": [
+        {
+          "error_id": "PACS009_011",
+          "error_code": "PACS009_011",
+          "severity": "ERROR",
+          "description": "UltmtCdtr is not permitted in pacs.009 CORE.",
+          "affected_tags": [
+            "UltmtCdtr"
+          ],
+          "possible_fixes": [
+            "Remove the <UltmtCdtr> element entirely from CdtTrfTxInf.",
+            "UltmtCdtr is only allowed in pacs.009 COV/ADV variants, not in CORE."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "SplmtryData",
+      "xml_element": "SplmtryData",
+      "xpath": "/Document/FICdtTrf/SplmtryData",
+      "occurrence": "[0..0]",
+      "mandatory": false,
+      "description": "Supplementary Data: NOT allowed in pacs.009 per CBPR+ MyStandards.",
+      "errors": [
+        {
+          "error_id": "PACS009_018",
+          "error_code": "PACS009_018",
+          "severity": "ERROR",
+          "description": "SplmtryData is not permitted in pacs.009.",
+          "affected_tags": [
+            "SplmtryData"
+          ],
+          "possible_fixes": [
+            "Remove the <SplmtryData> element entirely from the message.",
+            "Supplementary data is not supported in CBPR+ pacs.009."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "UndrlygCstmrCdtTrf",
+      "xml_element": "UndrlygCstmrCdtTrf",
+      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/UndrlygCstmrCdtTrf",
+      "occurrence": "[0..0]",
+      "mandatory": false,
+      "description": "Underlying Customer Credit Transfer: NOT allowed in pacs.009 CORE. Only in COV variant.",
+      "errors": [
+        {
+          "error_id": "PACS009_017",
+          "error_code": "PACS009_017",
+          "severity": "ERROR",
+          "description": "UndrlygCstmrCdtTrf is not permitted in pacs.009 CORE.",
+          "affected_tags": [
+            "UndrlygCstmrCdtTrf"
+          ],
+          "possible_fixes": [
+            "Remove the <UndrlygCstmrCdtTrf> element. It is only permitted in pacs.009 COV variant.",
+            "If this is a cover payment, use the pacs.009 COV variant instead."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "InstrForNxtAgt",
+      "xml_element": "InstrForNxtAgt",
+      "xpath": "/Document/FICdtTrf/CdtTrfTxInf/InstrForNxtAgt",
+      "occurrence": "[0..n]",
+      "mandatory": false,
+      "description": "Instruction For Next Agent: <Cd> element is not allowed; only <InstrInf> free text.",
+      "errors": [
+        {
+          "error_id": "PACS009_016",
+          "error_code": "PACS009_016",
+          "severity": "ERROR",
+          "description": "InstrForNxtAgt/Cd is not permitted in pacs.009.",
+          "affected_tags": [
+            "InstrForNxtAgt"
+          ],
+          "possible_fixes": [
+            "Remove the <Cd> element from <InstrForNxtAgt>. Only <InstrInf> free-text is allowed.",
+            "Replace <Cd>...</Cd> with <InstrInf>...</InstrInf> inside InstrForNxtAgt."
           ]
         }
       ]

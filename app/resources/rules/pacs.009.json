@@ -31,7 +31,9 @@
         "condition": "exists(Document.FICdtTrf)",
         "expression": "all(not k.startswith('Document.FICdtTrf.CdtTrfTxInf.Dbtr.Nm') and not k.startswith('Document.FICdtTrf.CdtTrfTxInf.Dbtr.Id.OrgId') and not k.startswith('Document.FICdtTrf.CdtTrfTxInf.Dbtr.Id.PrvtId') for k in DATA.keys())",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "Debtor must identify as a Financial Institution using FinInstnId in pacs.009.",
+        "fix": "Ensure <Dbtr> contains only <FinInstnId> with BICFI. Example: <Dbtr><FinInstnId><BICFI>DBTR001XXXX</BICFI></FinInstnId></Dbtr>."
     },
     {
         "rule_id": "PACS009_002",
@@ -39,7 +41,9 @@
         "condition": "exists(Document.FICdtTrf)",
         "expression": "all(not k.startswith('Document.FICdtTrf.CdtTrfTxInf.Cdtr.Nm') and not k.startswith('Document.FICdtTrf.CdtTrfTxInf.Cdtr.Id.OrgId') and not k.startswith('Document.FICdtTrf.CdtTrfTxInf.Cdtr.Id.PrvtId') for k in DATA.keys())",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "Creditor must identify as a Financial Institution using FinInstnId in pacs.009.",
+        "fix": "Ensure <Cdtr> contains only <FinInstnId> with BICFI. Example: <Cdtr><FinInstnId><BICFI>CDTR001XXXX</BICFI></FinInstnId></Cdtr>."
     },
     {
         "rule_id": "PACS009_003",
@@ -49,7 +53,9 @@
             "Document.FICdtTrf.CdtTrfTxInf.InstgAgt.FinInstnId"
         ],
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "InstgAgt must use FinInstnId in pacs.009.",
+        "fix": "Add <FinInstnId><BICFI>INSTGAGT1XXX</BICFI></FinInstnId> inside <InstgAgt>."
     },
     {
         "rule_id": "PACS009_004",
@@ -59,7 +65,9 @@
             "Document.FICdtTrf.CdtTrfTxInf.InstdAgt.FinInstnId"
         ],
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "InstdAgt must use FinInstnId in pacs.009.",
+        "fix": "Add <FinInstnId><BICFI>INSTDAGT1XXX</BICFI></FinInstnId> inside <InstdAgt>."
     },
     {
         "rule_id": "PACS009_005",
@@ -67,7 +75,9 @@
         "condition": "exists(Document.FICdtTrf.CdtTrfTxInf.InstgAgt)",
         "expression": "all(not k.startswith('Document.FICdtTrf.CdtTrfTxInf.InstgAgt.FinInstnId.Nm') and not k.startswith('Document.FICdtTrf.CdtTrfTxInf.InstgAgt.FinInstnId.PstlAdr') and not k.startswith('Document.FICdtTrf.CdtTrfTxInf.InstgAgt.FinInstnId.Othr') and not k.startswith('Document.FICdtTrf.CdtTrfTxInf.InstgAgt.FinInstnId.BrnchId') and not k.startswith('Document.FICdtTrf.CdtTrfTxInf.InstgAgt.BrnchId') for k in DATA.keys())",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "InstgAgt/FinInstnId contains forbidden elements (Nm, PstlAdr, Othr, BrnchId) in pacs.009.",
+        "fix": "Remove Nm, PstlAdr, Othr, and BrnchId from InstgAgt/FinInstnId. Use only BICFI or ClrSysMmbId."
     },
     {
         "rule_id": "PACS009_006",
@@ -75,7 +85,9 @@
         "condition": "exists(Document.FICdtTrf.CdtTrfTxInf.InstdAgt)",
         "expression": "all(not k.startswith('Document.FICdtTrf.CdtTrfTxInf.InstdAgt.FinInstnId.Nm') and not k.startswith('Document.FICdtTrf.CdtTrfTxInf.InstdAgt.FinInstnId.PstlAdr') and not k.startswith('Document.FICdtTrf.CdtTrfTxInf.InstdAgt.FinInstnId.Othr') and not k.startswith('Document.FICdtTrf.CdtTrfTxInf.InstdAgt.FinInstnId.BrnchId') and not k.startswith('Document.FICdtTrf.CdtTrfTxInf.InstdAgt.BrnchId') for k in DATA.keys())",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "InstdAgt/FinInstnId contains forbidden elements (Nm, PstlAdr, Othr, BrnchId) in pacs.009.",
+        "fix": "Remove Nm, PstlAdr, Othr, and BrnchId from InstdAgt/FinInstnId. Use only BICFI or ClrSysMmbId."
     },
     {
         "rule_id": "PACS009_007",
@@ -83,7 +95,9 @@
         "condition": "exists(Document.FICdtTrf.CdtTrfTxInf.IntrmyAgt1)",
         "expression": "all(not k.startswith('Document.FICdtTrf.CdtTrfTxInf.IntrmyAgt1.FinInstnId.Othr') and not k.startswith('Document.FICdtTrf.CdtTrfTxInf.IntrmyAgt1.FinInstnId.BrnchId') and not k.startswith('Document.FICdtTrf.CdtTrfTxInf.IntrmyAgt1.BrnchId') for k in DATA.keys())",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "IntrmyAgt1/FinInstnId contains forbidden elements (Othr, BrnchId) in pacs.009.",
+        "fix": "Remove Othr and BrnchId from IntrmyAgt1/FinInstnId. Use only BICFI or ClrSysMmbId."
     },
     {
         "rule_id": "PACS009_008",
@@ -91,7 +105,9 @@
         "condition": "exists(Document.FICdtTrf.CdtTrfTxInf.IntrmyAgt2)",
         "expression": "all(not k.startswith('Document.FICdtTrf.CdtTrfTxInf.IntrmyAgt2.FinInstnId.Othr') and not k.startswith('Document.FICdtTrf.CdtTrfTxInf.IntrmyAgt2.FinInstnId.BrnchId') and not k.startswith('Document.FICdtTrf.CdtTrfTxInf.IntrmyAgt2.BrnchId') for k in DATA.keys())",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "IntrmyAgt2/FinInstnId contains forbidden elements (Othr, BrnchId) in pacs.009.",
+        "fix": "Remove Othr and BrnchId from IntrmyAgt2/FinInstnId. Use only BICFI or ClrSysMmbId."
     },
     {
         "rule_id": "PACS009_009",
@@ -99,7 +115,9 @@
         "condition": "exists(Document.FICdtTrf.CdtTrfTxInf.IntrmyAgt3)",
         "expression": "all(not k.startswith('Document.FICdtTrf.CdtTrfTxInf.IntrmyAgt3.FinInstnId.Othr') and not k.startswith('Document.FICdtTrf.CdtTrfTxInf.IntrmyAgt3.FinInstnId.BrnchId') and not k.startswith('Document.FICdtTrf.CdtTrfTxInf.IntrmyAgt3.BrnchId') for k in DATA.keys())",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "IntrmyAgt3/FinInstnId contains forbidden elements (Othr, BrnchId) in pacs.009.",
+        "fix": "Remove Othr and BrnchId from IntrmyAgt3/FinInstnId. Use only BICFI or ClrSysMmbId."
     },
     {
         "rule_id": "PACS009_010",
@@ -107,7 +125,9 @@
         "condition": "exists(Document.FICdtTrf)",
         "expression": "all('.UltmtDbtr' not in k for k in DATA.keys())",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "UltmtDbtr element is not allowed in pacs.009 CORE.",
+        "fix": "Remove the <UltmtDbtr> element entirely from CdtTrfTxInf."
     },
     {
         "rule_id": "PACS009_011",
@@ -115,7 +135,9 @@
         "condition": "exists(Document.FICdtTrf)",
         "expression": "all('.UltmtCdtr' not in k for k in DATA.keys())",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "UltmtCdtr element is not allowed in pacs.009 CORE.",
+        "fix": "Remove the <UltmtCdtr> element entirely from CdtTrfTxInf."
     },
     {
         "rule_id": "PACS009_012",
@@ -123,7 +145,9 @@
         "condition": "exists(Document.FICdtTrf.CdtTrfTxInf.Dbtr)",
         "expression": "all('.Dbtr.FinInstnId.ClrSysMmbId.ClrSysId.Prtry' not in k and '.Dbtr.FinInstnId.Othr' not in k and '.Dbtr.FinInstnId.BrnchId' not in k and '.Dbtr.BrnchId' not in k for k in DATA.keys())",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "Dbtr/FinInstnId contains forbidden sub-elements (ClrSysId/Prtry, Othr, BrnchId) in pacs.009.",
+        "fix": "Remove ClrSysId/Prtry, Othr, and BrnchId from Dbtr/FinInstnId."
     },
     {
         "rule_id": "PACS009_013",
@@ -131,7 +155,9 @@
         "condition": "exists(Document.FICdtTrf.CdtTrfTxInf.DbtrAgt)",
         "expression": "all('.DbtrAgt.FinInstnId.ClrSysMmbId.ClrSysId.Prtry' not in k and '.DbtrAgt.FinInstnId.Othr' not in k and '.DbtrAgt.FinInstnId.BrnchId' not in k and '.DbtrAgt.BrnchId' not in k for k in DATA.keys())",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "DbtrAgt/FinInstnId contains forbidden sub-elements (ClrSysId/Prtry, Othr, BrnchId) in pacs.009.",
+        "fix": "Remove ClrSysId/Prtry, Othr, and BrnchId from DbtrAgt/FinInstnId."
     },
     {
         "rule_id": "PACS009_014",
@@ -139,7 +165,9 @@
         "condition": "exists(Document.FICdtTrf.CdtTrfTxInf.CdtrAgt)",
         "expression": "all('.CdtrAgt.FinInstnId.ClrSysMmbId.ClrSysId.Prtry' not in k and '.CdtrAgt.FinInstnId.Othr' not in k and '.CdtrAgt.FinInstnId.BrnchId' not in k and '.CdtrAgt.BrnchId' not in k for k in DATA.keys())",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "CdtrAgt/FinInstnId contains forbidden sub-elements (ClrSysId/Prtry, Othr, BrnchId) in pacs.009.",
+        "fix": "Remove ClrSysId/Prtry, Othr, and BrnchId from CdtrAgt/FinInstnId."
     },
     {
         "rule_id": "PACS009_015",
@@ -147,7 +175,9 @@
         "condition": "exists(Document.FICdtTrf.CdtTrfTxInf.Cdtr)",
         "expression": "all('.Cdtr.FinInstnId.ClrSysMmbId.ClrSysId.Prtry' not in k and '.Cdtr.FinInstnId.Othr' not in k and '.Cdtr.FinInstnId.BrnchId' not in k and '.Cdtr.BrnchId' not in k for k in DATA.keys())",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "Cdtr/FinInstnId contains forbidden sub-elements (ClrSysId/Prtry, Othr, BrnchId) in pacs.009.",
+        "fix": "Remove ClrSysId/Prtry, Othr, and BrnchId from Cdtr/FinInstnId."
     },
     {
         "rule_id": "PACS009_016",
@@ -155,7 +185,9 @@
         "condition": "exists(Document.FICdtTrf.CdtTrfTxInf)",
         "expression": "all('.InstrForNxtAgt.Cd' not in k for k in DATA.keys())",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "InstrForNxtAgt/Cd (Instruction Code) is not allowed in pacs.009.",
+        "fix": "Remove the <Cd> element from InstrForNxtAgt. Only <InstrInf> free-text is allowed."
     },
     {
         "rule_id": "PACS009_017",
@@ -163,7 +195,9 @@
         "condition": "exists(Document.FICdtTrf.CdtTrfTxInf) and 'cov' not in MESSAGE_TYPE.lower()",
         "expression": "all('.UndrlygCstmrCdtTrf' not in k for k in DATA.keys())",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "UndrlygCstmrCdtTrf is not allowed in pacs.009 CORE (only in pacs.009 COV).",
+        "fix": "Remove the <UndrlygCstmrCdtTrf> element. It is only permitted in the pacs.009 COV variant."
     },
     {
         "rule_id": "PACS009_018",
@@ -171,7 +205,9 @@
         "condition": "exists(Document.FICdtTrf)",
         "expression": "all('.SplmtryData' not in k for k in DATA.keys())",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "SplmtryData element is not allowed in pacs.009.",
+        "fix": "Remove the <SplmtryData> element entirely from the message."
     },
     {
         "rule_id": "PACS009_019",
@@ -179,7 +215,9 @@
         "selector": ".*\\.SttlmMtd$",
         "expression": "VALUE in ['INDA', 'INGA', 'CLRG', 'COVE']",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "Settlement Method (SttlmMtd) has invalid value. Allowed: INDA, INGA, CLRG, COVE.",
+        "fix": "Set <SttlmMtd> to one of: INDA, INGA, CLRG, COVE. Default for CBPR+ pacs.009 is INGA."
     },
     {
         "rule_id": "PACS009_020",
@@ -187,7 +225,9 @@
         "selector": ".*\\.InstrPrty$",
         "expression": "VALUE in ['HIGH', 'NORM']",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "Instruction Priority (InstrPrty) has invalid value. Allowed: HIGH, NORM.",
+        "fix": "Set <InstrPrty> to NORM or HIGH."
     },
     {
         "rule_id": "PACS009_021",
@@ -195,7 +235,9 @@
         "selector": ".*\\.ClrChanl$",
         "expression": "VALUE == 'RTGS'",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "Clearing Channel (ClrChanl) has invalid value. Only RTGS is allowed.",
+        "fix": "Set <ClrChanl> to RTGS."
     },
     {
         "rule_id": "PACS009_022",
@@ -203,7 +245,9 @@
         "selector": ".*\\.ChrgBr$",
         "expression": "VALUE in ['DEBT', 'CRED', 'SHAR', 'SLEV']",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "Charge Bearer (ChrgBr) has invalid value. Allowed: DEBT, CRED, SHAR, SLEV.",
+        "fix": "Set <ChrgBr> to one of: DEBT, CRED, SHAR, SLEV."
     },
     {
         "rule_id": "PACS009_023",
@@ -211,7 +255,9 @@
         "selector": ".*\\.TxId$",
         "expression": "len([k for k in DATA.keys() if k.endswith('.TxId') and DATA[k] == VALUE]) == 1",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "Duplicate Transaction ID (TxId) detected.",
+        "fix": "Generate a unique TxId value to avoid duplicates."
     },
     {
         "rule_id": "PACS009_024",
@@ -219,7 +265,9 @@
         "selector": ".*\\.UETR$",
         "expression": "len([k for k in DATA.keys() if k.endswith('.UETR') and DATA[k] == VALUE]) == 1",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "Duplicate UETR detected in pacs.009.",
+        "fix": "Generate a new unique UUID v4 for <UETR>."
     },
     {
         "rule_id": "PACS009_025",
@@ -227,7 +275,9 @@
         "condition": "any(k.endswith('.ClrSysId.Cd') and DATA[k] == 'T2' for k in DATA.keys())",
         "expression": "all(DATA[k] == 'EUR' for k in DATA.keys() if k.endswith('@Ccy') and ('IntrBkSttlmAmt' in k or 'InstdAmt' in k))",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "When ClrSys=T2, settlement currency must be EUR.",
+        "fix": "Set <IntrBkSttlmAmt Ccy=\"EUR\"> when ClrSysId/Cd is T2."
     },
     {
         "rule_id": "PACS009_026",
@@ -235,7 +285,9 @@
         "condition": "any(k.endswith('.ClrSysId.Cd') and DATA[k] == 'CHIPS' for k in DATA.keys())",
         "expression": "all(DATA[k] == 'USD' for k in DATA.keys() if k.endswith('@Ccy') and ('IntrBkSttlmAmt' in k or 'InstdAmt' in k))",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "When ClrSys=CHIPS, settlement currency must be USD.",
+        "fix": "Set <IntrBkSttlmAmt Ccy=\"USD\"> when ClrSysId/Cd is CHIPS."
     },
     {
         "rule_id": "PACS009_027",
@@ -243,7 +295,9 @@
         "condition": "any(k.endswith('.ClrSysId.Cd') and DATA[k] == 'FED' for k in DATA.keys())",
         "expression": "all(DATA[k] == 'USD' for k in DATA.keys() if k.endswith('@Ccy') and ('IntrBkSttlmAmt' in k or 'InstdAmt' in k))",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "When ClrSys=FED, settlement currency must be USD.",
+        "fix": "Set <IntrBkSttlmAmt Ccy=\"USD\"> when ClrSysId/Cd is FED."
     },
     {
         "rule_id": "CBPR_P9_R1",
@@ -293,7 +347,8 @@
         "type": "expression",
         "severity": "ERROR",
         "layer": 3,
-        "errorMessage": "AppHdr <BizMsgIdr> must match the underlying message <MsgId> where available."
+        "errorMessage": "AppHdr <BizMsgIdr> must match the underlying message <MsgId> where available.",
+        "fix": "Set AppHdr/BizMsgIdr to match GrpHdr/MsgId exactly."
     },
     {
         "rule_id": "CBPR_P9_R5B",
@@ -351,7 +406,8 @@
         "type": "textual",
         "severity": "INFO",
         "layer": 3,
-        "errorMessage": "CdtTrfTxInf/PmtId/EndToEndId: must be provided by the Debtor (Agent) in pacs.009 CORE."
+        "errorMessage": "CdtTrfTxInf/PmtId/EndToEndId: must be provided by the Debtor (Agent) in pacs.009 CORE.",
+        "fix": "Ensure CdtTrfTxInf/PmtId/EndToEndId is provided (as supplied by the Debtor)."
     },
     {
         "rule_id": "CBPR_P9_R15",
@@ -390,7 +446,8 @@
         "type": "textual",
         "severity": "INFO",
         "layer": 3,
-        "errorMessage": "CdtTrfTxInf/LclInstrm: coded information (<Cd>) is preferred over proprietary (<Prtry>)."
+        "errorMessage": "CdtTrfTxInf/LclInstrm: coded information (<Cd>) is preferred over proprietary (<Prtry>).",
+        "fix": "Replace <Prtry>...</Prtry> with <Cd>SDVA</Cd> (or appropriate code) inside <LclInstrm>."
     },
     {
         "rule_id": "CBPR_P9_R19",
@@ -399,7 +456,8 @@
         "type": "textual",
         "severity": "INFO",
         "layer": 3,
-        "errorMessage": "CdtTrfTxInf/CtgyPurp: coded information (<Cd>) is preferred over proprietary (<Prtry>)."
+        "errorMessage": "CdtTrfTxInf/CtgyPurp: coded information (<Cd>) is preferred over proprietary (<Prtry>).",
+        "fix": "Replace <Prtry>...</Prtry> with <Cd>SUPP</Cd> (or appropriate code) inside <CtgyPurp>."
     },
     {
         "rule_id": "CBPR_P9_R20",
@@ -1012,6 +1070,7 @@
         "type": "textual",
         "severity": "INFO",
         "layer": 3,
-        "errorMessage": "CdtTrfTxInf/Purp: coded information (<Cd>) is preferred over proprietary (<Prtry>)."
+        "errorMessage": "CdtTrfTxInf/Purp: coded information (<Cd>) is preferred over proprietary (<Prtry>).",
+        "fix": "Replace <Prtry>...</Prtry> with <Cd>SUPP</Cd> (or appropriate code) inside <Purp>."
     }
 ]
