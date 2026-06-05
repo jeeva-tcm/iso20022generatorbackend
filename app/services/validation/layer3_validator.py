@@ -1010,8 +1010,16 @@ class Layer3Mixin:
 
     def _check_iban_currency(self, iban_key, iban_val, data, report, _gl, codelists):
         """
-        Business Rule: Validate if the transaction currency matches the local currency 
-        of the country where the Debtor's IBAN is registered.
+        Advisory Rule: Warn when the transaction currency differs from the IBAN
+        country's domestic currency, indicating a cross-border payment.
+
+        ISO 20022 does NOT mandate that the transaction currency matches the
+        IBAN country's local currency.  A GB IBAN can legitimately receive USD,
+        EUR, or any other currency in international payments.  This check is
+        therefore a WARNING (advisory) only — it never blocks valid messages.
+
+        The check is disabled entirely when enable_iban_currency_check = false
+        in config.json.
         """
         # Rule is configurable via flag
         if not self.config.get("validation_rules", {}).get("enable_iban_currency_check", True):
@@ -1021,11 +1029,11 @@ class Layer3Mixin:
         # User example: <InstdAmt Ccy="XXX">
         currency = None
         ccy_key = None
-        
+
         # 1. Search for currency in common locations (InstdAmt, IntrBkSttlmAmt)
         # We prioritize tags in the same transaction block if possible
         tx_path = iban_key.rsplit('.DbtrAcct', 1)[0] if '.DbtrAcct' in iban_key else None
-        
+
         if tx_path:
              for tag in ["InstdAmt", "IntrBkSttlmAmt", "Amt.InstdAmt"]:
                   k = f"{tx_path}.{tag}@Ccy"
@@ -1033,7 +1041,7 @@ class Layer3Mixin:
                        currency = data[k]
                        ccy_key = k
                        break
-        
+
         # Fallback: Search anywhere
         if not currency:
             for k, v in data.items():
@@ -1041,46 +1049,70 @@ class Layer3Mixin:
                     currency = v
                     ccy_key = k
                     break
-        
-        if not currency:
-            return True # Cannot validate if currency attribute is missing from standard tags
 
-        # IBAN basic validation (Min 15 characters as per requirement)
+        if not currency:
+            return True  # Cannot validate if currency attribute is missing from standard tags
+
+        # IBAN basic structure check (Min 15 characters as per ISO 13616)
         if not iban_val or not isinstance(iban_val, str) or len(iban_val) < 15:
             line_str = _gl(iban_key)
             line_num = int(line_str) if line_str.isdigit() else None
-            report.add_issue(ValidationIssue("ERROR", 3, "INVALID_IBAN", iban_key, "Invalid or Missing Debtor IBAN", "Ensure the IBAN is at least 15 characters long and follows the correct structure.", line=line_num))
+            report.add_issue(ValidationIssue(
+                "ERROR", 3, "INVALID_IBAN", iban_key,
+                "Invalid or Missing Debtor IBAN.",
+                "Ensure the IBAN is at least 15 characters long and follows the correct structure.",
+                line=line_num
+            ))
             return True
 
         country_code = iban_val[:2].upper()
         if not country_code.isalpha():
-             line_str = _gl(iban_key)
-             line_num = int(line_str) if line_str.isdigit() else None
-             report.add_issue(ValidationIssue("ERROR", 3, "INVALID_IBAN_CTRY", iban_key, "Invalid or Missing Debtor IBAN", "The first two characters of the IBAN must be a valid country code.", line=line_num))
-             return True
-
-        # Map country to currency
-        iban_map = codelists.get("iban_currency_map", {})
-        expected_currency = iban_map.get(country_code)
-        
-        if not expected_currency:
             line_str = _gl(iban_key)
             line_num = int(line_str) if line_str.isdigit() else None
-            report.add_issue(ValidationIssue("ERROR", 3, "UNSUPPORTED_IBAN_CTRY", iban_key, "Unsupported IBAN Country Code", f"The country code '{country_code}' extracted from the IBAN is not supported in the currency mapping.", line=line_num))
+            report.add_issue(ValidationIssue(
+                "ERROR", 3, "INVALID_IBAN_CTRY", iban_key,
+                "Invalid IBAN country code.",
+                "The first two characters of the IBAN must be valid ISO 3166-1 Alpha-2 letters.",
+                line=line_num
+            ))
             return True
 
-        # Currency must follow ISO 4217 format (3 uppercase letters) and be case-sensitive
+        # Map country to its domestic currency
+        iban_map = codelists.get("iban_currency_map", {})
+        expected_currency = iban_map.get(country_code)
+
+        if not expected_currency:
+            # Unknown/unsupported IBAN country — emit an informational warning only
+            line_str = _gl(iban_key)
+            line_num = int(line_str) if line_str.isdigit() else None
+            report.add_issue(ValidationIssue(
+                "WARNING", 3, "UNKNOWN_IBAN_CTRY", iban_key,
+                f"IBAN country code '{country_code}' is not in the known currency map — currency advisory skipped.",
+                f"If '{country_code}' is a valid ISO 3166-1 country that uses IBANs, consider adding it to the iban_currency_map codelist.",
+                line=line_num
+            ))
+            return True
+
+        # Cross-border advisory: currency differs from domestic currency — WARNING only
+        # ISO 20022 explicitly supports multi-currency cross-border payments.
+        # Example: USD payment credited to a GB (GBP) account is perfectly valid.
         if currency != expected_currency:
             curr_path = ccy_key or iban_key
             line_str = _gl(curr_path)
             line_num = int(line_str) if line_str.isdigit() else None
             report.add_issue(ValidationIssue(
-                "ERROR", 3, "CURR_IBAN_MISMATCH", curr_path,
-                f"Currency {currency} does not match expected currency {expected_currency} for IBAN country {country_code}",
-                f"Update the transaction currency to {expected_currency} for the account based in {country_code}.",
+                "WARNING", 3, "CURR_IBAN_MISMATCH", curr_path,
+                (
+                    f"Cross-border payment advisory: Transaction currency '{currency}' differs from "
+                    f"the domestic currency '{expected_currency}' of the Debtor IBAN country '{country_code}'. "
+                    f"This is permitted under ISO 20022 for international payments."
+                ),
+                (
+                    f"No action required if this is an intentional cross-border or multi-currency payment. "
+                    f"For domestic {country_code} payments, the expected currency is '{expected_currency}'."
+                ),
                 line=line_num
             ))
-            return True # Suppress generic error
 
         return True
 

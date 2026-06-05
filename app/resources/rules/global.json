@@ -72,12 +72,14 @@
     },
     {
         "rule_id": "L3_IBAN_CURR_001",
-        "description": "IBAN Based Currency Validation",
+        "description": "IBAN-Currency Advisory: Transaction currency differs from the IBAN country's domestic currency (cross-border payment detected).",
         "type": "expression",
         "selector": ".*DbtrAcct\\.Id\\.IBAN$",
         "expression": "check_iban_currency(KEY, VALUE)",
-        "severity": "ERROR",
-        "layer": 3
+        "severity": "WARNING",
+        "layer": 3,
+        "errorMessage": "Cross-border currency advisory: The transaction currency does not match the domestic currency of the Debtor IBAN country. This is permitted under ISO 20022 for international payments but should be verified.",
+        "fix": "No action required if this is an intentional cross-border payment. If this is a domestic payment, ensure the currency matches the account's local currency (e.g., GBP for GB IBANs, EUR for DE/FR/NL IBANs)."
     },
     {
         "rule_id": "L3_LEI_NOT_BIC",
