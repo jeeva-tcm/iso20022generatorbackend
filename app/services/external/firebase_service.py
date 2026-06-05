@@ -354,12 +354,12 @@ class FirebaseHistoryService:
             print(f"[Firebase] ERROR in save_history: {type(e).__name__}: {e}")
             return None
 
-    def get_history(self, skip: int = 0, limit: int = 5000) -> list:
+    def get_history(self, version: str = "SR2025", skip: int = 0, limit: int = 5000) -> list:
         if not self.enabled:
             if self.local_fallback:
                 try:
                     db_data = self._read_local_db()
-                    non_deleted = [r for r in db_data if not r.get("deleted", False)]
+                    non_deleted = [r for r in db_data if not r.get("deleted", False) and r.get("version", "SR2025") == version]
                     non_deleted.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
                     
                     results = []
@@ -377,7 +377,7 @@ class FirebaseHistoryService:
             
         try:
             query = self.db.collection("validation_history") \
-                           .select(["validation_id", "batch_id", "file_id", "timestamp", "message_type", "status", "total_errors", "total_warnings", "execution_time_ms", "deleted", "origin"]) \
+                           .select(["validation_id", "batch_id", "file_id", "timestamp", "message_type", "status", "total_errors", "total_warnings", "execution_time_ms", "deleted", "origin", "version"]) \
                            .order_by("timestamp", direction=firestore.Query.DESCENDING)
 
             # Limit the query size to prevent streaming the entire collection when only a subset is requested.
@@ -393,6 +393,8 @@ class FirebaseHistoryService:
             for doc in docs:
                 data = doc.to_dict()
                 if data.get("deleted", False):
+                    continue
+                if data.get("version", "SR2025") != version:
                     continue
 
                 if non_deleted_count >= skip:
@@ -415,26 +417,27 @@ class FirebaseHistoryService:
             if self.local_fallback:
                 try:
                     db_data = self._read_local_db()
-                    non_deleted = [r for r in db_data if not r.get("deleted", False)]
+                    non_deleted = [r for r in db_data if not r.get("deleted", False) and r.get("version", "SR2025") == version]
                     non_deleted.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
                     return non_deleted[skip:skip + limit]
                 except Exception:
                     pass
             return []
 
-    def get_stats(self) -> dict:
+    def get_stats(self, version: str = "SR2025") -> dict:
         now = datetime.now(timezone.utc)
         if self.enabled:
             # Return cached Firestore stats if they are less than 15 seconds old
-            if self._firebase_stats_cache is not None and self._firebase_stats_cache_time is not None:
-                if (now - self._firebase_stats_cache_time).total_seconds() < 15:
-                    return self._firebase_stats_cache
+            if getattr(self, '_firebase_stats_cache_version', None) == version:
+                if self._firebase_stats_cache is not None and self._firebase_stats_cache_time is not None:
+                    if (now - self._firebase_stats_cache_time).total_seconds() < 15:
+                        return self._firebase_stats_cache
 
         if not self.enabled:
             if self.local_fallback:
                 try:
                     db_data = self._read_local_db()
-                    non_deleted = [r for r in db_data if not r.get("deleted", False)]
+                    non_deleted = [r for r in db_data if not r.get("deleted", False) and r.get("version", "SR2025") == version]
                     total = len(non_deleted)
                     passed = sum(1 for r in non_deleted if r.get("status") == "PASS")
                     failed = sum(1 for r in non_deleted if r.get("status") == "FAIL")
@@ -462,6 +465,8 @@ class FirebaseHistoryService:
                 data = doc.to_dict()
                 if data.get("deleted", False):
                     continue
+                if data.get("version", "SR2025") != version:
+                    continue
 
                 total += 1
                 if data.get("status") == "PASS":
@@ -480,6 +485,7 @@ class FirebaseHistoryService:
             # Cache the result
             self._firebase_stats_cache = stats_result
             self._firebase_stats_cache_time = now
+            self._firebase_stats_cache_version = version
             return stats_result
         except Exception as e:
             self._note_call_outcome(False, e)
@@ -520,7 +526,7 @@ class FirebaseHistoryService:
         except:
             return False
 
-    def delete_all(self) -> int:
+    def delete_all(self, version: str = "SR2025") -> int:
         self._firebase_stats_cache = None
         if not self.enabled:
             if self.local_fallback:
@@ -528,7 +534,7 @@ class FirebaseHistoryService:
                     db_data = self._read_local_db()
                     count = 0
                     for r in db_data:
-                        if not r.get("deleted", False):
+                        if not r.get("deleted", False) and r.get("version", "SR2025") == version:
                             r["deleted"] = True
                             count += 1
                     if count > 0:
@@ -544,7 +550,8 @@ class FirebaseHistoryService:
             docs = list(self.db.collection("validation_history").stream())
             count = 0
             for doc in docs:
-                if not doc.to_dict().get("deleted", False):
+                data = doc.to_dict()
+                if not data.get("deleted", False) and data.get("version", "SR2025") == version:
                     batch.update(doc.reference, {"deleted": True})
                     count += 1
                     if count % 500 == 0:

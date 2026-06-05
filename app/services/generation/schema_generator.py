@@ -8,7 +8,7 @@ from typing import Dict, Any, List, Optional
 XS = "http://www.w3.org/2001/XMLSchema"
 
 # Load field rules and algorithms for enhanced schema generation
-RULES_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "resources", "rules")
+RULES_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "sr2025", "resources", "rules")
 with open(os.path.join(RULES_DIR, "algorithms.json"), "r") as f:
     ALGORITHMS = json.load(f).get("algorithms", {})
 with open(os.path.join(RULES_DIR, "fields.json"), "r") as f:

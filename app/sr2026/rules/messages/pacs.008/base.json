@@ -1,0 +1,661 @@
+{
+  "ruleEngineMeta": {
+    "version": "SR2026-1.0",
+    "executionMode": "STRICT",
+    "failFast": true,
+    "normalizeBIC": true,
+    "normalizeDate": true,
+    "trimWhitespace": true
+  },
+  "messageType": "pacs.008",
+  "standard": "CBPR+",
+  "release": "SR2026",
+  "version": "1.0.0",
+  "effectiveDate": "2026-11-22",
+  "description": "SR2026 CBPR+ pacs.008 FIToFICstmrCdtTrf validation rules — production-ready, authoritative definition for all validation layers",
+
+  "headerRules": {
+    "bizSvc": {
+      "mandatory": true,
+      "fixedValue": "swift.cbprplus.04",
+      "severity": "ERROR",
+      "code": "INVALID_BIZ_SVC",
+      "description": "BizSvc must be 'swift.cbprplus.04' for pacs.008 in SR2026 (changed from 'swift.cbprplus.02' in SR2025).",
+      "errorMessage": "AppHdr <BizSvc> must be 'swift.cbprplus.04' for pacs.008 in SR2026.",
+      "fix": "Set <BizSvc>swift.cbprplus.04</BizSvc> in AppHdr."
+    },
+    "msgDefIdr": {
+      "mandatory": true,
+      "fixedValue": "pacs.008.001.08",
+      "severity": "ERROR",
+      "code": "INVALID_MSG_DEF_IDR",
+      "description": "MsgDefIdr must be exactly 'pacs.008.001.08' — enforced strictly in SR2026 (not just a recommendation).",
+      "errorMessage": "AppHdr <MsgDefIdr> must be 'pacs.008.001.08' for pacs.008 in SR2026.",
+      "fix": "Set <MsgDefIdr>pacs.008.001.08</MsgDefIdr> in AppHdr."
+    },
+    "bizMsgIdr": {
+      "mandatory": true,
+      "type": "RestrictedFINXMax35Text",
+      "maxLength": 35,
+      "minLength": 1,
+      "characterSet": "0-9 a-z A-Z / - ? : ( ) . , ' + space",
+      "regex": "^[0-9a-zA-Z/?:().,'+ -]+$",
+      "severity": "ERROR",
+      "code": "INVALID_BIZ_MSG_IDR_FORMAT",
+      "description": "BizMsgIdr is now typed as RestrictedFINXMax35Text in SR2026, allowing only the SWIFT FIN character set.",
+      "errorMessage": "AppHdr <BizMsgIdr> must conform to RestrictedFINXMax35Text: 1-35 chars, only 0-9 a-z A-Z / - ? : ( ) . , ' + space.",
+      "fix": "Remove unsupported characters and ensure length is between 1 and 35."
+    }
+  },
+
+  "crossFieldRules": {},
+
+  "xmlRules": {
+    "namespace": "urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08",
+    "rootElement": "FIToFICstmrCdtTrf",
+    "schemaVersion": "pacs.008.001.08",
+    "namespaceValidation": {
+      "mandatory": true,
+      "severity": "ERROR",
+      "description": "XML namespace must match pacs.008.001.08 for SR2026 validation."
+    }
+  },
+
+  "mandatoryFields": {
+    "groupHeader": {
+      "description": "Mandatory fields in the Group Header block",
+      "fields": {
+        "MsgId": {
+          "path": "Document.FIToFICstmrCdtTrf.GrpHdr.MsgId",
+          "mandatory": true,
+          "severity": "ERROR",
+          "code": "MISSING_MSG_ID",
+          "description": "Group Header Message ID is mandatory.",
+          "fix": "Add <MsgId> inside <GrpHdr>."
+        },
+        "CreDtTm": {
+          "path": "Document.FIToFICstmrCdtTrf.GrpHdr.CreDtTm",
+          "mandatory": true,
+          "severity": "ERROR",
+          "code": "MISSING_CREATION_DATE_TIME",
+          "description": "Creation Date Time is mandatory in Group Header.",
+          "fix": "Add <CreDtTm> with ISO 8601 datetime (e.g. 2026-11-20T10:00:00+00:00)."
+        },
+        "NbOfTxs": {
+          "path": "Document.FIToFICstmrCdtTrf.GrpHdr.NbOfTxs",
+          "mandatory": true,
+          "severity": "ERROR",
+          "code": "MISSING_NB_OF_TXS",
+          "description": "Number of Transactions is mandatory and must equal the actual count of CdtTrfTxInf blocks.",
+          "fix": "Add <NbOfTxs> with the count of transactions."
+        },
+        "SttlmInf": {
+          "path": "Document.FIToFICstmrCdtTrf.GrpHdr.SttlmInf",
+          "mandatory": true,
+          "severity": "ERROR",
+          "code": "MISSING_STTLM_INF",
+          "description": "Settlement Information is mandatory in Group Header.",
+          "fix": "Add <SttlmInf> containing <SttlmMtd> inside <GrpHdr>."
+        }
+      }
+    },
+    "transactionBlock": {
+      "description": "Mandatory fields in each CdtTrfTxInf transaction block",
+      "fields": {
+        "PmtId.EndToEndId": {
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtId.EndToEndId",
+          "mandatory": true,
+          "allowEmpty": false,
+          "allowBlank": false,
+          "defaultValueWhenMissing": "NOTPROVIDED",
+          "severity": "ERROR",
+          "code": "INVALID_END_TO_END_ID",
+          "description": "EndToEndId is mandatory and cannot be blank. Use 'NOTPROVIDED' when not available.",
+          "fix": "Set <EndToEndId> to 'NOTPROVIDED' or a valid identification string."
+        },
+        "PmtId.UETR": {
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtId.UETR",
+          "mandatory": true,
+          "format": "UUID-v4",
+          "regex": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+          "severity": "ERROR",
+          "code": "MANDATORY_UETR_MISSING",
+          "description": "UETR (Unique End-to-End Transaction Reference) is mandatory in pacs.008 under CBPR+.",
+          "fix": "Add a valid UUID v4 to <PmtId><UETR> (e.g., 4a1a0945-5772-409a-83ba-240e666e0267)."
+        },
+        "IntrBkSttlmAmt": {
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrBkSttlmAmt",
+          "mandatory": true,
+          "currencyMandatory": true,
+          "severity": "ERROR",
+          "code": "MISSING_INTRBK_STTLM_AMT",
+          "description": "Interbank Settlement Amount is mandatory.",
+          "fix": "Add <IntrBkSttlmAmt Ccy=\"XXX\">amount</IntrBkSttlmAmt>."
+        },
+        "InstdAmt": {
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstdAmt",
+          "mandatory": true,
+          "currencyMandatory": true,
+          "severity": "ERROR",
+          "code": "MANDATORY_INSTD_AMT_MISSING",
+          "description": "Instructed Amount becomes mandatory in SR2026 for pacs.008 (was optional in SR2025).",
+          "fix": "Add <InstdAmt Ccy=\"XXX\">amount</InstdAmt> inside <CdtTrfTxInf>."
+        },
+        "IntrBkSttlmDt": {
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrBkSttlmDt",
+          "mandatory": true,
+          "severity": "ERROR",
+          "code": "MISSING_INTRBK_STTLM_DT",
+          "description": "Interbank Settlement Date is mandatory.",
+          "fix": "Add <IntrBkSttlmDt>YYYY-MM-DD</IntrBkSttlmDt>."
+        },
+        "ChrgBr": {
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgBr",
+          "mandatory": true,
+          "allowedValues": ["SLEV", "SHAR", "CRED", "DEBT"],
+          "severity": "ERROR",
+          "code": "MISSING_CHRG_BR",
+          "description": "Charge Bearer is mandatory.",
+          "fix": "Add <ChrgBr> with one of: SLEV, SHAR, CRED, DEBT."
+        },
+        "Dbtr": {
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Dbtr",
+          "mandatory": true,
+          "severity": "ERROR",
+          "code": "MISSING_DBTR",
+          "description": "Debtor party is mandatory in pacs.008.",
+          "fix": "Add <Dbtr> block containing debtor identification."
+        },
+        "DbtrAcct": {
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.DbtrAcct",
+          "mandatory": true,
+          "severity": "ERROR",
+          "code": "MISSING_DBTR_ACCT",
+          "description": "Debtor Account is mandatory in pacs.008.",
+          "fix": "Add <DbtrAcct><Id><IBAN>...</IBAN></Id></DbtrAcct>."
+        },
+        "Cdtr": {
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Cdtr",
+          "mandatory": true,
+          "severity": "ERROR",
+          "code": "MISSING_CDTR",
+          "description": "Creditor party is mandatory in pacs.008.",
+          "fix": "Add <Cdtr> block containing creditor identification."
+        },
+        "CdtrAcct": {
+          "path": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.CdtrAcct",
+          "mandatory": true,
+          "severity": "ERROR",
+          "code": "MISSING_CDTR_ACCT",
+          "description": "Creditor Account is mandatory in pacs.008.",
+          "fix": "Add <CdtrAcct><Id><IBAN>...</IBAN></Id></CdtrAcct>."
+        }
+      }
+    }
+  },
+
+  "addressRules": {
+    "globalPolicy": "structured_only",
+    "description": "SR2026 deprecates all unstructured AdrLine elements in postal addresses. Only structured addresses (TwnNm + Ctry minimum) are allowed.",
+    "gracePeriodRules": {
+      "GracePeriod_Hybrid": {
+        "active": false,
+        "description": "Hybrid address mode (AdrLine + TwnNm + Ctry) — grace period expired in SR2026."
+      },
+      "GracePeriod_Structured": {
+        "active": false,
+        "description": "Structured mode (no AdrLine, but TwnNm and Ctry optional) — grace period expired in SR2026."
+      },
+      "GracePeriod_Unstructured": {
+        "active": false,
+        "description": "Unstructured mode (AdrLine only) — grace period expired in SR2026."
+      }
+    },
+    "adrLineDeprecated": {
+      "severity": "ERROR",
+      "code": "DEPRECATED_UNSTRUCTURED_ADDRESS",
+      "description": "AdrLine is deprecated in SR2026. Use structured elements: StrtNm, BldgNb, PstCd, TwnNm, Ctry.",
+      "errorMessage": "Postal address contains unstructured <AdrLine> element(s) which are deprecated in SR2026.",
+      "fix": "Replace <AdrLine> with structured elements: <StrtNm>, <BldgNb>, <PstCd>, <TwnNm>, <Ctry>."
+    },
+    "partyAddressRequirements": {
+      "Dbtr": {
+        "postalAddress": {
+          "townName": {
+            "mandatory": true,
+            "path": "CdtTrfTxInf.Dbtr.PstlAdr.TwnNm",
+            "severity": "ERROR",
+            "code": "MISSING_DBTR_TOWN_NAME",
+            "errorMessage": "Debtor Postal Address is missing mandatory <TwnNm> (Town Name) in SR2026.",
+            "fix": "Add <TwnNm> to the Debtor <PstlAdr> block."
+          },
+          "country": {
+            "mandatory": true,
+            "path": "CdtTrfTxInf.Dbtr.PstlAdr.Ctry",
+            "severity": "ERROR",
+            "code": "MISSING_DBTR_COUNTRY",
+            "errorMessage": "Debtor Postal Address is missing mandatory <Ctry> (Country) in SR2026.",
+            "fix": "Add <Ctry> with a valid ISO 3166-1 alpha-2 code."
+          }
+        }
+      },
+      "Cdtr": {
+        "postalAddress": {
+          "townName": {
+            "mandatory": true,
+            "path": "CdtTrfTxInf.Cdtr.PstlAdr.TwnNm",
+            "severity": "ERROR",
+            "code": "MISSING_CDTR_TOWN_NAME",
+            "errorMessage": "Creditor Postal Address is missing mandatory <TwnNm> (Town Name) in SR2026.",
+            "fix": "Add <TwnNm> to the Creditor <PstlAdr> block."
+          },
+          "country": {
+            "mandatory": true,
+            "path": "CdtTrfTxInf.Cdtr.PstlAdr.Ctry",
+            "severity": "ERROR",
+            "code": "MISSING_CDTR_COUNTRY",
+            "errorMessage": "Creditor Postal Address is missing mandatory <Ctry> (Country) in SR2026.",
+            "fix": "Add <Ctry> with a valid ISO 3166-1 alpha-2 code."
+          }
+        }
+      }
+    }
+  },
+
+  "proxyRules": {
+    "description": "When a Proxy element is present, the Proxy Type (Tp) sub-element becomes mandatory in SR2026.",
+    "typeMandatoryWhenProxyPresent": true,
+    "severity": "ERROR",
+    "code": "MANDATORY_PROXY_TYPE_MISSING",
+    "errorMessage": "Proxy Type <Tp> is mandatory inside <Prxy> when Proxy is present in SR2026.",
+    "fix": "Add <Tp><Cd>...</Cd></Tp> or <Tp><Prtry>...</Prtry></Tp> inside the <Prxy> container.",
+    "proxyLocations": [
+      {
+        "id": "debtorAccountProxy",
+        "path": "CdtTrfTxInf.DbtrAcct.Prxy",
+        "description": "Debtor Account Proxy"
+      },
+      {
+        "id": "creditorAccountProxy",
+        "path": "CdtTrfTxInf.CdtrAcct.Prxy",
+        "description": "Creditor Account Proxy"
+      },
+      {
+        "id": "debtorAgentAccountProxy",
+        "path": "CdtTrfTxInf.DbtrAgtAcct.Prxy",
+        "description": "Debtor Agent Account Proxy"
+      },
+      {
+        "id": "creditorAgentAccountProxy",
+        "path": "CdtTrfTxInf.CdtrAgtAcct.Prxy",
+        "description": "Creditor Agent Account Proxy"
+      },
+      {
+        "id": "settlementAccountProxy",
+        "path": "GrpHdr.SttlmInf.SttlmAcct.Prxy",
+        "description": "Settlement Account Proxy"
+      }
+    ]
+  },
+
+  "serviceLevelRules": {
+    "description": "GPI Service Level restrictions in SR2026.",
+    "gpiAllowedCodes": ["G001"],
+    "gpiDisallowedCodes": ["G002", "G003", "G004", "G005", "G006", "G007", "G009"],
+    "severity": "ERROR",
+    "code": "INVALID_GPI_SERVICE_LEVEL",
+    "errorMessage": "GPI Service Level code is not allowed in SR2026. Only 'G001' is permitted.",
+    "fix": "Use 'G001' or a valid non-GPI service level code.",
+    "path": "CdtTrfTxInf.PmtTpInf.SvcLvl.Cd"
+  },
+
+  "dateRules": {
+    "description": "Date fields in SR2026 must use CBPR_Date format (YYYY-MM-DD only). Timezone offsets are not allowed.",
+    "type": "CBPR_Date",
+    "acceptedFormat": "YYYY-MM-DD",
+    "regex": "^\\d{4}-\\d{2}-\\d{2}$",
+    "timezoneProhibited": true,
+    "severity": "ERROR",
+    "code": "INVALID_DATE_TIMEZONE",
+    "examples": {
+      "valid": ["2026-11-20", "2026-01-01"],
+      "invalid": ["2026-11-20Z", "2026-11-20+05:30", "2026-11-20T10:00:00"]
+    },
+    "errorMessage": "Date field contains timezone offset which is not allowed in SR2026. Use YYYY-MM-DD format without timezone.",
+    "fix": "Remove timezone offset from date fields (e.g. change '2026-11-20Z' to '2026-11-20').",
+    "affectedFields": [
+      "IntrBkSttlmDt",
+      "ReqdColltnDt",
+      "ReqdExctnDt",
+      "TtlAmt.DtOfSgntr"
+    ]
+  },
+
+  "validationRules": {
+    "description": "Additional business rule validations specific to SR2026.",
+    "rules": [
+      {
+        "id": "SR2026_R001",
+        "category": "headerRules",
+        "description": "BizSvc must be 'swift.cbprplus.04' in SR2026",
+        "code": "INVALID_BIZ_SVC",
+        "severity": "ERROR",
+        "condition": "AppHdr.BizSvc is present",
+        "validation": "AppHdr.BizSvc == 'swift.cbprplus.04'",
+        "errorMessage": "AppHdr <BizSvc> must be 'swift.cbprplus.04' for pacs.008 in SR2026.",
+        "fix": "Set <BizSvc>swift.cbprplus.04</BizSvc> in AppHdr."
+      },
+      {
+        "id": "SR2026_R002",
+        "category": "headerRules",
+        "description": "MsgDefIdr must be exactly 'pacs.008.001.08'",
+        "code": "INVALID_MSG_DEF_IDR",
+        "severity": "ERROR",
+        "condition": "AppHdr.MsgDefIdr is present",
+        "validation": "AppHdr.MsgDefIdr == 'pacs.008.001.08'",
+        "errorMessage": "AppHdr <MsgDefIdr> must be 'pacs.008.001.08' for pacs.008 in SR2026.",
+        "fix": "Set <MsgDefIdr>pacs.008.001.08</MsgDefIdr> in AppHdr."
+      },
+      {
+        "id": "SR2026_R003",
+        "category": "headerRules",
+        "description": "BizMsgIdr must conform to RestrictedFINXMax35Text",
+        "code": "INVALID_BIZ_MSG_IDR_FORMAT",
+        "severity": "ERROR",
+        "condition": "AppHdr.BizMsgIdr is present",
+        "validation": "len(BizMsgIdr) between 1 and 35 AND only allowed chars",
+        "errorMessage": "AppHdr <BizMsgIdr> must conform to RestrictedFINXMax35Text (1-35 chars, SWIFT character set).",
+        "fix": "Remove unsupported characters. Allowed: 0-9 a-z A-Z / - ? : ( ) . , ' + space."
+      },
+      {
+        "id": "SR2026_R004",
+        "category": "crossFieldRules",
+        "description": "AppHdr BizMsgIdr must equal GrpHdr MsgId — new consistency rule in SR2026",
+        "code": "MESSAGE_ID_MISMATCH",
+        "severity": "ERROR",
+        "condition": "Both AppHdr.BizMsgIdr and GrpHdr.MsgId present",
+        "validation": "AppHdr.BizMsgIdr == Document.FIToFICstmrCdtTrf.GrpHdr.MsgId",
+        "errorMessage": "AppHdr Business Message ID <BizMsgIdr> must equal Group Header Message ID <MsgId>.",
+        "fix": "Align <BizMsgIdr> in AppHdr with <MsgId> in GrpHdr."
+      },
+      {
+        "id": "SR2026_R005",
+        "category": "crossFieldRules",
+        "description": "AppHdr From BIC must match Instructing Agent BIC",
+        "code": "FROM_BIC_MISMATCH",
+        "severity": "ERROR",
+        "condition": "Both AppHdr Fr.BICFI and InstgAgt.BICFI present",
+        "validation": "normalize(AppHdr.Fr.FIId.FinInstnId.BICFI) == normalize(CdtTrfTxInf.InstgAgt.FinInstnId.BICFI)",
+        "normalization": "Pad 8-char BIC to 11 chars with 'XXX' suffix",
+        "errorMessage": "AppHdr <Fr> BICFI must match <InstgAgt> BICFI.",
+        "fix": "Ensure AppHdr From BIC matches Instructing Agent BIC."
+      },
+      {
+        "id": "SR2026_R006",
+        "category": "crossFieldRules",
+        "description": "AppHdr To BIC must match Instructed Agent BIC (except CopyDuplicate)",
+        "code": "TO_BIC_MISMATCH",
+        "severity": "ERROR",
+        "condition": "Both AppHdr To.BICFI and InstdAgt.BICFI present AND CpyDplct is not COPY/CODU",
+        "validation": "normalize(AppHdr.To.FIId.FinInstnId.BICFI) == normalize(CdtTrfTxInf.InstdAgt.FinInstnId.BICFI)",
+        "normalization": "Pad 8-char BIC to 11 chars with 'XXX' suffix",
+        "errorMessage": "AppHdr <To> BICFI must match <InstdAgt> BICFI (unless CpyDplct is COPY or CODU).",
+        "fix": "Ensure AppHdr To BIC matches Instructed Agent BIC."
+      },
+      {
+        "id": "SR2026_R007",
+        "category": "mandatoryFields",
+        "description": "Instructed Amount is mandatory in SR2026",
+        "code": "MANDATORY_INSTD_AMT_MISSING",
+        "severity": "ERROR",
+        "condition": "CdtTrfTxInf block exists",
+        "validation": "CdtTrfTxInf.InstdAmt is present and non-empty",
+        "errorMessage": "Instructed Amount <InstdAmt> is mandatory in SR2026.",
+        "fix": "Add <InstdAmt Ccy=\"XXX\">amount</InstdAmt> inside <CdtTrfTxInf>."
+      },
+      {
+        "id": "SR2026_R008",
+        "category": "addressRules",
+        "description": "AdrLine is deprecated — only structured addresses allowed in SR2026",
+        "code": "DEPRECATED_UNSTRUCTURED_ADDRESS",
+        "severity": "ERROR",
+        "condition": "Any PstlAdr block exists",
+        "validation": "PstlAdr contains no AdrLine elements",
+        "errorMessage": "Postal address contains unstructured <AdrLine> which is deprecated in SR2026.",
+        "fix": "Use structured postal address elements: <StrtNm>, <BldgNb>, <PstCd>, <TwnNm>, <Ctry>."
+      },
+      {
+        "id": "SR2026_R009",
+        "category": "addressRules",
+        "description": "Debtor postal address must have TwnNm and Ctry",
+        "code": "MISSING_DBTR_TOWN_NAME",
+        "severity": "ERROR",
+        "condition": "Debtor PstlAdr block exists",
+        "validation": "Dbtr.PstlAdr.TwnNm is present AND Dbtr.PstlAdr.Ctry is present",
+        "errorMessage": "Debtor Postal Address must include <TwnNm> and <Ctry> in SR2026.",
+        "fix": "Add <TwnNm> and <Ctry> to the Debtor <PstlAdr>."
+      },
+      {
+        "id": "SR2026_R010",
+        "category": "addressRules",
+        "description": "Creditor postal address must have TwnNm and Ctry",
+        "code": "MISSING_CDTR_TOWN_NAME",
+        "severity": "ERROR",
+        "condition": "Creditor PstlAdr block exists",
+        "validation": "Cdtr.PstlAdr.TwnNm is present AND Cdtr.PstlAdr.Ctry is present",
+        "errorMessage": "Creditor Postal Address must include <TwnNm> and <Ctry> in SR2026.",
+        "fix": "Add <TwnNm> and <Ctry> to the Creditor <PstlAdr>."
+      },
+      {
+        "id": "SR2026_R011",
+        "category": "proxyRules",
+        "description": "Proxy Type mandatory when Proxy is present",
+        "code": "MANDATORY_PROXY_TYPE_MISSING",
+        "severity": "ERROR",
+        "condition": "Any Prxy element exists",
+        "validation": "Prxy.Tp is present and non-empty",
+        "errorMessage": "Proxy Type <Tp> is mandatory inside <Prxy> when Proxy is present in SR2026.",
+        "fix": "Add <Tp><Cd>...</Cd></Tp> inside the <Prxy> block."
+      },
+      {
+        "id": "SR2026_R012",
+        "category": "serviceLevelRules",
+        "description": "Only G001 is allowed as GPI service level code in SR2026",
+        "code": "INVALID_GPI_SERVICE_LEVEL",
+        "severity": "ERROR",
+        "condition": "SvcLvl.Cd is a GPI code (G001-G009)",
+        "validation": "SvcLvl.Cd not in ['G002','G003','G004','G005','G006','G007','G009']",
+        "allowedValues": ["G001"],
+        "disallowedValues": ["G002", "G003", "G004", "G005", "G006", "G007", "G009"],
+        "errorMessage": "GPI Service Level code is disallowed in SR2026. Only 'G001' is permitted.",
+        "fix": "Use 'G001' or a valid non-GPI service level code."
+      },
+      {
+        "id": "SR2026_R013",
+        "category": "dateRules",
+        "description": "Date fields must not contain timezone offsets (CBPR_Date format)",
+        "code": "INVALID_DATE_TIMEZONE",
+        "severity": "ERROR",
+        "condition": "Any date-type field (ending in Dt, not DtTm) contains a value",
+        "validation": "Date value does not match pattern ending in Z or ±HH:MM",
+        "errorMessage": "Date field contains timezone offset which is not allowed in SR2026 CBPR_Date format.",
+        "fix": "Remove the timezone suffix (e.g. change '2026-11-20Z' to '2026-11-20')."
+      },
+      {
+        "id": "SR2026_R014",
+        "category": "mandatoryFields",
+        "description": "EndToEndId cannot be blank — use NOTPROVIDED",
+        "code": "INVALID_END_TO_END_ID",
+        "severity": "ERROR",
+        "condition": "CdtTrfTxInf.PmtId.EndToEndId exists",
+        "validation": "EndToEndId value is non-empty string",
+        "defaultFallback": "NOTPROVIDED",
+        "errorMessage": "End-to-End ID <EndToEndId> cannot be blank. Use 'NOTPROVIDED' if not applicable.",
+        "fix": "Set <EndToEndId> to 'NOTPROVIDED' or a valid end-to-end identification string."
+      },
+      {
+        "id": "SR2026_R015",
+        "category": "mandatoryFields",
+        "description": "UETR mandatory in all CdtTrfTxInf blocks",
+        "code": "MANDATORY_UETR_MISSING",
+        "severity": "ERROR",
+        "condition": "CdtTrfTxInf block exists",
+        "validation": "CdtTrfTxInf.PmtId.UETR is present and matches UUID v4 pattern",
+        "errorMessage": "UETR is mandatory in pacs.008 under CBPR+ SR2026.",
+        "fix": "Add a valid UUID v4 to <PmtId><UETR>."
+      },
+      {
+        "id": "SR2026_R016",
+        "category": "mandatoryFields",
+        "description": "Structured Remittance may not exceed 9000 business characters",
+        "code": "STRD_LENGTH_EXCEEDED",
+        "severity": "ERROR",
+        "condition": "RmtInf.Strd block exists",
+        "validation": "Total leaf text content in Strd block <= 9000 characters",
+        "maxLength": 9000,
+        "errorMessage": "Structured Remittance block exceeds maximum 9000 business characters.",
+        "fix": "Reduce the content inside <Strd> to within 9000 characters."
+      }
+    ]
+  },
+
+  "validationSeverity": {
+    "headerMismatch": "ERROR",
+    "bizSvcInvalid": "ERROR",
+    "msgDefIdrInvalid": "ERROR",
+    "bizMsgIdrFormat": "ERROR",
+    "messageIdMismatch": "ERROR",
+    "fromBicMismatch": "ERROR",
+    "toBicMismatch": "ERROR",
+    "missingInstdAmt": "ERROR",
+    "missingUETR": "ERROR",
+    "missingTownName": "ERROR",
+    "missingCountry": "ERROR",
+    "missingProxyType": "ERROR",
+    "invalidEndToEndId": "ERROR",
+    "invalidServiceLevel": "ERROR",
+    "deprecatedAdrLine": "ERROR",
+    "invalidDateTimezone": "ERROR",
+    "strdLengthExceeded": "ERROR"
+  },
+
+  "xmlGenerationRules": {
+    "description": "Default values used when generating SR2026-compliant pacs.008 XML.",
+    "defaults": {
+      "bizSvc": "swift.cbprplus.04",
+      "msgDefIdr": "pacs.008.001.08",
+      "endToEndIdFallback": "NOTPROVIDED",
+      "chrgBr": "SLEV"
+    }
+  },
+
+  "uiRules": {
+    "description": "Field-level UI hints for the generator form when SR2026 is selected.",
+    "fields": {
+      "bizSvc": {
+        "visible": true,
+        "mandatory": true,
+        "locked": true,
+        "defaultValue": "swift.cbprplus.04",
+        "hint": "Fixed to 'swift.cbprplus.04' in SR2026"
+      },
+      "msgDefIdr": {
+        "visible": true,
+        "mandatory": true,
+        "locked": true,
+        "defaultValue": "pacs.008.001.08",
+        "hint": "Fixed to 'pacs.008.001.08' in SR2026"
+      },
+      "instructedAmount": {
+        "visible": true,
+        "mandatory": true,
+        "hint": "Instructed Amount is mandatory in SR2026"
+      },
+      "debtorTownName": {
+        "mandatory": true,
+        "hint": "Town Name is required in Debtor Address (SR2026)"
+      },
+      "debtorCountry": {
+        "mandatory": true,
+        "hint": "Country is required in Debtor Address (SR2026)"
+      },
+      "creditorTownName": {
+        "mandatory": true,
+        "hint": "Town Name is required in Creditor Address (SR2026)"
+      },
+      "creditorCountry": {
+        "mandatory": true,
+        "hint": "Country is required in Creditor Address (SR2026)"
+      },
+      "proxyType": {
+        "mandatoryWhenProxyExists": true,
+        "hint": "Proxy Type is mandatory when Proxy is present (SR2026)"
+      },
+      "endToEndId": {
+        "mandatory": true,
+        "allowBlank": false,
+        "hint": "Use 'NOTPROVIDED' if End-to-End ID is not known (SR2026)"
+      }
+    }
+  },
+
+  "changesSinceSR2025": {
+    "description": "Summary of SR2026 changes from SR2025 for pacs.008 CBPR+",
+    "changes": [
+      {
+        "element": "AppHdr.BizSvc",
+        "sr2025Value": "swift.cbprplus.02",
+        "sr2026Value": "swift.cbprplus.04",
+        "impact": "Breaking — must update all outbound messages"
+      },
+      {
+        "element": "AppHdr.MsgDefIdr",
+        "sr2025": "No fixed value enforcement",
+        "sr2026": "Fixed to 'pacs.008.001.08' — strictly enforced",
+        "impact": "Breaking for any message using a different or missing value"
+      },
+      {
+        "element": "AppHdr.BizMsgIdr",
+        "sr2025Type": "Max35Text",
+        "sr2026Type": "RestrictedFINXMax35Text",
+        "impact": "Character set restricted to SWIFT FIN character set"
+      },
+      {
+        "element": "AppHdr BizMsgIdr == GrpHdr MsgId",
+        "sr2025": "Not enforced",
+        "sr2026": "Mandatory cross-field consistency rule — new ERROR",
+        "impact": "New rule — messages with mismatched IDs will fail"
+      },
+      {
+        "element": "CdtTrfTxInf.InstdAmt",
+        "sr2025": "Optional",
+        "sr2026": "Mandatory",
+        "impact": "Breaking — must always include Instructed Amount"
+      },
+      {
+        "element": "PstlAdr.AdrLine",
+        "sr2025": "Allowed via grace periods (Hybrid, Unstructured, Structured modes)",
+        "sr2026": "Fully deprecated — ERROR for all parties",
+        "impact": "Breaking — must migrate all addresses to structured format"
+      },
+      {
+        "element": "Prxy.Tp",
+        "sr2025": "Optional",
+        "sr2026": "Mandatory when Prxy is present",
+        "impact": "Breaking for messages using Proxy without Type"
+      },
+      {
+        "element": "GPI SvcLvl.Cd",
+        "sr2025": "G001-G009 allowed (various)",
+        "sr2026": "Only G001 allowed",
+        "impact": "Breaking for any GPI codes other than G001"
+      },
+      {
+        "element": "Date fields (Dt suffix)",
+        "sr2025": "Timezone offsets tolerated",
+        "sr2026": "Strictly YYYY-MM-DD without timezone (CBPR_Date)",
+        "impact": "Breaking for any date containing timezone suffix"
+      }
+    ]
+  }
+}

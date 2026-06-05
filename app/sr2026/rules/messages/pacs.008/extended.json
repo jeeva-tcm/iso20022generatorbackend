@@ -1,0 +1,79 @@
+{
+  "validationRules": {
+    "rules": [
+      {
+        "id": "SR2026_R017",
+        "category": "currencyRules",
+        "description": "All currency codes must follow ISO 4217 standard",
+        "code": "INVALID_CURRENCY_CODE",
+        "severity": "ERROR",
+        "condition": "IntrBkSttlmAmt or InstdAmt present",
+        "validation": "Currency matches /^[A-Z]{3}$/ AND is valid ISO 4217 code",
+        "errorMessage": "Invalid currency code in amount field.",
+        "fix": "Use valid ISO 4217 currency code (e.g. USD, EUR, INR)."
+      },
+      {
+        "id": "SR2026_R018",
+        "category": "settlementRules",
+        "description": "Settlement Method is restricted in CBPR+ SR2026",
+        "code": "INVALID_STTLM_MTD",
+        "severity": "ERROR",
+        "condition": "GrpHdr.SttlmInf exists",
+        "validation": "SttlmMtd in ['CLRG', 'INDA', 'INGA']",
+        "errorMessage": "Invalid Settlement Method.",
+        "fix": "Use valid CBPR+ settlement method: CLRG / INDA / INGA."
+      },
+      {
+        "id": "SR2026_R019",
+        "category": "transactionRules",
+        "description": "UETR must be globally unique",
+        "code": "DUPLICATE_UETR",
+        "severity": "ERROR",
+        "condition": "New transaction inserted",
+        "validation": "UETR not already used in system",
+        "errorMessage": "Duplicate UETR detected.",
+        "fix": "Generate a new UUID v4 for UETR."
+      },
+      {
+        "id": "SR2026_R020",
+        "category": "amountRules",
+        "description": "Amount must not exceed 2 decimal places",
+        "code": "INVALID_AMOUNT_PRECISION",
+        "severity": "ERROR",
+        "validation": "Amount matches /^\\d+(\\.\\d{1,2})?$/",
+        "errorMessage": "Amount must have max 2 decimal places.",
+        "fix": "Round or format amount to 2 decimals."
+      },
+      {
+        "id": "SR2026_R021",
+        "category": "bicRules",
+        "description": "BIC must be valid SWIFT format (8 or 11 chars)",
+        "code": "INVALID_BIC_FORMAT",
+        "severity": "ERROR",
+        "validation": "^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$",
+        "errorMessage": "Invalid BIC format.",
+        "fix": "Use valid 8 or 11 character SWIFT BIC."
+      },
+      {
+        "id": "SR2026_R022",
+        "category": "groupHeaderRules",
+        "description": "NbOfTxs must match actual transaction count",
+        "code": "INVALID_TX_COUNT",
+        "severity": "ERROR",
+        "validation": "NbOfTxs == count(CdtTrfTxInf)",
+        "errorMessage": "NbOfTxs does not match actual transactions.",
+        "fix": "Set NbOfTxs equal to number of CdtTrfTxInf blocks."
+      },
+      {
+        "id": "SR2026_R023",
+        "category": "encodingRules",
+        "description": "Message must use UTF-8 encoding only",
+        "code": "INVALID_ENCODING",
+        "severity": "ERROR",
+        "validation": "XML encoding == UTF-8",
+        "errorMessage": "Only UTF-8 encoding is allowed.",
+        "fix": "Set XML encoding to UTF-8."
+      }
+    ]
+  }
+}

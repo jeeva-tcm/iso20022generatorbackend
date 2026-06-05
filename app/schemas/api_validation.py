@@ -2,6 +2,8 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 class ApiIssue(BaseModel):
+    severity: str = "ERROR"
+    layer: int = 3
     code: str
     path: str
     message: str
