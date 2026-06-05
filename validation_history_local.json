@@ -55209,5 +55209,464 @@
     "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n        <Fr>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>DEUTDEFFXXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </Fr>\n        <To>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>LLOYDKKHXXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </To>\n        <BizMsgIdr>MSGW3KZAO2ED2H43OGX</BizMsgIdr>\n        <MsgDefIdr>pacs.010.001.03</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-06-05T04:17:40+00:00</CreDt>\n    </AppHdr>\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.010.001.03\">\n        <FIDrctDbt>\n            <GrpHdr>\n                <MsgId>MSGW3KZAO2ED2H43OGX</MsgId>\n                <CreDtTm>2026-06-05T04:17:40+00:00</CreDtTm>\n                <NbOfTxs>1</NbOfTxs>\n            </GrpHdr>\n            <CdtInstr>\n                <CdtId>CDT5HRQG8OZ2877KNK7</CdtId>\n                <InstgAgt>\n                    <FinInstnId>\n                        <BICFI>DEUTDEFFXXX</BICFI>\n                    </FinInstnId>\n                </InstgAgt>\n                <InstdAgt>\n                    <FinInstnId>\n                        <BICFI>LLOYDKKHXXX</BICFI>\n                    </FinInstnId>\n                </InstdAgt>\n                <CdtrAgt>\n                    <FinInstnId>\n                        <BICFI>DEUTDKKHXXX</BICFI>\n                    </FinInstnId>\n                </CdtrAgt>\n                <Cdtr>\n                    <FinInstnId>\n                        <BICFI>INGBDKKHXXX</BICFI>\n                    </FinInstnId>\n                </Cdtr>\n                <CdtrAcct>\n                    <Id>\n                        <IBAN>DE89370400440532013000</IBAN>\n                    </Id>\n                </CdtrAcct>\n                <DrctDbtTxInf>\n                    <PmtId>\n                        <InstrId>INSTROK4TZY2CART</InstrId>\n                        <EndToEndId>E2EJCVZGUM4LTUMX5Z6</EndToEndId>\n                        <TxId>TX55IGY8W15YHS2QTI</TxId>\n                        <UETR>cf91e704-2e6f-4aae-b53a-3a4688ecdeb6</UETR>\n                    </PmtId>\n                    <PmtTpInf>\n                        <SvcLvl>\n                            <Cd>SDVA</Cd>\n                        </SvcLvl>\n                    </PmtTpInf>\n                    <IntrBkSttlmAmt Ccy=\"DKK\">464859.50</IntrBkSttlmAmt>\n                    <IntrBkSttlmDt>2026-06-05</IntrBkSttlmDt>\n                    <Dbtr>\n                        <FinInstnId>\n                            <BICFI>BNPADKKHXXX</BICFI>\n                        </FinInstnId>\n                    </Dbtr>\n                    <DbtrAcct>\n                        <Id>\n                            <IBAN>DK1164763544403466</IBAN>\n                        </Id>\n                    </DbtrAcct>\n                    <DbtrAgt>\n                        <FinInstnId>\n                            <BICFI>CITIDKKHXXX</BICFI>\n                        </FinInstnId>\n                    </DbtrAgt>\n                    <RmtInf>\n                        <Ustrd>Invoice 2026-001 payment</Ustrd>\n                    </RmtInf>\n                </DrctDbtTxInf>\n            </CdtInstr>\n        </FIDrctDbt>\n    </Document>\n</BusMsgEnvlp>",
     "origin": "Uploaded",
     "deleted": false
+  },
+  {
+    "validation_id": "VAL05062600001",
+    "batch_id": "VAL05062600001",
+    "file_id": "FILE0001",
+    "timestamp": "2026-06-05T06:30:30.297149+00:00",
+    "message_type": "camt.056.001.08",
+    "status": "FAIL",
+    "total_errors": 3,
+    "total_warnings": 0,
+    "execution_time_ms": 89.57,
+    "report_json": {
+      "validation_id": "VAL05062600001",
+      "timestamp": "2026-06-05T06:30:30.297149+00:00",
+      "status": "FAIL",
+      "schema": "Unknown",
+      "message": "camt.056.001.08",
+      "errors": 3,
+      "warnings": 0,
+      "total_time_ms": 89.57,
+      "layer_status": {
+        "1": {
+          "status": "✅",
+          "time": 42.81
+        },
+        "2": {
+          "status": "❌",
+          "time": 46.76
+        },
+        "3": {
+          "status": "SKIPPED",
+          "time": 0
+        }
+      },
+      "details": [
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <CreDt> contains '2026-06-03T10:00:00+00:00', which is before today (2026-06-05).",
+          "fix_suggestion": "Update <CreDt> to today (2026-06-05) or a future date. (Line: 21)",
+          "related_test": "",
+          "line": 21
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <CreDtTm> contains '2026-06-03T10:00:00+00:00', which is before today (2026-06-05).",
+          "fix_suggestion": "Update <CreDtTm> to today (2026-06-05) or a future date. (Line: 29)",
+          "related_test": "",
+          "line": 29
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <OrgnlIntrBkSttlmDt> contains '2026-06-03', which is before today (2026-06-05).",
+          "fix_suggestion": "Update <OrgnlIntrBkSttlmDt> to today (2026-06-05) or a future date. (Line: 51)",
+          "related_test": "",
+          "line": 51
+        }
+      ],
+      "metadata": {
+        "Namespace": "urn:iso:std:iso:20022:tech:xsd:camt.056.001.08"
+      },
+      "file_id": "FILE0001",
+      "batch_id": "VAL05062600001"
+    },
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n\t<AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n\t\t<Fr>\n\t\t\t<FIId>\n\t\t\t\t<FinInstnId>\n\t\t\t\t\t<BICFI>ABNADEFFXXX</BICFI>\n\t\t\t\t</FinInstnId>\n\t\t\t</FIId>\n\t\t</Fr>\n\t\t<To>\n\t\t\t<FIId>\n\t\t\t\t<FinInstnId>\n\t\t\t\t\t<BICFI>UBSWATWWXXX</BICFI>\n\t\t\t\t</FinInstnId>\n\t\t\t</FIId>\n\t\t</To>\n\t\t<BizMsgIdr>MSG0X0FKTQFCKOE49OM</BizMsgIdr>\n\t\t<MsgDefIdr>camt.056.001.08</MsgDefIdr>\n\t\t<BizSvc>swift.cbprplus.02</BizSvc>\n\t\t<CreDt>2026-06-03T10:00:00+00:00</CreDt>\n\t</AppHdr>\n\t<Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:camt.056.001.08\">\n\t\t<FIToFIPmtCxlReq>\n\t\t\t<Assgnmt>\n\t\t\t\t<Id>ASSGNMTB64DC3A7PU</Id>\n\t\t\t\t<Assgnr><Agt><FinInstnId><BICFI>ABNADEFFXXX</BICFI></FinInstnId></Agt></Assgnr>\n\t\t\t\t<Assgne><Agt><FinInstnId><BICFI>UBSWATWWXXX</BICFI></FinInstnId></Agt></Assgne>\n\t\t\t\t<CreDtTm>2026-06-03T10:00:00+00:00</CreDtTm>\n\t\t\t</Assgnmt>\n\t\t\t<Undrlyg>\n\t\t\t\t<TxInf>\n\t\t\t\t\t<CxlId>CXLID092EYB2XDZ</CxlId>\n\t\t\t\t\t<Case>\n\t\t\t\t\t\t<Id>CASE4P181BBDDI</Id>\n\t\t\t\t\t\t<Cretr>\n\t\t\t\t\t\t\t<Agt>\n\t\t\t\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t\t\t\t<BICFI>ABNADEFFXXX</BICFI>\n\t\t\t\t\t\t\t\t</FinInstnId>\n\t\t\t\t\t\t\t</Agt>\n\t\t\t\t\t\t</Cretr>\n\t\t\t\t\t</Case>\n\t\t\t\t\t<OrgnlGrpInf>\n\t\t\t\t\t\t<OrgnlMsgId>ORIGMSGYY3IVGJ82O</OrgnlMsgId>\n\t\t\t\t\t\t<OrgnlMsgNmId>pacs.008.001.08</OrgnlMsgNmId>\n\t\t\t\t\t</OrgnlGrpInf>\n\t\t\t\t\t<OrgnlEndToEndId>ORIE2E1I6ANMUGXY</OrgnlEndToEndId>\n\t\t\t\t\t<OrgnlUETR>6ea92048-d86e-4048-8793-bc13d64f89be</OrgnlUETR>\n\t\t\t\t\t<OrgnlIntrBkSttlmAmt Ccy=\"EUR\">43002.17</OrgnlIntrBkSttlmAmt>\n\t\t\t\t\t<OrgnlIntrBkSttlmDt>2026-06-03</OrgnlIntrBkSttlmDt>\n\t\t\t\t\t<CxlRsnInf>\n\t\t\t\t\t\t<Rsn>\n\t\t\t\t\t\t\t<Cd>DUPL</Cd>\n\t\t\t\t\t\t</Rsn>\n\t\t\t\t\t\t<AddtlInf>FI cancellation requested</AddtlInf>\n\t\t\t\t\t</CxlRsnInf>\n\t\t\t\t</TxInf>\n\t\t\t</Undrlyg>\n\t\t</FIToFIPmtCxlReq>\n\t</Document>\n</BusMsgEnvlp>",
+    "origin": "Uploaded",
+    "deleted": false
+  },
+  {
+    "validation_id": "VAL05062600001",
+    "batch_id": "VAL05062600001",
+    "file_id": "FILE0004",
+    "timestamp": "2026-06-05T06:30:31.396649+00:00",
+    "message_type": "pain.008.001.08",
+    "status": "FAIL",
+    "total_errors": 3,
+    "total_warnings": 0,
+    "execution_time_ms": 18.86,
+    "report_json": {
+      "validation_id": "VAL05062600001",
+      "timestamp": "2026-06-05T06:30:31.396649+00:00",
+      "status": "FAIL",
+      "schema": "Unknown",
+      "message": "pain.008.001.08",
+      "errors": 3,
+      "warnings": 0,
+      "total_time_ms": 18.86,
+      "layer_status": {
+        "1": {
+          "status": "✅",
+          "time": 1.44
+        },
+        "2": {
+          "status": "❌",
+          "time": 17.42
+        },
+        "3": {
+          "status": "SKIPPED",
+          "time": 0
+        }
+      },
+      "details": [
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <CreDt> contains '2026-06-03T10:00:00+00:00', which is before today (2026-06-05).",
+          "fix_suggestion": "Update <CreDt> to today (2026-06-05) or a future date. (Line: 21)",
+          "related_test": "",
+          "line": 21
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <CreDtTm> contains '2026-06-03T10:00:00+00:00', which is before today (2026-06-05).",
+          "fix_suggestion": "Update <CreDtTm> to today (2026-06-05) or a future date. (Line: 27)",
+          "related_test": "",
+          "line": 27
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <DtOfSgntr> contains '2026-06-03', which is before today (2026-06-05).",
+          "fix_suggestion": "Update <DtOfSgntr> to today (2026-06-05) or a future date. (Line: 77)",
+          "related_test": "",
+          "line": 77
+        }
+      ],
+      "metadata": {
+        "MsgId": "MSG3Z5X8F0P4LNYL41G",
+        "UETR": "6a53b795-87d7-4f56-8246-dfbbcd4264ac",
+        "Namespace": "urn:iso:std:iso:20022:tech:xsd:pain.008.001.08"
+      },
+      "file_id": "FILE0004",
+      "batch_id": "VAL05062600001"
+    },
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n\t<AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n\t\t<Fr>\n\t\t\t<FIId>\n\t\t\t\t<FinInstnId>\n\t\t\t\t\t<BICFI>BNPABEBBXXX</BICFI>\n\t\t\t\t</FinInstnId>\n\t\t\t</FIId>\n\t\t</Fr>\n\t\t<To>\n\t\t\t<FIId>\n\t\t\t\t<FinInstnId>\n\t\t\t\t\t<BICFI>BARCFRPPXXX</BICFI>\n\t\t\t\t</FinInstnId>\n\t\t\t</FIId>\n\t\t</To>\n\t\t<BizMsgIdr>MSG3Z5X8F0P4LNYL41G</BizMsgIdr>\n\t\t<MsgDefIdr>pain.008.001.08</MsgDefIdr>\n\t\t<BizSvc>swift.cbprplus.02</BizSvc>\n\t\t<CreDt>2026-06-03T10:00:00+00:00</CreDt>\n\t</AppHdr>\n\t<Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pain.008.001.08\">\n\t\t<CstmrDrctDbtInitn>\n\t\t\t<GrpHdr>\n\t\t\t\t<MsgId>MSG3Z5X8F0P4LNYL41G</MsgId>\n\t\t\t\t<CreDtTm>2026-06-03T10:00:00+00:00</CreDtTm>\n\t\t\t\t<NbOfTxs>1</NbOfTxs>\n\t\t\t\t<InitgPty>\n\t\t\t\t\t<Nm>Euro Commerce AG</Nm>\n\t\t\t\t\t<PstlAdr>\n\t\t\t\t\t\t<StrtNm>Jones Street</StrtNm>\n\t\t\t\t\t\t<BldgNb>314</BldgNb>\n\t\t\t\t\t\t<TwnNm>Martin City</TwnNm>\n\t\t\t\t\t\t<Ctry>IT</Ctry>\n\t\t\t\t\t</PstlAdr>\n\t\t\t\t</InitgPty>\n\t\t\t\t<FwdgAgt>\n\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t<BICFI>BNPABEBBXXX</BICFI>\n\t\t\t\t\t</FinInstnId>\n\t\t\t\t</FwdgAgt>\n\t\t\t</GrpHdr>\n\t\t\t<PmtInf>\n\t\t\t\t<PmtInfId>PMTINF0G8Y6OD9ZS</PmtInfId>\n\t\t\t\t<PmtMtd>DD</PmtMtd>\n\t\t\t\t<ReqdColltnDt>2026-06-05</ReqdColltnDt>\n\t\t\t\t<Cdtr>\n\t\t\t\t\t<Nm>Euro Commerce AG</Nm>\n\t\t\t\t\t<PstlAdr>\n\t\t\t\t\t\t<StrtNm>Taylor Street</StrtNm>\n\t\t\t\t\t\t<BldgNb>344</BldgNb>\n\t\t\t\t\t\t<TwnNm>Lewis City</TwnNm>\n\t\t\t\t\t\t<Ctry>IT</Ctry>\n\t\t\t\t\t</PstlAdr>\n\t\t\t\t</Cdtr>\n\t\t\t\t<CdtrAcct>\n\t\t\t\t\t<Id>\n\t\t\t\t\t\t<IBAN>IT89R8708025506383163652194</IBAN>\n\t\t\t\t\t</Id>\n\t\t\t\t</CdtrAcct>\n\t\t\t\t<CdtrAgt>\n\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t<BICFI>DEUTITMMXXX</BICFI>\n\t\t\t\t\t</FinInstnId>\n\t\t\t\t</CdtrAgt>\n\t\t\t\t<DrctDbtTxInf>\n\t\t\t\t\t<PmtId>\n\t\t\t\t\t\t<InstrId>INSTRXB0QOQ6POQL</InstrId>\n\t\t\t\t\t\t<EndToEndId>E2EFF0O7HIW4Z5DSFBK</EndToEndId>\n\t\t\t\t\t\t<UETR>6a53b795-87d7-4f56-8246-dfbbcd4264ac</UETR>\n\t\t\t\t\t</PmtId>\n\t\t\t\t\t<InstdAmt Ccy=\"EUR\">257474.70</InstdAmt>\n\t\t\t\t\t<DrctDbtTx>\n\t\t\t\t\t\t<MndtRltdInf>\n\t\t\t\t\t\t\t<MndtId>MNDTTQNFJD8UOP</MndtId>\n\t\t\t\t\t\t\t<DtOfSgntr>2026-06-03</DtOfSgntr>\n\t\t\t\t\t\t</MndtRltdInf>\n\t\t\t\t\t</DrctDbtTx>\n\t\t\t\t\t<DbtrAgt>\n\t\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t\t<BICFI>ABNAESMMXXX</BICFI>\n\t\t\t\t\t\t</FinInstnId>\n\t\t\t\t\t</DbtrAgt>\n\t\t\t\t\t<Dbtr>\n\t\t\t\t\t\t<Nm>William Jackson</Nm>\n\t\t\t\t\t\t<PstlAdr>\n\t\t\t\t\t\t\t<StrtNm>Lewis Street</StrtNm>\n\t\t\t\t\t\t\t<BldgNb>842</BldgNb>\n\t\t\t\t\t\t\t<TwnNm>Martin City</TwnNm>\n\t\t\t\t\t\t\t<Ctry>ES</Ctry>\n\t\t\t\t\t\t</PstlAdr>\n\t\t\t\t\t</Dbtr>\n\t\t\t\t\t<DbtrAcct>\n\t\t\t\t\t\t<Id>\n\t\t\t\t\t\t\t<IBAN>ES8255628902710913406357</IBAN>\n\t\t\t\t\t\t</Id>\n\t\t\t\t\t</DbtrAcct>\n\t\t\t\t\t<UltmtDbtr>\n\t\t\t\t\t\t<Nm>William Jackson Group</Nm>\n\t\t\t\t\t\t<PstlAdr>\n\t\t\t\t\t\t\t<StrtNm>Jones Street</StrtNm>\n\t\t\t\t\t\t\t<BldgNb>184</BldgNb>\n\t\t\t\t\t\t\t<TwnNm>Martin City</TwnNm>\n\t\t\t\t\t\t\t<Ctry>ES</Ctry>\n\t\t\t\t\t\t</PstlAdr>\n\t\t\t\t\t</UltmtDbtr>\n\t\t\t\t\t<RmtInf><Ustrd>REFR6K300E0BIUIAF98</Ustrd></RmtInf>\n\t\t\t\t</DrctDbtTxInf>\n\t\t\t</PmtInf>\n\t\t</CstmrDrctDbtInitn>\n\t</Document>\n</BusMsgEnvlp>",
+    "origin": "Uploaded",
+    "deleted": false
+  },
+  {
+    "validation_id": "VAL05062600001",
+    "batch_id": "VAL05062600001",
+    "file_id": "FILE0002",
+    "timestamp": "2026-06-05T06:30:32.002653+00:00",
+    "message_type": "pain.001.001.09",
+    "status": "FAIL",
+    "total_errors": 3,
+    "total_warnings": 0,
+    "execution_time_ms": 17.3,
+    "report_json": {
+      "validation_id": "VAL05062600001",
+      "timestamp": "2026-06-05T06:30:32.002653+00:00",
+      "status": "FAIL",
+      "schema": "Unknown",
+      "message": "pain.001.001.09",
+      "errors": 3,
+      "warnings": 0,
+      "total_time_ms": 17.3,
+      "layer_status": {
+        "1": {
+          "status": "✅",
+          "time": 1.7
+        },
+        "2": {
+          "status": "❌",
+          "time": 15.6
+        },
+        "3": {
+          "status": "SKIPPED",
+          "time": 0
+        }
+      },
+      "details": [
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <CreDt> contains '2026-06-03T10:00:00+00:00', which is before today (2026-06-05).",
+          "fix_suggestion": "Update <CreDt> to today (2026-06-05) or a future date. (Line: 21)",
+          "related_test": "",
+          "line": 21
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <CreDtTm> contains '2026-06-03T10:00:00+00:00', which is before today (2026-06-05).",
+          "fix_suggestion": "Update <CreDtTm> to today (2026-06-05) or a future date. (Line: 27)",
+          "related_test": "",
+          "line": 27
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <Dt> contains '2026-06-04', which is before today (2026-06-05).",
+          "fix_suggestion": "Update <Dt> to today (2026-06-05) or a future date. (Line: 49)",
+          "related_test": "",
+          "line": 49
+        }
+      ],
+      "metadata": {
+        "MsgId": "MSG6ZA2I6DOMKGV7Z0P",
+        "UETR": "46f547d1-33dd-49b9-b473-c23e4ddd62c0",
+        "Namespace": "urn:iso:std:iso:20022:tech:xsd:pain.001.001.09"
+      },
+      "file_id": "FILE0002",
+      "batch_id": "VAL05062600001"
+    },
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n\t<AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n\t\t<Fr>\n\t\t\t<FIId>\n\t\t\t\t<FinInstnId>\n\t\t\t\t\t<BICFI>NWBKSESSXXX</BICFI>\n\t\t\t\t</FinInstnId>\n\t\t\t</FIId>\n\t\t</Fr>\n\t\t<To>\n\t\t\t<FIId>\n\t\t\t\t<FinInstnId>\n\t\t\t\t\t<BICFI>RBOSSESSXXX</BICFI>\n\t\t\t\t</FinInstnId>\n\t\t\t</FIId>\n\t\t</To>\n\t\t<BizMsgIdr>MSG6ZA2I6DOMKGV7Z0P</BizMsgIdr>\n\t\t<MsgDefIdr>pain.001.001.09</MsgDefIdr>\n\t\t<BizSvc>swift.cbprplus.02</BizSvc>\n\t\t<CreDt>2026-06-03T10:00:00+00:00</CreDt>\n\t</AppHdr>\n\t<Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pain.001.001.09\">\n\t\t<CstmrCdtTrfInitn>\n\t\t\t<GrpHdr>\n\t\t\t\t<MsgId>MSG6ZA2I6DOMKGV7Z0P</MsgId>\n\t\t\t\t<CreDtTm>2026-06-03T10:00:00+00:00</CreDtTm>\n\t\t\t\t<NbOfTxs>1</NbOfTxs>\n\t\t\t\t<InitgPty>\n\t\t\t\t\t<Nm>Summit Bank Holdings</Nm>\n\t\t\t\t\t<PstlAdr>\n\t\t\t\t\t\t<StrtNm>Harris Street</StrtNm>\n\t\t\t\t\t\t<BldgNb>679</BldgNb>\n\t\t\t\t\t\t<PstCd>48752</PstCd>\n\t\t\t\t\t\t<TwnNm>Jones City</TwnNm>\n\t\t\t\t\t\t<Ctry>SE</Ctry>\n\t\t\t\t\t</PstlAdr>\n\t\t\t\t</InitgPty>\n\t\t\t\t<FwdgAgt>\n\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t<BICFI>NWBKSESSXXX</BICFI>\n\t\t\t\t\t</FinInstnId>\n\t\t\t\t</FwdgAgt>\n\t\t\t</GrpHdr>\n\t\t\t<PmtInf>\n\t\t\t\t<PmtInfId>PMTINFHQTQHPYAXE</PmtInfId>\n\t\t\t\t<PmtMtd>TRF</PmtMtd>\n\t\t\t\t<PmtTpInf><SvcLvl><Cd>G001</Cd></SvcLvl></PmtTpInf>\n\t\t\t\t<ReqdExctnDt><Dt>2026-06-04</Dt></ReqdExctnDt>\n\t\t\t\t<Dbtr>\n\t\t\t\t\t<Nm>Summit Bank Holdings</Nm>\n\t\t\t\t\t<PstlAdr>\n\t\t\t\t\t\t<StrtNm>Martinez Street</StrtNm>\n\t\t\t\t\t\t<BldgNb>49</BldgNb>\n\t\t\t\t\t\t<PstCd>98542</PstCd>\n\t\t\t\t\t\t<TwnNm>Walker City</TwnNm>\n\t\t\t\t\t\t<Ctry>SE</Ctry>\n\t\t\t\t\t</PstlAdr>\n\t\t\t\t</Dbtr>\n\t\t\t\t<DbtrAcct>\n\t\t\t\t\t<Id>\n\t\t\t\t\t\t<IBAN>SE9644524172276512926489</IBAN>\n\t\t\t\t\t</Id>\n\t\t\t\t</DbtrAcct>\n\t\t\t\t<DbtrAgt>\n\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t<BICFI>RABOSESSXXX</BICFI>\n\t\t\t\t\t</FinInstnId>\n\t\t\t\t</DbtrAgt>\n\t\t\t\t<UltmtDbtr>\n\t\t\t\t\t<Nm>Summit Bank Holdings Group</Nm>\n\t\t\t\t\t<PstlAdr>\n\t\t\t\t\t\t<StrtNm>Lewis Street</StrtNm>\n\t\t\t\t\t\t<BldgNb>311</BldgNb>\n\t\t\t\t\t\t<TwnNm>Smith City</TwnNm>\n\t\t\t\t\t\t<Ctry>SE</Ctry>\n\t\t\t\t\t</PstlAdr>\n\t\t\t\t</UltmtDbtr>\n\t\t\t\t<CdtTrfTxInf>\n\t\t\t\t\t<PmtId>\n\t\t\t\t\t\t<InstrId>INSTRS9UU5CAA0KO</InstrId>\n\t\t\t\t\t\t<EndToEndId>E2EPVPY4NFRAD1MHPWN</EndToEndId>\n\t\t\t\t\t\t<UETR>46f547d1-33dd-49b9-b473-c23e4ddd62c0</UETR>\n\t\t\t\t\t</PmtId>\n\t\t\t\t\t<Amt><InstdAmt Ccy=\"SEK\">102106.63</InstdAmt></Amt>\n\t\t\t\t\t<CdtrAgt>\n\t\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t\t<BICFI>SOGESESSXXX</BICFI>\n\t\t\t\t\t\t</FinInstnId>\n\t\t\t\t\t</CdtrAgt>\n\t\t\t\t\t<Cdtr>\n\t\t\t\t\t\t<Nm>Ethan Thomas</Nm>\n\t\t\t\t\t\t<PstlAdr>\n\t\t\t\t\t\t\t<StrtNm>Garcia Street</StrtNm>\n\t\t\t\t\t\t\t<BldgNb>757</BldgNb>\n\t\t\t\t\t\t\t<PstCd>22177</PstCd>\n\t\t\t\t\t\t\t<TwnNm>Johnson City</TwnNm>\n\t\t\t\t\t\t\t<Ctry>SE</Ctry>\n\t\t\t\t\t\t</PstlAdr>\n\t\t\t\t\t</Cdtr>\n\t\t\t\t\t<CdtrAcct>\n\t\t\t\t\t\t<Id>\n\t\t\t\t\t\t\t<IBAN>SE2706171471334879967406</IBAN>\n\t\t\t\t\t\t</Id>\n\t\t\t\t\t</CdtrAcct>\n\t\t\t\t\t<UltmtCdtr>\n\t\t\t\t\t\t<Nm>Ethan Thomas Group</Nm>\n\t\t\t\t\t\t<PstlAdr>\n\t\t\t\t\t\t\t<StrtNm>Williams Street</StrtNm>\n\t\t\t\t\t\t\t<BldgNb>558</BldgNb>\n\t\t\t\t\t\t\t<PstCd>56012</PstCd>\n\t\t\t\t\t\t\t<TwnNm>Allen City</TwnNm>\n\t\t\t\t\t\t\t<Ctry>SE</Ctry>\n\t\t\t\t\t\t</PstlAdr>\n\t\t\t\t\t</UltmtCdtr>\n\t\t\t\t\t<RmtInf><Ustrd>REFK3L9DT0E7XDGKU6E</Ustrd></RmtInf>\n\t\t\t\t</CdtTrfTxInf>\n\t\t\t</PmtInf>\n\t\t</CstmrCdtTrfInitn>\n\t</Document>\n</BusMsgEnvlp>",
+    "origin": "Uploaded",
+    "deleted": false
+  },
+  {
+    "validation_id": "VAL05062600001",
+    "batch_id": "VAL05062600001",
+    "file_id": "FILE0003",
+    "timestamp": "2026-06-05T06:30:32.451585+00:00",
+    "message_type": "pain.002.001.10",
+    "status": "FAIL",
+    "total_errors": 3,
+    "total_warnings": 0,
+    "execution_time_ms": 17.52,
+    "report_json": {
+      "validation_id": "VAL05062600001",
+      "timestamp": "2026-06-05T06:30:32.451585+00:00",
+      "status": "FAIL",
+      "schema": "Unknown",
+      "message": "pain.002.001.10",
+      "errors": 3,
+      "warnings": 0,
+      "total_time_ms": 17.52,
+      "layer_status": {
+        "1": {
+          "status": "✅",
+          "time": 1.07
+        },
+        "2": {
+          "status": "❌",
+          "time": 16.45
+        },
+        "3": {
+          "status": "SKIPPED",
+          "time": 0
+        }
+      },
+      "details": [
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <CreDt> contains '2026-06-03T10:00:00+00:00', which is before today (2026-06-05).",
+          "fix_suggestion": "Update <CreDt> to today (2026-06-05) or a future date. (Line: 21)",
+          "related_test": "",
+          "line": 21
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <CreDtTm> contains '2026-06-03T10:00:00+00:00', which is before today (2026-06-05).",
+          "fix_suggestion": "Update <CreDtTm> to today (2026-06-05) or a future date. (Line: 27)",
+          "related_test": "",
+          "line": 27
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <OrgnlCreDtTm> contains '2026-06-03T09:00:00+00:00', which is before today (2026-06-05).",
+          "fix_suggestion": "Update <OrgnlCreDtTm> to today (2026-06-05) or a future date. (Line: 39)",
+          "related_test": "",
+          "line": 39
+        }
+      ],
+      "metadata": {
+        "MsgId": "MSG8FYQVYI1H3TBVJ4G",
+        "Namespace": "urn:iso:std:iso:20022:tech:xsd:pain.002.001.10"
+      },
+      "file_id": "FILE0003",
+      "batch_id": "VAL05062600001"
+    },
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n\t<AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n\t\t<Fr>\n\t\t\t<FIId>\n\t\t\t\t<FinInstnId>\n\t\t\t\t\t<BICFI>CREDGB2LXXX</BICFI>\n\t\t\t\t</FinInstnId>\n\t\t\t</FIId>\n\t\t</Fr>\n\t\t<To>\n\t\t\t<FIId>\n\t\t\t\t<FinInstnId>\n\t\t\t\t\t<BICFI>UBSWGB2LXXX</BICFI>\n\t\t\t\t</FinInstnId>\n\t\t\t</FIId>\n\t\t</To>\n\t\t<BizMsgIdr>MSG8FYQVYI1H3TBVJ4G</BizMsgIdr>\n\t\t<MsgDefIdr>pain.002.001.10</MsgDefIdr>\n\t\t<BizSvc>swift.cbprplus.02</BizSvc>\n\t\t<CreDt>2026-06-03T10:00:00+00:00</CreDt>\n\t</AppHdr>\n\t<Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pain.002.001.10\">\n\t\t<CstmrPmtStsRpt>\n\t\t\t<GrpHdr>\n\t\t\t\t<MsgId>MSG8FYQVYI1H3TBVJ4G</MsgId>\n\t\t\t\t<CreDtTm>2026-06-03T10:00:00+00:00</CreDtTm>\n\t\t\t\t<InitgPty>\n\t\t\t\t\t<Id>\n\t\t\t\t\t\t<OrgId>\n\t\t\t\t\t\t\t<AnyBIC>CREDGB2LXXX</AnyBIC>\n\t\t\t\t\t\t</OrgId>\n\t\t\t\t\t</Id>\n\t\t\t\t</InitgPty>\n\t\t\t</GrpHdr>\n\t\t\t\t<OrgnlGrpInfAndSts>\n\t\t\t\t\t<OrgnlMsgId>ORIGMSGTSNSV76K8G</OrgnlMsgId>\n\t\t\t\t\t<OrgnlMsgNmId>pain.001.001.09</OrgnlMsgNmId>\n\t\t\t\t\t<OrgnlCreDtTm>2026-06-03T09:00:00+00:00</OrgnlCreDtTm>\n\t\t\t\t</OrgnlGrpInfAndSts>\n\t\t\t\t<OrgnlPmtInfAndSts>\n\t\t\t\t\t<OrgnlPmtInfId>ORIGPMTHGPAU45ALJ</OrgnlPmtInfId>\n\t\t\t\t\t<TxInfAndSts>\n\t\t\t\t\t\t<OrgnlEndToEndId>ORIE2EG9334H0QT6</OrgnlEndToEndId>\n\t\t\t\t\t\t<OrgnlUETR>fdb01da8-add4-43f2-8709-3ce9eefa6407</OrgnlUETR>\n\t\t\t\t\t\t<TxSts>RJCT</TxSts>\n\t\t\t\t\t\t<StsRsnInf>\n\t\t\t\t\t\t\t<Rsn><Cd>AM04</Cd></Rsn>\n\t\t\t\t\t\t</StsRsnInf>\n\t\t\t\t\t</TxInfAndSts>\n\t\t\t\t</OrgnlPmtInfAndSts>\n\t\t</CstmrPmtStsRpt>\n\t</Document>\n</BusMsgEnvlp>",
+    "origin": "Uploaded",
+    "deleted": false
+  },
+  {
+    "validation_id": "VAL05062600001",
+    "batch_id": "VAL05062600001",
+    "file_id": "FILE0006",
+    "timestamp": "2026-06-05T06:30:32.889072+00:00",
+    "message_type": "pacs.010.001.03",
+    "status": "FAIL",
+    "total_errors": 3,
+    "total_warnings": 0,
+    "execution_time_ms": 9.28,
+    "report_json": {
+      "validation_id": "VAL05062600001",
+      "timestamp": "2026-06-05T06:30:32.889072+00:00",
+      "status": "FAIL",
+      "schema": "Unknown",
+      "message": "pacs.010.001.03",
+      "errors": 3,
+      "warnings": 0,
+      "total_time_ms": 9.28,
+      "layer_status": {
+        "1": {
+          "status": "✅",
+          "time": 0.92
+        },
+        "2": {
+          "status": "❌",
+          "time": 8.36
+        },
+        "3": {
+          "status": "SKIPPED",
+          "time": 0
+        }
+      },
+      "details": [
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <CreDt> contains '2026-06-03T10:00:00+00:00', which is before today (2026-06-05).",
+          "fix_suggestion": "Update <CreDt> to today (2026-06-05) or a future date. (Line: 21)",
+          "related_test": "",
+          "line": 21
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <CreDtTm> contains '2026-06-03T10:00:00+00:00', which is before today (2026-06-05).",
+          "fix_suggestion": "Update <CreDtTm> to today (2026-06-05) or a future date. (Line: 27)",
+          "related_test": "",
+          "line": 27
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <IntrBkSttlmDt> contains '2026-06-04', which is before today (2026-06-05).",
+          "fix_suggestion": "Update <IntrBkSttlmDt> to today (2026-06-05) or a future date. (Line: 70)",
+          "related_test": "",
+          "line": 70
+        }
+      ],
+      "metadata": {
+        "MsgId": "MSGW3KZAO2ED2H43OGX",
+        "UETR": "cf91e704-2e6f-4aae-b53a-3a4688ecdeb6",
+        "Namespace": "urn:iso:std:iso:20022:tech:xsd:pacs.010.001.03"
+      },
+      "file_id": "FILE0006",
+      "batch_id": "VAL05062600001"
+    },
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n\t<AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n\t\t<Fr>\n\t\t\t<FIId>\n\t\t\t\t<FinInstnId>\n\t\t\t\t\t<BICFI>BARCDKKHXXX</BICFI>\n\t\t\t\t</FinInstnId>\n\t\t\t</FIId>\n\t\t</Fr>\n\t\t<To>\n\t\t\t<FIId>\n\t\t\t\t<FinInstnId>\n\t\t\t\t\t<BICFI>LLOYDKKHXXX</BICFI>\n\t\t\t\t</FinInstnId>\n\t\t\t</FIId>\n\t\t</To>\n\t\t<BizMsgIdr>MSGW3KZAO2ED2H43OGX</BizMsgIdr>\n\t\t<MsgDefIdr>pacs.010.001.03</MsgDefIdr>\n\t\t<BizSvc>swift.cbprplus.02</BizSvc>\n\t\t<CreDt>2026-06-03T10:00:00+00:00</CreDt>\n\t</AppHdr>\n\t<Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.010.001.03\">\n\t\t<FIDrctDbt>\n\t\t\t<GrpHdr>\n\t\t\t\t<MsgId>MSGW3KZAO2ED2H43OGX</MsgId>\n\t\t\t\t<CreDtTm>2026-06-03T10:00:00+00:00</CreDtTm>\n\t\t\t\t<NbOfTxs>1</NbOfTxs>\n\t\t\t</GrpHdr>\n\t\t\t<CdtInstr>\n\t\t\t\t<CdtId>CDT5HRQG8OZ2877KNK7</CdtId>\n\t\t\t\t<InstgAgt>\n\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t<BICFI>BARCDKKHXXX</BICFI>\n\t\t\t\t\t</FinInstnId>\n\t\t\t\t</InstgAgt>\n\t\t\t\t<InstdAgt>\n\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t<BICFI>LLOYDKKHXXX</BICFI>\n\t\t\t\t\t</FinInstnId>\n\t\t\t\t</InstdAgt>\n\t\t\t\t<CdtrAgt>\n\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t<BICFI>DEUTDKKHXXX</BICFI>\n\t\t\t\t\t</FinInstnId>\n\t\t\t\t</CdtrAgt>\n\t\t\t\t<Cdtr>\n\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t<BICFI>INGBDKKHXXX</BICFI>\n\t\t\t\t\t</FinInstnId>\n\t\t\t\t</Cdtr>\n\t\t\t\t<CdtrAcct>\n\t\t\t\t\t<Id>\n\t\t\t\t\t\t<IBAN>DK3298706508991148</IBAN>\n\t\t\t\t\t</Id>\n\t\t\t\t</CdtrAcct>\n\t\t\t\t<DrctDbtTxInf>\n\t\t\t\t\t<PmtId>\n\t\t\t\t\t\t<InstrId>INSTROK4TZY2CART</InstrId>\n\t\t\t\t\t\t<EndToEndId>E2EJCVZGUM4LTUMX5Z6</EndToEndId>\n\t\t\t\t\t\t<TxId>TX55IGY8W15YHS2QTI</TxId>\n\t\t\t\t\t\t<UETR>cf91e704-2e6f-4aae-b53a-3a4688ecdeb6</UETR>\n\t\t\t\t\t</PmtId>\n\t\t\t\t\t<PmtTpInf>\n\t\t\t\t\t\t<SvcLvl>\n\t\t\t\t\t\t\t<Cd>SDVA</Cd>\n\t\t\t\t\t\t</SvcLvl>\n\t\t\t\t\t</PmtTpInf>\n\t\t\t\t\t<IntrBkSttlmAmt Ccy=\"DKK\">464859.42</IntrBkSttlmAmt>\n\t\t\t\t\t<IntrBkSttlmDt>2026-06-04</IntrBkSttlmDt>\n\t\t\t\t\t<Dbtr>\n\t\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t\t<BICFI>BNPADKKHXXX</BICFI>\n\t\t\t\t\t\t</FinInstnId>\n\t\t\t\t\t</Dbtr>\n\t\t\t\t\t<DbtrAcct>\n\t\t\t\t\t\t<Id>\n\t\t\t\t\t\t\t<IBAN>DK1164763544403466</IBAN>\n\t\t\t\t\t\t</Id>\n\t\t\t\t\t</DbtrAcct>\n\t\t\t\t\t<DbtrAgt>\n\t\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t\t<BICFI>CITIDKKHXXX</BICFI>\n\t\t\t\t\t\t</FinInstnId>\n\t\t\t\t\t</DbtrAgt>\n\t\t\t\t\t<RmtInf>\n\t\t\t\t\t\t<Ustrd>REF3EWX4BHVV9J3E8PK</Ustrd>\n\t\t\t\t\t</RmtInf>\n\t\t\t\t</DrctDbtTxInf>\n\t\t\t</CdtInstr>\n\t\t</FIDrctDbt>\n\t</Document>\n</BusMsgEnvlp>",
+    "origin": "Uploaded",
+    "deleted": false
+  },
+  {
+    "validation_id": "VAL05062600001",
+    "batch_id": "VAL05062600001",
+    "file_id": "FILE0005",
+    "timestamp": "2026-06-05T06:30:33.318650+00:00",
+    "message_type": "pacs.010.001.03",
+    "status": "FAIL",
+    "total_errors": 3,
+    "total_warnings": 0,
+    "execution_time_ms": 5.04,
+    "report_json": {
+      "validation_id": "VAL05062600001",
+      "timestamp": "2026-06-05T06:30:33.318650+00:00",
+      "status": "FAIL",
+      "schema": "Unknown",
+      "message": "pacs.010.001.03",
+      "errors": 3,
+      "warnings": 0,
+      "total_time_ms": 5.04,
+      "layer_status": {
+        "1": {
+          "status": "✅",
+          "time": 1.5
+        },
+        "2": {
+          "status": "❌",
+          "time": 3.54
+        },
+        "3": {
+          "status": "SKIPPED",
+          "time": 0
+        }
+      },
+      "details": [
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <CreDt> contains '2026-06-03T10:00:00+00:00', which is before today (2026-06-05).",
+          "fix_suggestion": "Update <CreDt> to today (2026-06-05) or a future date. (Line: 21)",
+          "related_test": "",
+          "line": 21
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <CreDtTm> contains '2026-06-03T10:00:00+00:00', which is before today (2026-06-05).",
+          "fix_suggestion": "Update <CreDtTm> to today (2026-06-05) or a future date. (Line: 27)",
+          "related_test": "",
+          "line": 27
+        },
+        {
+          "severity": "ERROR",
+          "layer": 2,
+          "code": "PAST_DATE_ERROR",
+          "path": "/",
+          "message": "Date cannot be in the past. Field <IntrBkSttlmDt> contains '2026-06-04', which is before today (2026-06-05).",
+          "fix_suggestion": "Update <IntrBkSttlmDt> to today (2026-06-05) or a future date. (Line: 70)",
+          "related_test": "",
+          "line": 70
+        }
+      ],
+      "metadata": {
+        "MsgId": "MSGS946XAL1IE8OO36E",
+        "UETR": "0f8f2a18-80a4-4f9c-87a2-674d57c97fd4",
+        "Namespace": "urn:iso:std:iso:20022:tech:xsd:pacs.010.001.03"
+      },
+      "file_id": "FILE0005",
+      "batch_id": "VAL05062600001"
+    },
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n\t<AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n\t\t<Fr>\n\t\t\t<FIId>\n\t\t\t\t<FinInstnId>\n\t\t\t\t\t<BICFI>CREDGB2LXXX</BICFI>\n\t\t\t\t</FinInstnId>\n\t\t\t</FIId>\n\t\t</Fr>\n\t\t<To>\n\t\t\t<FIId>\n\t\t\t\t<FinInstnId>\n\t\t\t\t\t<BICFI>NWBKGB2LXXX</BICFI>\n\t\t\t\t</FinInstnId>\n\t\t\t</FIId>\n\t\t</To>\n\t\t<BizMsgIdr>MSGS946XAL1IE8OO36E</BizMsgIdr>\n\t\t<MsgDefIdr>pacs.010.001.03</MsgDefIdr>\n\t\t<BizSvc>swift.cbprplus.02</BizSvc>\n\t\t<CreDt>2026-06-03T10:00:00+00:00</CreDt>\n\t</AppHdr>\n\t<Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pacs.010.001.03\">\n\t\t<FIDrctDbt>\n\t\t\t<GrpHdr>\n\t\t\t\t<MsgId>MSGS946XAL1IE8OO36E</MsgId>\n\t\t\t\t<CreDtTm>2026-06-03T10:00:00+00:00</CreDtTm>\n\t\t\t\t<NbOfTxs>1</NbOfTxs>\n\t\t\t</GrpHdr>\n\t\t\t<CdtInstr>\n\t\t\t\t<CdtId>CDT0H01V2P4H3DKJM17</CdtId>\n\t\t\t\t<InstgAgt>\n\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t<BICFI>CREDGB2LXXX</BICFI>\n\t\t\t\t\t</FinInstnId>\n\t\t\t\t</InstgAgt>\n\t\t\t\t<InstdAgt>\n\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t<BICFI>NWBKGB2LXXX</BICFI>\n\t\t\t\t\t</FinInstnId>\n\t\t\t\t</InstdAgt>\n\t\t\t\t<CdtrAgt>\n\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t<BICFI>BNPPGB2LXXX</BICFI>\n\t\t\t\t\t</FinInstnId>\n\t\t\t\t</CdtrAgt>\n\t\t\t\t<Cdtr>\n\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t<BICFI>DBSSGB2LXXX</BICFI>\n\t\t\t\t\t</FinInstnId>\n\t\t\t\t</Cdtr>\n\t\t\t\t<CdtrAcct>\n\t\t\t\t\t<Id>\n\t\t\t\t\t\t<IBAN>GB48PFWA96649345111544</IBAN>\n\t\t\t\t\t</Id>\n\t\t\t\t</CdtrAcct>\n\t\t\t\t<DrctDbtTxInf>\n\t\t\t\t\t<PmtId>\n\t\t\t\t\t\t<InstrId>INSTR0IVDEL5PR7I</InstrId>\n\t\t\t\t\t\t<EndToEndId>E2ETFCAY7VHW78C3KUW</EndToEndId>\n\t\t\t\t\t\t<TxId>TXLZ9ZZQ5AYCI89I0L</TxId>\n\t\t\t\t\t\t<UETR>0f8f2a18-80a4-4f9c-87a2-674d57c97fd4</UETR>\n\t\t\t\t\t</PmtId>\n\t\t\t\t\t<PmtTpInf>\n\t\t\t\t\t\t<SvcLvl>\n\t\t\t\t\t\t\t<Cd>SDVA</Cd>\n\t\t\t\t\t\t</SvcLvl>\n\t\t\t\t\t</PmtTpInf>\n\t\t\t\t\t<IntrBkSttlmAmt Ccy=\"GBP\">469581.61</IntrBkSttlmAmt>\n\t\t\t\t\t<IntrBkSttlmDt>2026-06-04</IntrBkSttlmDt>\n\t\t\t\t\t<Dbtr>\n\t\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t\t<BICFI>BARCGB2LXXX</BICFI>\n\t\t\t\t\t\t</FinInstnId>\n\t\t\t\t\t</Dbtr>\n\t\t\t\t\t<DbtrAcct>\n\t\t\t\t\t\t<Id>\n\t\t\t\t\t\t\t<IBAN>GB17PUOG66212664695840</IBAN>\n\t\t\t\t\t\t</Id>\n\t\t\t\t\t</DbtrAcct>\n\t\t\t\t\t<DbtrAgt>\n\t\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t\t<BICFI>BNPPGB2LXXX</BICFI>\n\t\t\t\t\t\t</FinInstnId>\n\t\t\t\t\t</DbtrAgt>\n\t\t\t\t\t<RmtInf>\n\t\t\t\t\t\t<Ustrd>REFLNABISPHBMAEUTEO</Ustrd>\n\t\t\t\t\t</RmtInf>\n\t\t\t\t</DrctDbtTxInf>\n\t\t\t</CdtInstr>\n\t\t</FIDrctDbt>\n\t</Document>\n</BusMsgEnvlp>",
+    "origin": "Uploaded",
+    "deleted": false
   }
 ]
