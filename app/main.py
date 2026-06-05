@@ -26,12 +26,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.schemas import validation as schemas
 from app.schemas import fixes as fix_schemas
-from app.services.validator import ISOValidator
-from app.services.firebase_service import FirebaseHistoryService
-from app.services.schema_generator import SchemaGenerator
-from app.services.mt_mx_converter import MT2MXConverter
-from app.services.bic_refresh_service import BicRefreshService
-from app.services.bulk_generator import generate_single_xml, get_blocks_for_message
 from app.services.validation.validator import ISOValidator
 from app.services.external.firebase_service import FirebaseHistoryService
 from app.services.generation.schema_generator import SchemaGenerator
