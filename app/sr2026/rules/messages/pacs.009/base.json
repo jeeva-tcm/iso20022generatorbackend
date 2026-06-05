@@ -1,0 +1,164 @@
+{
+  "messageType": "pacs.009.001.08",
+  "version": "SR2026",
+  "businessService": "swift.cbprplus.04",
+  "validationMode": "STRICT",
+
+  "headerRules": [
+    {
+      "ruleId": "HDR001",
+      "field": "AppHdr/BizSvc",
+      "type": "FIXED_VALUE",
+      "expected": "swift.cbprplus.04",
+      "severity": "ERROR",
+      "errorCode": "PACS009_HDR_001",
+      "errorMessage": "Invalid Business Service. Expected swift.cbprplus.04.",
+      "fixSuggestion": "Set AppHdr/ BizSvc to swift.cbprplus.04."
+    },
+    {
+      "ruleId": "HDR002",
+      "field": "AppHdr/MsgDefIdr",
+      "type": "FIXED_VALUE",
+      "expected": "pacs.009.001.08",
+      "severity": "ERROR",
+      "errorCode": "PACS009_HDR_002",
+      "errorMessage": "Invalid Message Definition Identifier.",
+      "fixSuggestion": "Use pacs.009.001.08."
+    },
+    {
+      "ruleId": "HDR003",
+      "field1": "AppHdr/BizMsgIdr",
+      "field2": "Document/FICdtTrf/GrpHdr/MsgId",
+      "type": "MATCH",
+      "severity": "ERROR",
+      "errorCode": "PACS009_HDR_003",
+      "errorMessage": "BizMsgIdr must match MsgId.",
+      "fixSuggestion": "Use identical values for BizMsgIdr and MsgId."
+    }
+  ],
+
+  "groupHeaderRules": [
+    {
+      "ruleId": "GRP001",
+      "field": "GrpHdr/NbOfTxs",
+      "type": "FIXED_VALUE",
+      "expected": "1",
+      "severity": "ERROR",
+      "errorCode": "PACS009_GRP_001",
+      "errorMessage": "Number of transactions must be 1.",
+      "fixSuggestion": "Set NbOfTxs to 1."
+    },
+    {
+      "ruleId": "GRP002",
+      "field": "GrpHdr/SttlmInf/SttlmMtd",
+      "type": "ENUM",
+      "allowedValues": [
+        "INDA",
+        "INGA"
+      ],
+      "severity": "ERROR",
+      "errorCode": "PACS009_GRP_002",
+      "errorMessage": "Invalid settlement method.",
+      "fixSuggestion": "Use INDA or INGA."
+    }
+  ],
+
+  "transactionRules": [
+    {
+      "ruleId": "TXN001",
+      "field": "CdtTrfTxInf/PmtId/UETR",
+      "type": "UUID_V4",
+      "mandatory": true,
+      "severity": "ERROR",
+      "errorCode": "PACS009_TXN_001",
+      "errorMessage": "Invalid UETR.",
+      "fixSuggestion": "Provide a valid UUIDv4 UETR."
+    },
+    {
+      "ruleId": "TXN002",
+      "field": "CdtTrfTxInf/IntrBkSttlmDt",
+      "type": "DATE",
+      "format": "yyyy-MM-dd",
+      "mandatory": true,
+      "severity": "ERROR",
+      "errorCode": "PACS009_TXN_002",
+      "errorMessage": "Invalid settlement date.",
+      "fixSuggestion": "Use format YYYY-MM-DD without timezone."
+    },
+    {
+      "ruleId": "TXN003",
+      "field": "CdtTrfTxInf/IntrBkSttlmAmt",
+      "type": "AMOUNT",
+      "mandatory": true,
+      "maxDigits": 14,
+      "fractionDigits": 5,
+      "positiveOnly": true,
+      "severity": "ERROR",
+      "errorCode": "PACS009_TXN_003",
+      "errorMessage": "Invalid settlement amount.",
+      "fixSuggestion": "Provide a positive amount with max 14 digits and 5 decimals."
+    }
+  ],
+
+  "addressRules": [
+    {
+      "ruleId": "ADR001",
+      "field": "PstlAdr",
+      "type": "HYBRID_ADDRESS",
+      "mandatoryFields": [
+        "TwnNm",
+        "Ctry"
+      ],
+      "severity": "ERROR",
+      "errorCode": "PACS009_ADR_001",
+      "errorMessage": "Structured address is incomplete.",
+      "fixSuggestion": "Provide Town Name and Country."
+    }
+  ],
+
+  "bicRules": [
+    {
+      "ruleId": "BIC001",
+      "field": "InstgAgt/FinInstnId/BICFI",
+      "type": "BIC",
+      "mandatory": true,
+      "liveBicValidation": true,
+      "severity": "ERROR",
+      "errorCode": "PACS009_BIC_001",
+      "errorMessage": "Invalid instructing agent BIC.",
+      "fixSuggestion": "Provide a valid active SWIFT BIC."
+    },
+    {
+      "ruleId": "BIC002",
+      "field": "InstdAgt/FinInstnId/BICFI",
+      "type": "BIC",
+      "mandatory": true,
+      "liveBicValidation": true,
+      "severity": "ERROR",
+      "errorCode": "PACS009_BIC_002",
+      "errorMessage": "Invalid instructed agent BIC.",
+      "fixSuggestion": "Provide a valid active SWIFT BIC."
+    }
+  ],
+
+  "cbprPlusRules": [
+    {
+      "ruleId": "CBPR001",
+      "type": "SUPPLEMENTARY_DATA_NOT_ALLOWED",
+      "severity": "ERROR",
+      "errorCode": "PACS009_CBPR_001",
+      "errorMessage": "SupplementaryData is not allowed in CBPR+.",
+      "fixSuggestion": "Remove SupplementaryData block."
+    },
+    {
+      "ruleId": "CBPR002",
+      "type": "SERVICE_LEVEL",
+      "field": "PmtTpInf/SvcLvl/Cd",
+      "expected": "G004",
+      "severity": "ERROR",
+      "errorCode": "PACS009_CBPR_002",
+      "errorMessage": "Invalid GPI Service Level Code.",
+      "fixSuggestion": "Use G004 for pacs.009."
+    }
+  ]
+}

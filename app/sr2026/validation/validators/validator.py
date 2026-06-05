@@ -9,6 +9,7 @@ from app.sr2026.validation.delta_rules.address_validator import AddressValidator
 from app.sr2026.validation.delta_rules.lei_validator import LEIValidator
 from app.sr2026.validation.delta_rules.tax_validator import TaxValidator
 from app.sr2026.validation.delta_rules.new_mandatory_fields import NewMandatoryFieldsValidator
+from app.sr2026.validation.delta_rules.pacs009_validator import Pacs009Validator
 from app.sr2026.validation.delta_rules.warning_engine import WarningEngine
 from app.schemas.api_validation import ApiValidateResponse, ApiIssue
 
@@ -91,6 +92,9 @@ class SR2026Validator:
 
         # Step 9: Delta rules - New mandatory fields
         NewMandatoryFieldsValidator.validate(root_element, report)
+
+        # Step 9.5: Pacs.009 specific rules
+        Pacs009Validator.validate(root_element, report, message_type)
 
         # Step 10: Warning Engine
         WarningEngine.evaluate(root_element, report)
