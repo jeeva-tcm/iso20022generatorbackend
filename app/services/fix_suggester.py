@@ -1576,7 +1576,7 @@ class FixSuggester:
                 "If", "Then", "Must", "Should", "When", "Add", "Use", "The",
                 "This", "Valid", "Invalid", "Missing", "Error", "Warning",
                 "Required", "Mandatory", "Rule", "Field", "Value", "Code",
-                "ISO", "CBPR", "And", "Or", "Not", "For", "BIC", "IBAN", "UETR",
+                "ISO", "CBPR", "And", "Or", "Not", "For", "BIC", "UETR",
             }
             tags = [t for t in tags if t not in skipwords]
 
@@ -2772,7 +2772,8 @@ class FixSuggester:
         # (e.g. the validator caught the error but lxml happens to be lenient
         # enough to parse it anyway) gets the dedicated repair path.
         _is_syntax_code = code in ("XML_SYNTAX", "XML Syntax Error",
-                                   "XML Markup Error", "Invalid Characters")
+                                   "XML Markup Error", "Invalid Characters",
+                                   "Missing Header")
         # Only route to XML recovery when there are ACTUAL unescaped ampersands
         # (e.g. "Smith & Jones").  Valid XML entities like &gt; &amp; &lt; are
         # already correct and must NOT trigger recovery — doing so would return
@@ -2801,6 +2802,49 @@ class FixSuggester:
         dup_fix = self._try_remove_duplicate(root, code, msg)
         if dup_fix is not None:
             return dup_fix
+
+        # ── IBAN format/pattern error: replace with a valid IBAN ────────────────
+        # L2 reports "Invalid IBAN format: 'XXXX'" when the value lacks the
+        # 2-letter country prefix (e.g. '60161331926819' or '11112222333344').
+        # _recover_target_from_message now finds <IBAN> elements (IBAN removed
+        # from skipwords), but _regenerate_value's same-tag harvest can pick
+        # US12345678901231 (non-real IBAN country) before a proper GB IBAN.
+        # This handler finds the exact bad element and selects a real IBAN.
+        if "iban" in msg.lower() and any(k in msg.lower() for k in ("format", "invalid", "pattern")):
+            _bad_m = re.search(r"'([^']+)'", msg)
+            _bad_iban = _bad_m.group(1).strip() if _bad_m else None
+            _iban_els = [e for e in root.iter()
+                         if isinstance(e.tag, str) and etree.QName(e.tag).localname == "IBAN"]
+            _iban_target = None
+            if _bad_iban:
+                _iban_target = next((e for e in _iban_els
+                                     if (e.text or "").strip() == _bad_iban), None)
+            if _iban_target is None and line_hint is not None and _iban_els:
+                _iban_target = min(_iban_els, key=lambda e: abs((e.sourceline or 0) - line_hint))
+            elif _iban_target is None and _iban_els:
+                _iban_target = _iban_els[0]
+            if _iban_target is not None:
+                _iban_pat = re.compile(r'^[A-Z]{2}[0-9]{2}[A-Z0-9]{10,30}$')
+                _non_iban_ctry = {"US", "CA", "AU", "NZ", "HK", "SG", "JP", "CN", "IN"}
+                _good_iban = None
+                for _other in _iban_els:
+                    if _other is _iban_target:
+                        continue
+                    _t = (_other.text or "").strip()
+                    if _t and _iban_pat.match(_t) and _t[:2].upper() not in _non_iban_ctry:
+                        _good_iban = _t
+                        break
+                if _good_iban is None:
+                    _ibdata = _kb_get("dummy_data.ibans", {}) or {}
+                    _good_iban = (_ibdata.get("default") if isinstance(_ibdata, dict)
+                                  else None) or "GB29NWBK60161331926819"
+                if _good_iban != (_iban_target.text or "").strip():
+                    _tc = self._copy(_iban_target)
+                    _tc.text = _good_iban
+                    return FixSuggestion(
+                        self._xpath_of(_iban_target), self._serialize(_iban_target),
+                        self._serialize(_tc), code, msg, "high"
+                    )
 
         # ── Route: BizSvc wrong pattern (e.g. 'swift..02') ─────────────────────
         # HEAD001_BIZSVC_FORMAT is emitted with path=line-number, not an XPath,
@@ -3260,6 +3304,58 @@ class FixSuggester:
             if _bic_fix is not None:
                 return _bic_fix
 
+        # ── Route: AppHdr Fr/To BICFI must match InstgAgt/InstdAgt BICFI ────────
+        # Codes: CBPR_R3 (pacs.008 rules), L3-PACS-MATCH-TO/FR (shared pacs.json),
+        # CBPR_R3 variants for other message families. Path is a line number and
+        # the AppHdr BIC is format-valid, so the normal path-walk is a no-op.
+        _BIC_HEADER_CODES = {
+            "CBPR_R3", "CBPR_P9_R2", "CBPR_P9_R3",
+            "L3-PACS-MATCH-TO", "L3-PACS-MATCH-FR",
+        }
+        _msg_lc = msg.lower()
+        _is_bic_header_msg = (
+            "apphdr" in _msg_lc and "bicfi" in _msg_lc
+            and ("instdagt" in _msg_lc or "instgagt" in _msg_lc)
+        )
+        if code in _BIC_HEADER_CODES or _is_bic_header_msg:
+            _r3_fix = self._fix_cbpr_r3_bic(root, code, msg)
+            if _r3_fix is not None:
+                return _r3_fix
+
+        # ── Route: NbOfTxs count mismatch ─────────────────────────────────────
+        # Path is a line number; element value is numeric-valid so _fix_value
+        # won't update it. Route directly to count-aware fixer.
+        if code in ("NBOFTXS_MISMATCH", "PACS008_NBOFTXS_EQ_TX_COUNT"):
+            _nb_fix = self._fix_nb_of_txs(root, code, msg)
+            if _nb_fix is not None:
+                return _nb_fix
+
+        # ── Route: Wrong Namespace — strip extra version components ───────────
+        # Layer 1 emits "Wrong Namespace" when xmlns has extra dot-segments
+        # (e.g. pacs.004.001.09.12.12.12). Fix by truncating to 4 components.
+        if code == "Wrong Namespace":
+            _ns_fix = self._fix_wrong_namespace(xml, code, msg)
+            if _ns_fix is not None:
+                return _ns_fix
+
+        # ── Route: CURR_IBAN_MISMATCH — currency doesn't match IBAN country ──
+        # Path may be the IBAN key (no @Ccy suffix), so attr routing misses it.
+        if code == "CURR_IBAN_MISMATCH":
+            _ccy_fix = self._fix_iban_currency_mismatch(root, code, msg, fix_hint)
+            if _ccy_fix is not None:
+                return _ccy_fix
+
+        # ── Route: XchgRate must be removed (currencies are identical) ────────
+        # PACS008_NO_XCHGRATE_IF_SAME_CCY / PACS003_XCHGRATE_FORBIDDEN_WHEN_INSTD_SAME
+        # The fix is deletion, not a value change — intercept before _fix_value
+        # would repair the decimal to a plausible rate (1.0).
+        if "NO_XCHGRATE" in code or "XCHGRATE_FORBIDDEN" in code:
+            for _xr_el in root.iter():
+                if isinstance(_xr_el.tag, str) and etree.QName(_xr_el.tag).localname == "XchgRate":
+                    _xr_fix = self._remove_element_fix(_xr_el, code, msg)
+                    if _xr_fix is not None:
+                        return _xr_fix
+
         # If the issue's fix_hint is empty, try to pull `fix` from the matching
         # rule so downstream value-extraction has something to work with.
         if not fix_hint and rules_idx:
@@ -3540,6 +3636,198 @@ class FixSuggester:
                 return c
 
         return None
+
+    def _fix_cbpr_r3_bic(
+        self, root: "etree._Element", code: str, msg: str
+    ) -> Optional["FixSuggestion"]:
+        """
+        Fix CBPR_R3 / L3-PACS-MATCH-TO / L3-PACS-MATCH-FR:
+        AppHdr/To BICFI must equal InstdAgt BICFI  (or Fr ↔ InstgAgt).
+        Document body is authoritative; update the header side.
+        """
+        apphdr = root.find(".//{*}AppHdr")
+        if apphdr is None and etree.QName(root.tag).localname == "AppHdr":
+            apphdr = root
+        if apphdr is None:
+            return None
+
+        # Determine which header role / doc role to fix from code or message.
+        is_fr_side = (
+            code == "L3-PACS-MATCH-FR"
+            or "instgagt" in msg.lower()
+            or ("fr" in msg.lower() and "to" not in msg.lower())
+        )
+        header_role = "Fr" if is_fr_side else "To"
+        doc_agent  = "instgagt" if is_fr_side else "instdagt"
+
+        # Extract target BIC from message: "(Header: 'X' vs Doc: 'Y')"
+        doc_bic_m = re.search(
+            r"(?:Doc|document)[^']*'([A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)'", msg, re.I
+        )
+        target_bic = doc_bic_m.group(1).strip() if doc_bic_m else None
+
+        # Fallback: scan document body for the canonical agent BICFI.
+        if not target_bic:
+            apphdr_ids = {id(el) for el in apphdr.iter()}
+            for el in root.iter():
+                if not isinstance(el.tag, str) or id(el) in apphdr_ids:
+                    continue
+                if etree.QName(el.tag).localname != "BICFI":
+                    continue
+                if f"/{doc_agent}/" in self._xpath_of(el).lower():
+                    target_bic = (el.text or "").strip()
+                    break
+
+        if not target_bic:
+            return None
+
+        # Find AppHdr/<header_role>/.../BICFI
+        header_bicfi_el = None
+        for hr_el in apphdr.iter():
+            if not isinstance(hr_el.tag, str):
+                continue
+            if etree.QName(hr_el.tag).localname == header_role:
+                for desc in hr_el.iter():
+                    if isinstance(desc.tag, str) and etree.QName(desc.tag).localname == "BICFI":
+                        header_bicfi_el = desc
+                        break
+                break
+
+        if header_bicfi_el is None or (header_bicfi_el.text or "").strip() == target_bic:
+            return None
+
+        xpath = self._xpath_of(header_bicfi_el)
+        original_fragment = self._serialize(header_bicfi_el)
+        el_copy = self._copy(header_bicfi_el)
+        el_copy.text = target_bic
+        return FixSuggestion(
+            xpath=xpath,
+            original_fragment=original_fragment,
+            fragment_xml=self._serialize(el_copy),
+            issue_code=code,
+            issue_message=msg,
+            confidence="high",
+        )
+
+    def _fix_nb_of_txs(
+        self, root: "etree._Element", code: str, msg: str
+    ) -> Optional["FixSuggestion"]:
+        """
+        Fix NBOFTXS_MISMATCH / PACS008_NBOFTXS_EQ_TX_COUNT: update NbOfTxs to
+        match actual transaction element count. Preferred over _fix_value because
+        the path is a line number so the normal path-walk never finds NbOfTxs.
+        """
+        TX_TAGS = {"CdtTrfTxInf", "DrctDbtTxInf", "TxInfAndSts", "PmtInf", "TxInf"}
+        count = sum(
+            1 for n in root.iter()
+            if isinstance(n.tag, str) and etree.QName(n.tag).localname in TX_TAGS
+        )
+        # Also trust the count stated in the error message (more precise for edge
+        # cases where TX_TAGS might not cover all message families).
+        msg_count_m = re.search(r"actually contains (\d+)", msg)
+        if msg_count_m:
+            count = int(msg_count_m.group(1))
+
+        nb_el = None
+        for el in root.iter():
+            if isinstance(el.tag, str) and etree.QName(el.tag).localname == "NbOfTxs":
+                nb_el = el
+                break
+
+        if nb_el is None or count == 0:
+            return None
+        if str(count) == (nb_el.text or "").strip():
+            return None
+
+        xpath = self._xpath_of(nb_el)
+        original = self._serialize(nb_el)
+        el_copy = self._copy(nb_el)
+        el_copy.text = str(count)
+        return FixSuggestion(xpath, original, self._serialize(el_copy), code, msg, "high")
+
+    def _fix_wrong_namespace(
+        self, xml: str, code: str, msg: str
+    ) -> Optional["FixSuggestion"]:
+        """
+        Fix Wrong Namespace: truncate extra version components from an ISO 20022
+        namespace (e.g. pacs.004.001.09.12.12.12 → pacs.004.001.09).
+        Returns a whole-document replacement (xpath="/").
+        """
+        ns_m = re.search(r"namespace '([^']+)'", msg)
+        if not ns_m:
+            return None
+        bad_ns = ns_m.group(1)
+
+        ISO_PREFIX = "urn:iso:std:iso:20022:tech:xsd:"
+        if not bad_ns.startswith(ISO_PREFIX):
+            return None
+
+        parts = bad_ns[len(ISO_PREFIX):].split(".")
+        if len(parts) <= 4:
+            return None  # Already standard length — nothing to truncate.
+
+        good_ns = ISO_PREFIX + ".".join(parts[:4])
+        fixed_xml = xml.replace(bad_ns, good_ns)
+        if fixed_xml == xml:
+            return None
+
+        try:
+            etree.fromstring(fixed_xml.encode("utf-8"))
+        except etree.XMLSyntaxError:
+            return None
+
+        return FixSuggestion("/", xml, fixed_xml, code, msg, "high")
+
+    def _fix_iban_currency_mismatch(
+        self, root: "etree._Element", code: str, msg: str, fix_hint: str
+    ) -> Optional["FixSuggestion"]:
+        """
+        Fix CURR_IBAN_MISMATCH: update the currency Ccy attribute on the relevant
+        amount element to match the currency expected for the IBAN country.
+        """
+        combined = f"{msg} {fix_hint}"
+        # Extract expected currency: "expected currency SEK" / "currency to SEK"
+        ccy_m = re.search(
+            r"(?:expected\s+currency|update.*?currency\s+to|currency\s+to)\s+([A-Z]{3})\b",
+            combined, re.I
+        )
+        if not ccy_m:
+            ccy_m = re.search(r"\b([A-Z]{3})\b.*?(?:for|IBAN|account|country)", combined, re.I)
+        if not ccy_m:
+            return None
+        expected_ccy = ccy_m.group(1).upper()
+
+        wrong_ccy_m = re.search(r"Currency\s+([A-Z]{3})\s+does not match", msg, re.I)
+        wrong_ccy = wrong_ccy_m.group(1).upper() if wrong_ccy_m else None
+
+        PREF_TAGS = {"IntrBkSttlmAmt", "RtrdIntrBkSttlmAmt", "InstdAmt",
+                     "RtrdInstdAmt", "TtlIntrBkSttlmAmt"}
+        target_el = None
+        # Priority: preferred amount tags with the wrong currency
+        for el in root.iter():
+            if not isinstance(el.tag, str):
+                continue
+            local = etree.QName(el.tag).localname
+            ccy = el.get("Ccy")
+            if ccy is None:
+                continue
+            if local in PREF_TAGS and (not wrong_ccy or ccy == wrong_ccy):
+                target_el = el
+                break
+        # Fallback: any element with the wrong Ccy value
+        if target_el is None and wrong_ccy:
+            for el in root.iter():
+                if isinstance(el.tag, str) and el.get("Ccy") == wrong_ccy:
+                    target_el = el
+                    break
+
+        if target_el is None or target_el.get("Ccy") == expected_ccy:
+            return None
+
+        return self._fix_attribute(
+            target_el, "Ccy", code, msg,
+            f"Update the transaction currency to {expected_ccy}",
+        )
 
     def _fix_bah_assgnr_assgne_bic(
         self, root: "etree._Element", code: str, msg: str
@@ -6030,7 +6318,7 @@ class FixSuggester:
             except Exception:
                 root = None
             if root is not None:
-                TX_TAGS = {"CdtTrfTxInf", "DrctDbtTxInf", "TxInfAndSts", "PmtInf"}
+                TX_TAGS = {"CdtTrfTxInf", "DrctDbtTxInf", "TxInfAndSts", "PmtInf", "TxInf"}
                 if el_local == "NbOfTxs":
                     count = sum(
                         1 for n in root.iter()
@@ -7063,6 +7351,18 @@ class FixSuggester:
                 issue_message=msg,
                 confidence="high",
             )
+
+        # ── Stage 0c: fix malformed XML declaration (e.g. <,?xml → <?xml) ──────
+        # Layer 1 emits "Missing Header" when the declaration is absent or broken
+        # (e.g. a comma inserted before ?xml). Correct the opening characters so
+        # the rest of the recovery pipeline can parse the document.
+        _decl_fix = re.sub(r'<[^?\s](\?xml)', r'<\1', xml, count=1)
+        if _decl_fix != xml:
+            try:
+                etree.fromstring(_decl_fix.encode("utf-8"))
+                return _make_suggestion(_decl_fix)
+            except etree.XMLSyntaxError:
+                pass
 
         # ── Stage 0: surgical unclosed-tag insert ────────────────────────────
         if "unclosed" in msg.lower():
