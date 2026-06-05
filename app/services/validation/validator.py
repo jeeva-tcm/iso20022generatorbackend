@@ -57,6 +57,13 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
         self._message_type_cache = []
         self._last_cache_update = 0
         self._cache_duration = 3600 # 1 hour
+
+        # Memoized XSD path lookups. _get_xsd_path() does an os.listdir() fallback
+        # scan on every call (the XSD filenames are versioned, so the exact-match
+        # almost always misses and the directory scan fires). The result is
+        # deterministic per message_type, so cache it — this was ~57ms of
+        # nt.listdir per validation batch.
+        self._xsd_path_cache: Dict[str, Optional[str]] = {}
         
         # Load Reference Data
         self._ensure_xsds_extracted()
@@ -106,38 +113,83 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
         return {}
 
     def _load_bics(self) -> Set[str]:
-        """Loads BIC codes from the entities.ftm.json file (JSONL format)"""
+        """
+        Loads BIC codes from the entities.ftm.json file (JSONL format).
+
+        Parsing the 19 MB JSONL line-by-line costs ~0.3s and is paid on every
+        process (re)start — which dominates the dev `--reload` cycle. We cache
+        the parsed result to a pickle keyed by the source file's (mtime, size);
+        a subsequent start with an unchanged source loads it in a few ms. The
+        output (the BIC set + self.bic_records) is byte-for-byte identical to a
+        full parse, and any change to the source file invalidates the cache.
+        """
         bics = set()
         self.bic_records = [] # Store simplified records for search
         file_path = os.path.join(self.bics_path, "entities.ftm.json")
-        if os.path.exists(file_path):
+        if not os.path.exists(file_path):
+            return bics
+
+        cache_path = os.path.join(self.bics_path, "entities.ftm.cache.pkl")
+        sig = None
+        try:
+            st = os.stat(file_path)
+            sig = (int(st.st_mtime), st.st_size)
+        except OSError:
+            sig = None
+
+        # Fast path: reuse the cache when the source file is unchanged.
+        if sig is not None and os.path.exists(cache_path):
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    for i, line in enumerate(f, 1):
-                        if not line.strip(): continue
-                        try:
-                            data = json.loads(line)
-                            props = data.get("properties", {})
-                            swift_bics = props.get("swiftBic", [])
-                            name = str(data.get("caption") or props.get("name", ["Unknown Bank"])[0])
-                            country = str(props.get("country", [""])[0]).upper()
-                            address = str(props.get("address", [""])[0])
-                            
-                            for bic in swift_bics:
-                                if not bic: continue
-                                bic_upper = str(bic).upper()
-                                bics.add(bic_upper)
-                                self.bic_records.append({
-                                    "bic": bic_upper,
-                                    "name": name,
-                                    "country": country,
-                                    "address": address
-                                })
-                        except Exception as e:
-                            print(f"Skipping line {i} in entities.ftm.json due to error: {e}")
-                            continue
+                import pickle
+                with open(cache_path, "rb") as cf:
+                    cached = pickle.load(cf)
+                if cached.get("sig") == sig:
+                    self.bic_records = cached["records"]
+                    return set(cached["bics"])
             except Exception as e:
-                print(f"Error loading BICs from {file_path}: {e}")
+                print(f"[BIC Cache] ignoring unreadable cache: {e}")
+
+        # Slow path: parse the JSONL source.
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                for i, line in enumerate(f, 1):
+                    if not line.strip(): continue
+                    try:
+                        data = json.loads(line)
+                        props = data.get("properties", {})
+                        swift_bics = props.get("swiftBic", [])
+                        name = str(data.get("caption") or props.get("name", ["Unknown Bank"])[0])
+                        country = str(props.get("country", [""])[0]).upper()
+                        address = str(props.get("address", [""])[0])
+
+                        for bic in swift_bics:
+                            if not bic: continue
+                            bic_upper = str(bic).upper()
+                            bics.add(bic_upper)
+                            self.bic_records.append({
+                                "bic": bic_upper,
+                                "name": name,
+                                "country": country,
+                                "address": address
+                            })
+                    except Exception as e:
+                        print(f"Skipping line {i} in entities.ftm.json due to error: {e}")
+                        continue
+        except Exception as e:
+            print(f"Error loading BICs from {file_path}: {e}")
+            return bics
+
+        # Write the cache for the next start (best-effort — never fatal).
+        if sig is not None:
+            try:
+                import pickle
+                tmp_path = cache_path + ".tmp"
+                with open(tmp_path, "wb") as cf:
+                    pickle.dump({"sig": sig, "bics": list(bics), "records": self.bic_records},
+                                cf, protocol=pickle.HIGHEST_PROTOCOL)
+                os.replace(tmp_path, cache_path)
+            except Exception as e:
+                print(f"[BIC Cache] could not write cache: {e}")
         return bics
 
     def reload_bics(self) -> None:
@@ -447,6 +499,11 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                     # different schemas; this is a frequent integration/routing bug.
                     self._validate_apphdr_payload_match(xml_content, report)
 
+                    # KB-driven cross-tag dependency rules (resources/KB/<family>.json),
+                    # e.g. BizMsgIdr must equal GrpHdr/MsgId. Enforces documented CBPR+
+                    # rules not covered elsewhere; dedup-guarded so it never double-reports.
+                    self._validate_kb_dependency_rules(xml_content, report, detected_type)
+
                     # SWIFT CBPR+ Rule: pain.008 GrpHdr must contain FwdgAgt.
                     # Base XSD declares FwdgAgt optional, but SWIFT MyStandards
                     # promotes it to mandatory for cross-border direct debits.
@@ -479,9 +536,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             if l1_l2_errors > 0:
                 report.layer_status['3'] = {"status": "SKIPPED", "time": 0}
                 return self._finalize_report(report, start_time)
-            
-            print(f"DEBUG: Entering Layer 3 normalization...")
-            
+
             # STEP 5: Canonical Normalization for Rule Execution
             try:
                 canonical_data, line_map = self._normalize_message(xml_content)
@@ -658,11 +713,15 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             r'</\1>'                               # matching closing tag
         )
 
-        seen = set()  # avoid duplicate errors for the same tag+value
+        seen = set()  # avoid duplicate errors for the EXACT same occurrence
         for m in xml_date_patt.finditer(xml_content):
             tag_name  = m.group(1)
             raw_value = m.group(2).strip()
-            key = (tag_name, raw_value)
+            # Include the byte-offset so multiple occurrences of the same
+            # (tag, value) pair (e.g. AppHdr/CreDtTm AND GrpHdr/CreDtTm both
+            # holding the same past datetime) each get their own issue and
+            # therefore their own fix suggestion.
+            key = (tag_name, raw_value, m.start())
             if key in seen:
                 continue
             seen.add(key)
@@ -719,7 +778,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
         any XSD errors (e.g. invalid amounts, IBANs, UETRs).
 
         Field limits enforced:
-          InstrId      → max 35 chars
+          InstrId      → max 16 chars (CBPR+ RestrictedFINXMax16Text)
           EndToEndId   → max 35 chars
           BizMsgIdr    → max 35 chars
           MsgId        → max 35 chars
@@ -730,7 +789,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
         # which checks UUID v4 format fully, so it is excluded here to avoid
         # double-reporting.
         ID_MAX_LENGTHS = {
-            "InstrId":    35,
+            "InstrId":    16,
             "EndToEndId": 35,
             "BizMsgIdr":  35,
             "MsgId":      35,
@@ -771,6 +830,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
 
     def _validate_cbpr_datetime(self, xml_content: str, report: ValidationReport) -> None:
         r"""
+        r"""
         Step 4.21 — CBPR+ DateTime Format Validation
         Enforces:
           1. Timezone offset is mandatory (e.g., +00:00, +05:30)
@@ -809,19 +869,24 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                 if 'T' in raw_value:
                     line_num = xml_content.count('\n', 0, m.start()) + 1
                     report.add_issue(ValidationIssue(
-                        "ERROR", 2, "CBPR_DATETIME_MS_FORBIDDEN", str(line_num),
+                        "ERROR", 2, "CBPR_DATETIME_MILLISECONDS", str(line_num),
                         f"Element <{tag_name}> contains milliseconds which are forbidden in CBPR+.",
                         f"Remove the decimal part (e.g., '.415') from the time."
                     ))
                     continue
 
             # 3. Check for mandatory offset using the user-provided regex
-            # Regex: .*(\+|-)((0[0-9])|(1[0-4])):[0-5][0-9]
+            # Skip garbage values that aren't datetimes at all (e.g. 'with', 'abc').
+            # Those are already caught by XSD validation; emitting a CBPR timezone
+            # error on top produces a confusing duplicate with contradictory hints.
+            if not re.match(r'^\d{4}-\d{2}-\d{2}T', raw_value):
+                continue
+
             offset_patt = re.compile(r'.*(\+|-)((0[0-9])|(1[0-4])):[0-5][0-9]$')
             if not offset_patt.match(raw_value):
                 line_num = xml_content.count('\n', 0, m.start()) + 1
                 report.add_issue(ValidationIssue(
-                    "ERROR", 2, "CBPR_DATETIME_OFFSET_MANDATORY", str(line_num),
+                    "ERROR", 2, "CBPR_DATETIME_NO_TIMEZONE", str(line_num),
                     f"Element <{tag_name}> is missing a mandatory timezone offset.",
                     f"Ensure the format is YYYY-MM-DDThh:mm:ss(+/-)HH:MM (e.g., +00:00)."
                 ))
@@ -966,6 +1031,8 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             'TxDtls':            "Refs, Amt, or RltdPties",
             # ── Account identification choice ──
             'AcctId':            "<IBAN> or <Othr> with an identifier",
+            # ── Party identification (camt.056 Cretr, etc.) ──
+            'Pty':               "Nm (party name) and PstlAdr (postal address with Ctry)",
         }
 
         # Party/agent wrappers — must contain *some* identifying child
@@ -1126,6 +1193,13 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                 f"Header and payload must reference the same ISO 20022 message definition."
             ))
 
+        # 2. BizSvc — MANDATORY under CBPR+ / SWIFT MyStandards.
+        #    The base head.001 XSD declares <BizSvc> as minOccurs="0", so a message
+        #    WITHOUT it is XSD-valid yet REJECTED by MyStandards ("CreDt not
+        #    expected here … expected BizSvc", because MyStandards makes BizSvc
+        #    mandatory before CreDt). That is exactly the "passes in our validator
+        #    but fails in MyStandards" gap — so we enforce presence as a hard error
+        #    here, then validate the format when it IS present.
         # 2. BizSvc format — validated against the UsageIdentifierPatternText from ISO 20022 /
         #    CBPR+ SR2025 (page 184 of the pacs.010.001.03 usage guideline):
         #      [a-z0-9]{1,10}\.([a-z0-9]{1,10}\.)+\d\d
@@ -1138,6 +1212,32 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             r'^[a-z0-9]{1,10}(\.[a-z0-9]{1,10})+\.\d{2}$'
         )
         biz_svc_el = app_hdr.find(".//{*}BizSvc")
+        biz_svc = (biz_svc_el.text or "").strip() if biz_svc_el is not None else ""
+        if not biz_svc:
+            # Anchor the error to MsgDefIdr (BizSvc must immediately follow it) or
+            # the AppHdr itself when MsgDefIdr is also absent. Use an /AppHdr/BizSvc
+            # path (not a bare line number) so the fix-suggester's namespace-aware,
+            # KB-ordered AppHdr inserter places <BizSvc> in the correct slot.
+            anchor = msg_def_idr_el if msg_def_idr_el is not None else app_hdr
+            line_no = (anchor.sourceline if anchor is not None else None)
+            report.add_issue(ValidationIssue(
+                "ERROR", 2, "HEAD001_BIZSVC_MISSING", "/AppHdr/BizSvc",
+                "AppHdr.BizSvc is missing. The business service is MANDATORY under "
+                "CBPR+ / SWIFT MyStandards, even though the base head.001 XSD marks it "
+                "optional — a message without it is rejected by MyStandards.",
+                "Add <BizSvc>swift.cbprplus.02</BizSvc> to the AppHdr, immediately after "
+                "<MsgDefIdr> and before <CreDt>.",
+                line=line_no,
+            ))
+        elif not re.match(r'^swift\.[a-z]+(\.[a-z]+)?(\.[0-9]+)?$', biz_svc):
+            line = str(biz_svc_el.sourceline or "?")
+            report.add_issue(ValidationIssue(
+                "WARNING", 2, "HEAD001_BIZSVC_FORMAT", line,
+                f"AppHdr.BizSvc '{biz_svc}' does not match the SWIFT business service "
+                f"pattern 'swift.<service>.NN'.",
+                "Use a recognised value such as 'swift.cbprplus.02' (CBPR+ SR2025), "
+                "'swift.cbprplus.01', 'swift.hvps.01', or 'swift.csp.02'."
+            ))
         if biz_svc_el is not None and biz_svc_el.text:
             biz_svc = biz_svc_el.text.strip()
             if not _BIZSVC_PATTERN.match(biz_svc):
@@ -1176,6 +1276,64 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                     "For consistency, use the same UTC offset in both header and payload "
                     "timestamps (e.g. both '+00:00' or both '+05:30')."
                 ))
+
+    def _validate_kb_dependency_rules(self, xml_content: str, report: ValidationReport,
+                                       message_type: str) -> None:
+        """
+        Enforce cross-tag dependency rules documented in resources/KB/<family>.json
+        that are not already covered by the dedicated validators above.
+
+        Currently enforces:
+          • CBPR_BIZ_MSG_IDR / DEP_001 — AppHdr/BizMsgIdr must equal GrpHdr/MsgId.
+
+        The rule set is driven by the KB (we only emit a check when the KB for this
+        message family actually declares the rule), and every issue is dedup-guarded
+        against the existing report so it can never double-report.
+        """
+        try:
+            from app.services.fix_suggester import _KBContext
+        except Exception:
+            return
+        kb = _KBContext.get(message_type or "")
+        if kb is None:
+            return
+
+        try:
+            parser = etree.XMLParser(recover=True, no_network=True, resolve_entities=False)
+            root = etree.fromstring(xml_content.encode("utf-8"), parser)
+        except Exception:
+            return
+        if root is None:
+            return
+
+        existing_codes = {i.get("code") for i in report.issues}
+
+        # ── BizMsgIdr == GrpHdr/MsgId ─────────────────────────────────────────
+        rule_declared = (
+            any(isinstance(fr, dict) and fr.get("rule_id") == "CBPR_BIZ_MSG_IDR" for fr in kb.formal_rules)
+            or any(isinstance(r, dict) and "BizMsgIdr" in r.get("rule", "") and "MsgId" in r.get("rule", "")
+                   for r in kb.dependency_rules)
+        )
+        if rule_declared and "BIZMSGIDR_NEQ_MSGID" not in existing_codes:
+            biz_el = root.find(".//{*}BizMsgIdr")
+            # GrpHdr/MsgId specifically — the documented counterpart. Messages
+            # that carry their identifier elsewhere (e.g. camt.055 Assgnmt/Id)
+            # simply aren't checked here, avoiding false positives.
+            msgid_el = root.find(".//{*}GrpHdr/{*}MsgId")
+            if biz_el is not None and msgid_el is not None:
+                bv = (biz_el.text or "").strip()
+                mv = (msgid_el.text or "").strip()
+                if bv and mv and bv != mv:
+                    # Emitted as Layer 2 (like the other AppHdr cross-field checks)
+                    # so it surfaces even when Layer 2 schema errors are present and
+                    # isn't dropped by the Layer-3 SKIPPED cleanup.
+                    report.add_issue(ValidationIssue(
+                        "ERROR", 2, "BIZMSGIDR_NEQ_MSGID", "/AppHdr/BizMsgIdr",
+                        f"AppHdr/BizMsgIdr '{bv}' must equal GrpHdr/MsgId '{mv}'.",
+                        "Set <BizMsgIdr> to the same value as GrpHdr/MsgId "
+                        f"(i.e. '{mv}'). Always harvest from MsgId rather than inventing a value.",
+                        line=biz_el.sourceline
+                    ))
 
     def _validate_pain008_fwdgagt_rule(self, xml_content: str, report: ValidationReport) -> None:
         """
@@ -2009,6 +2167,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
 
     def _validate_swift_charset(self, xml_content: str, report: ValidationReport) -> None:
         r"""
+        r"""
         Step 4.10 — SWIFT Character Set Validation
         Checks <Ustrd> (unstructured remittance) content for characters
         outside the permitted ISO 20022 MX character set.
@@ -2638,32 +2797,36 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
         ])
         
         res = "Unknown"
-        # 1. Broad Namespace Search (Handles single/double quotes)
-        ns_patterns = self.config.get("validation_rules", {}).get("namespace_patterns", [
-            r'xmlns[:\w]*\s*=\s*["\']urn:iso:std:iso:20022:tech:xsd:([^"\']+)["\']',
-            r'xmlns[:\w]*\s*=\s*["\']urn:swift:xsd:([^"\']+)["\']'
-        ])
-        
-        candidates = []
-        for pattern in ns_patterns:
-            for match in re.finditer(pattern, xml_content[:scan_limit]): # Dynamic Scan Limit
-                val = match.group(1).strip()
-                # Prioritize non-header and non-envelope types
-                if all(x not in val.lower() for x in ["head.001", "envelope", "busmsgenvlp"]):
-                    res = val
-                    break
-                candidates.append(val)
-            if res != "Unknown": break
-        
-        # If no payload namespace, check candidates
-        if res == "Unknown" and candidates:
-            res = candidates[0]
 
-        # 2. MsgDefIdr Tag Search (Often has the correct Business Type)
+        # 1. MsgDefIdr — authoritative explicit declaration. Check FIRST so a
+        #    camt.056 message whose <Document> accidentally carries a pacs.008
+        #    namespace doesn't get detected as pacs.008 and validated against the
+        #    wrong XSD (producing a confusing "expected FIToFICstmrCdtTrf" error).
+        match_hdr = re.search(r'<MsgDefIdr>([^<]+)</MsgDefIdr>', xml_content)
+        if match_hdr:
+            res = match_hdr.group(1).strip()
+
+        # 2. Broad Namespace Search (Handles single/double quotes)
         if res == "Unknown":
-            match_hdr = re.search(r'<MsgDefIdr>([^<]+)</MsgDefIdr>', xml_content)
-            if match_hdr:
-                res = match_hdr.group(1).strip()
+            ns_patterns = self.config.get("validation_rules", {}).get("namespace_patterns", [
+                r'xmlns[:\w]*\s*=\s*["\']urn:iso:std:iso:20022:tech:xsd:([^"\']+)["\']',
+                r'xmlns[:\w]*\s*=\s*["\']urn:swift:xsd:([^"\']+)["\']'
+            ])
+
+            candidates = []
+            for pattern in ns_patterns:
+                for match in re.finditer(pattern, xml_content[:scan_limit]):
+                    val = match.group(1).strip()
+                    # Prioritize non-header and non-envelope types
+                    if all(x not in val.lower() for x in ["head.001", "envelope", "busmsgenvlp"]):
+                        res = val
+                        break
+                    candidates.append(val)
+                if res != "Unknown": break
+
+            # If no payload namespace, check candidates
+            if res == "Unknown" and candidates:
+                res = candidates[0]
 
         # 3. Root Tag Heuristic (e.g. <pacs.008.001.08 ...>)
         if res == "Unknown":
@@ -2774,10 +2937,24 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
         1. Exact Match (e.g. pacs.008.001.08.xsd)
         2. Family Fallback (e.g. pacs.008.xsd)
         3. Version Fallback (Look for highest available version e.g. .13)
+
+        Memoized: the filesystem layout is fixed for a process lifetime, so the
+        path for a given message_type is computed once and cached. The fallback
+        branch does an os.listdir() scan which is comparatively expensive to
+        repeat on every validation.
         """
         if not message_type or message_type == "Unknown":
             return None
 
+        cached = self._xsd_path_cache.get(message_type)
+        if cached is not None or message_type in self._xsd_path_cache:
+            return cached
+
+        result = self._resolve_xsd_path(message_type)
+        self._xsd_path_cache[message_type] = result
+        return result
+
+    def _resolve_xsd_path(self, message_type: str) -> Optional[str]:
         # Special handling for internal refined types
         if message_type == "pacs.009.cov":
             message_type = "pacs.009.001.08" # Use standard version for XSD
@@ -2794,7 +2971,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
         parts = message_type.split('.')
         family_prefix = ".".join(parts[:3]) if len(parts) >= 3 else message_type
         family_short = parts[0] + "." + parts[1] if len(parts) >= 2 else message_type
-        
+
         family_xsd = f"{family_short}.xsd"
         family_path = os.path.join(self.xsd_path, family_xsd)
         if os.path.exists(family_path):
@@ -2806,7 +2983,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             for f in os.listdir(self.xsd_path):
                 if f.startswith(family_prefix) and f.endswith(".xsd"):
                     candidates.append(f)
-            
+
             if candidates:
                 best_match = sorted(candidates, reverse=True)[0]
                 fallback_path = os.path.join(self.xsd_path, best_match)

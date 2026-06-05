@@ -19,7 +19,7 @@ class Layer1Mixin:
                 "The uploaded file is empty or no content was provided.",
                 "Please upload a valid XML message file or paste XML content."
             ))
-            report.layer_status["1"] = {"status": "❌", "time": (time.time() - start) * 1000}
+            report.layer_status["1"] = {"status": "❌", "time": round((time.time() - start) * 1000, 2)}
             return False
 
         # 2. File Type & Preliminary XML Structure (NON-FATAL for L1 checks)
@@ -49,7 +49,7 @@ class Layer1Mixin:
                  f"Your message is {size_kb:.1f} KB, exceeding the {max_size} KB limit.",
                  f"Please reduce the message size below {max_size} KB."
              ))
-             report.layer_status["1"] = {"status": "❌", "time": (time.time() - start) * 1000}
+             report.layer_status["1"] = {"status": "❌", "time": round((time.time() - start) * 1000, 2)}
              return False
 
         # 4. UTF-8 Encoding & Header (NON-FATAL for L1 checks)
@@ -85,7 +85,7 @@ class Layer1Mixin:
                 "DTD declarations (<!DOCTYPE>) are not allowed in ISO 20022 messages.",
                 "Remove any <!DOCTYPE ...> declaration from your XML. ISO 20022 uses XSD validation only."
             ))
-            report.layer_status["1"] = {"status": "❌", "time": (time.time() - start) * 1000}
+            report.layer_status["1"] = {"status": "❌", "time": round((time.time() - start) * 1000, 2)}
             return False
 
         # 5.2 Entity Expansion Rejection (Security)
@@ -95,7 +95,7 @@ class Layer1Mixin:
                 "XML entity declarations (<!ENTITY>) are not allowed in ISO 20022 messages.",
                 "Remove all <!ENTITY ...> declarations. Inline all values directly."
             ))
-            report.layer_status["1"] = {"status": "❌", "time": (time.time() - start) * 1000}
+            report.layer_status["1"] = {"status": "❌", "time": round((time.time() - start) * 1000, 2)}
             return False
 
         # 6. XML Well-Formedness & Identity (FATAL if parse fails)
@@ -171,21 +171,62 @@ class Layer1Mixin:
                     f"Check line {error_line} for any special characters such as &, @, !, #, $ and remove them."
                 )
             else:
-                friendly_msg = (
-                    f"XML syntax error at line {error_line}: the message cannot be parsed. "
-                    f"Check for unclosed tags, missing quotes, or reserved characters like '&'."
+                # Try to extract specific tag names from common lxml structural errors
+                # e.g. "Opening and ending tag mismatch: BICFI line 39 and FinInstnId"
+                tag_mismatch_m = re.search(
+                    r"Opening and ending tag mismatch:\s*(\w+)\s+line\s+(\d+)\s+and\s+(\w+)",
+                    error_msg, re.IGNORECASE
                 )
-                fix_hint = (
-                    f"Technical details: {error_msg}. "
-                    f"Check near line {error_line} for unclosed tags, invalid characters, or malformed XML."
+                extra_close_m = re.search(
+                    r"Ending tag\s+'([^']+)'\s+does not match",
+                    error_msg, re.IGNORECASE
                 )
+                unclosed_m = re.search(
+                    r"EndTag:\s*'([^']+)'",
+                    error_msg, re.IGNORECASE
+                )
+
+                if tag_mismatch_m:
+                    open_tag  = tag_mismatch_m.group(1)
+                    open_line = tag_mismatch_m.group(2)
+                    close_tag = tag_mismatch_m.group(3)
+                    friendly_msg = (
+                        f"Unclosed tag <{open_tag}> at line {open_line}. "
+                        f"The tag <{open_tag}> must be closed with </{open_tag}> "
+                        f"before the closing tag </{close_tag}> at line {error_line}."
+                    )
+                    fix_hint = (
+                        f"Add </{open_tag}> to close the open tag at line {open_line} "
+                        f"before the </{close_tag}> closing tag at line {error_line}. "
+                        f"Example: <{open_tag}>VALUE</{open_tag}>"
+                    )
+                elif extra_close_m:
+                    tag = extra_close_m.group(1)
+                    friendly_msg = (
+                        f"Extra or misplaced closing tag </{tag}> at line {error_line}. "
+                        f"This closing tag does not match any open tag."
+                    )
+                    fix_hint = (
+                        f"Remove the extra </{tag}> closing tag at line {error_line}, "
+                        f"or add the missing opening <{tag}> before it."
+                    )
+                else:
+                    friendly_msg = (
+                        f"XML structure error at line {error_line}: the message cannot be parsed. "
+                        f"Check for unclosed tags, missing closing tags, or reserved characters."
+                    )
+                    fix_hint = (
+                        f"Check near line {error_line} for unclosed or mismatched tags. "
+                        f"Every opening tag like <TagName> must have a matching </TagName>. "
+                        f"Reserved characters like '&' must be written as '&amp;'."
+                    )
 
             report.add_issue(ValidationIssue(
                 "ERROR", 1, "XML Syntax Error", error_line,
                 friendly_msg,
                 fix_hint
             ))
-            report.layer_status["1"] = {"status": "❌", "time": (time.time() - start) * 1000}
+            report.layer_status["1"] = {"status": "❌", "time": round((time.time() - start) * 1000, 2)}
             return False
 
         # Finish Layer 1

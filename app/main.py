@@ -4,6 +4,11 @@ if hasattr(sys.stdout, 'reconfigure'):
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8')
 
+# Load .env early so all os.getenv() calls (OpenAI, Firebase, etc.) see the keys
+import os as _os
+from dotenv import load_dotenv as _load_dotenv
+_load_dotenv(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", ".env"))
+
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
@@ -20,6 +25,13 @@ import io
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.schemas import validation as schemas
+from app.schemas import fixes as fix_schemas
+from app.services.validator import ISOValidator
+from app.services.firebase_service import FirebaseHistoryService
+from app.services.schema_generator import SchemaGenerator
+from app.services.mt_mx_converter import MT2MXConverter
+from app.services.bic_refresh_service import BicRefreshService
+from app.services.bulk_generator import generate_single_xml, get_blocks_for_message
 from app.services.validation.validator import ISOValidator
 from app.services.external.firebase_service import FirebaseHistoryService
 from app.services.generation.schema_generator import SchemaGenerator
@@ -28,6 +40,8 @@ from app.services.external.bic_refresh_service import BicRefreshService
 from app.services.generation.bulk_generator import generate_single_xml, get_blocks_for_message
 from app.chatbot.routes import router as chatbot_router
 from app.chatbot.chat_service import chat_service
+from app.routes.fixes import router as fixes_router
+from app.services.fix_suggester import fix_suggester
 
 # Initialize services
 history_service = FirebaseHistoryService()
@@ -59,10 +73,15 @@ app.add_middleware(
 # Include chatbot router
 app.include_router(chatbot_router)
 
+# Include fixes router (Inline Fix Suggester)
+app.include_router(fixes_router)
+
 # Initialize chatbot knowledge base and BIC refresh scheduler on startup
 @app.on_event("startup")
 async def startup_event():
     import threading
+    from datetime import datetime
+    print(f"\n[Server] Reloaded at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     # Init LLM on main thread (fast) so it's ready immediately
     chat_service._ensure_llm()
@@ -111,13 +130,185 @@ async def shutdown_event():
         scheduler.shutdown(wait=False)
         print("[BIC Refresh] Scheduler stopped.")
 
+
+# WARNING-severity rules the auto-fixer is allowed to resolve. These are
+# external-code-list validity checks kept as WARNING (the lists may be
+# incomplete), but a value that is definitively NOT in the list is safely
+# replaceable with a valid code. Deliberately excludes advisory warnings such as
+# BIC_NOT_FOUND / CONFIG_NOT_FOUND / HEAD001_TZ_DRIFT, which must not be rewritten.
+_AUTOFIX_WARNING_CODES = {
+    "L3_CLRSYS_CODE", "L3_ACCT_TYPE_CODE", "L3_LCLINSTRM_CODE",
+    # BizSvc format errors (e.g. 'swift..02') are deterministically fixable
+    # — the correct value is derived from the message type KB.
+    "HEAD001_BIZSVC_FORMAT",
+}
+
+
+async def _auto_fix_iterative(original_xml: str, message_type: str = "Auto-detect",
+                              max_rounds: int = 12):
+    """
+    Iteratively validate → fix → re-validate until the document is clean, no
+    further actionable fix can be produced, or no progress is made.
+
+    A single batch pass can never fully clean a badly-broken message because:
+      • the XSD validator surfaces only the FIRST sequence error per container
+        (later ones are hidden until the first is fixed),
+      • fixing/inserting elements shifts line numbers, so a second issue in the
+        same snapshot may target the wrong node,
+      • only 20 issues are handled per batch.
+    Re-validating between rounds gives each subsequent round a FRESH, correct
+    issue list (right lines/paths, newly-revealed errors), which is what makes
+    "fix everything at once" actually converge.
+
+    Returns (fixed_xml, rounds_used, total_fixes_applied).
+    """
+    cur = original_xml
+    rounds_used = 0
+    applied_total = 0
+    seen_signatures = {hash(cur)}
+    best_xml = cur
+    best_errors = None  # fewest ERROR count seen so far
+    best_wf = None      # well-formedness of the best state (None until 1st round)
+
+    from lxml import etree as _etree
+
+    def _is_wellformed(x: str) -> bool:
+        try:
+            _etree.fromstring(x.encode("utf-8"))
+            return True
+        except Exception:
+            return False
+
+    for _ in range(max_rounds):
+        report = await validator.validate(
+            cur, mode="Full 1-3", message_type=message_type or "Auto-detect"
+        )
+        details = report.to_dict().get("details", []) or []
+        errors = [d for d in details if d.get("severity") in ("ERROR", "CRITICAL")]
+
+        # A few codelist-validity rules are WARNINGs (their external code lists may
+        # be incomplete, so we don't hard-fail), but a value that's definitively
+        # NOT in the list is still safely auto-correctable to a valid code. Include
+        # ONLY those in the fix pass — never broad advisory warnings like
+        # BIC_NOT_FOUND (the value may be correct, just unverifiable) which must
+        # not be silently rewritten.
+        fixable = errors + [
+            d for d in details
+            if d.get("severity") == "WARNING" and d.get("code") in _AUTOFIX_WARNING_CODES
+        ]
+
+        # Track the best state so a fix that accidentally makes things worse can
+        # never make the returned document worse than what we'd already achieved —
+        # we return the best, not necessarily the last, state.
+        #
+        # Rule 1 — well-formedness wins over everything. While the XML is NOT
+        # well-formed, Layers 2-3 are SKIPPED, so a malformed doc reports
+        # artificially FEW errors (often just the single syntax error).
+        # Recovering it to well-formed lets those layers run and reveal the real
+        # schema/business errors — a HIGHER count that is nonetheless real
+        # progress. Comparing error counts across that boundary is meaningless, so
+        # a well-formed state ALWAYS beats a malformed one regardless of count.
+        # Without this, the count-based logic reverted an "unclosed tag" fix back
+        # to the malformed original (the syntax error appeared "unfixable").
+        #
+        # Rule 2 — within the same well-formedness, fewer errors is better. Use
+        # "<=" (not "<") so that when the count TIES we still advance to the
+        # more-recently-fixed state: XSD surfaces only ONE sequence error per
+        # container, so re-inserting a deleted mandatory element (e.g.
+        # <EndToEndId>) clears the ordering error but REVEALS a previously-hidden,
+        # possibly-unfixable error, keeping the count constant. A fix that
+        # INCREASES the count within the same well-formedness is still rejected.
+        cur_wf = _is_wellformed(cur)
+        if (best_errors is None
+                or (cur_wf and not best_wf)
+                or (cur_wf == best_wf and len(errors) <= best_errors)):
+            best_errors = len(errors)
+            best_wf = cur_wf
+            best_xml = cur
+
+        if not fixable:
+            break  # clean — no errors and no auto-fixable warnings remain
+
+        rounds_used += 1
+        # Fix up to 20 per round; the next round re-validates and continues,
+        # so >20 issues are handled across rounds rather than dropped.
+        try:
+            suggestions = fix_suggester.suggest_batch(cur, fixable[:20])
+        except Exception as e:
+            print(f"[auto-fix] suggest_batch failed: {e}")
+            break
+
+        fixes_list = [
+            {"xpath": s.xpath, "fragment_xml": s.fragment_xml}
+            for s in suggestions
+            if s.confidence in ("high", "low")
+            and s.fragment_xml and s.fragment_xml != s.original_fragment
+        ]
+        if not fixes_list:
+            break  # nothing actionable remains (only declines / unavailable)
+
+        new_xml = fix_suggester.apply_batch(cur, fixes_list)
+        sig = hash(new_xml)
+        if new_xml == cur or sig in seen_signatures:
+            break  # no progress / oscillation guard
+        seen_signatures.add(sig)
+        applied_total += len(fixes_list)
+        cur = new_xml
+
+    # Return the best (fewest-error) state we validated, never a worse one.
+    return best_xml, rounds_used, applied_total
+
+
+async def _apply_auto_fixes(report_dict, original_xml, message_type="Auto-detect"):
+    if report_dict.get("errors", 0) > 0 and report_dict.get("details"):
+        try:
+            # This runs inline on EVERY /validate to produce the preview banner's
+            # fixed_xml. Cap rounds low for speed — the preview only needs the bulk
+            # of fixes; the explicit "Fix All" endpoint (/fixes/auto-fix) still
+            # runs the full 12 rounds when the user commits.
+            fixed_xml, rounds, applied = await _auto_fix_iterative(
+                original_xml, message_type, max_rounds=4
+            )
+            report_dict["fixed_xml"] = fixed_xml
+            report_dict["auto_fix_rounds"] = rounds
+            report_dict["auto_fix_applied"] = applied
+        except Exception as e:
+            report_dict["fixed_xml"] = None
+            print(f"Auto-fix failed: {e}")
+
+
+@app.post("/fixes/auto-fix", response_model=fix_schemas.AutoFixResponse)
+async def fixes_auto_fix(request: fix_schemas.AutoFixRequest):
+    """
+    Fix EVERYTHING in one go: iteratively validate → fix → re-validate until the
+    message is clean (or no further actionable fix can be made). Returns the
+    fully-fixed XML plus any residual issues that need manual attention.
+    """
+    fixed_xml, rounds, applied = await _auto_fix_iterative(
+        request.xml, request.message_type
+    )
+    final = await validator.validate(
+        fixed_xml, mode="Full 1-3", message_type=request.message_type or "Auto-detect"
+    )
+    fd = final.to_dict()
+    residual = [d for d in (fd.get("details", []) or [])
+                if d.get("severity") in ("ERROR", "CRITICAL")]
+    return fix_schemas.AutoFixResponse(
+        new_xml=fixed_xml,
+        rounds=rounds,
+        fixes_applied=applied,
+        remaining_errors=len(residual),
+        remaining_details=residual,
+    )
+
+
 @app.post("/validate", response_model=schemas.ValidationResponse)
 async def validate_message(
     request: schemas.ValidationRequest
 ):
     report = await validator.validate(request.xml_content, request.mode, request.message_type, validation_id=request.batch_id)
     report_dict = report.to_dict()
-    
+
     # Attach file_id and batch_id to the report dict for frontend display
     if request.file_id:
         report_dict["file_id"] = request.file_id
@@ -158,7 +349,7 @@ async def validate_file(
     
     report = await validator.validate(xml_content, mode, message_type, filename=file.filename, validation_id=batch_id)
     report_dict = report.to_dict()
-    
+
     # Attach file_id and batch_id to the report dict
     if file_id:
         report_dict["file_id"] = file_id

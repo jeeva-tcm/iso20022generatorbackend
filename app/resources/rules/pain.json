@@ -1,5 +1,43 @@
 [
     {
+        "rule_id": "PAIN002_TXSTS_REQUIRED",
+        "description": "pain.002: each TxInfAndSts must carry OrgnlEndToEndId and TxSts (CBPR+ status reporting).",
+        "condition": "exists(Document.CstmrPmtStsRpt.OrgnlPmtInfAndSts.TxInfAndSts)",
+        "mandatory_fields": [
+            "Document.CstmrPmtStsRpt.OrgnlPmtInfAndSts.TxInfAndSts.OrgnlEndToEndId",
+            "Document.CstmrPmtStsRpt.OrgnlPmtInfAndSts.TxInfAndSts.TxSts"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "OrgnlEndToEndId and TxSts are mandatory in pain.002 TxInfAndSts.",
+        "fix": "Add <OrgnlEndToEndId> and <TxSts> (e.g. ACCP/RJCT) inside <TxInfAndSts>."
+    },
+    {
+        "rule_id": "PAIN002_ORGNLGRP_REQUIRED",
+        "description": "pain.002: OrgnlGrpInfAndSts must carry OrgnlMsgId and OrgnlMsgNmId.",
+        "condition": "exists(Document.CstmrPmtStsRpt.OrgnlGrpInfAndSts)",
+        "mandatory_fields": [
+            "Document.CstmrPmtStsRpt.OrgnlGrpInfAndSts.OrgnlMsgId",
+            "Document.CstmrPmtStsRpt.OrgnlGrpInfAndSts.OrgnlMsgNmId"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "OrgnlMsgId and OrgnlMsgNmId are mandatory in pain.002 OrgnlGrpInfAndSts.",
+        "fix": "Add <OrgnlMsgId> and <OrgnlMsgNmId> (the original message id and message-name id, e.g. pain.001.001.09)."
+    },
+    {
+        "rule_id": "PAIN001_CDTR_REQUIRED",
+        "description": "pain.001: Creditor (Cdtr) is mandatory in each CdtTrfTxInf. Uses an exact path so it is not fooled by the substring CdtrAgt (the legacy L3-PAIN-MANDATORY-PARTIES check matched '.Cdtr' inside '.CdtrAgt').",
+        "condition": "exists(Document.CstmrCdtTrfInitn.PmtInf.CdtTrfTxInf)",
+        "mandatory_fields": [
+            "Document.CstmrCdtTrfInitn.PmtInf.CdtTrfTxInf.Cdtr"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Creditor <Cdtr> is mandatory in pain.001 CdtTrfTxInf.",
+        "fix": "Add a <Cdtr> block with <Nm> and <PstlAdr> inside CdtTrfTxInf."
+    },
+    {
         "rule_id": "L3-PAIN-MANDATORY-PARTIES",
         "description": "Debtor, Creditor, Debtor Agent, and Creditor Agent are mandatory for PAIN messages (e.g. pain.001).",
         "layer": 3,

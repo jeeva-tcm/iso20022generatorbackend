@@ -71,5 +71,29 @@
         ],
         "severity": "ERROR",
         "layer": 3
+    },
+    {
+        "rule_id": "CAMT055_CASE_ID_REQUIRED",
+        "description": "Case/Id is mandatory in camt.055 TxInf per CBPR+ schema sequence. Case must appear before OrgnlInstrId.",
+        "errorMessage": "Missing mandatory <Case><Id> in TxInf. The Case element (with Id and Cretr) is required before OrgnlInstrId in camt.055.001.08 CBPR+.",
+        "fix": "Add <Case><Id>YOUR-CASE-ID</Id><Cretr><Pty><Nm>...</Nm><PstlAdr>...</PstlAdr></Pty></Cretr></Case> inside <TxInf>, immediately after <CxlId> and before <OrgnlInstrId>.",
+        "condition": "exists(Document.CstmrPmtCxlReq.Undrlyg.OrgnlPmtInfAndCxl.TxInf)",
+        "mandatory_fields": [
+            "Document.CstmrPmtCxlReq.Undrlyg.OrgnlPmtInfAndCxl.TxInf.Case.Id"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "CAMT055_CASE_CRETR_REQUIRED",
+        "description": "Case/Cretr is mandatory in camt.055 TxInf per CBPR+ schema. Cretr must be present inside Case.",
+        "errorMessage": "Missing mandatory <Case><Cretr> in TxInf. The Case element requires a Cretr (creator) sub-element in camt.055.001.08 CBPR+.",
+        "fix": "Add <Cretr><Pty><Nm>...</Nm><PstlAdr><TwnNm>...</TwnNm><Ctry>XX</Ctry><AdrLine>...</AdrLine></PstlAdr></Pty></Cretr> inside the <Case> element.",
+        "condition": "exists(Document.CstmrPmtCxlReq.Undrlyg.OrgnlPmtInfAndCxl.TxInf.Case)",
+        "mandatory_fields": [
+            "Document.CstmrPmtCxlReq.Undrlyg.OrgnlPmtInfAndCxl.TxInf.Case.Cretr"
+        ],
+        "severity": "ERROR",
+        "layer": 3
     }
 ]

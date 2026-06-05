@@ -36,8 +36,12 @@ def _sanitize_firestore_doc(obj: Any) -> Any:
 class FirebaseHistoryService:
     # Per-call timeout for any Firestore RPC. The default of 300s caused
     # the whole site to feel frozen when credentials were bad — every endpoint
-    # waited 5 minutes per call. 10s is plenty for healthy Firestore.
-    FIRESTORE_CALL_TIMEOUT_S = 10.0
+    # waited 5 minutes per call. Hot-path calls (get_next_sequence,
+    # check_duplicate_msg_uetr) run on EVERY validation, so this needs to fail
+    # fast: 4s is comfortably above a healthy round-trip yet short enough that a
+    # brief startup window (before the boot health check trips the breaker)
+    # doesn't make validation feel like it hangs.
+    FIRESTORE_CALL_TIMEOUT_S = 4.0
 
     # Circuit breaker — after this many consecutive auth failures we disable
     # Firestore at runtime and fall back to local JSON. Prevents the same
@@ -65,6 +69,13 @@ class FirebaseHistoryService:
         self._firebase_stats_cache = None
         self._firebase_stats_cache_time = None
 
+        # Check if Firebase is enabled via env var
+        firebase_enabled = os.getenv("FIREBASE_ENABLED", "true").lower() == "true"
+        if not firebase_enabled:
+            print("ALERT: Firebase is explicitly disabled via FIREBASE_ENABLED=false. Falling back to local JSON database.")
+            self.enabled = False
+            return
+
         try:
             cred = self._build_credentials()
             if cred is not None:
@@ -89,8 +100,9 @@ class FirebaseHistoryService:
                 # signature is only verified when we make a real RPC. Do a
                 # tiny throwaway read to surface "invalid_grant" / "Invalid
                 # JWT Signature" at boot, BEFORE the first user request
-                # hangs for 5 minutes.
-                self._run_boot_health_check()
+                # hangs for 5 minutes. Run in a background thread to avoid blocking.
+                import threading
+                threading.Thread(target=self._run_boot_health_check, daemon=True).start()
             else:
                 print("ALERT: No Firebase credentials found. Falling back to local JSON database.")
                 self._circuit_broken_reason = "_build_credentials returned None — see build logs for the underlying decode/cert error"
@@ -105,6 +117,17 @@ class FirebaseHistoryService:
         """Issue a single tiny Firestore read to verify the credentials actually
         work against Google's OAuth endpoint. If it fails, disable Firestore
         immediately so subsequent calls don't sit on 300-second timeouts."""
+        # First do a quick TCP check to avoid gRPC connection hang when offline
+        import socket
+        try:
+            # Try to connect to firestore.googleapis.com:443 with a 2-second timeout
+            socket.create_connection(("firestore.googleapis.com", 443), timeout=2.0).close()
+        except Exception as e:
+            self.enabled = False
+            self._circuit_broken_reason = f"Network unreachable: {e}"
+            print(f"[Firebase] Network check failed: firestore.googleapis.com is unreachable ({e}). Falling back to local JSON.")
+            return
+
         try:
             # Limit to 1 doc, short timeout. We don't care about the result —
             # we only care whether the RPC authenticates and responds.
@@ -677,9 +700,16 @@ class FirebaseHistoryService:
         #     closure quirks the SDK retry decorator sometimes trips on).
         #   - We use transaction.set() in both branches; if the field is missing
         #     for any reason we default to 0 so we never crash on None + 1.
+        #   - A per-RPC timeout is mandatory here. This call runs on EVERY
+        #     validation; without it, a reachable-but-slow (or briefly
+        #     unreachable, e.g. before the boot health check trips the breaker)
+        #     Firestore makes the read block on gRPC's multi-minute default,
+        #     which is exactly what makes local validation appear to "hang".
+        timeout_s = self.FIRESTORE_CALL_TIMEOUT_S
+
         @firestore.transactional
         def update_in_transaction(transaction, ref):
-            snapshot = ref.get(transaction=transaction)
+            snapshot = ref.get(transaction=transaction, timeout=timeout_s)
             current = 0
             if snapshot.exists:
                 val = snapshot.get("seq")
@@ -706,8 +736,8 @@ class FirebaseHistoryService:
         # we only need uniqueness, not strict ordering, and the caller already has
         # its own in-memory fallback if this returns None.
         try:
-            doc_ref.set({"seq": firestore.Increment(1)}, merge=True)
-            snap = doc_ref.get()
+            doc_ref.set({"seq": firestore.Increment(1)}, merge=True, timeout=timeout_s)
+            snap = doc_ref.get(timeout=timeout_s)
             if snap.exists:
                 val = snap.get("seq")
                 if isinstance(val, int):
@@ -737,7 +767,15 @@ class FirebaseHistoryService:
             return False
             
         try:
-            query = self.db.collection("validation_history").where("deleted", "==", False).where("report_json.metadata.MsgId", "==", msg_id).stream()
+            # Per-RPC timeout: this runs inside Layer 3, i.e. on the validation
+            # hot path. Without a bound, a slow/unreachable Firestore stalls the
+            # whole validation instead of degrading to "no duplicate found".
+            query = (
+                self.db.collection("validation_history")
+                .where("deleted", "==", False)
+                .where("report_json.metadata.MsgId", "==", msg_id)
+                .stream(timeout=self.FIRESTORE_CALL_TIMEOUT_S)
+            )
             for doc in query:
                 data = doc.to_dict()
                 report = data.get("report_json", {})

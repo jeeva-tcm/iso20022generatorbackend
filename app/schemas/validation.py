@@ -42,6 +42,7 @@ class ValidationResponse(BaseModel):
     details: List[IssueSchema]
     file_id: Optional[str] = None
     batch_id: Optional[str] = None
+    fixed_xml: Optional[str] = None
 
     class Config:
         allow_population_by_field_name = True

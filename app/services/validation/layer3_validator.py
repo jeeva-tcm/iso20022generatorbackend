@@ -30,12 +30,31 @@ class Layer3Mixin:
             print(f"Error loading generic config: {e}")
         return config
 
+    # Process-wide cache: rule JSON files don't change at runtime, so parse
+    # each message_type's rule set once. Re-reading + json.load-ing several
+    # files on every validation was ~35ms of avoidable work per call.
+    _rules_cache: Dict[str, List[Dict[str, Any]]] = {}
+
+    @classmethod
+    def clear_rules_cache(cls) -> None:
+        """Flush the rules cache so updated JSON rule files are reloaded."""
+        cls._rules_cache.clear()
+
     def _load_all_rules(self, message_type: str) -> List[Dict[str, Any]]:
         """
         Loads global rules + family rules + message-specific rules.
+        Cached per message_type for the process lifetime.
         """
+        cached = Layer3Mixin._rules_cache.get(message_type)
+        if cached is not None:
+            return cached
+        rules = self._load_all_rules_uncached(message_type)
+        Layer3Mixin._rules_cache[message_type] = rules
+        return rules
+
+    def _load_all_rules_uncached(self, message_type: str) -> List[Dict[str, Any]]:
         rules = []
-        
+
         # 1. Load Global
         global_file = os.path.join(self.rules_path, "global.json")
         if os.path.exists(global_file):
@@ -115,12 +134,7 @@ class Layer3Mixin:
         codelists = self.codelists
 
         for rule in layer_rules:
-            if rule.get("type") == "bic":
-                print(f"DEBUG LAYER3: Executing BIC rule. len(data)={len(data)}")
-                issues_before = len(report.issues)
             self._execute_rule_logic(rule, data, line_map, codelists, report)
-            if rule.get("type") == "bic":
-                print(f"DEBUG LAYER3: BIC rule done. Issues added: {len(report.issues) - issues_before}")
         
         # Assessment for layer dashboard
         success = not any(
@@ -322,7 +336,15 @@ class Layer3Mixin:
 
             regex = re.compile(selector)
             matching_keys = [k for k in data.keys() if regex.match(k)]
-            
+
+            # Expression rules whose body references hardcoded paths (not the
+            # iterated `KEY`/`VALUE`) produce the same verdict for every
+            # selector match — e.g. CBPR_R2/R3 fire on every `AppHdr.*` key
+            # yet check the same Fr/InstgAgt equality. Track which
+            # (rule_id, message) pairs this rule has already emitted to keep
+            # the report from repeating the same error N times.
+            _seen_emit: set[tuple[str, str]] = set()
+
             for key in matching_keys:
                 value = data[key]
                 if rule_type == "codelist":
@@ -352,6 +374,18 @@ class Layer3Mixin:
                                 msg = f"Invalid Purpose Code '{value}'."
                                 fix = (f"'{value}' is not a valid ISO 20022 Purpose Code. "
                                        f"Use a standard code such as SALA, RENT, SUPP, CORT, PENS, BONU, TRAD, LOAN, TAXS, etc.")
+                            elif list_name == "clearing_system":
+                                msg = f"Invalid clearing system code '{value}' in <{field_name}>."
+                                fix = (f"'{value}' is not a valid ExternalCashClearingSystem1Code. "
+                                       f"Use a recognised code such as 'TGT' (TARGET2), 'EBA', 'RTP', 'STG', or 'CHP'.")
+                            elif list_name == "account_type":
+                                msg = f"Invalid cash account type code '{value}' in <{field_name}>."
+                                fix = (f"'{value}' is not a valid ExternalCashAccountType1Code. "
+                                       f"Use a code such as 'CACC' (Current), 'CASH', 'LOAN', or 'COMM'.")
+                            elif list_name == "local_instrument":
+                                msg = f"Invalid local instrument code '{value}' in <{field_name}>."
+                                fix = (f"'{value}' is not a valid local instrument code. "
+                                       f"Use a code such as 'CORE', 'INST', 'B2B', or 'COR1'.")
                             else:
                                 msg = f"Field '{field_name}' contains invalid code '{value}'."
                                 fix = f"Value '{value}' is not a valid code for this field. Please check the ISO 20022 standard for permitted values."
@@ -422,9 +456,17 @@ class Layer3Mixin:
                     rule_meta = {"severity": severity, "layer": layer, "rule_id": rule_id, "desc": desc}
                     error_msg = rule.get("errorMessage", desc)
                     fix_suggestion = rule.get("fix", "")
-                    
+
                     if not self._evaluate_expression(rule.get("expression", "True"), data, line_map, value, key, rule_meta, codelists, report):
-                        report.add_issue(ValidationIssue(severity, layer, rule_id, key, error_msg, fix_suggestion, line=_get_line_num(key)))
+                        # Dedupe: don't emit the same (rule_id, error_msg) twice
+                        # in a single rule execution. Rules like CBPR_R2/R3
+                        # have hardcoded paths in the expression but a broad
+                        # `selector: AppHdr` regex — without this guard they
+                        # fire once per matched AppHdr.* key.
+                        emit_key = (rule_id, error_msg)
+                        if emit_key not in _seen_emit:
+                            _seen_emit.add(emit_key)
+                            report.add_issue(ValidationIssue(severity, layer, rule_id, key, error_msg, fix_suggestion, line=_get_line_num(key)))
 
         # 2. Logic Based Rules
         else:
@@ -711,16 +753,21 @@ class Layer3Mixin:
             # 1. Find Header BIC
             h_key = f"AppHdr.{header_role}.FIId.FinInstnId.BICFI"
             h_val = data.get(h_key)
-            
-            # 2. Find Document BIC (Search anywhere in message)
+
+            # 2. Find Document BIC — try direct path first, then with Agt intermediary
+            # (camt.056 Assgnr/Assgne have an extra Agt level: Assgnr.Agt.FinInstnId.BICFI)
             d_val = None
             d_key = None
-            suffix = f".{doc_role}.FinInstnId.BICFI"
-            
-            for k, v in data.items():
-                if k.endswith(suffix):
-                    d_val = v
-                    d_key = k
+            for suffix in [
+                f".{doc_role}.FinInstnId.BICFI",
+                f".{doc_role}.Agt.FinInstnId.BICFI",
+            ]:
+                for k, v in data.items():
+                    if k.endswith(suffix):
+                        d_val = v
+                        d_key = k
+                        break
+                if d_val is not None:
                     break
             
             # If either is missing, we can't compare
@@ -728,17 +775,25 @@ class Layer3Mixin:
                 return True 
             
             if h_val != d_val:
-                 # Add specific issue with correct line number
+                 # Add specific issue with correct line number.
+                 # Surface BOTH tag names (<Fr>/<InstgAgt>) explicitly so the
+                 # fix suggester's tag-recovery can route the fix to AppHdr/<Fr>
+                 # (which then harvests the canonical doc-body value).
                  line = _gl(d_key) if d_key else _gl(h_key)
-                 msg = f"{rule_meta.get('desc')} (Header: '{h_val}' vs Doc: '{d_val}')"
-                 
+                 msg = (
+                     f"{rule_meta.get('desc')} "
+                     f"AppHdr <{header_role}> BICFI must equal "
+                     f"<{doc_role}> BICFI. "
+                     f"(Header: '{h_val}' vs Doc: '{d_val}')"
+                 )
+
                  report.add_issue(ValidationIssue(
-                     rule_meta.get("severity", "ERROR"), 
-                     rule_meta.get("layer", 3), 
-                     rule_meta.get("rule_id", "MX_MATCH"), 
-                     line, 
+                     rule_meta.get("severity", "ERROR"),
+                     rule_meta.get("layer", 3),
+                     rule_meta.get("rule_id", "MX_MATCH"),
+                     line,
                      msg,
-                     f"Update {doc_role} to match the Header BIC or vice versa."
+                     f"Align AppHdr <{header_role}> BICFI with <{doc_role}> BICFI."
                  ))
                  return True # Suppress generic error
 
@@ -892,6 +947,40 @@ class Layer3Mixin:
                 "MESSAGE_TYPE": report.message_type if report else "Unknown"
             }
             
+            reserved = set(["VALUE", "KEY", "DATA", "True", "False", "None", "exists", "count", "exists_any", "all_max_length", "check_address", "check_bic_match", "datetime", "len", "float", "int", "str", "re"])
+            # Performance: a message can produce hundreds of canonical-data keys,
+            # but any single rule expression references only a handful. Building
+            # and running a word-boundary regex for every key (the old behaviour)
+            # is O(rules × keys) of regex work and was the dominant cost in
+            # Layer 3. Two guards make this cheap:
+            #   1. Only consider keys whose literal text actually appears in the
+            #      expression (a plain substring test — no regex).
+            #   2. Skip reserved words before any regex compilation.
+            candidate_keys = [
+                k for k in data.keys()
+                if k not in reserved and k in temp_expr
+            ]
+            for key in sorted(candidate_keys, key=len, reverse=True):
+                val = data[key]
+                # Only substitute primitive types — dict/list values are NOT
+                # safe to inline into expressions (causes unhashable type errors)
+                if isinstance(val, bool):
+                    val_str = "True" if val else "False"
+                elif isinstance(val, str):
+                    escaped_val = val.replace("'", "\\'")
+                    val_str = f"'{escaped_val}'"
+                elif isinstance(val, (int, float)):
+                    val_str = str(val)
+                else:
+                    # Skip substitution for dict/list — accessible via DATA[key]
+                    continue
+
+                pattern = r'(?<![\'\"])\b' + re.escape(key) + r'\b(?![\'\"])'
+                # re.subn returns the count; if the word-boundary form didn't
+                # match (e.g. the substring sat inside another token) we simply
+                # made no change, which is the same as the old behaviour.
+                temp_expr = re.sub(pattern, lambda m: val_str, temp_expr)
+
             reserved = set(["VALUE", "KEY", "DATA", "True", "False", "None", "exists", "count", "exists_any", "all_max_length", "all_unique", "values", "check_address", "check_bic_match", "datetime", "len", "float", "int", "str", "re"])
             for key in sorted(data.keys(), key=len, reverse=True):
                 pattern = r'(?<![\'\"])\b' + re.escape(key) + r'\b(?![\'\"])'
@@ -915,7 +1004,8 @@ class Layer3Mixin:
             
             return eval(temp_expr, ctx, ctx)
         except Exception as e:
-            print(f"DEBUG _evaluate_expression error for expr '{expr[:80]}': {e}")
+            if os.environ.get("L3_DEBUG"):
+                print(f"DEBUG _evaluate_expression error for expr '{expr[:80]}': {e}")
             return False
 
     def _check_iban_currency(self, iban_key, iban_val, data, report, _gl, codelists):
