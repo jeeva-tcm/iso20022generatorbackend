@@ -8104,181 +8104,6 @@
     "deleted": false
   },
   {
-    "validation_id": "VAL05062600001",
-    "batch_id": "VAL05062600001",
-    "file_id": "",
-    "timestamp": "2026-06-05T11:48:19.993501+00:00",
-    "message_type": "pain.001.001.09",
-    "status": "PASS",
-    "total_errors": 0,
-    "total_warnings": 13,
-    "execution_time_ms": 185.65,
-    "report_json": {
-      "validation_id": "VAL05062600001",
-      "timestamp": "2026-06-05T11:48:19.993501+00:00",
-      "status": "PASS",
-      "schema": "Unknown",
-      "message": "pain.001.001.09",
-      "errors": 0,
-      "warnings": 13,
-      "total_time_ms": 185.65,
-      "layer_status": {
-        "1": {
-          "status": "✅",
-          "time": 18.72
-        },
-        "2": {
-          "status": "✅",
-          "time": 39.39
-        },
-        "3": {
-          "status": "✅",
-          "time": 127.54
-        }
-      },
-      "details": [
-        {
-          "severity": "WARNING",
-          "layer": 3,
-          "code": "BIC_NOT_FOUND",
-          "path": "AppHdr.Fr.FIId.FinInstnId.BICFI",
-          "message": "BIC 'BANCUS33XXX' not found in official directory.",
-          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
-          "related_test": "",
-          "line": 8
-        },
-        {
-          "severity": "WARNING",
-          "layer": 3,
-          "code": "BIC_NOT_FOUND",
-          "path": "AppHdr.To.FIId.FinInstnId.BICFI",
-          "message": "BIC 'BANCGB2LXXX' not found in official directory.",
-          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
-          "related_test": "",
-          "line": 22
-        },
-        {
-          "severity": "WARNING",
-          "layer": 3,
-          "code": "BIC_NOT_FOUND",
-          "path": "Document.CstmrCdtTrfInitn.GrpHdr.InitgPty.Id.OrgId.AnyBIC",
-          "message": "BIC 'GBSOLUS33XX' not found in official directory.",
-          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
-          "related_test": "",
-          "line": 51
-        },
-        {
-          "severity": "WARNING",
-          "layer": 3,
-          "code": "BIC_NOT_FOUND",
-          "path": "Document.CstmrCdtTrfInitn.GrpHdr.FwdgAgt.FinInstnId.BICFI",
-          "message": "BIC 'FWDGUS33XXX' not found in official directory.",
-          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
-          "related_test": "",
-          "line": 60
-        },
-        {
-          "severity": "WARNING",
-          "layer": 3,
-          "code": "BIC_NOT_FOUND",
-          "path": "Document.CstmrCdtTrfInitn.PmtInf.Dbtr.Id.OrgId.AnyBIC",
-          "message": "BIC 'GBSOLUS33XX' not found in official directory.",
-          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
-          "related_test": "",
-          "line": 91
-        },
-        {
-          "severity": "WARNING",
-          "layer": 3,
-          "code": "BIC_NOT_FOUND",
-          "path": "Document.CstmrCdtTrfInitn.PmtInf.DbtrAgt.FinInstnId.BICFI",
-          "message": "BIC 'CHASUS33XXX' not found in official directory.",
-          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
-          "related_test": "",
-          "line": 103
-        },
-        {
-          "severity": "WARNING",
-          "layer": 3,
-          "code": "BIC_NOT_FOUND",
-          "path": "Document.CstmrCdtTrfInitn.PmtInf.ChrgsAcctAgt.FinInstnId.BICFI",
-          "message": "BIC 'CHASUS33XXX' not found in official directory.",
-          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
-          "related_test": "",
-          "line": 126
-        },
-        {
-          "severity": "WARNING",
-          "layer": 3,
-          "code": "BIC_NOT_FOUND",
-          "path": "Document.CstmrCdtTrfInitn.PmtInf.CdtTrfTxInf.CdtrAgt.FinInstnId.BICFI",
-          "message": "BIC 'BANCGB2LXXX' not found in official directory.",
-          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
-          "related_test": "",
-          "line": 167
-        },
-        {
-          "severity": "WARNING",
-          "layer": 3,
-          "code": "CURR_IBAN_MISMATCH",
-          "path": "Document.CstmrCdtTrfInitn.PmtInf.CdtTrfTxInf.Amt.InstdAmt@Ccy",
-          "message": "Cross-border payment advisory: Transaction currency 'USD' differs from the domestic currency 'GBP' of the Debtor IBAN country 'GB'. This is permitted under ISO 20022 for international payments.",
-          "fix_suggestion": "No action required if this is an intentional cross-border or multi-currency payment. For domestic GB payments, the expected currency is 'GBP'.",
-          "related_test": "",
-          "line": 136
-        },
-        {
-          "severity": "WARNING",
-          "layer": 3,
-          "code": "L3_CLRSYS_CODE",
-          "path": "AppHdr.Fr.FIId.FinInstnId.ClrSysMmbId.ClrSysId.Cd",
-          "message": "Invalid clearing system code 'USABA' in <Cd>.",
-          "fix_suggestion": "'USABA' is not a valid ExternalCashClearingSystem1Code. Use a recognised code such as 'TGT' (TARGET2), 'EBA', 'RTP', 'STG', or 'CHP'.",
-          "related_test": "",
-          "line": 11
-        },
-        {
-          "severity": "WARNING",
-          "layer": 3,
-          "code": "L3_CLRSYS_CODE",
-          "path": "AppHdr.To.FIId.FinInstnId.ClrSysMmbId.ClrSysId.Cd",
-          "message": "Invalid clearing system code 'GBFPS' in <Cd>.",
-          "fix_suggestion": "'GBFPS' is not a valid ExternalCashClearingSystem1Code. Use a recognised code such as 'TGT' (TARGET2), 'EBA', 'RTP', 'STG', or 'CHP'.",
-          "related_test": "",
-          "line": 25
-        },
-        {
-          "severity": "WARNING",
-          "layer": 3,
-          "code": "L3_CLRSYS_CODE",
-          "path": "Document.CstmrCdtTrfInitn.PmtInf.DbtrAgt.FinInstnId.ClrSysMmbId.ClrSysId.Cd",
-          "message": "Invalid clearing system code 'USABA' in <Cd>.",
-          "fix_suggestion": "'USABA' is not a valid ExternalCashClearingSystem1Code. Use a recognised code such as 'TGT' (TARGET2), 'EBA', 'RTP', 'STG', or 'CHP'.",
-          "related_test": "",
-          "line": 106
-        },
-        {
-          "severity": "WARNING",
-          "layer": 3,
-          "code": "PAIN001_SEPA_CCY_EUR",
-          "path": "Document.CstmrCdtTrfInitn.PmtInf.PmtTpInf.SvcLvl.Cd",
-          "message": "SEPA payments must use EUR as the instructed amount currency.",
-          "fix_suggestion": "Either change the currency to EUR or use a non-SEPA Service Level.",
-          "related_test": "",
-          "line": 69
-        }
-      ],
-      "metadata": {
-        "MsgId": "BMS-1780660098074",
-        "UETR": "cff373ed-5cd2-4810-a2d0-dd0db7a49aa9",
-        "Namespace": "urn:iso:std:iso:20022:tech:xsd:pain.001.001.09"
-      }
-    },
-    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\r\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\r\n        <CharSet>UTF-8</CharSet>\r\n        <Fr>\r\n            <FIId>\r\n                <FinInstnId>\r\n                    <BICFI>BANCUS33XXX</BICFI>\r\n                    <ClrSysMmbId>\r\n                        <ClrSysId>\r\n                            <Cd>USABA</Cd>\r\n                        </ClrSysId>\r\n                        <MmbId>123456789</MmbId>\r\n                    </ClrSysMmbId>\r\n                    <LEI>W22LROWBR70L5U3S5244</LEI>\r\n                </FinInstnId>\r\n            </FIId>\r\n        </Fr>\r\n        <To>\r\n            <FIId>\r\n                <FinInstnId>\r\n                    <BICFI>BANCGB2LXXX</BICFI>\r\n                    <ClrSysMmbId>\r\n                        <ClrSysId>\r\n                            <Cd>GBFPS</Cd>\r\n                        </ClrSysId>\r\n                        <MmbId>200000</MmbId>\r\n                    </ClrSysMmbId>\r\n                    <LEI>EBMRY7N10NRY5NCY5Y71</LEI>\r\n                </FinInstnId>\r\n            </FIId>\r\n        </To>\r\n        <BizMsgIdr>BMS-1780660098074</BizMsgIdr>\r\n        <MsgDefIdr>pain.001.001.09</MsgDefIdr>\r\n        <BizSvc>swift.cbprplus.03</BizSvc>\r\n        <CreDt>2026-06-05T17:18:18+05:30</CreDt>\r\n    </AppHdr>\r\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pain.001.001.09\">\r\n        <CstmrCdtTrfInitn>\r\n            <GrpHdr>\r\n                <MsgId>BMS-1780660098074</MsgId>\r\n                <CreDtTm>2026-06-05T17:18:18+05:30</CreDtTm>\r\n                <Authstn>\r\n                    <Cd>AUTH</Cd>\r\n                </Authstn>\r\n                <NbOfTxs>1</NbOfTxs>\r\n                <InitgPty>\r\n                    <Nm>Global Solutions Corp</Nm>\r\n                    <Id>\r\n                        <OrgId>\r\n                            <AnyBIC>GBSOLUS33XX</AnyBIC>\r\n                            <Othr>\r\n                                <Id>GS-ID-9988</Id>\r\n                            </Othr>\r\n                        </OrgId>\r\n                    </Id>\r\n                </InitgPty>\r\n                <FwdgAgt>\r\n                    <FinInstnId>\r\n                        <BICFI>FWDGUS33XXX</BICFI>\r\n                    </FinInstnId>\r\n                </FwdgAgt>\r\n            </GrpHdr>\r\n            <PmtInf>\r\n                <PmtInfId>PMT-INF-1780660098074</PmtInfId>\r\n                <PmtMtd>TRF</PmtMtd>\r\n                <PmtTpInf>\r\n                    <SvcLvl>\r\n                        <Cd>SEPA</Cd>\r\n                    </SvcLvl>\r\n                    <LclInstrm>\r\n                        <Cd>INST</Cd>\r\n                    </LclInstrm>\r\n                    <CtgyPurp>\r\n                        <Cd>CASH</Cd>\r\n                    </CtgyPurp>\r\n                </PmtTpInf>\r\n                <ReqdExctnDt>\r\n                    <Dt>2026-06-05</Dt>\r\n                </ReqdExctnDt>\r\n                <PoolgAdjstmntDt>2026-06-05</PoolgAdjstmntDt>\r\n                <Dbtr>\r\n                    <Nm>Holding Account One</Nm>\r\n                    <PstlAdr>\r\n                        <TwnNm>New York</TwnNm>\r\n                        <Ctry>US</Ctry>\r\n                        <AdrLine>270 Park Avenue</AdrLine>\r\n                    </PstlAdr>\r\n                    <Id>\r\n                        <OrgId>\r\n                            <AnyBIC>GBSOLUS33XX</AnyBIC>\r\n                            <LEI>W22LROWBR70L5U3S5244</LEI>\r\n                        </OrgId>\r\n                    </Id>\r\n                </Dbtr>\r\n                <DbtrAcct>\r\n                    <Id>\r\n                        <IBAN>GB29NWBK60161331926819</IBAN>\r\n                    </Id>\r\n                </DbtrAcct>\r\n                <DbtrAgt>\r\n                    <FinInstnId>\r\n                        <BICFI>CHASUS33XXX</BICFI>\r\n                        <ClrSysMmbId>\r\n                            <ClrSysId>\r\n                                <Cd>USABA</Cd>\r\n                            </ClrSysId>\r\n                            <MmbId>021000021</MmbId>\r\n                        </ClrSysMmbId>\r\n                        <LEI>54930068N2K3Y9N1F719</LEI>\r\n                    </FinInstnId>\r\n                </DbtrAgt>\r\n                <DbtrAgtAcct>\r\n                    <Id>\r\n                        <IBAN>GB29NWBK60161331926819</IBAN>\r\n                    </Id>\r\n                </DbtrAgtAcct>\r\n                <ChrgBr>SHAR</ChrgBr>\r\n                <ChrgsAcct>\r\n                    <Id>\r\n                        <IBAN>GB29NWBK60161331926819</IBAN>\r\n                    </Id>\r\n                </ChrgsAcct>\r\n                <ChrgsAcctAgt>\r\n                    <FinInstnId>\r\n                        <BICFI>CHASUS33XXX</BICFI>\r\n                    </FinInstnId>\r\n                </ChrgsAcctAgt>\r\n                <CdtTrfTxInf>\r\n                    <PmtId>\r\n                        <InstrId>INSTR-660098074</InstrId>\r\n                        <EndToEndId>E2E-1780660098074</EndToEndId>\r\n                        <UETR>cff373ed-5cd2-4810-a2d0-dd0db7a49aa9</UETR>\r\n                    </PmtId>\r\n                    <Amt>\r\n                        <InstdAmt Ccy=\"USD\">12500.00</InstdAmt>\r\n                    </Amt>\r\n                    <IntrmyAgt1>\r\n                        <FinInstnId>\r\n                            <Nm>Citibank N.A.</Nm>\r\n                            <PstlAdr>\r\n                                <TwnNm>New York</TwnNm>\r\n                                <Ctry>US</Ctry>\r\n                            </PstlAdr>\r\n                        </FinInstnId>\r\n                    </IntrmyAgt1>\r\n                    <IntrmyAgt2>\r\n                        <FinInstnId>\r\n                            <Nm>HSBC Bank PLC</Nm>\r\n                            <PstlAdr>\r\n                                <TwnNm>London</TwnNm>\r\n                                <Ctry>GB</Ctry>\r\n                            </PstlAdr>\r\n                        </FinInstnId>\r\n                    </IntrmyAgt2>\r\n                    <IntrmyAgt3>\r\n                        <FinInstnId>\r\n                            <Nm>Standard Chartered Bank</Nm>\r\n                            <PstlAdr>\r\n                                <TwnNm>Singapore</TwnNm>\r\n                                <Ctry>SG</Ctry>\r\n                            </PstlAdr>\r\n                        </FinInstnId>\r\n                    </IntrmyAgt3>\r\n                    <CdtrAgt>\r\n                        <FinInstnId>\r\n                            <BICFI>BANCGB2LXXX</BICFI>\r\n                        </FinInstnId>\r\n                    </CdtrAgt>\r\n                    <CdtrAgtAcct>\r\n                        <Id>\r\n                            <IBAN>GB33BUKB20201555555555</IBAN>\r\n                        </Id>\r\n                    </CdtrAgtAcct>\r\n                    <Cdtr>\r\n                        <Nm>Precision Engineering Ltd</Nm>\r\n                        <PstlAdr>\r\n                            <TwnNm>Manchester</TwnNm>\r\n                            <Ctry>GB</Ctry>\r\n                            <AdrLine>10 Industrial Way</AdrLine>\r\n                        </PstlAdr>\r\n                    </Cdtr>\r\n                    <CdtrAcct>\r\n                        <Id>\r\n                            <IBAN>GB33BUKB20201555555555</IBAN>\r\n                        </Id>\r\n                    </CdtrAcct>\r\n                    <Purp>\r\n                        <Cd>SALA</Cd>\r\n                    </Purp>\r\n                    <RgltryRptg>\r\n                        <Dtls>\r\n                            <Inf>Statutory Salary Payment Q1</Inf>\r\n                        </Dtls>\r\n                    </RgltryRptg>\r\n                    <RmtInf>\r\n                        <Ustrd>Invoice Ref INV-2024-456</Ustrd>\r\n                    </RmtInf>\r\n                </CdtTrfTxInf>\r\n            </PmtInf>\r\n        </CstmrCdtTrfInitn>\r\n    </Document>\r\n</BusMsgEnvlp>",
-    "origin": "Manual Entry",
-    "deleted": false
-  },
-  {
     "validation_id": "VAL05062600002",
     "batch_id": "VAL05062600002",
     "file_id": "",
@@ -8719,6 +8544,211 @@
       }
     },
     "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\r\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\r\n        <CharSet>UTF-8</CharSet>\r\n        <Fr>\r\n            <FIId>\r\n                <FinInstnId>\r\n                    <BICFI>BANCUS33XXX</BICFI>\r\n                    <ClrSysMmbId>\r\n                        <ClrSysId>\r\n                            <Cd>USABA</Cd>\r\n                        </ClrSysId>\r\n                        <MmbId>123456789</MmbId>\r\n                    </ClrSysMmbId>\r\n                    <LEI>W22LROWBR70L5U3S5244</LEI>\r\n                </FinInstnId>\r\n            </FIId>\r\n        </Fr>\r\n        <To>\r\n            <FIId>\r\n                <FinInstnId>\r\n                    <BICFI>BANCGB2LXXX</BICFI>\r\n                    <ClrSysMmbId>\r\n                        <ClrSysId>\r\n                            <Cd>GBFPS</Cd>\r\n                        </ClrSysId>\r\n                        <MmbId>200000</MmbId>\r\n                    </ClrSysMmbId>\r\n                    <LEI>EBMRY7N10NRY5NCY5Y71</LEI>\r\n                </FinInstnId>\r\n            </FIId>\r\n        </To>\r\n        <BizMsgIdr>BMS-1780660287886</BizMsgIdr>\r\n        <MsgDefIdr>pain.001.001.09</MsgDefIdr>\r\n        <BizSvc>swift.cbprplus.03</BizSvc>\r\n        <CreDt>2026-06-05T17:21:27+05:30</CreDt>\r\n    </AppHdr>\r\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pain.001.001.09\">\r\n        <CstmrCdtTrfInitn>\r\n            <GrpHdr>\r\n                <MsgId>BMS-1780660287886</MsgId>\r\n                <CreDtTm>2026-06-05T17:21:27+05:30</CreDtTm>\r\n                <Authstn>\r\n                    <Cd>AUTH</Cd>\r\n                </Authstn>\r\n                <NbOfTxs>1</NbOfTxs>\r\n                <InitgPty>\r\n                    <Nm>Global Solutions Corp</Nm>\r\n                    <Id>\r\n                        <OrgId>\r\n                            <AnyBIC>GBSOLUS33XX</AnyBIC>\r\n                            <Othr>\r\n                                <Id>GS-ID-9988</Id>\r\n                            </Othr>\r\n                        </OrgId>\r\n                    </Id>\r\n                </InitgPty>\r\n                <FwdgAgt>\r\n                    <FinInstnId>\r\n                        <BICFI>FWDGUS33XXX</BICFI>\r\n                    </FinInstnId>\r\n                </FwdgAgt>\r\n            </GrpHdr>\r\n            <PmtInf>\r\n                <PmtInfId>PMT-INF-1780660287886</PmtInfId>\r\n                <PmtMtd>TRF</PmtMtd>\r\n                <PmtTpInf>\r\n                    <SvcLvl>\r\n                        <Cd>SEPA</Cd>\r\n                    </SvcLvl>\r\n                    <LclInstrm>\r\n                        <Cd>INST</Cd>\r\n                    </LclInstrm>\r\n                    <CtgyPurp>\r\n                        <Cd>CASH</Cd>\r\n                    </CtgyPurp>\r\n                </PmtTpInf>\r\n                <ReqdExctnDt>\r\n                    <Dt>2026-06-05</Dt>\r\n                </ReqdExctnDt>\r\n                <PoolgAdjstmntDt>2026-06-05</PoolgAdjstmntDt>\r\n                <Dbtr>\r\n                    <Nm>Holding Account One</Nm>\r\n                    <PstlAdr>\r\n                        <TwnNm>New York</TwnNm>\r\n                        <Ctry>US</Ctry>\r\n                        <AdrLine>270 Park Avenue</AdrLine>\r\n                    </PstlAdr>\r\n                    <Id>\r\n                        <OrgId>\r\n                            <AnyBIC>GBSOLUS33XX</AnyBIC>\r\n                            <LEI>W22LROWBR70L5U3S5244</LEI>\r\n                        </OrgId>\r\n                    </Id>\r\n                </Dbtr>\r\n                <DbtrAcct>\r\n                    <Id>\r\n                        <IBAN>GB29NWBK60161331926819</IBAN>\r\n                    </Id>\r\n                </DbtrAcct>\r\n                <DbtrAgt>\r\n                    <FinInstnId>\r\n                        <BICFI>CHASUS33XXX</BICFI>\r\n                        <ClrSysMmbId>\r\n                            <ClrSysId>\r\n                                <Cd>USABA</Cd>\r\n                            </ClrSysId>\r\n                            <MmbId>021000021</MmbId>\r\n                        </ClrSysMmbId>\r\n                        <LEI>54930068N2K3Y9N1F719</LEI>\r\n                    </FinInstnId>\r\n                </DbtrAgt>\r\n                <DbtrAgtAcct>\r\n                    <Id>\r\n                        <IBAN>GB29NWBK60161331926819</IBAN>\r\n                    </Id>\r\n                </DbtrAgtAcct>\r\n                <ChrgBr>SHAR</ChrgBr>\r\n                <ChrgsAcct>\r\n                    <Id>\r\n                        <IBAN>GB29NWBK60161331926819</IBAN>\r\n                    </Id>\r\n                </ChrgsAcct>\r\n                <ChrgsAcctAgt>\r\n                    <FinInstnId>\r\n                        <BICFI>CHASUS33XXX</BICFI>\r\n                    </FinInstnId>\r\n                </ChrgsAcctAgt>\r\n                <CdtTrfTxInf>\r\n                    <PmtId>\r\n                        <InstrId>INSTR-660287886</InstrId>\r\n                        <EndToEndId>E2E-1780660287886</EndToEndId>\r\n                        <UETR>90ff0727-24d8-4671-9c35-a89ad3834a0c</UETR>\r\n                    </PmtId>\r\n                    <Amt>\r\n                        <InstdAmt Ccy=\"USD\">12500.00</InstdAmt>\r\n                    </Amt>\r\n                    <IntrmyAgt1>\r\n                        <FinInstnId>\r\n                            <Nm>Citibank N.A.</Nm>\r\n                            <PstlAdr>\r\n                                <TwnNm>New York</TwnNm>\r\n                                <Ctry>US</Ctry>\r\n                            </PstlAdr>\r\n                        </FinInstnId>\r\n                    </IntrmyAgt1>\r\n                    <IntrmyAgt2>\r\n                        <FinInstnId>\r\n                            <Nm>HSBC Bank PLC</Nm>\r\n                            <PstlAdr>\r\n                                <TwnNm>London</TwnNm>\r\n                                <Ctry>GB</Ctry>\r\n                            </PstlAdr>\r\n                        </FinInstnId>\r\n                    </IntrmyAgt2>\r\n                    <IntrmyAgt3>\r\n                        <FinInstnId>\r\n                            <Nm>Standard Chartered Bank</Nm>\r\n                            <PstlAdr>\r\n                                <TwnNm>Singapore</TwnNm>\r\n                                <Ctry>SG</Ctry>\r\n                            </PstlAdr>\r\n                        </FinInstnId>\r\n                    </IntrmyAgt3>\r\n                    <CdtrAgt>\r\n                        <FinInstnId>\r\n                            <BICFI>BANCGB2LXXX</BICFI>\r\n                        </FinInstnId>\r\n                    </CdtrAgt>\r\n                    <CdtrAgtAcct>\r\n                        <Id>\r\n                            <IBAN>GB33BUKB20201555555555</IBAN>\r\n                        </Id>\r\n                    </CdtrAgtAcct>\r\n                    <Cdtr>\r\n                        <Nm>Precision Engineering Ltd</Nm>\r\n                        <PstlAdr>\r\n                            <TwnNm>Manchester</TwnNm>\r\n                            <Ctry>GB</Ctry>\r\n                            <AdrLine>10 Industrial Way</AdrLine>\r\n                        </PstlAdr>\r\n                    </Cdtr>\r\n                    <CdtrAcct>\r\n                        <Id>\r\n                            <IBAN>GB33BUKB20201555555555</IBAN>\r\n                        </Id>\r\n                    </CdtrAcct>\r\n                    <Purp>\r\n                        <Cd>SALA</Cd>\r\n                    </Purp>\r\n                    <RgltryRptg>\r\n                        <Dtls>\r\n                            <Inf>Statutory Salary Payment Q1</Inf>\r\n                        </Dtls>\r\n                    </RgltryRptg>\r\n                    <RmtInf>\r\n                        <Ustrd>Invoice Ref INV-2024-456</Ustrd>\r\n                    </RmtInf>\r\n                </CdtTrfTxInf>\r\n            </PmtInf>\r\n        </CstmrCdtTrfInitn>\r\n    </Document>\r\n</BusMsgEnvlp>",
+    "origin": "Manual Entry",
+    "deleted": false
+  },
+  {
+    "validation_id": "VAL05062600001",
+    "batch_id": "VAL05062600001",
+    "file_id": "",
+    "timestamp": "2026-06-05T12:19:39.724336+00:00",
+    "message_type": "pain.008.001.08",
+    "status": "PASS",
+    "total_errors": 0,
+    "total_warnings": 16,
+    "execution_time_ms": 272.9,
+    "report_json": {
+      "validation_id": "VAL05062600001",
+      "timestamp": "2026-06-05T12:19:39.724336+00:00",
+      "status": "PASS",
+      "schema": "Unknown",
+      "message": "pain.008.001.08",
+      "errors": 0,
+      "warnings": 16,
+      "total_time_ms": 272.9,
+      "layer_status": {
+        "1": {
+          "status": "✅",
+          "time": 30.83
+        },
+        "2": {
+          "status": "✅",
+          "time": 26.92
+        },
+        "3": {
+          "status": "✅",
+          "time": 215.15
+        }
+      },
+      "details": [
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "AppHdr.Fr.FIId.FinInstnId.BICFI",
+          "message": "BIC 'BANCGB2LXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 8
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "AppHdr.To.FIId.FinInstnId.BICFI",
+          "message": "BIC 'BOFAUS3NXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 15
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "AppHdr.Rltd.Fr.FIId.FinInstnId.BICFI",
+          "message": "BIC 'SNDRUS33XXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 29
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "AppHdr.Rltd.To.FIId.FinInstnId.BICFI",
+          "message": "BIC 'RCVRUS33XXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 43
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.CstmrDrctDbtInitn.GrpHdr.FwdgAgt.FinInstnId.BICFI",
+          "message": "BIC 'FWDGUS33XXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 82
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.CstmrDrctDbtInitn.PmtInf.CdtrAgt.FinInstnId.BICFI",
+          "message": "BIC 'BANCGB2LXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 107
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.CstmrDrctDbtInitn.PmtInf.ChrgsAcctAgt.FinInstnId.BICFI",
+          "message": "BIC 'BANCGB2LXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 131
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.CstmrDrctDbtInitn.PmtInf.DrctDbtTxInf.DrctDbtTx.MndtRltdInf.AmdmntInfDtls.OrgnlCdtrSchmeId.Id.OrgId.AnyBIC",
+          "message": "BIC 'OLDCCU33XXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 170
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.CstmrDrctDbtInitn.PmtInf.DrctDbtTxInf.DrctDbtTx.MndtRltdInf.AmdmntInfDtls.OrgnlCdtrAgt.FinInstnId.BICFI",
+          "message": "BIC 'OLDCAU33XXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 176
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.CstmrDrctDbtInitn.PmtInf.DrctDbtTxInf.DrctDbtTx.MndtRltdInf.AmdmntInfDtls.OrgnlDbtrAgt.FinInstnId.BICFI",
+          "message": "BIC 'OLDDAU33XXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 189
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.CstmrDrctDbtInitn.PmtInf.DrctDbtTxInf.DbtrAgt.FinInstnId.BICFI",
+          "message": "BIC 'DEUTDEFFXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 234
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.CstmrDrctDbtInitn.PmtInf.DrctDbtTxInf.Dbtr.Id.OrgId.AnyBIC",
+          "message": "BIC 'DEUTDEFFXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 258
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "L3_CLRSYS_CODE",
+          "path": "AppHdr.Rltd.Fr.FIId.FinInstnId.ClrSysMmbId.ClrSysId.Cd",
+          "message": "Invalid clearing system code 'USABA' in <Cd>.",
+          "fix_suggestion": "'USABA' is not a valid ExternalCashClearingSystem1Code. Use a recognised code such as 'TGT' (TARGET2), 'EBA', 'RTP', 'STG', or 'CHP'.",
+          "related_test": "",
+          "line": 32
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "L3_CLRSYS_CODE",
+          "path": "AppHdr.Rltd.To.FIId.FinInstnId.ClrSysMmbId.ClrSysId.Cd",
+          "message": "Invalid clearing system code 'USABA' in <Cd>.",
+          "fix_suggestion": "'USABA' is not a valid ExternalCashClearingSystem1Code. Use a recognised code such as 'TGT' (TARGET2), 'EBA', 'RTP', 'STG', or 'CHP'.",
+          "related_test": "",
+          "line": 46
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "L3_CLRSYS_CODE",
+          "path": "Document.CstmrDrctDbtInitn.PmtInf.CdtrAgt.FinInstnId.ClrSysMmbId.ClrSysId.Cd",
+          "message": "Invalid clearing system code 'GBDSC' in <Cd>.",
+          "fix_suggestion": "'GBDSC' is not a valid ExternalCashClearingSystem1Code. Use a recognised code such as 'TGT' (TARGET2), 'EBA', 'RTP', 'STG', or 'CHP'.",
+          "related_test": "",
+          "line": 110
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "L3_CLRSYS_CODE",
+          "path": "Document.CstmrDrctDbtInitn.PmtInf.DrctDbtTxInf.DbtrAgt.FinInstnId.ClrSysMmbId.ClrSysId.Cd",
+          "message": "Invalid clearing system code 'DEBCC' in <Cd>.",
+          "fix_suggestion": "'DEBCC' is not a valid ExternalCashClearingSystem1Code. Use a recognised code such as 'TGT' (TARGET2), 'EBA', 'RTP', 'STG', or 'CHP'.",
+          "related_test": "",
+          "line": 237
+        }
+      ],
+      "metadata": {
+        "MsgId": "BMS-1780661978778",
+        "UETR": "c9517d59-ec61-41ea-867e-294d290aa20a",
+        "Namespace": "urn:iso:std:iso:20022:tech:xsd:pain.008.001.08"
+      }
+    },
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\r\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\r\n        <CharSet>UTF-8</CharSet>\r\n        <Fr>\r\n            <FIId>\r\n                <FinInstnId>\r\n                    <BICFI>BANCGB2LXXX</BICFI>\r\n                </FinInstnId>\r\n            </FIId>\r\n        </Fr>\r\n        <To>\r\n            <FIId>\r\n                <FinInstnId>\r\n                    <BICFI>BOFAUS3NXXX</BICFI>\r\n                </FinInstnId>\r\n            </FIId>\r\n        </To>\r\n        <BizMsgIdr>BMS-1780661978778</BizMsgIdr>\r\n        <MsgDefIdr>pain.008.001.08</MsgDefIdr>\r\n        <BizSvc>swift.cbprplus.03</BizSvc>\r\n        <CreDt>2026-06-05T12:19:38+00:00</CreDt>\r\n        <Prty>NORM</Prty>\r\n        <Rltd>\r\n            <CharSet>UTF-8</CharSet>\r\n            <Fr>\r\n                <FIId>\r\n                    <FinInstnId>\r\n                        <BICFI>SNDRUS33XXX</BICFI>\r\n                        <ClrSysMmbId>\r\n                            <ClrSysId>\r\n                                <Cd>USABA</Cd>\r\n                            </ClrSysId>\r\n                            <MmbId>123456789</MmbId>\r\n                        </ClrSysMmbId>\r\n                        <LEI>12345678901234567890</LEI>\r\n                    </FinInstnId>\r\n                </FIId>\r\n            </Fr>\r\n            <To>\r\n                <FIId>\r\n                    <FinInstnId>\r\n                        <BICFI>RCVRUS33XXX</BICFI>\r\n                        <ClrSysMmbId>\r\n                            <ClrSysId>\r\n                                <Cd>USABA</Cd>\r\n                            </ClrSysId>\r\n                            <MmbId>987654321</MmbId>\r\n                        </ClrSysMmbId>\r\n                        <LEI>09876543210987654321</LEI>\r\n                    </FinInstnId>\r\n                </FIId>\r\n            </To>\r\n            <BizMsgIdr>RLTD-BMS-001</BizMsgIdr>\r\n            <MsgDefIdr>pain.008.001.08</MsgDefIdr>\r\n            <BizSvc>swift.cbprplus.03</BizSvc>\r\n            <CreDt>2026-06-05T12:19:38+00:00</CreDt>\r\n            <CpyDplct>COPY</CpyDplct>\r\n            <Prty>NORM</Prty>\r\n        </Rltd>\r\n    </AppHdr>\r\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:pain.008.001.08\">\r\n        <CstmrDrctDbtInitn>\r\n            <GrpHdr>\r\n                <MsgId>BMS-1780661978778</MsgId>\r\n                <CreDtTm>2026-06-05T12:19:38+00:00</CreDtTm>\r\n                <Authstn>\r\n                    <Cd>AUTH</Cd>\r\n                </Authstn>\r\n                <NbOfTxs>1</NbOfTxs>\r\n                <InitgPty>\r\n                    <Nm>Initiating Party</Nm>\r\n                    <PstlAdr>\r\n                        <TwnNm>New York</TwnNm>\r\n                        <Ctry>US</Ctry>\r\n                        <AdrLine>100 Main Street</AdrLine>\r\n                    </PstlAdr>\r\n                    <CtryOfRes>US</CtryOfRes>\r\n                </InitgPty>\r\n                <FwdgAgt>\r\n                    <FinInstnId>\r\n                        <BICFI>FWDGUS33XXX</BICFI>\r\n                    </FinInstnId>\r\n                </FwdgAgt>\r\n            </GrpHdr>\r\n            <PmtInf>\r\n                <PmtInfId>PMTINF-1780661978778</PmtInfId>\r\n                <PmtMtd>DD</PmtMtd>\r\n                <BtchBookg>true</BtchBookg>\r\n                <ReqdColltnDt>2026-06-05</ReqdColltnDt>\r\n                <Cdtr>\r\n                    <Nm>Creditor Name</Nm>\r\n                    <PstlAdr>\r\n                        <TwnNm>San Francisco</TwnNm>\r\n                        <Ctry>US</Ctry>\r\n                        <AdrLine>200 Market Street</AdrLine>\r\n                    </PstlAdr>\r\n                    <CtryOfRes>US</CtryOfRes>\r\n                </Cdtr>\r\n                <CdtrAcct>\r\n                    <Id>\r\n                        <IBAN>GB82WEST12345698765432</IBAN>\r\n                    </Id>\r\n                </CdtrAcct>\r\n                <CdtrAgt>\r\n                    <FinInstnId>\r\n                        <BICFI>BANCGB2LXXX</BICFI>\r\n                        <ClrSysMmbId>\r\n                            <ClrSysId>\r\n                                <Cd>GBDSC</Cd>\r\n                            </ClrSysId>\r\n                            <MmbId>112233</MmbId>\r\n                        </ClrSysMmbId>\r\n                        <LEI>549300V6YF7100J0J012</LEI>\r\n                    </FinInstnId>\r\n                </CdtrAgt>\r\n                <CdtrAgtAcct>\r\n                    <Id>\r\n                        <IBAN>GB33BUKB20201555555555</IBAN>\r\n                    </Id>\r\n                    <Ccy>GBP</Ccy>\r\n                </CdtrAgtAcct>\r\n                <ChrgsAcct>\r\n                    <Id>\r\n                        <IBAN>GB15MIDL40051512345678</IBAN>\r\n                    </Id>\r\n                    <Ccy>GBP</Ccy>\r\n                </ChrgsAcct>\r\n                <ChrgsAcctAgt>\r\n                    <FinInstnId>\r\n                        <BICFI>BANCGB2LXXX</BICFI>\r\n                        <ClrSysMmbId>\r\n                            <MmbId>112233</MmbId>\r\n                        </ClrSysMmbId>\r\n                        <LEI>549300V6YF7100J0J012</LEI>\r\n                    </FinInstnId>\r\n                </ChrgsAcctAgt>\r\n                <DrctDbtTxInf>\r\n                    <PmtId>\r\n                        <InstrId>INSTR-661978778</InstrId>\r\n                        <EndToEndId>E2E-1780661978778</EndToEndId>\r\n                        <UETR>c9517d59-ec61-41ea-867e-294d290aa20a</UETR>\r\n                    </PmtId>\r\n                    <PmtTpInf>\r\n                        <InstrPrty>NORM</InstrPrty>\r\n                        <SvcLvl>\r\n                            <Cd>SEPA</Cd>\r\n                        </SvcLvl>\r\n                        <LclInstrm>\r\n                            <Cd>CORE</Cd>\r\n                        </LclInstrm>\r\n                        <SeqTp>FRST</SeqTp>\r\n                        <CtgyPurp>\r\n                            <Cd>CASH</Cd>\r\n                        </CtgyPurp>\r\n                    </PmtTpInf>\r\n                    <InstdAmt Ccy=\"GBP\">100.00</InstdAmt>\r\n                    <ChrgBr>SHAR</ChrgBr>\r\n                    <DrctDbtTx>\r\n                        <MndtRltdInf>\r\n                            <MndtId>MNDT-001</MndtId>\r\n                            <DtOfSgntr>2026-06-05</DtOfSgntr>\r\n                            <AmdmntInd>true</AmdmntInd>\r\n                            <AmdmntInfDtls>\r\n                                <OrgnlMndtId>MNDT-ORG-001</OrgnlMndtId>\r\n                                <OrgnlCdtrSchmeId>\r\n                                    <Nm>Old Creditor Scheme</Nm>\r\n                                    <Id>\r\n                                        <OrgId>\r\n                                            <AnyBIC>OLDCCU33XXX</AnyBIC>\r\n                                        </OrgId>\r\n                                    </Id>\r\n                                </OrgnlCdtrSchmeId>\r\n                                <OrgnlCdtrAgt>\r\n                                    <FinInstnId>\r\n                                        <BICFI>OLDCAU33XXX</BICFI>\r\n                                    </FinInstnId>\r\n                                </OrgnlCdtrAgt>\r\n                                <OrgnlDbtr>\r\n                                    <Nm>Original Debtor Name</Nm>\r\n                                </OrgnlDbtr>\r\n                                <OrgnlDbtrAcct>\r\n                                    <Id>\r\n                                        <IBAN>GB94BARC20201530093459</IBAN>\r\n                                    </Id>\r\n                                </OrgnlDbtrAcct>\r\n                                <OrgnlDbtrAgt>\r\n                                    <FinInstnId>\r\n                                        <BICFI>OLDDAU33XXX</BICFI>\r\n                                    </FinInstnId>\r\n                                </OrgnlDbtrAgt>\r\n                                <OrgnlFnlColltnDt>2026-06-05</OrgnlFnlColltnDt>\r\n                                <OrgnlFrqcy>\r\n                                    <Tp>YEAR</Tp>\r\n                                </OrgnlFrqcy>\r\n                                <OrgnlRsn>\r\n                                    <Cd>MD01</Cd>\r\n                                </OrgnlRsn>\r\n                                <OrgnlTrckgDays>05</OrgnlTrckgDays>\r\n                            </AmdmntInfDtls>\r\n                            <ElctrncSgntr>ELECTRONIC-SIGNATURE-DATA</ElctrncSgntr>\r\n                            <FrstColltnDt>2026-06-05</FrstColltnDt>\r\n                            <FnlColltnDt>2026-06-05</FnlColltnDt>\r\n                            <Frqcy>\r\n                                <Prd>\r\n                                    <Tp>MNTH</Tp>\r\n                                    <CntPerPrd>1</CntPerPrd>\r\n                                </Prd>\r\n                            </Frqcy>\r\n                            <Rsn>\r\n                                <Cd>MD01</Cd>\r\n                            </Rsn>\r\n                            <TrckgDays>03</TrckgDays>\r\n                        </MndtRltdInf>\r\n                        <CdtrSchmeId>\r\n                            <Nm>Creditor Scheme Name</Nm>\r\n                            <Id>\r\n                                <PrvtId>\r\n                                    <Othr>\r\n                                        <Id>SCHEME-ID-001</Id>\r\n                                        <SchmeNm>\r\n                                            <Prtry>SEPA</Prtry>\r\n                                        </SchmeNm>\r\n                                        <Issr>ISSUER-X</Issr>\r\n                                    </Othr>\r\n                                </PrvtId>\r\n                            </Id>\r\n                        </CdtrSchmeId>\r\n                        <PreNtfctnId>PRE-NTF-001</PreNtfctnId>\r\n                        <PreNtfctnDt>2026-06-05</PreNtfctnDt>\r\n                    </DrctDbtTx>\r\n                    <DbtrAgt>\r\n                        <FinInstnId>\r\n                            <BICFI>DEUTDEFFXXX</BICFI>\r\n                            <ClrSysMmbId>\r\n                                <ClrSysId>\r\n                                    <Cd>DEBCC</Cd>\r\n                                </ClrSysId>\r\n                                <MmbId>445566</MmbId>\r\n                            </ClrSysMmbId>\r\n                            <LEI>12345678901234567891</LEI>\r\n                        </FinInstnId>\r\n                    </DbtrAgt>\r\n                    <DbtrAgtAcct>\r\n                        <Id>\r\n                            <IBAN>GB82WEST12345698765432</IBAN>\r\n                        </Id>\r\n                    </DbtrAgtAcct>\r\n                    <Dbtr>\r\n                        <Nm>Debtor Name</Nm>\r\n                        <PstlAdr>\r\n                            <TwnNm>London</TwnNm>\r\n                            <Ctry>GB</Ctry>\r\n                            <AdrLine>10 Downing Street</AdrLine>\r\n                        </PstlAdr>\r\n                        <Id>\r\n                            <OrgId>\r\n                                <AnyBIC>DEUTDEFFXXX</AnyBIC>\r\n                                <LEI>12345678901234567892</LEI>\r\n                                <Othr>\r\n                                    <Id>ORG-ID-001</Id>\r\n                                    <SchmeNm>\r\n                                        <Cd>VAT</Cd>\r\n                                    </SchmeNm>\r\n                                    <Issr>ISSUER-Y</Issr>\r\n                                </Othr>\r\n                            </OrgId>\r\n                        </Id>\r\n                        <CtryOfRes>GB</CtryOfRes>\r\n                    </Dbtr>\r\n                    <DbtrAcct>\r\n                        <Id>\r\n                            <IBAN>GB33BUKB20201555555555</IBAN>\r\n                        </Id>\r\n                    </DbtrAcct>\r\n                    <InstrForCdtrAgt>Instruction for creditor agent text</InstrForCdtrAgt>\r\n                    <Purp>\r\n                        <Cd>CASH</Cd>\r\n                    </Purp>\r\n                    <RgltryRptg>\r\n                        <DbtCdtRptgInd>CRED</DbtCdtRptgInd>\r\n                        <Authrty>\r\n                            <Nm>Central Bank</Nm>\r\n                            <Ctry>DE</Ctry>\r\n                        </Authrty>\r\n                        <Dtls>\r\n                            <Tp>TAX-REPORT</Tp>\r\n                            <Dt>2026-06-05</Dt>\r\n                            <Ctry>DE</Ctry>\r\n                            <Cd>REG-001</Cd>\r\n                            <Amt Ccy=\"EUR\">100.00</Amt>\r\n                            <Inf>Regulatory details info</Inf>\r\n                        </Dtls>\r\n                    </RgltryRptg>\r\n                    <Tax>\r\n                        <Cdtr>\r\n                            <TaxId>TX-CDTR-001</TaxId>\r\n                            <RegnId>REG-CDTR-001</RegnId>\r\n                            <TaxTp>VAT</TaxTp>\r\n                        </Cdtr>\r\n                        <Dbtr>\r\n                            <TaxId>TX-DBTR-001</TaxId>\r\n                            <RegnId>REG-DBTR-001</RegnId>\r\n                            <TaxTp>VAT</TaxTp>\r\n                        </Dbtr>\r\n                        <AdmstnZone>Zone A</AdmstnZone>\r\n                        <RefNb>REF-TAX-001</RefNb>\r\n                        <Mtd>MTD-01</Mtd>\r\n                        <TtlTaxblBaseAmt Ccy=\"EUR\">500.00</TtlTaxblBaseAmt>\r\n                        <TtlTaxAmt Ccy=\"EUR\">100.00</TtlTaxAmt>\r\n                        <Dt>2026-06-05</Dt>\r\n                        <SeqNb>1</SeqNb>\r\n                    </Tax>\r\n                    <RltdRmtInf>\r\n                        <RmtId>RLTD-RMT-001</RmtId>\r\n                        <RmtLctnDtls>\r\n                            <Mtd>EDIC</Mtd>\r\n                            <ElctrncAdr>remittance@example.com</ElctrncAdr>\r\n                        </RmtLctnDtls>\r\n                    </RltdRmtInf>\r\n                    <RmtInf>\r\n                        <Strd>\r\n                            <RfrdDocInf>\r\n                                <Tp>\r\n                                    <CdOrPrtry>\r\n                                        <Cd>CINV</Cd>\r\n                                    </CdOrPrtry>\r\n                                    <Issr>ISSUER-DOC</Issr>\r\n                                </Tp>\r\n                                <Nb>INV-001</Nb>\r\n                                <RltdDt>2026-06-05</RltdDt>\r\n                            </RfrdDocInf>\r\n                            <CdtrRefInf>\r\n                                <Tp>\r\n                                    <CdOrPrtry>\r\n                                        <Cd>SCOR</Cd>\r\n                                    </CdOrPrtry>\r\n                                    <Issr>ISSUER-REF</Issr>\r\n                                </Tp>\r\n                                <Ref>CRED-REF-001</Ref>\r\n                            </CdtrRefInf>\r\n                            <Invcr>\r\n                                <Nm>Invoicer Name</Nm>\r\n                                <PstlAdr>\r\n                                    <TwnNm>Berlin</TwnNm>\r\n                                    <Ctry>DE</Ctry>\r\n                                </PstlAdr>\r\n                            </Invcr>\r\n                            <Invcee>\r\n                                <Nm>Invoicee Name</Nm>\r\n                                <PstlAdr>\r\n                                    <TwnNm>London</TwnNm>\r\n                                    <Ctry>GB</Ctry>\r\n                                </PstlAdr>\r\n                            </Invcee>\r\n                            <TaxRmt>\r\n                                <Cdtr>\r\n                                    <TaxId>TX-CDTR-99</TaxId>\r\n                                    <RegnId>REG-CDTR-99</RegnId>\r\n                                    <TaxTp>VAT</TaxTp>\r\n                                </Cdtr>\r\n                                <Dbtr>\r\n                                    <TaxId>TX-DBTR-99</TaxId>\r\n                                    <RegnId>REG-DBTR-99</RegnId>\r\n                                    <TaxTp>VAT</TaxTp>\r\n                                </Dbtr>\r\n                                <UltmtDbtr>\r\n                                    <TaxId>TX-ULT-99</TaxId>\r\n                                    <RegnId>REG-ULT-99</RegnId>\r\n                                    <TaxTp>VAT</TaxTp>\r\n                                </UltmtDbtr>\r\n                                <AdmstnZone>Zone 1</AdmstnZone>\r\n                                <RefNb>REF-TAX-99</RefNb>\r\n                                <TtlTaxAmt Ccy=\"EUR\">40.00</TtlTaxAmt>\r\n                            </TaxRmt>\r\n                            <GrnshmtRmt>\r\n                                <Tp>\r\n                                    <CdOrPrtry>\r\n                                        <Cd>G001</Cd>\r\n                                    </CdOrPrtry>\r\n                                </Tp>\r\n                                <Grnshee>\r\n                                    <Nm>Garnishee Name</Nm>\r\n                                </Grnshee>\r\n                                <GrnshmtAdmstr>\r\n                                    <Nm>Administrator Name</Nm>\r\n                                </GrnshmtAdmstr>\r\n                                <RefNb>REF-GRN-001</RefNb>\r\n                                <Dt>2026-06-05</Dt>\r\n                                <RmtdAmt Ccy=\"EUR\">50.00</RmtdAmt>\r\n                                <FmlyMdclInsrncInd>true</FmlyMdclInsrncInd>\r\n                                <MplyeeTermntnInd>false</MplyeeTermntnInd>\r\n                            </GrnshmtRmt>\r\n                        </Strd>\r\n                    </RmtInf>\r\n                </DrctDbtTxInf>\r\n            </PmtInf>\r\n        </CstmrDrctDbtInitn>\r\n    </Document>\r\n</BusMsgEnvlp>",
     "origin": "Manual Entry",
     "deleted": false
   }
