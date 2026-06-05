@@ -82,17 +82,18 @@ class NewMandatoryFieldsValidator:
         app_hdr_nodes = root_element.xpath("//*[local-name()='AppHdr']")
         biz_msg_idr_val = None   # captured for cross-field check later
 
+        # Determine if this is a pacs.008 message (even if AppHdr is missing)
+        is_pacs008 = False
+        if root_element.xpath("//*[local-name()='FIToFICstmrCdtTrf']"):
+            is_pacs008 = True
+
         if app_hdr_nodes:
             app_hdr = app_hdr_nodes[0]
             biz_svc_nodes      = app_hdr.xpath("*[local-name()='BizSvc']")
             msg_def_idr_nodes  = app_hdr.xpath("*[local-name()='MsgDefIdr']")
             biz_msg_idr_nodes  = app_hdr.xpath("*[local-name()='BizMsgIdr']")
 
-            # Determine if this is a pacs.008 message
-            is_pacs008 = False
             if msg_def_idr_nodes and "pacs.008" in _text(msg_def_idr_nodes[0]):
-                is_pacs008 = True
-            elif root_element.xpath("//*[local-name()='FIToFICstmrCdtTrf']"):
                 is_pacs008 = True
 
             if is_pacs008:
@@ -271,21 +272,22 @@ class NewMandatoryFieldsValidator:
                     fix=r.get("fix", "Add a valid UUID v4 to <PmtId><UETR>."),
                 ))
 
-            # ── InstdAmt ──────────────────────────────────────────────────
-            r = mf_tx.get("InstdAmt", {})
-            instd_amt_nodes = tx.xpath("*[local-name()='InstdAmt']")
-            if not instd_amt_nodes or not _text(instd_amt_nodes[0]):
-                report.add_issue(ValidationIssue(
-                    severity=r.get("severity", "ERROR"),
-                    code=r.get("code", "MANDATORY_INSTD_AMT_MISSING"),
-                    path=f"//{tx_name}/InstdAmt",
-                    message=r.get(
-                        "description",
-                        f"Mandatory Instructed Amount <InstdAmt> is missing inside '{tx_name}'."
-                    ),
-                    line=src,
-                    fix=r.get("fix", "Add <InstdAmt Ccy=\"XXX\">amount</InstdAmt> inside the transaction block."),
-                ))
+            # ── InstdAmt (Only mandatory for pacs.008 in SR2026) ───────────
+            if is_pacs008:
+                r = mf_tx.get("InstdAmt", {})
+                instd_amt_nodes = tx.xpath("*[local-name()='InstdAmt']")
+                if not instd_amt_nodes or not _text(instd_amt_nodes[0]):
+                    report.add_issue(ValidationIssue(
+                        severity=r.get("severity", "ERROR"),
+                        code=r.get("code", "MANDATORY_INSTD_AMT_MISSING"),
+                        path=f"//{tx_name}/InstdAmt",
+                        message=r.get(
+                            "description",
+                            f"Mandatory Instructed Amount <InstdAmt> is missing inside '{tx_name}'."
+                        ),
+                        line=src,
+                        fix=r.get("fix", "Add <InstdAmt Ccy=\"XXX\">amount</InstdAmt> inside the transaction block."),
+                    ))
 
             # ── EndToEndId cannot be blank ────────────────────────────────
             r = mf_tx.get("PmtId.EndToEndId", {})

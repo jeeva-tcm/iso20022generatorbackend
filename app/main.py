@@ -31,6 +31,25 @@ from app.chatbot.routes import router as chatbot_router
 from app.chatbot.chat_service import chat_service
 
 # Initialize services
+import logging
+logger = logging.getLogger("iso20022")
+
+def get_active_version(request: Request, payload_version: str = None) -> str:
+    version = request.headers.get("x-sr-version")
+    if version not in ["SR2025", "SR2026"]:
+        logger.error(f"Invalid or missing x-sr-version header: {version}")
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or missing x-sr-version header"
+        )
+    if payload_version and payload_version != version:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "VERSION_MISMATCH", "message": f"Payload version {payload_version} does not match active version {version}"}
+        )
+    logger.info(f"Version={version}, Endpoint={request.url.path}")
+    return version
+
 history_service = FirebaseHistoryService()
 validator = ISOValidator(history_service=history_service)
 mt_mx_converter = MT2MXConverter()
@@ -114,7 +133,7 @@ async def shutdown_event():
 
 @app.post("/api/validate", response_model=ApiValidateResponse)
 async def api_validate(request: ApiValidateRequest, raw_request: Request):
-    version = raw_request.headers.get("x-sr-version") or request.version or "SR2025"
+    version = get_active_version(raw_request, getattr(request, "version", None))
     if version == "SR2025":
         from app.sr2025.validation.validators.engine import ISOValidator as OriginalSR2025Validator
         
@@ -204,7 +223,7 @@ async def validate_message(
     request: schemas.ValidationRequest,
     raw_request: Request
 ):
-    version = raw_request.headers.get("x-sr-version") or "SR2025"
+    version = get_active_version(raw_request, getattr(request, "version", None))
     
     if version == "SR2026":
         from app.sr2026.validation.validators.validator import SR2026Validator
@@ -233,19 +252,19 @@ async def validate_message(
             "warnings": len(api_resp.warnings),
             "total_time_ms": 100,
             "layer_status": {
-                "1": {"status": "❌" if any(getattr(e, "layer", 3) == 1 for e in api_resp.errors) else "✅", "time": 10},
-                "2": {"status": "❌" if any(getattr(e, "layer", 3) == 2 for e in api_resp.errors) else "✅", "time": 40},
-                "3": {"status": "❌" if any(getattr(e, "layer", 3) == 3 for e in api_resp.errors) else "✅", "time": 50}
+                "1": {"status": "FAIL" if any(getattr(e, "layer", 3) == 1 for e in api_resp.errors) else ("WARN" if any(getattr(w, "layer", 3) == 1 for w in api_resp.warnings) else "PASS"), "time": 10},
+                "2": {"status": "FAIL" if any(getattr(e, "layer", 3) == 2 for e in api_resp.errors) else ("WARN" if any(getattr(w, "layer", 3) == 2 for w in api_resp.warnings) else "PASS"), "time": 40},
+                "3": {"status": "FAIL" if any(getattr(e, "layer", 3) == 3 for e in api_resp.errors) else ("WARN" if any(getattr(w, "layer", 3) == 3 for w in api_resp.warnings) else "PASS"), "time": 50}
             },
             "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
             "details": [
-                {"layer": getattr(e, "layer", 3), "severity": getattr(e, "severity", "ERROR"), "code": e.code, "path": e.path, "message": e.message, "line": e.line, "fix_suggestion": e.fix or "", "related_test": ""}
+                {"layer": getattr(e, "layer", 3), "severity": getattr(e, "severity", "ERROR"), "code": e.code, "path": e.path, "message": e.message, "line": e.line, "fix_suggestion": getattr(e, "fix", ""), "related_test": ""}
                 for e in api_resp.errors
             ] + [
-                {"layer": getattr(w, "layer", 3), "severity": getattr(w, "severity", "WARNING"), "code": w.code, "path": w.path, "message": w.message, "line": w.line, "fix_suggestion": w.fix or "", "related_test": ""}
+                {"layer": getattr(w, "layer", 3), "severity": getattr(w, "severity", "WARNING"), "code": w.code, "path": w.path, "message": w.message, "line": w.line, "fix_suggestion": getattr(w, "fix", ""), "related_test": ""}
                 for w in api_resp.warnings
             ] + [
-                {"layer": getattr(i, "layer", 3), "severity": getattr(i, "severity", "INFO"), "code": i.code, "path": i.path, "message": i.message, "line": i.line, "fix_suggestion": i.fix or "", "related_test": ""}
+                {"layer": getattr(i, "layer", 3), "severity": getattr(i, "severity", "INFO"), "code": i.code, "path": i.path, "message": i.message, "line": i.line, "fix_suggestion": getattr(i, "fix", ""), "related_test": ""}
                 for i in api_resp.info
             ]
         }
@@ -296,7 +315,7 @@ async def validate_file(
     file_id: Optional[str] = Form(None),
     origin: Optional[str] = Form("Uploaded")
 ):
-    version = raw_request.headers.get("x-sr-version") or "SR2025"
+    version = get_active_version(raw_request)
     content = await file.read()
     xml_content = content.decode("utf-8")
     
@@ -323,16 +342,25 @@ async def validate_file(
             "message": actual_msg_type,
             "file_name": file.filename,
             "status": "PASS" if api_resp.status == "PASSED" else "FAIL",
+            "schema": "SR2026",
             "errors": len(api_resp.errors),
             "warnings": len(api_resp.warnings),
             "total_time_ms": 100,
+            "layer_status": {
+                "1": {"status": "FAIL" if any(getattr(e, "layer", 3) == 1 for e in api_resp.errors) else ("WARN" if any(getattr(w, "layer", 3) == 1 for w in api_resp.warnings) else "PASS"), "time": 10},
+                "2": {"status": "FAIL" if any(getattr(e, "layer", 3) == 2 for e in api_resp.errors) else ("WARN" if any(getattr(w, "layer", 3) == 2 for w in api_resp.warnings) else "PASS"), "time": 40},
+                "3": {"status": "FAIL" if any(getattr(e, "layer", 3) == 3 for e in api_resp.errors) else ("WARN" if any(getattr(w, "layer", 3) == 3 for w in api_resp.warnings) else "PASS"), "time": 50}
+            },
             "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
             "details": [
-                {"layer": 3, "severity": "ERROR", "code": e.code, "path": e.path, "message": e.message, "line": e.line, "fix_suggestion": e.fix}
+                {"layer": getattr(e, "layer", 3), "severity": getattr(e, "severity", "ERROR"), "code": e.code, "path": e.path, "message": e.message, "line": e.line, "fix_suggestion": getattr(e, "fix", ""), "related_test": ""}
                 for e in api_resp.errors
             ] + [
-                {"layer": 3, "severity": "WARNING", "code": w.code, "path": w.path, "message": w.message, "line": w.line, "fix_suggestion": w.fix}
+                {"layer": getattr(w, "layer", 3), "severity": getattr(w, "severity", "WARNING"), "code": w.code, "path": w.path, "message": w.message, "line": w.line, "fix_suggestion": getattr(w, "fix", ""), "related_test": ""}
                 for w in api_resp.warnings
+            ] + [
+                {"layer": getattr(i, "layer", 3), "severity": getattr(i, "severity", "INFO"), "code": i.code, "path": i.path, "message": i.message, "line": i.line, "fix_suggestion": getattr(i, "fix", ""), "related_test": ""}
+                for i in getattr(api_resp, "info", [])
             ]
         }
     else:
@@ -367,9 +395,9 @@ async def validate_file(
 
 @app.post("/convert-mt-to-mx")
 async def convert_mt_to_mx(request: schemas.MTConversionRequest, raw_request: Request):
-    version = raw_request.headers.get("x-sr-version") or "SR2025"
+    version = get_active_version(raw_request)
     try:
-        result = mt_mx_converter.validate_and_convert(request.mt_message, forced_mt_type=request.target_mt_type)
+        result = mt_mx_converter.validate_and_convert(request.mt_message, forced_mt_type=request.target_mt_type, version=version)
         
         # Always include a validation report if conversion didn't fail at the pre-parsing/MT level
         mx_message = result.get("mx_message", "")
@@ -379,21 +407,39 @@ async def convert_mt_to_mx(request: schemas.MTConversionRequest, raw_request: Re
                 import time
                 from datetime import datetime, timezone
                 val2026 = SR2026Validator(history_service=history_service)
-                api_resp = await val2026.validate(mx_message, "Auto-detect")
+                import re
+                actual_msg_type = "pacs.008.001.08"
+                ns_matches = re.findall(r'xmlns(?::\w+)?=["\']urn:iso:std:iso:20022:tech:xsd:([a-z]{4}\.\d{3}\.\d{3}\.\d{2})["\']', mx_message)
+                if ns_matches:
+                    for match in ns_matches:
+                        if not match.startswith("head."):
+                            actual_msg_type = match
+                            break
+                            
+                api_resp = await val2026.validate(mx_message, actual_msg_type)
                 report_dict = {
                     "validation_id": f"VAL{int(time.time()*1000)}",
-                    "message": "Auto-detect",
+                    "message": actual_msg_type,
                     "status": "PASS" if api_resp.status == "PASSED" else "FAIL",
+                    "schema": "SR2026",
                     "errors": len(api_resp.errors),
                     "warnings": len(api_resp.warnings),
                     "total_time_ms": 100,
+                    "layer_status": {
+                "1": {"status": "FAIL" if any(getattr(e, "layer", 3) == 1 for e in api_resp.errors) else ("WARN" if any(getattr(w, "layer", 3) == 1 for w in api_resp.warnings) else "PASS"), "time": 10},
+                "2": {"status": "FAIL" if any(getattr(e, "layer", 3) == 2 for e in api_resp.errors) else ("WARN" if any(getattr(w, "layer", 3) == 2 for w in api_resp.warnings) else "PASS"), "time": 40},
+                "3": {"status": "FAIL" if any(getattr(e, "layer", 3) == 3 for e in api_resp.errors) else ("WARN" if any(getattr(w, "layer", 3) == 3 for w in api_resp.warnings) else "PASS"), "time": 50}
+                    },
                     "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
                     "details": [
-                        {"layer": 3, "severity": "ERROR", "code": e.code, "path": e.path, "message": e.message, "line": e.line, "fix_suggestion": e.fix}
+                        {"layer": getattr(e, "layer", 3), "severity": getattr(e, "severity", "ERROR"), "code": e.code, "path": e.path, "message": e.message, "line": e.line, "fix_suggestion": getattr(e, "fix", ""), "related_test": ""}
                         for e in api_resp.errors
                     ] + [
-                        {"layer": 3, "severity": "WARNING", "code": w.code, "path": w.path, "message": w.message, "line": w.line, "fix_suggestion": w.fix}
+                        {"layer": getattr(w, "layer", 3), "severity": getattr(w, "severity", "WARNING"), "code": w.code, "path": w.path, "message": w.message, "line": w.line, "fix_suggestion": getattr(w, "fix", ""), "related_test": ""}
                         for w in api_resp.warnings
+                    ] + [
+                        {"layer": getattr(i, "layer", 3), "severity": getattr(i, "severity", "INFO"), "code": i.code, "path": i.path, "message": i.message, "line": i.line, "fix_suggestion": getattr(i, "fix", ""), "related_test": ""}
+                        for i in getattr(api_resp, "info", [])
                     ]
                 }
             else:
@@ -423,7 +469,7 @@ async def convert_mt_to_mx(request: schemas.MTConversionRequest, raw_request: Re
             # If the generated MX fails schema (L2) or mandatory L3 rules, mark as error
             # but keep the successful conversion parts so the user can see the output
             if report_dict.get("status") != "PASS":
-                l2_errors = [iss for iss in report_dict.get("issues", []) if iss.get("layer") == 2]
+                l2_errors = [iss for iss in report_dict.get("details", []) if iss.get("layer") == 2]
                 if l2_errors:
                     result["status"] = "error"
                     # Accumulate error messages for display
@@ -441,18 +487,18 @@ async def convert_mt_to_mx(request: schemas.MTConversionRequest, raw_request: Re
 
 @app.get("/history", response_model=List[schemas.HistorySummary])
 def get_history(raw_request: Request, skip: int = 0, limit: int = 5000):
-    version = raw_request.headers.get("x-sr-version") or "SR2025"
+    version = get_active_version(raw_request)
     return history_service.get_history(version=version, skip=skip, limit=limit)
 
 @app.get("/dashboard/stats", response_model=schemas.DashboardStats)
 def get_dashboard_stats(raw_request: Request):
     """Get aggregated dashboard statistics from Firestore"""
-    version = raw_request.headers.get("x-sr-version") or "SR2025"
+    version = get_active_version(raw_request)
     return history_service.get_stats(version=version)
 
 @app.get("/history/export")
 def export_history(raw_request: Request):
-    version = raw_request.headers.get("x-sr-version") or "SR2025"
+    version = get_active_version(raw_request)
     try:
         results = history_service.get_history(version=version, limit=50000) # Max export
         
@@ -504,7 +550,7 @@ def get_history_detail(validation_id: str):
 
 @app.delete("/history")
 def delete_all_history(raw_request: Request):
-    version = raw_request.headers.get("x-sr-version") or "SR2025"
+    version = get_active_version(raw_request)
     num_deleted = history_service.delete_all(version=version)
     return {"message": f"Soft deleted {num_deleted} records for {version}. Validation counter continues."}
 
@@ -538,7 +584,15 @@ async def validate_batch_init(
     }
 
 @app.get("/messages", response_model=List[str])
-def get_messages():
+def get_messages(raw_request: Request):
+    version = get_active_version(raw_request)
+    if version == "SR2026":
+        from app.sr2026.validation.validators.validator import SR2026Validator
+        # Need to instantiate SR2026Validator just to get messages, or can we just hardcode?
+        # Let's instantiate a lightweight version or just use the config if accessible.
+        # It's better to instantiate for accurate list
+        val2026 = SR2026Validator(history_service=history_service)
+        return val2026.get_supported_messages()
     return validator.get_supported_messages()
 
 @app.get("/messages/{message_type}/schema")
@@ -547,7 +601,7 @@ def get_message_schema(
     raw_request: Request
 ):
     """Dynamically extract the schema tree for a specific MX message type"""
-    version = raw_request.headers.get("x-sr-version") or "SR2025"
+    version = get_active_version(raw_request)
     if version == "SR2026":
         from app.sr2026.validation.validators.layer2 import Layer2Validator
         msg_type_clean = message_type.split('.')[0] + '.' + message_type.split('.')[1] if '.' in message_type else message_type
@@ -564,9 +618,14 @@ def get_message_schema(
     return schema_tree
 
 @app.get("/bulk-generate/blocks/{message_type:path}")
-def get_bulk_blocks(message_type: str):
+def get_bulk_blocks(message_type: str, raw_request: Request):
     """Return the block definitions (checkboxes) for a given message type."""
-    blocks = get_blocks_for_message(message_type)
+    version = get_active_version(raw_request)
+    if version == "SR2026":
+        from app.sr2026.generators.bulk_generator import get_blocks_for_message as get_blocks_2026
+        blocks = get_blocks_2026(message_type)
+    else:
+        blocks = get_blocks_for_message(message_type)
     if not blocks:
         raise HTTPException(status_code=404, detail=f"No block config found for {message_type}")
     return {"message_type": message_type, "blocks": blocks}
@@ -598,7 +657,7 @@ async def bulk_generate(request: dict, raw_request: Request):
     message_type = request.get("message_type")
     count = int(request.get("count", 1))
     selected_blocks = request.get("selected_blocks", [])
-    version = raw_request.headers.get("x-sr-version") or request.get("version") or "SR2025"
+    version = get_active_version(raw_request, request.get("version"))
 
     if count < 1 or (count > 500 and not os.environ.get("UNLIMITED_BULK")):
         raise HTTPException(status_code=400, detail="count must be between 1 and 500")
@@ -637,14 +696,31 @@ async def bulk_generate(request: dict, raw_request: Request):
         None), error (str | None), reason (str), error_codes (list[str]).
         """
         try:
-            xml = generate_single_xml(message_type, selected_blocks, attempt_idx, version=version)
-            report = await validator.validate(xml, mode="Full 1-3", message_type="Auto-detect", version=version)
-            if report.status == "PASS":
+            if version == "SR2026":
+                from app.sr2026.generators.bulk_generator import generate_single_xml as gen2026
+                from app.sr2026.validation.validators.validator import SR2026Validator
+                xml = gen2026(message_type, selected_blocks, attempt_idx)
+                val = SR2026Validator(history_service=history_service)
+                report = await val.validate(xml, message_type)
+            else:
+                xml = generate_single_xml(message_type, selected_blocks, attempt_idx, version=version)
+                report = await validator.validate(xml, mode="Full 1-3", message_type="Auto-detect")
+
+            if report.status in ("PASS", "PASSED"):
                 return {"ok": True, "xml": xml, "report": report,
                         "error": None, "reason": "", "error_codes": []}
-            issues = report.to_dict().get("details", [])
-            error_codes = [f"{iss.get('code', 'UNKNOWN')}: {iss.get('message', '')[:80]}"
-                           for iss in issues if iss.get("severity") in ("ERROR", "CRITICAL")]
+            
+            # SR2025 report returns a dict via to_dict(), SR2026 returns ApiValidateResponse directly in some cases? 
+            # Wait, SR2026Validator.validate() returns ApiValidateResponse objects which don't have to_dict().
+            if hasattr(report, "to_dict"):
+                issues = report.to_dict().get("details", [])
+                error_codes = [f"{iss.get('code', 'UNKNOWN')}: {iss.get('message', '')[:80]}"
+                               for iss in issues if iss.get("severity") in ("ERROR", "CRITICAL")]
+            else:
+                # ApiValidateResponse from SR2026
+                issues = getattr(report, "errors", [])
+                error_codes = [f"{iss.code}: {iss.message[:80]}" for iss in issues]
+
             reason = "; ".join(error_codes[:3]) if error_codes else "Unknown validation failure"
             return {"ok": False, "xml": xml, "report": report,
                     "error": None, "reason": reason, "error_codes": error_codes}
@@ -757,7 +833,7 @@ async def bulk_generate_stream(request: dict, raw_request: Request):
     message_type = request.get("message_type")
     count = int(request.get("count", 1))
     selected_blocks = request.get("selected_blocks", [])
-    version = raw_request.headers.get("x-sr-version") or request.get("version") or "SR2025"
+    version = get_active_version(raw_request, request.get("version"))
 
     if count < 1 or (count > 500 and not os.environ.get("UNLIMITED_BULK")):
         raise HTTPException(status_code=400, detail="count must be between 1 and 500")
@@ -780,13 +856,26 @@ async def bulk_generate_stream(request: dict, raw_request: Request):
 
         async def _one_attempt(i: int):
             try:
-                xml = generate_single_xml(message_type, selected_blocks, i, version=version)
-                report = await validator.validate(xml, mode="Full 1-3", message_type="Auto-detect", version=version)
-                if report.status == "PASS":
+                if version == "SR2026":
+                    from app.sr2026.generators.bulk_generator import generate_single_xml as gen2026
+                    from app.sr2026.validation.validators.validator import SR2026Validator
+                    xml = gen2026(message_type, selected_blocks, i)
+                    val = SR2026Validator(history_service=history_service)
+                    report = await val.validate(xml, message_type)
+                else:
+                    xml = generate_single_xml(message_type, selected_blocks, i, version=version)
+                    report = await validator.validate(xml, mode="Full 1-3", message_type="Auto-detect")
+
+                if report.status in ("PASS", "PASSED"):
                     return {"ok": True, "xml": xml, "report": report, "reason": ""}
-                issues = report.to_dict().get("details", [])
-                error_codes = [f"{iss.get('code', 'UNKNOWN')}: {iss.get('message', '')[:80]}"
-                               for iss in issues if iss.get("severity") in ("ERROR", "CRITICAL")]
+                
+                if hasattr(report, "to_dict"):
+                    issues = report.to_dict().get("details", [])
+                    error_codes = [f"{iss.get('code', 'UNKNOWN')}: {iss.get('message', '')[:80]}"
+                                   for iss in issues if iss.get("severity") in ("ERROR", "CRITICAL")]
+                else:
+                    issues = getattr(report, "errors", [])
+                    error_codes = [f"{iss.code}: {iss.message[:80]}" for iss in issues]
                 return {"ok": False, "xml": xml, "report": report,
                         "reason": "; ".join(error_codes[:3]) if error_codes else "Unknown validation failure"}
             except Exception as exc:
@@ -823,7 +912,7 @@ async def bulk_generate_stream(request: dict, raw_request: Request):
                         "xml": r["xml"],
                         "message_type": message_type,
                         "status": "VALID",
-                        "validation_report": r["report"].to_dict(),
+                        "validation_report": r["report"].to_dict() if hasattr(r["report"], "to_dict") else r["report"].dict() if hasattr(r["report"], "dict") else getattr(r["report"], "model_dump", lambda: {})(),
                     })
                 else:
                     failure_reasons[r["reason"]] = failure_reasons.get(r["reason"], 0) + 1

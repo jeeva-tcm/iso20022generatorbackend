@@ -545,9 +545,9 @@ class MT2MXConverter:
         
         return errs
 
-    def validate_and_convert(self, mt_message: str, forced_mt_type: str = None) -> dict:
+    def validate_and_convert(self, mt_message: str, forced_mt_type: str = None, version: str = "SR2025") -> dict:
         v_logs = []
-        v_logs.append(f"Starting conversion for MT message (Length: {len(mt_message)})")
+        v_logs.append(f"Starting conversion for MT message (Length: {len(mt_message)}, Version: {version})")
         # 1. SWIFT MT Charset Validation
         illegal = self._check_mt_charset(mt_message)
         if illegal:
@@ -866,9 +866,14 @@ class MT2MXConverter:
                         pstl_adr = self._get_or_create_node(mx_root, parent_path, namespaces)
                         xmlns_local = namespaces.get("xmlns", "")
                         adr_tag = f"{{{xmlns_local}}}AdrLine" if xmlns_local else "AdrLine"
-                        for line in address_lines[:2]:
-                            adr_el = ET.SubElement(pstl_adr, adr_tag)
-                            adr_el.text = line[:70]
+                        if version == "SR2026":
+                            strt_tag = f"{{{xmlns_local}}}StrtNm" if xmlns_local else "StrtNm"
+                            strt_el = ET.SubElement(pstl_adr, strt_tag)
+                            strt_el.text = " ".join(address_lines[:2])[:70]
+                        else:
+                            for line in address_lines[:2]:
+                                adr_el = ET.SubElement(pstl_adr, adr_tag)
+                                adr_el.text = line[:70]
                     else:
                         # Fallback for empty address (CBPR+ E001: TwnNm and Ctry mandatory).
                         self.set_element_text(mx_root, f"{parent_path}/Ctry", "GB", namespaces)
@@ -1185,7 +1190,7 @@ class MT2MXConverter:
         v2_rules = self.swift_rules.get("mappings", {}).get(mt_key, {}).get("mx_mandatory_xml_fields", {})
         if v2_rules:
             v_logs.append(f"Applying V2 Mandatory Healing for {mt_key}")
-            self._apply_v2_mandatory_healing(mx_root, v2_rules, parsed_fields, namespaces)
+            self._apply_v2_mandatory_healing(mx_root, v2_rules, parsed_fields, namespaces, version=version)
 
         # CBPR+ FIX: Inject mandatory ChrgsInf for pacs.008 (MT103 → FIToFICstmrCdtTrf)
         # CBPR+ Layer 3 rule PACS008_CHRGSINF_REQUIRED mandates at least one ChrgsInf per CdtTrfTxInf.
@@ -1235,7 +1240,10 @@ class MT2MXConverter:
         
         head_sub(app_hdr, "BizMsgIdr", parsed_fields.get("20", "AUTO-B01"))
         head_sub(app_hdr, "MsgDefIdr", mapping["target_mx"])
-        head_sub(app_hdr, "BizSvc", mapping.get("biz_svc", "swift.cbprplus.02"))
+        biz_svc_val = mapping.get("biz_svc", "swift.cbprplus.02")
+        if version == "SR2026" and mapping["target_mx"] == "pacs.008.001.08":
+            biz_svc_val = "swift.cbprplus.04"
+        head_sub(app_hdr, "BizSvc", biz_svc_val)
         head_sub(app_hdr, "CreDt", self._cbpr_datetime())
         
         # 4. Mandatory Field Healing (V2) - Already applied above in Step 6
@@ -1256,7 +1264,7 @@ class MT2MXConverter:
 
         # Final Global Healing for camt messages (NtryRef and BkTxCd are often mandatory)
         self._heal_camt_mandatory_fields(mx_root, namespaces)
-        self._heal_pacs008_mandatory_fields(mx_root, namespaces)
+        self._heal_pacs008_mandatory_fields(mx_root, namespaces, version)
         self._heal_pacs009_mandatory_fields(mx_root, namespaces)
         self._normalise_cbpr_datetimes_in_tree(envelope)
 
@@ -1691,11 +1699,15 @@ class MT2MXConverter:
                 
         return val
 
-    def _apply_v2_mandatory_healing(self, mx_root, v2_rules, parsed_fields, namespaces):
+    def _apply_v2_mandatory_healing(self, mx_root, v2_rules, parsed_fields, namespaces, version="SR2025"):
         """
         Recursively applies mandatory field rules from swift_validation_rules.json (v2.0).
         """
         for field_name, rule in v2_rules.items():
+            # In SR2026, AdrLine is deprecated for structured addresses. Skip healing it.
+            if version == "SR2026" and field_name == "AdrLine":
+                continue
+            
             # print(f"DEBUG: Healing {field_name}") # Temporarily commented or just add it
             path = rule.get("path")
             if not path: continue
@@ -1841,14 +1853,14 @@ class MT2MXConverter:
                 # If an optional parent was skipped, we shouldn't force-create its mandatory children.
                 check_node = self._navigate_path(mx_root, path, namespaces, create_missing=False)
                 if check_node is not None:
-                    self._process_v2_children(mx_root, rule["children"], parsed_fields, namespaces)
+                    self._process_v2_children(mx_root, rule["children"], parsed_fields, namespaces, version)
 
-    def _process_v2_children(self, mx_root, children, parsed_fields, namespaces):
+    def _process_v2_children(self, mx_root, children, parsed_fields, namespaces, version="SR2025"):
         """
         Process children using mx_root for path navigation to ensure absolute paths work.
         """
         for child_name, child_rule in children.items():
-            self._apply_v2_mandatory_healing(mx_root, {child_name: child_rule}, parsed_fields, namespaces)
+            self._apply_v2_mandatory_healing(mx_root, {child_name: child_rule}, parsed_fields, namespaces, version)
 
     def _sort_children_by_list(self, element, sequence):
         """
@@ -2210,7 +2222,7 @@ class MT2MXConverter:
                 self.set_element_text(pstl_adr, "TwnNm", "UNKNOWN TOWN", namespaces)
                 self.set_element_text(pstl_adr, "AdrLine", "UNKNOWN ADDRESS", namespaces)
 
-    def _heal_pacs008_mandatory_fields(self, root, namespaces):
+    def _heal_pacs008_mandatory_fields(self, root, namespaces, version="SR2025"):
         """
         CBPR+ PACS008 rules require Dbtr/Nm and Cdtr/Nm.
         If MT103 provides only 50A or 59A (BIC only without name), the Name element will be missing.
@@ -2231,14 +2243,12 @@ class MT2MXConverter:
             
             if not has_dbtr_anybic:
                 nm = self._find_child(dbtr, "Nm")
-                if nm is None or not nm.text or not nm.text.strip():
-                    if nm is None:
-                        nm_tag = f"{{{xmlns}}}Nm" if xmlns else "Nm"
-                        # Insert Nm as the first child of Dbtr (or right after Id)
-                        # For simplicity, we just append it, the final recursive sort will fix its position
-                        nm = ET.SubElement(dbtr, nm_tag)
+                if nm is None:
+                    nm_tag = f"{{{xmlns}}}Nm" if xmlns else "Nm"
+                    nm = ET.SubElement(dbtr, nm_tag)
+                if not nm.text:
                     nm.text = "NOTPROVIDED"
-
+            
             # Heal Cdtr/Nm
             cdtr = self._find_child(tx_inf, "Cdtr")
             if cdtr is None:
@@ -2249,13 +2259,35 @@ class MT2MXConverter:
             
             if not has_cdtr_anybic:
                 cdtr_nm = self._find_child(cdtr, "Nm")
-                if cdtr_nm is None or not cdtr_nm.text or not cdtr_nm.text.strip():
-                    if cdtr_nm is None:
-                        nm_tag = f"{{{xmlns}}}Nm" if xmlns else "Nm"
-                        cdtr_nm = ET.SubElement(cdtr, nm_tag)
+                if cdtr_nm is None:
+                    nm_tag = f"{{{xmlns}}}Nm" if xmlns else "Nm"
+                    cdtr_nm = ET.SubElement(cdtr, nm_tag)
+                if not cdtr_nm.text:
                     cdtr_nm.text = "NOTPROVIDED"
-
-    def _heal_pacs008_mandatory_fields(self, root, namespaces):
+                    
+            # SR2026: Instructed Amount is mandatory
+            if version == "SR2026":
+                instd_amt = self._find_child(tx_inf, "InstdAmt")
+                if instd_amt is None:
+                    # Find IntrBkSttlmAmt to grab Ccy and Amount
+                    intr_amt = self._find_child(tx_inf, "IntrBkSttlmAmt")
+                    if intr_amt is not None and intr_amt.text:
+                        ccy = intr_amt.get("Ccy", "USD")
+                        amt = intr_amt.text
+                        
+                        instd_amt_tag = f"{{{xmlns}}}InstdAmt" if xmlns else "InstdAmt"
+                        instd_amt = ET.Element(instd_amt_tag, {"Ccy": ccy})
+                        instd_amt.text = amt
+                        
+                        # Insert before EqvtAmt or XchgRate or ChrgBr
+                        insert_idx = len(tx_inf)
+                        for i, child in enumerate(tx_inf):
+                            tag_clean = child.tag.split('}')[-1]
+                            if tag_clean in ['EqvtAmt', 'XchgRate', 'ChrgBr', 'ChrgsInf', 'PrvsInstgAgt1', 'PrvsInstgAgt2', 'PrvsInstgAgt3']:
+                                insert_idx = i
+                                break
+                        tx_inf.insert(insert_idx, instd_amt)
+    def _heal_pacs008_mandatory_fields(self, root, namespaces, version="SR2025"):
         """
         CBPR+ PACS008 rules require Dbtr/Nm and Cdtr/Nm.
         If MT103 provides only 50A or 59A (BIC only without name), the Name element will be missing.
@@ -2276,14 +2308,12 @@ class MT2MXConverter:
             
             if not has_dbtr_anybic:
                 nm = self._find_child(dbtr, "Nm")
-                if nm is None or not nm.text or not nm.text.strip():
-                    if nm is None:
-                        nm_tag = f"{{{xmlns}}}Nm" if xmlns else "Nm"
-                        # Insert Nm as the first child of Dbtr (or right after Id)
-                        # For simplicity, we just append it, the final recursive sort will fix its position
-                        nm = ET.SubElement(dbtr, nm_tag)
+                if nm is None:
+                    nm_tag = f"{{{xmlns}}}Nm" if xmlns else "Nm"
+                    nm = ET.SubElement(dbtr, nm_tag)
+                if not nm.text:
                     nm.text = "NOTPROVIDED"
-
+            
             # Heal Cdtr/Nm
             cdtr = self._find_child(tx_inf, "Cdtr")
             if cdtr is None:
@@ -2294,12 +2324,34 @@ class MT2MXConverter:
             
             if not has_cdtr_anybic:
                 cdtr_nm = self._find_child(cdtr, "Nm")
-                if cdtr_nm is None or not cdtr_nm.text or not cdtr_nm.text.strip():
-                    if cdtr_nm is None:
-                        nm_tag = f"{{{xmlns}}}Nm" if xmlns else "Nm"
-                        cdtr_nm = ET.SubElement(cdtr, nm_tag)
+                if cdtr_nm is None:
+                    nm_tag = f"{{{xmlns}}}Nm" if xmlns else "Nm"
+                    cdtr_nm = ET.SubElement(cdtr, nm_tag)
+                if not cdtr_nm.text:
                     cdtr_nm.text = "NOTPROVIDED"
-
+                    
+            # SR2026: Instructed Amount is mandatory
+            if version == "SR2026":
+                instd_amt = self._find_child(tx_inf, "InstdAmt")
+                if instd_amt is None:
+                    # Find IntrBkSttlmAmt to grab Ccy and Amount
+                    intr_amt = self._find_child(tx_inf, "IntrBkSttlmAmt")
+                    if intr_amt is not None and intr_amt.text:
+                        ccy = intr_amt.get("Ccy", "USD")
+                        amt = intr_amt.text
+                        
+                        instd_amt_tag = f"{{{xmlns}}}InstdAmt" if xmlns else "InstdAmt"
+                        instd_amt = ET.Element(instd_amt_tag, {"Ccy": ccy})
+                        instd_amt.text = amt
+                        
+                        # Insert before EqvtAmt or XchgRate or ChrgBr
+                        insert_idx = len(tx_inf)
+                        for i, child in enumerate(tx_inf):
+                            tag_clean = child.tag.split('}')[-1]
+                            if tag_clean in ['EqvtAmt', 'XchgRate', 'ChrgBr', 'ChrgsInf', 'PrvsInstgAgt1', 'PrvsInstgAgt2', 'PrvsInstgAgt3']:
+                                insert_idx = i
+                                break
+                        tx_inf.insert(insert_idx, instd_amt)
     def _heal_pacs009_mandatory_fields(self, root, namespaces):
         """
         CBPR+ PACS009 COVE rules require InstgRmbrsmntAgt or InstdRmbrsmntAgt if SttlmMtd is COVE.

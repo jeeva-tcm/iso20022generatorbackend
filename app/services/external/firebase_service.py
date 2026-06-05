@@ -380,11 +380,6 @@ class FirebaseHistoryService:
                            .select(["validation_id", "batch_id", "file_id", "timestamp", "message_type", "status", "total_errors", "total_warnings", "execution_time_ms", "deleted", "origin", "version"]) \
                            .order_by("timestamp", direction=firestore.Query.DESCENDING)
 
-            # Limit the query size to prevent streaming the entire collection when only a subset is requested.
-            # Add 100 extra docs to account for any soft-deleted records.
-            if limit < 10000:
-                query = query.limit(limit + skip + 100)
-
             # Short timeout — don't let a broken/slow Firestore freeze the
             # /history endpoint for 5 minutes. 10s is plenty for healthy reads.
             docs = query.stream(timeout=self.FIRESTORE_CALL_TIMEOUT_S)
@@ -454,7 +449,8 @@ class FirebaseHistoryService:
             return {"total_audits": 0, "passed_messages": 0, "failed_messages": 0, "validation_quality": 0}
             
         try:
-            docs = self.db.collection("validation_history").stream(
+            query = self.db.collection("validation_history").where("version", "==", version)
+            docs = query.stream(
                 timeout=self.FIRESTORE_CALL_TIMEOUT_S
             )
             total = 0
@@ -547,11 +543,11 @@ class FirebaseHistoryService:
         
         try:
             batch = self.db.batch()
-            docs = list(self.db.collection("validation_history").stream())
+            docs = list(self.db.collection("validation_history").where("version", "==", version).stream())
             count = 0
             for doc in docs:
                 data = doc.to_dict()
-                if not data.get("deleted", False) and data.get("version", "SR2025") == version:
+                if not data.get("deleted", False):
                     batch.update(doc.reference, {"deleted": True})
                     count += 1
                     if count % 500 == 0:

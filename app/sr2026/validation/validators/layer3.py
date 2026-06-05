@@ -176,6 +176,19 @@ class Layer3Validator:
                                     line=line_map.get(key, 1),
                                     fix=f"Round the amount to maximum {max_decimals} decimal places."
                                 ))
+
+                        # Check for high value transaction warning
+                        hv_thresholds = {"USD": 100000, "EUR": 100000, "GBP": 100000, "JPY": 10000000}
+                        hv_limit = hv_thresholds.get(ccy)
+                        if hv_limit is not None and val_float > hv_limit:
+                            report.add_issue(ValidationIssue(
+                                severity="WARNING",
+                                code="HIGH_VALUE_TRANSACTION",
+                                path=key,
+                                message=f"Notice: This {ccy} {val_float:,.2f} payment is flagged as HIGH_VALUE_TRANSACTION.",
+                                line=line_map.get(key, 1),
+                                fix="Risk monitoring is active for this high-value transfer."
+                            ))
                     except ValueError:
                         pass
 
