@@ -601,7 +601,10 @@
         },
         "CHRGSINF_CCY_MISMATCH": {
             "root_cause": "ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency. Charges must always be expressed in the same currency as the interbank settlement amount.",
-            "affected_messages": ["pacs.008", "pacs.003"],
+            "affected_messages": [
+                "pacs.008",
+                "pacs.003"
+            ],
             "fix": "Update ChrgsInf/Amt/@Ccy to match IntrBkSttlmAmt/@Ccy. Example: If IntrBkSttlmAmt has Ccy='SEK' but ChrgsInf/Amt has Ccy='USD', change the Ccy attribute in ChrgsInf/Amt to 'SEK'."
         },
         "XCHGRATE_REQUIRED": {
@@ -4516,5 +4519,127 @@
                 "DOCUMENT_NESTED_IN_APPHDR — extracting a message root element from inside AppHdr into a sibling Document element"
             ]
         }
+    },
+    "known_fix_behaviors": {
+        "_doc": "Observed behavioral constraints and edge cases for the AI fix engine. Field-tested limitations. Fix engine MUST read before applying any structural or value fix.",
+        "structural_edit_behaviors": [
+            {
+                "id": "EXCL_BANG_REMOVES_TAG",
+                "description": "If user appends '!' to tag name or content (e.g. <Amt>100!</Amt> or <Tag!>), lxml structural recovery REMOVES the tag entirely instead of repairing it. Affects all message types including camt.052 and camt.054.",
+                "behavior": "Tag dropped from recovered XML — data loss",
+                "root_cause": "lxml recover=True silently discards tags with non-XML characters when they cannot be parsed",
+                "fix_engine_guidance": "Pre-process XML: strip '!' from text content or tag names before passing to lxml recovery. Do NOT rely on Stage-2 recovery for this case.",
+                "detection_pattern": "Detect '!' in tag text or tag name before recovery"
+            },
+            {
+                "id": "ENTIRE_TAG_REMOVED_UNFIXABLE",
+                "description": "If user deletes entire tag (opening + content + closing), fix engine cannot recover it. Element is simply absent from tree.",
+                "behavior": "Engine sees no evidence of missing element; cannot determine value without context",
+                "fix_engine_guidance": "When validator reports MISSING_MANDATORY_FIELD for element not present, use tag_templates KB for insertion. Fall back to field_constraints dummy values. Do NOT attempt value inference from context alone.",
+                "related": "CANNOT_AUTO_FIX — only fixable via MISSING_MANDATORY_FIELD template insertion"
+            },
+            {
+                "id": "TAG_NAME_ONLY_REMOVED_FIXABLE",
+                "description": "If user deletes only tag name but leaves content (element renders as unrecognized local-name), fix engine CAN repair: value and position still present in tree.",
+                "behavior": "lxml parses with fallback local-name; content accessible and positionally identifies intended element",
+                "fix_engine_guidance": "Identify element by positional context (parent path + sibling order). Reconstruct correct tag name from parent's expected child sequence per XSD or KB template."
+            }
+        ],
+        "value_fix_bugs": [
+            {
+                "id": "AMT_DEFAULT_1000",
+                "description": "_value_for_datatype() returns '1000.00' for any field whose datatype contains 'decimal' or 'amount'. This OVERWRITES existing correct amounts with 1000.00 when unrelated errors trigger a value fix.",
+                "affected_message_types": [
+                    "all"
+                ],
+                "observed_cases": [
+                    "pain.001: InstrAmt changed to 1000.00 or '1000,100' (comma-decimal corruption)",
+                    "pacs.008: IntrBkSttlmAmt changed to 1000.00 during other structural fixes",
+                    "camt.052/054: Amt fields changed to 1000.00 when fixing other errors in same block"
+                ],
+                "fix_engine_guidance": "NEVER overwrite existing non-zero amount with 1000.00. Only apply default when field is empty or missing. Preserve existing Amt/@Ccy attribute. For InstrAmt: always preserve existing value.",
+                "critical_rule": "If el.text already matches ^\\d+\\.\\d+$, do NOT replace it. Only replace empty, null, or non-numeric values."
+            },
+            {
+                "id": "INSTRAMT_COMMA_CORRUPTION",
+                "description": "pain.001 InstrAmt being changed to '1000,100' (comma as thousands separator). Locale-specific decimal formatting bug.",
+                "fix_engine_guidance": "All ISO 20022 decimals use period (.) as decimal separator per xs:decimal. Never use comma. If generating default: '1000.00'. If preserving: validate ^\\d+\\.\\d+$ before keeping."
+            },
+            {
+                "id": "SLEV_IN_CHRGBR_INVALID",
+                "description": "SLEV is NOT valid for ChrgBr in CBPR+ messages. ChrgBr valid values: DEBT, CRED, SHAR only. SLEV removed from ChrgBr enumeration in ISO 20022 SR2019+. When SLEV appears in ChrgBr it must be replaced with SHAR.",
+                "affected_tags": [
+                    "ChrgBr"
+                ],
+                "valid_chrgbr_codes": [
+                    "DEBT",
+                    "CRED",
+                    "SHAR"
+                ],
+                "invalid_in_chrgbr": [
+                    "SLEV"
+                ],
+                "fix_engine_guidance": "When ChrgBr contains SLEV, replace with SHAR. Never insert SLEV into ChrgBr in templates. ChrgBr template: '<ChrgBr>SHAR</ChrgBr>'. SLEV is valid only in SvcLvl/Cd context."
+            }
+        ],
+        "per_message_known_issues": [
+            {
+                "message_type": "camt.052",
+                "issue_id": "CAMT052_BANG_DROPS_TAG",
+                "description": "Adding '!' at end of any tag content in camt.052 causes tag to be silently dropped during structural recovery. Same root cause as EXCL_BANG_REMOVES_TAG.",
+                "fix_engine_guidance": "Pre-process XML: strip '!' from text content before lxml recovery."
+            },
+            {
+                "message_type": "camt.054",
+                "issue_id": "CAMT054_COMMA4_PARSE_FAILURE",
+                "description": "Adding ',4' at end of tag content (e.g. <Amt Ccy='USD'>500,4</Amt>) causes validation failure. Bare comma ',' in same position passes. Locale decimal separator issue.",
+                "observed": "',4' appended causes failure; ',' alone passes",
+                "fix_engine_guidance": "Treat ',4' as malformed decimal. Strip comma and trailing digit, preserve integer part, append '.00'. E.g. '500,4' becomes '500.00'. Always use period as decimal separator."
+            },
+            {
+                "message_type": "pain.001",
+                "issue_id": "PAIN001_AMT_1000_REGRESSION",
+                "description": "pain.001 amount fields (Amt, InstdAmt, CtrlSum, EqvtAmt) reset to 1000.00 when unrelated errors trigger value fix. InstrAmt set to '1000,100' (locale bug).",
+                "fix_engine_guidance": "In pain.001: skip value fix for any *Amt element that already has valid decimal. For InstrAmt: never regenerate value — only fix format (period vs comma). Never change numeric value itself."
+            },
+            {
+                "message_type": "pacs.008",
+                "issue_id": "PACS008_DOCUMENT_NOT_EXPECTED",
+                "description": "Error: 'The element Document is not expected here. Either it is not allowed in this specification, or another mandatory element is missing before this one. One of the following elements is expected: Sgntr, Rltd'",
+                "root_cause": "Document element appearing as child of AppHdr instead of sibling. AppHdr and Document must be SIBLING root elements at document level. Or AppHdr missing closing tag causing Document to parse as child.",
+                "fix_engine_guidance": "1. Check if Document nested inside AppHdr — restructure as siblings. 2. Check if AppHdr unclosed (Stage-0 surgical fix). 3. Do NOT add Sgntr or Rltd — they are optional; the error message 'expected' list is misleading. Real fix is correct sibling structure.",
+                "correct_structure": "<?xml...?><AppHdr xmlns='...head.001.001.02'>...</AppHdr><Document xmlns='...pacs.008.001.08'><FIToFICstmrCdtTrf>...</FIToFICstmrCdtTrf></Document>",
+                "related_error_code": "DOCUMENT_NESTED_IN_APPHDR"
+            },
+            {
+                "message_type": "all (BusMsgEnvlp pattern)",
+                "issue_id": "BUSMSGENVLP_APPHDR_COMPLETELY_REMOVED",
+                "description": "User has a BusMsgEnvlp-wrapped message where Document is incorrectly nested inside AppHdr. When the user removes the AppHdr opening and closing tags entirely (leaving Fr, To, BizMsgIdr, MsgDefIdr, BizSvc, CreDt, Prty, and Document as direct children of BusMsgEnvlp), the AI fix engine CANNOT re-add the AppHdr wrapper. The engine has no record of AppHdr ever existing — the entire structural container is absent.",
+                "real_example": {
+                    "original_bad_structure": "<BusMsgEnvlp><AppHdr xmlns='...head.001.001.02'>...<Document xmlns='...pacs.008.001.08'>...</Document></AppHdr></BusMsgEnvlp>",
+                    "after_user_removes_apphdr_tags": "<BusMsgEnvlp xmlns='urn:swift:xsd:envelope'><Fr>...</Fr><To>...</To><BizMsgIdr>MSGWUV501NPGLJW6S8R</BizMsgIdr><MsgDefIdr>pacs.008.001.08</MsgDefIdr><BizSvc>swift.cbprplus.02</BizSvc><CreDt>2026-06-08T05:07:41+00:00</CreDt><Prty>NORM</Prty><Document xmlns='...pacs.008.001.08'>...</Document></BusMsgEnvlp>",
+                    "what_fix_engine_sees": "BusMsgEnvlp with orphaned AppHdr children (Fr, To, BizMsgIdr, etc.) at root level — no AppHdr element present to anchor the fix"
+                },
+                "why_ai_cannot_fix": "The fix engine cannot determine which direct children of BusMsgEnvlp belonged to AppHdr vs. which were already at root level. Wrapping the wrong set of children would produce a structurally different (and equally invalid) document. This requires human judgment.",
+                "compounding_problem": "This structure also has Document nested inside AppHdr (before tag removal). So even if AppHdr were re-added, the Document would still be wrongly nested inside it instead of being a sibling. Two separate restructuring steps are required.",
+                "fix_engine_guidance": "Do NOT attempt to auto-insert AppHdr when: (a) root is BusMsgEnvlp AND (b) AppHdr is not present as a direct child. Flag as CANNOT_AUTO_FIX and surface BUSMSGENVLP_INVALID_NAMESPACE error with human_guidance.",
+                "human_guidance_steps": [
+                    "Step 1 — Restore AppHdr wrapper: Add <AppHdr xmlns='urn:iso:std:iso:20022:tech:xsd:head.001.001.02'> immediately after <BusMsgEnvlp> and </AppHdr> before <Document>. The AppHdr children are: Fr, To, BizMsgIdr, MsgDefIdr, BizSvc, CreDt, Prty.",
+                    "Step 2 — Fix Document placement: Move <Document> outside AppHdr so it is a SIBLING, not a child. The correct structure has AppHdr closed before Document opens.",
+                    "Step 3 — Remove BusMsgEnvlp wrapper: Remove outer <BusMsgEnvlp> and </BusMsgEnvlp>. Re-root namespace declarations from BusMsgEnvlp onto AppHdr if needed.",
+                    "Step 4 — Final structure: <?xml...?><AppHdr xmlns='urn:iso:std:iso:20022:tech:xsd:head.001.001.02'>...</AppHdr><Document xmlns='urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08'><FIToFICstmrCdtTrf>...</FIToFICstmrCdtTrf></Document>"
+                ],
+                "apphdr_expected_children_in_order": [
+                    "Fr",
+                    "To",
+                    "BizMsgIdr",
+                    "MsgDefIdr",
+                    "BizSvc",
+                    "CreDt",
+                    "Prty"
+                ],
+                "detection_hint": "Trigger when root is BusMsgEnvlp AND AppHdr is absent AND Fr/To/BizMsgIdr are direct children of BusMsgEnvlp."
+            }
+        ]
     }
 }

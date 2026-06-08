@@ -253,7 +253,7 @@ def _value_for_datatype(dt: str) -> Optional[str]:
     if "date" in dt:
         return date.today().isoformat()
     if "decimal" in dt or "amount" in dt:
-        return "1000.00"
+        return None  # amount values must be preserved in-place; never replace with dummy
     if "uuid" in dt:
         return str(uuid.uuid4())
     return None
@@ -799,6 +799,11 @@ def _kb_field_constraint(tag_name: str) -> Dict[str, Any]:
 
     tn = tag_name
     # Suffix-based heuristics — return a synthesized constraint
+    # Max35Text ID fields — explicit max_length=35 so length overflow fires correctly
+    if tn in ("MsgId", "BizMsgIdr", "EndToEndId", "InstrId", "TxId",
+              "OrgnlMsgId", "OrgnlEndToEndId", "OrgnlInstrId", "OrgnlTxId",
+              "PmtInfId", "ClrSysRef", "MsgDefIdr"):
+        return {"type": "Max35Text", "max_length": 35}
     if tn.endswith("Amt") or tn == "Amt":
         return {"type": "Amount", "example": "1000.00"}
     # AppHdr/CreDt is ISODateTime (dateTime), not ISODate — must be treated as
@@ -950,6 +955,19 @@ class _RulesIndex:
         if msg_type not in cls._cache:
             cls._cache[msg_type] = _RulesIndex(msg_type)
         return cls._cache[msg_type]
+
+
+def _verify_iban_mod97(iban: str) -> bool:
+    """Return True when the IBAN passes ISO 13616 MOD-97-10 check digit verification."""
+    try:
+        iban = iban.strip().upper()
+        if not re.match(r'^[A-Z]{2}[0-9]{2}[A-Z0-9]{1,30}$', iban):
+            return False
+        rearranged = iban[4:] + iban[:4]
+        numeric = ''.join(str(ord(c) - 55) if c.isalpha() else c for c in rearranged)
+        return int(numeric) % 97 == 1
+    except Exception:
+        return False
 
 
 def _detect_msg_type(xml: str) -> str:
@@ -2430,6 +2448,17 @@ class FixSuggester:
                 type_name = tmap.element_type.get(tag_name, tag_name)
             el = _xsd_build(tag_name, type_name, tmap, ns)
             if el is not None and (el.text or len(el)):
+                # Preserve existing amount values — never overwrite real amounts with 1000.00
+                if root is not None:
+                    for _bc in el.iter():
+                        if not isinstance(_bc.tag, str):
+                            continue
+                        _bc_local = etree.QName(_bc.tag).localname
+                        if ((_bc_local.endswith("Amt") or _bc_local == "Amt")
+                                and (_bc.text or "").strip() in ("1000.00", "1000")):
+                            _existing_a = self._harvest_value(root, _bc_local)
+                            if _existing_a and re.match(r'^\d+(\.\d+)?$', _existing_a.strip()):
+                                _bc.text = _existing_a.strip()
                 if existing_parent is not None and len(el):
                     el = self._prune_duplicate_children(el, existing_parent)
                 return el
@@ -2723,32 +2752,56 @@ class FixSuggester:
             line_hint = None
         self._line_hint = line_hint  # consumed by _recover_target_from_message
 
-        # ── SWIFT Forbidden Character Removal ────────────────────────────────────
-        # Layer 2 detects forbidden SWIFT chars in inter-element text (mixed
-        # content on parent elements or tail text after child closing tags).
-        # Auto-fix: strip those chars from .text / .tail using lxml, then
-        # re-serialise — so leaf content like amounts/dates is never touched.
-        if code == "SWIFT_FORBIDDEN_CHAR":
+        # ── SWIFT / CBPR+ Character Set Repair ───────────────────────────────────
+        # Handles three codes:
+        #   SWIFT_FORBIDDEN_CHAR  — forbidden chars in inter-element / tail text
+        #   PARTY_NAME_SWIFT_CHARSET — non-CBPR+ chars in a <Nm> leaf element
+        #   SWIFT_CHARSET_WARN    — non-CBPR+ chars in <Ustrd> or similar leaf
+        #
+        # CBPR+ UHB permitted set: A-Z a-z 0-9 space / - ? : ( ) . , '
+        # Everything else (@ # $ % ^ & * ! etc.) must be stripped.
+        _is_swift_charset_code = code in (
+            "SWIFT_FORBIDDEN_CHAR", "PARTY_NAME_SWIFT_CHARSET", "SWIFT_CHARSET_WARN",
+            "INVALID_CHARSET", "INVALID_CHARSETS",
+        )
+        if _is_swift_charset_code:
             try:
-                FORBIDDEN = set(',#;@{}[]()')
+                # CBPR+ restricted charset — strip anything not in the allowed set
+                _CBPR_ALLOWED = re.compile(r"[^A-Za-z0-9 /\-?:().,']")
 
                 def _strip_forbidden(text: str) -> str:
-                    return ''.join(c for c in text if c not in FORBIDDEN)
+                    return _CBPR_ALLOWED.sub('', text)
 
                 _parser = etree.XMLParser(remove_blank_text=False, no_network=True, recover=True)
                 _root = etree.fromstring(xml.encode("utf-8"), _parser)
                 _changed = False
 
+                # Leaf elements (no children) whose text carries the offending chars
+                _LEAF_CHARSET_TAGS = {
+                    "Nm", "Ustrd", "AddtlInf", "InfTp", "TwnNm", "StrtNm",
+                    "BldgNm", "Dept", "SubDept", "Flr", "Room", "PstBx",
+                    # Additional tags from _validate_charsets_in_xml (global CBPR+ enforcement)
+                    "AdrLine", "DstrctNm", "CtrySubDvsn", "TwnLctnNm", "ClrSysRef",
+                    "BldgNb", "PstCd", "Purp", "Cd", "Prtry",
+                }
+
                 for _el in _root.iter():
                     if not isinstance(_el.tag, str):
                         continue
-                    # Only strip parent.text when the element has children
+                    _local = etree.QName(_el.tag).localname
+                    # Fix leaf element text (e.g. <Nm>garbage</Nm>)
+                    if len(_el) == 0 and _el.text and _local in _LEAF_CHARSET_TAGS:
+                        _cleaned = _strip_forbidden(_el.text)
+                        if _cleaned != _el.text:
+                            _el.text = _cleaned or _el.text[:50]
+                            _changed = True
+                    # Fix inter-element text on container elements
                     if len(_el) > 0 and _el.text:
                         _cleaned = _strip_forbidden(_el.text)
                         if _cleaned != _el.text:
                             _el.text = _cleaned
                             _changed = True
-                    # Always strip tail text (inter-element junk)
+                    # Always fix tail text
                     if _el.tail:
                         _cleaned = _strip_forbidden(_el.tail)
                         if _cleaned != _el.tail:
@@ -2757,7 +2810,6 @@ class FixSuggester:
 
                 if _changed:
                     _fixed_xml = etree.tostring(_root, encoding="unicode", pretty_print=False)
-                    # Restore the XML declaration if the original had one
                     _decl_m = re.match(r'<\?xml[^?]*\?>\s*', xml)
                     if _decl_m:
                         _fixed_xml = _decl_m.group(0) + _fixed_xml
@@ -2781,7 +2833,11 @@ class FixSuggester:
         _has_unescaped_amp = bool(
             re.search(r'&(?!(?:amp|lt|gt|apos|quot|#[0-9]+|#x[0-9a-fA-F]+);)', xml)
         )
-        if _is_syntax_code or _has_unescaped_amp or "reserved" in msg.lower() or "unclosed" in msg.lower():
+        _has_missing_decl = (
+            "missing" in msg.lower()
+            and any(k in msg.lower() for k in ("declaration", "header", "xml"))
+        )
+        if _is_syntax_code or _has_unescaped_amp or _has_missing_decl or "reserved" in msg.lower() or "unclosed" in msg.lower():
             recovered = self._try_xml_recovery(xml, code, msg)
             if recovered is not None:
                 return recovered
@@ -2831,7 +2887,9 @@ class FixSuggester:
                     if _other is _iban_target:
                         continue
                     _t = (_other.text or "").strip()
-                    if _t and _iban_pat.match(_t) and _t[:2].upper() not in _non_iban_ctry:
+                    if (_t and _iban_pat.match(_t)
+                            and _t[:2].upper() not in _non_iban_ctry
+                            and _verify_iban_mod97(_t)):
                         _good_iban = _t
                         break
                 if _good_iban is None:
@@ -2944,6 +3002,39 @@ class FixSuggester:
                                 _pty_xpath, _pty_orig,
                                 self._serialize(_pty_new),
                                 code, msg, "high"
+                            )
+                        except Exception:
+                            pass
+
+        # ── Route: empty <PstlAdr> — populate with template instead of removing ─
+        # When <PstlAdr/> or <PstlAdr></PstlAdr> exists but has no children the
+        # AI fallback and KB removal rules would delete it. We populate it with
+        # the standard AdrType+AdrLine+Ctry block from _TEMPLATES so the schema
+        # constraint (Ctry mandatory) is satisfied without data loss.
+        _empty_pstladr = (
+            ("pstladr" in msg.lower() and any(k in msg.lower()
+                for k in ("empty", "present", "not complete", "missing")))
+            or ("PstlAdr" in (msg + fix_hint) and "empty" in (msg + fix_hint).lower())
+        )
+        if _empty_pstladr:
+            for _pa_el in root.iter():
+                if not isinstance(_pa_el.tag, str):
+                    continue
+                if etree.QName(_pa_el.tag).localname != "PstlAdr":
+                    continue
+                if len(_pa_el) == 0:  # empty (no children)
+                    _pa_orig  = self._serialize(_pa_el)
+                    _pa_xpath = self._xpath_of(_pa_el)
+                    _pa_tmpl  = _TEMPLATES.get("PstlAdr", "")
+                    if _pa_tmpl:
+                        try:
+                            _ns_pa  = etree.QName(_pa_el.tag).namespace or ""
+                            _pa_new = etree.fromstring(_pa_tmpl.encode("utf-8"))
+                            _pa_new = self._apply_ns(_pa_new, _ns_pa)
+                            return FixSuggestion(
+                                _pa_xpath, _pa_orig,
+                                self._serialize(_pa_new),
+                                code, msg, "high",
                             )
                         except Exception:
                             pass
@@ -3133,6 +3224,27 @@ class FixSuggester:
             "following element",
             "missing before",
         )):
+            # ── Missing closing tag check ─────────────────────────────────────
+            # When lxml recover=True auto-closes a removed closing tag at the
+            # wrong nesting level, the document looks well-formed but has wrong
+            # structure → XSD gives "Element X not expected here".
+            # Strict (non-recovery) parse exposes the real structural error;
+            # if it fails with a tag mismatch/unclosed error, route to recovery
+            # which correctly re-inserts the missing closing tag.
+            try:
+                etree.fromstring(xml.encode("utf-8"),
+                                 etree.XMLParser(recover=False, no_network=True))
+            except etree.XMLSyntaxError as _strict_e:
+                _se_msg = str(_strict_e).lower()
+                if any(k in _se_msg for k in (
+                    "end tag", "endtag", "not found", "mismatch",
+                    "unclosed", "unexpected", "opening and ending",
+                )):
+                    _rcv = self._try_xml_recovery(xml, code, str(_strict_e))
+                    if _rcv is not None:
+                        return _rcv
+            except Exception:
+                pass
             # ── CBPR+ forbidden element → remove it outright ──────────────────
             # When the flagged element is one CBPR+ doesn't permit in its parent
             # (e.g. <ClrSys> in <SttlmInf>), it can't be reordered or completed
@@ -3294,6 +3406,39 @@ class FixSuggester:
             _mdi_fix = self._fix_msgdefidr_mismatch(root, code, msg)
             if _mdi_fix is not None:
                 return _mdi_fix
+
+        # ── Route: BizMsgIdr / MsgDefIdr invalid CBPR+ characters ────────────
+        # Strip characters not in RestrictedFINXMax35Text: A-Za-z0-9 space /\-?:().,'+
+        if code in ("BIZMSGID_INVALID_CHARS", "MSGDEFIDR_INVALID_CHARS"):
+            _tag_local = "BizMsgIdr" if code == "BIZMSGID_INVALID_CHARS" else "MsgDefIdr"
+            _apphdr = root.find(".//{*}AppHdr")
+            _target_el = None
+            if _apphdr is not None:
+                for _ch in _apphdr.iter():
+                    if isinstance(_ch.tag, str) and etree.QName(_ch.tag).localname == _tag_local:
+                        _target_el = _ch
+                        break
+            if _target_el is None:
+                for _ch in root.iter():
+                    if isinstance(_ch.tag, str) and etree.QName(_ch.tag).localname == _tag_local:
+                        _target_el = _ch
+                        break
+            if _target_el is not None and _target_el.text:
+                _CBPR_ALLOWED_RE = re.compile(r"[^A-Za-z0-9 /\-?:().,'+]")
+                _cleaned = _CBPR_ALLOWED_RE.sub('', _target_el.text.strip())
+                if _cleaned and _cleaned != _target_el.text.strip():
+                    _xpath = self._xpath_of(_target_el)
+                    _orig = self._serialize(_target_el)
+                    _copy_el = self._copy(_target_el)
+                    _copy_el.text = _cleaned
+                    return FixSuggestion(
+                        xpath=_xpath,
+                        original_fragment=_orig,
+                        fragment_xml=self._serialize(_copy_el),
+                        issue_code=code,
+                        issue_message=msg,
+                        confidence="high",
+                    )
 
         # ── Route: camt.056 BAH/BIC mismatch (Fr≠Assgnr or To≠Assgne) ──────────
         # These rules report via check_bic_match whose path is a line number, not
@@ -4618,9 +4763,7 @@ class FixSuggester:
                             return _fallback
                 except (ValueError, TypeError):
                     pass
-            return self._repair_country(el, cur_txt, root)
-        if ctype == "Amount":
-            # Only emit a dummy when there is genuinely no numeric value to repair
+            # Fallback: use KB default amount rather than a country code
             return (_kb_get("dummy_data.amounts.default") or
                     _enterprise_shared("dummy_data.amounts.default") or "1000.00")
         if ctype == "Date":
@@ -5832,6 +5975,61 @@ class FixSuggester:
                                 if not valid_currencies or sib_ccy in valid_currencies:
                                     new_value = sib_ccy
                                     break
+
+            # Priority 4: derive from IBAN country prefix in the document
+            # e.g. IBAN GB29... → GBP,  DE34... → EUR,  DK50... → DKK
+            if new_value is None and root is not None:
+                _IBAN_CCY: dict[str, str] = {
+                    "GB": "GBP", "US": "USD", "CA": "CAD", "AU": "AUD",
+                    "CH": "CHF", "NO": "NOK", "SE": "SEK", "DK": "DKK",
+                    "JP": "JPY", "CN": "CNY", "HK": "HKD", "SG": "SGD",
+                    "NZ": "NZD", "MX": "MXN", "BR": "BRL", "IN": "INR",
+                    "ZA": "ZAR", "TR": "TRY", "PL": "PLN", "CZ": "CZK",
+                    "HU": "HUF", "RO": "RON", "BG": "BGN", "HR": "HRK",
+                    "IL": "ILS", "AE": "AED", "SA": "SAR", "QA": "QAR",
+                    "KW": "KWD", "BH": "BHD", "OM": "OMR", "JO": "JOD",
+                }
+                # Most euro-zone countries default to EUR
+                _EUR_COUNTRIES = {
+                    "DE", "FR", "NL", "IT", "ES", "PT", "BE", "AT", "FI",
+                    "IE", "GR", "LU", "SK", "SI", "EE", "LT", "LV", "MT",
+                    "CY", "HR",
+                }
+                for sib in root.iter():
+                    if not isinstance(sib.tag, str):
+                        continue
+                    if etree.QName(sib.tag).localname == "IBAN" and sib.text:
+                        _ctry_pfx = (sib.text or "")[:2].upper()
+                        _ccy_from_iban = (
+                            _IBAN_CCY.get(_ctry_pfx)
+                            or ("EUR" if _ctry_pfx in _EUR_COUNTRIES else None)
+                        )
+                        if _ccy_from_iban and (not valid_currencies
+                                               or _ccy_from_iban in valid_currencies):
+                            new_value = _ccy_from_iban
+                            break
+
+            # Priority 5: parse "for country 'XX'" from the validator message
+            if new_value is None:
+                _ctry_m = re.search(
+                    r"(?:for|expected by)\s+country\s+'?([A-Z]{2})'?",
+                    f"{msg} {fix_hint}", re.I,
+                )
+                if _ctry_m:
+                    _ctry_key = _ctry_m.group(1).upper()
+                    _ccy_for_ctry = (
+                        {"GB": "GBP", "US": "USD", "CH": "CHF", "NO": "NOK",
+                         "SE": "SEK", "DK": "DKK", "JP": "JPY", "CA": "CAD",
+                         "AU": "AUD", "NZ": "NZD", "SG": "SGD", "HK": "HKD"
+                         }.get(_ctry_key)
+                        or ("EUR" if _ctry_key in {
+                            "DE","FR","NL","IT","ES","PT","BE","AT","FI",
+                            "IE","GR","LU","SK","SI","EE","LT","LV","MT","CY"
+                        } else None)
+                    )
+                    if _ccy_for_ctry and (not valid_currencies
+                                          or _ccy_for_ctry in valid_currencies):
+                        new_value = _ccy_for_ctry
 
             if new_value is None:
                 # No currency found anywhere — leave unchanged rather than
@@ -7055,16 +7253,32 @@ class FixSuggester:
 
         # Use the same indentation as the conflict line for the inserted tag
         indent = re.match(r"(\s*)", target_line).group(1)
-        fixed_line = close_pat.sub(
+
+        # Try 1: insert AFTER </conflict_tag> — correct when missing_tag wraps
+        # the conflict element (e.g. AppHdr wraps Fr/FIId/FinInstnId).
+        fixed_line_after = close_pat.sub(
+            r"\1" + f"\n{indent}</{missing_tag}>",
+            target_line, count=1,
+        )
+        fixed_lines_after = lines[:conflict_ln - 1] + [fixed_line_after] + lines[conflict_ln:]
+        fixed_xml_after = "".join(fixed_lines_after)
+        try:
+            etree.fromstring(fixed_xml_after.encode("utf-8"))
+            return fixed_xml_after
+        except etree.XMLSyntaxError:
+            pass
+
+        # Try 2: insert BEFORE </conflict_tag> — correct when conflict_tag is a
+        # sibling that follows missing_tag at the same nesting level.
+        fixed_line_before = close_pat.sub(
             f"</{missing_tag}>\n{indent}" + r"\1",
             target_line, count=1,
         )
-        fixed_lines = lines[:conflict_ln - 1] + [fixed_line] + lines[conflict_ln:]
-        fixed_xml = "".join(fixed_lines)
-
+        fixed_lines_before = lines[:conflict_ln - 1] + [fixed_line_before] + lines[conflict_ln:]
+        fixed_xml_before = "".join(fixed_lines_before)
         try:
-            etree.fromstring(fixed_xml.encode("utf-8"))
-            return fixed_xml
+            etree.fromstring(fixed_xml_before.encode("utf-8"))
+            return fixed_xml_before
         except etree.XMLSyntaxError:
             return None  # Surgical fix insufficient; fall through to lxml recovery
 
@@ -7352,15 +7566,63 @@ class FixSuggester:
                 confidence="high",
             )
 
+        # ── Stage 0a: add missing XML declaration ────────────────────────────────
+        # "Your XML file is missing the required declaration header." (code=Missing Header)
+        # Prepend <?xml version="1.0" encoding="UTF-8"?> when absent.
+        if not xml.lstrip().startswith("<?xml"):
+            _with_decl = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml.lstrip()
+            try:
+                etree.fromstring(_with_decl.encode("utf-8"))
+                return _make_suggestion(_with_decl)
+            except etree.XMLSyntaxError:
+                pass  # don't carry forward — adding decl shouldn't worsen other errors
+
+        # ── Stage 0b2: strip stray characters from XML declaration closing ──────
+        # Handles: <?xml version="1.0" encoding="UTF-8"?!> → <?xml ...?>
+        # Any non-whitespace characters inserted between '?' and '>' in the
+        # processing instruction closing sequence are stripped surgically so the
+        # declaration is preserved instead of being dropped by lxml recovery.
+        _decl_pi_fix = re.sub(r'(<\?xml[^?]*\?)[^>]+(>)', r'\1\2', xml, count=1)
+        if _decl_pi_fix != xml:
+            try:
+                etree.fromstring(_decl_pi_fix.encode("utf-8"))
+                return _make_suggestion(_decl_pi_fix)
+            except etree.XMLSyntaxError:
+                xml = _decl_pi_fix  # still better than original — carry forward
+
+        # ── Stage 0e: strip stray ! from element tag closings ────────────────────
+        # Handles: <BusMsgEnvlp xmlns="urn:swift:xsd:envelope"!> → <BusMsgEnvlp ...>
+        # The ! appears just before the > in an opening element tag. Strip it
+        # without touching attribute values (the !> sequence is the target).
+        _elem_bang_fix = re.sub(r'(<\w[^<>]*?)!(>)', r'\1\2', xml)
+        if _elem_bang_fix != xml:
+            try:
+                etree.fromstring(_elem_bang_fix.encode("utf-8"))
+                return _make_suggestion(_elem_bang_fix)
+            except etree.XMLSyntaxError:
+                xml = _elem_bang_fix  # carry forward for subsequent stages
+
         # ── Stage 0c: fix malformed XML declaration (e.g. <,?xml → <?xml) ──────
-        # Layer 1 emits "Missing Header" when the declaration is absent or broken
-        # (e.g. a comma inserted before ?xml). Correct the opening characters so
-        # the rest of the recovery pipeline can parse the document.
         _decl_fix = re.sub(r'<[^?\s](\?xml)', r'<\1', xml, count=1)
         if _decl_fix != xml:
             try:
                 etree.fromstring(_decl_fix.encode("utf-8"))
                 return _make_suggestion(_decl_fix)
+            except etree.XMLSyntaxError:
+                pass
+
+        # ── Stage 0d: garbled tag names (e.g. <,4AppHdr> → <AppHdr>) ────────
+        # User accidentally inserts non-alpha chars before a tag name, producing
+        # an invalid tag like <,4AppHdr> or </,4AppHdr>. Strip the garbage prefix
+        # while keeping the valid tag name and optional closing slash.
+        _tag_fix = re.sub(
+            r'<(/?)([^a-zA-Z/!?\s][^a-zA-Z\s/]*)([a-zA-Z][a-zA-Z0-9:_.\-]*)',
+            r'<\1\3', xml
+        )
+        if _tag_fix != xml:
+            try:
+                etree.fromstring(_tag_fix.encode("utf-8"))
+                return _make_suggestion(_tag_fix)
             except etree.XMLSyntaxError:
                 pass
 

@@ -829,6 +829,37 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                     f"Current value has {actual_len} characters."
                 ))
 
+        # ── CBPR+ charset check for AppHdr ID fields ──────────────────────────
+        # BizMsgIdr and MsgDefIdr must only contain RestrictedFINXMax35Text chars.
+        # Forbidden: @ # $ % ^ & * _ + { } [ ] | \ ; < > " ~ ` = etc.
+        _CBPR_APPHDR_ALLOWED = re.compile(r"[^A-Za-z0-9 /\-?:().,'+]")
+        _APPHDR_ID_PAT = re.compile(
+            r'<(BizMsgIdr|MsgDefIdr)>\s*([^<]+?)\s*</\1>'
+        )
+        for m in _APPHDR_ID_PAT.finditer(xml_content):
+            tag_name  = m.group(1)
+            raw_value = m.group(2).strip()
+            if not raw_value:
+                continue
+            forbidden_chars = sorted(set(c for c in raw_value if _CBPR_APPHDR_ALLOWED.match(c)))
+            if not forbidden_chars:
+                continue
+            try:
+                line_num = xml_content.count('\n', 0, m.start()) + 1
+            except Exception:
+                line_num = "Unknown"
+            forbidden_display = ' '.join(repr(c) for c in forbidden_chars)
+            cleaned = _CBPR_APPHDR_ALLOWED.sub('', raw_value)
+            report.add_issue(ValidationIssue(
+                "ERROR",
+                2,
+                "BIZMSGID_INVALID_CHARS" if tag_name == "BizMsgIdr" else "MSGDEFIDR_INVALID_CHARS",
+                str(line_num),
+                f"AppHdr/<{tag_name}> contains invalid character(s): {forbidden_display}. "
+                f"Only CBPR+ RestrictedFINXMax35Text characters are allowed (A-Z a-z 0-9 space / - ? : ( ) . , ' +).",
+                f"Remove {forbidden_display} from <{tag_name}>. Suggested clean value: '{cleaned}'."
+            ))
+
     def _validate_cbpr_datetime(self, xml_content: str, report: ValidationReport) -> None:
         r"""
         Step 4.21 — CBPR+ DateTime Format Validation
