@@ -543,7 +543,9 @@
         },
         "BIZMSGIDR_EQ_GRPHDR_MSGID": {
             "root_cause": "AppHdr/BizMsgIdr does not equal GrpHdr/MsgId.",
-            "fix": "Read the existing MsgId from GrpHdr and set BizMsgIdr to the same value, or vice versa."
+            "fix": "Determine which value is correct: (1) If GrpHdr/MsgId has invalid CBPR+ characters (anything outside A-Za-z0-9 /\\-?:().,'+) AND stripping those characters gives the clean BizMsgIdr value, then fix GrpHdr/MsgId by removing the invalid characters — do NOT change BizMsgIdr. (2) If BizMsgIdr is genuinely wrong (e.g. was not set from MsgId), set BizMsgIdr to the cleaned MsgId value. Never propagate dirty/invalid chars from MsgId into BizMsgIdr. Do NOT insert a new AppHdr block — the AppHdr already exists; only the mismatched field value needs correction.",
+            "fix_direction_rule": "Prefer fixing GrpHdr/MsgId when it contains invalid chars; prefer fixing AppHdr/BizMsgIdr only when it is the genuinely incorrect value. Always use the clean/canonical value.",
+            "anti_pattern": "Do NOT set BizMsgIdr to a value that contains invalid characters (e.g. @#!). Do NOT add a new <AppHdr> block when one already exists."
         },
         "MSGDEFIDR_MISMATCH": {
             "root_cause": "AppHdr/MsgDefIdr does not match the Document namespace.",
@@ -1622,24 +1624,50 @@
         },
         "INVALID_CHARSET": {
             "aliases": [
-                "INVALID_CHARSETS"
+                "INVALID_CHARSETS",
+                "CBPR_COM_R1"
             ],
-            "root_cause": "Field value contains characters outside the permitted character set for that field type. SWIFT MX fields use Latin character set only.",
-            "fix": "Transliterate accented/non-Latin characters to ASCII equivalents (see transliteration_map in Syntactic KB). Remove any remaining non-printable or non-ASCII characters. Preserve alphanumeric and common punctuation (/ - ? : ( ) . , ' + space).",
+            "root_cause": "Field value contains characters outside the CBPR+ RestrictedFINXMax35Text / RestrictedFINMax140Text permitted set. Allowed: A-Z a-z 0-9 space / - ? : ( ) . , ' + ONLY. All other characters are forbidden including: ! @ # $ % ^ & * _ { } [ ] | ; < > \" ~ ` = and non-ASCII/Unicode.",
+            "fix": "Strip ALL forbidden characters from the field value, keeping only the CBPR+ permitted set: A-Z a-z 0-9 space / - ? : ( ) . , ' + . If stripping leaves the field empty, replace with 'Unknown'. Do NOT delete the element — preserve the tag with a cleaned value.",
+            "do_not": "Do NOT delete the element or the entire parent block. Do NOT replace with empty string. Do NOT keep the original forbidden characters. Do NOT hallucinate a new value — strip only.",
+            "scope": "GLOBAL — applies to ALL text-bearing leaf elements in any message type: Nm, StrtNm, TwnNm, BldgNm, AdrLine, DstrctNm, CtrySubDvsn, TwnLctnNm, ClrSysRef, BldgNb, PstCd, Dept, SubDept, Flr, Room, PstBx, Ustrd, AddtlInf, and any other free-text field.",
             "affected_tags": [
                 "Nm",
                 "StrtNm",
                 "AdrLine",
                 "BldgNb",
+                "BldgNm",
                 "TwnNm",
+                "TwnLctnNm",
+                "DstrctNm",
+                "CtrySubDvsn",
                 "PstCd",
-                "Ustrd"
+                "Dept",
+                "SubDept",
+                "Flr",
+                "Room",
+                "PstBx",
+                "ClrSysRef",
+                "Ustrd",
+                "AddtlInf"
             ]
         },
         "SWIFT_CHARSET_WARN": {
             "root_cause": "Advisory: Ustrd or free-text field contains characters outside the SWIFT FIN charset but within Unicode. Not an error in MX but may cause issues if the message is converted to MT.",
             "fix": "This is a warning. Consider restricting to SWIFT FIN X charset: A-Z a-z 0-9 / - ? : ( ) . , ' + space.",
             "severity": "WARNING"
+        },
+        "CURR_IBAN_MISMATCH": {
+            "root_cause": "Transaction currency (Ccy attribute on IntrBkSttlmAmt or InstdAmt) does not match the expected currency for the IBAN country in DbtrAcct or CdtrAcct. E.g. IBAN starts with DE (→ EUR) but Ccy=SEK.",
+            "fix": "Update the Ccy attribute on the amount element to match the currency expected for the IBAN country. Use dummy_data.currencies_by_country to map IBAN country prefix → currency. Do NOT change the IBAN — change the currency attribute.",
+            "anti_pattern": "Do NOT replace the IBAN with a different-country IBAN. Do NOT change both the IBAN and the currency. Fix ONLY the Ccy attribute on the amount element.",
+            "example": "IBAN DE89370400440532013000 → country DE → expected EUR. If Ccy=SEK, change to Ccy=EUR on IntrBkSttlmAmt."
+        },
+        "SvcLvl_Cd_INVALID": {
+            "aliases": ["INVALID_CODE", "ENUM_VIOLATION"],
+            "root_cause": "The <Cd> element under <SvcLvl> contains an invalid or empty service level code. Valid codes are from the ExternalServiceLevel1Code codelist: SEPA, NURG, URGP, SDVA, G001, G002, etc.",
+            "fix": "Replace <Cd> text with a valid ExternalServiceLevel1Code value. For CBPR+ messages use NURG or URGP. For SEPA use SEPA. Do NOT use freeform text like 'for'.",
+            "anti_pattern": "Do NOT insert arbitrary text. Do NOT use 'for', 'null', 'unknown' or any non-code value in <Cd>."
         },
         "AMOUNT_EXCEEDS_PURPOSE_LIMIT": {
             "root_cause": "Transaction amount exceeds the limit configured for the payment purpose code in the validation rules.",
@@ -1764,6 +1792,10 @@
         },
         "Prty": {
             "default": "<Prty>NORM</Prty>"
+        },
+        "PstlAdr": {
+            "default": "<PstlAdr><AdrLine>123 Main Street</AdrLine><Ctry>US</Ctry></PstlAdr>",
+            "_note": "Minimal CBPR+ postal address. AdrLine (unstructured) + Ctry is the simplest valid form. Do NOT add AdrTp unless explicitly required — it adds schema complexity. Country defaults to US if not derivable from BICFI/IBAN context."
         },
         "Fr": {
             "default": "<Fr><FIId><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></FIId></Fr>"

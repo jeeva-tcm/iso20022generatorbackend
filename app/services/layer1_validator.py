@@ -129,6 +129,31 @@ class Layer1Mixin:
                     ))
                 report.metadata.update({"Namespace": ns})
 
+            # 8b. BusMsgEnvlp structure: Document must be sibling of AppHdr, not child
+            if etree.QName(root.tag).localname == "BusMsgEnvlp":
+                _apphdr_node = next(
+                    (c for c in root
+                     if isinstance(c.tag, str) and etree.QName(c.tag).localname == "AppHdr"),
+                    None
+                )
+                if _apphdr_node is not None:
+                    _doc_in_apphdr = next(
+                        (c for c in _apphdr_node
+                         if isinstance(c.tag, str) and etree.QName(c.tag).localname == "Document"),
+                        None
+                    )
+                    if _doc_in_apphdr is not None:
+                        _doc_line = str(_doc_in_apphdr.sourceline or "?")
+                        report.add_issue(ValidationIssue(
+                            "ERROR", 1, "STRUCTURE_ERROR",
+                            f"AppHdr/Document[{_doc_line}]",
+                            "In a BusMsgEnvlp envelope, <Document> must be a direct child of "
+                            "<BusMsgEnvlp>, not nested inside <AppHdr>. "
+                            "The current structure incorrectly places <Document> inside <AppHdr>.",
+                            "Move <Document> out of <AppHdr> so it appears as a sibling: "
+                            "<BusMsgEnvlp><AppHdr>...</AppHdr><Document>...</Document></BusMsgEnvlp>."
+                        ))
+
             # 9. XML Depth Limit Check
             max_depth = self.config.get("app_settings", {}).get("max_xml_depth", 50)
             def _get_depth(elem, depth=1):
