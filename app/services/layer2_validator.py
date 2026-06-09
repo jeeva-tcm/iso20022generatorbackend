@@ -53,19 +53,28 @@ class Layer2Mixin:
 
     def _validate_swift_characters(self, xml_content: str) -> list:
         """
-        Check for forbidden SWIFT characters (,#;@{}[]()) that appear as junk
-        BETWEEN elements — specifically in:
-          - element.text  when that element has child elements (mixed content)
-          - element.tail  (text after a closing tag, before the next sibling/parent)
-
-        Leaf element text content (e.g. <Amt>1000.00</Amt>) is intentionally
-        NOT checked here — dots, colons, quotes etc. are all legitimate there.
+        Check for forbidden SWIFT characters (,#;@{}[]()!) that appear:
+          1. In element.text when the element HAS child elements (mixed-content junk)
+          2. In element.tail (text after a closing tag — always inter-element junk)
+          3. In leaf element text for CBPR+ RestrictedFINXMax35Text fields
+             (MsgId, BizMsgIdr, EndToEndId, InstrId, TxId, etc.) where '!' and
+             other forbidden chars are not allowed even inside the tag value.
         """
-        # Characters genuinely forbidden as inter-element junk in SWIFT/ISO 20022.
-        # Excludes . : ' " because those appear legitimately in amounts, timestamps,
-        # BizSvc values (swift.cbprplus.02), and attribute-like content.
+        # Characters genuinely forbidden in SWIFT/ISO 20022 CBPR+ messages.
+        # Excludes . : ' because those appear legitimately in amounts, timestamps,
+        # BizSvc values (swift.cbprplus.02), and address content.
         FORBIDDEN = set(',#;@{}[]()!')
         issues = []
+
+        # Leaf ID fields that use CBPR+ RestrictedFINXMax35Text / Max16Text.
+        # Address/name tags (Nm, StrtNm, TwnNm, AdrLine, etc.) are already
+        # covered by _validate_charsets_in_xml (Step 4.16, code INVALID_CHARSET)
+        # so they are intentionally excluded here to avoid double-reporting.
+        LEAF_CHECKED_TAGS = {
+            "MsgId", "BizMsgIdr", "EndToEndId", "InstrId", "TxId", "ClrSysRef",
+            "OrgnlMsgId", "OrgnlEndToEndId", "OrgnlInstrId", "PmtInfId",
+            "Ustrd", "AddtlInf",
+        }
 
         try:
             parser = etree.XMLParser(remove_blank_text=False, no_network=True, recover=True)
@@ -85,7 +94,22 @@ class Layer2Mixin:
             local = etree.QName(elem.tag).localname
             line_num = getattr(elem, 'sourceline', None) or 0
 
-            # 1. parent.text — text before the first child element.
+            # 1. Leaf element text for CBPR+ restricted fields.
+            #    Only for known tags where FORBIDDEN chars are never valid.
+            if len(elem) == 0 and elem.text and local in LEAF_CHECKED_TAGS:
+                bad = _bad_chars(elem.text)
+                if bad:
+                    chars_str = ', '.join(f"'{c}'" for c in bad)
+                    issues.append(ValidationIssue(
+                        "ERROR", 2, "SWIFT_FORBIDDEN_CHAR", str(line_num),
+                        f"Element <{local}> contains forbidden character(s) {chars_str}. "
+                        f"SWIFT/CBPR+ RestrictedFINXText fields must not contain these characters.",
+                        f"Remove the character(s) {chars_str} from <{local}>. "
+                        f"Allowed characters: A-Z a-z 0-9 space / - ? : ( ) . , ' +",
+                        line=line_num
+                    ))
+
+            # 2. parent.text — text before the first child element.
             #    Only flag when the element HAS children (mixed content = junk).
             if len(elem) > 0 and elem.text:
                 bad = _bad_chars(elem.text)
@@ -101,7 +125,7 @@ class Layer2Mixin:
                         line=line_num
                     ))
 
-            # 2. child.tail — text after a closing tag (</Child>) before the
+            # 3. child.tail — text after a closing tag (</Child>) before the
             #    next sibling or parent close.  This is always inter-element junk.
             if elem.tail:
                 bad = _bad_chars(elem.tail)

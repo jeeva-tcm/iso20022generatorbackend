@@ -477,10 +477,6 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             # STEP 4.19: SCHEME NAME ALLOWLIST VALIDATION (Strict Policy)
             self._validate_schme_nm_in_xml(xml_content, report)
 
-            # Step 4.20: PRIORITY ENTITY MISMATCH CHECK (Layer 3 rule moved forward)
-            # This allows the business rule to appear before Schema (Layer 2) errors.
-            self.validate_entity_mismatch(xml_content, report)
-
             if mode != "Layer 1 only":
                 try:
                     # STEP 4.21: CBPR+ DATETIME FORMAT VALIDATION
@@ -544,6 +540,9 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             except Exception as e:
                 report.add_issue(ValidationIssue("ERROR", 3, "FATAL_L3", "/", f"Failed to normalize message: {str(e)}"))
                 return self._finalize_report(report, start_time)
+
+            # STEP 5.0a: PRIORITY ENTITY MISMATCH CHECK (uses pre-computed canonical data)
+            self._validate_entity_mismatch_from_data(canonical_data, line_map, report)
 
             # STEP 5.0: Run Generic Field Library & Global Algorithms Validation
             self._run_generic_field_validation(detected_type, canonical_data, line_map, report)
@@ -779,12 +778,15 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
         any XSD errors (e.g. invalid amounts, IBANs, UETRs).
 
         Field limits enforced:
-          InstrId      → max 16 chars (CBPR+ RestrictedFINXMax16Text)
-          EndToEndId   → max 35 chars
-          BizMsgIdr    → max 35 chars
-          MsgId        → max 35 chars
-          TxId         → max 35 chars
-          UETR         → max 36 chars
+          InstrId        → max 16 chars (CBPR+ RestrictedFINXMax16Text)
+          Assgnmt/Id     → max 16 chars (ISO 20022 Max16Text)
+          Case/Id        → max 16 chars (ISO 20022 Max16Text)
+          EndToEndId     → max 35 chars
+          BizMsgIdr      → max 35 chars
+          MsgId          → max 35 chars
+          TxId           → max 35 chars
+          ClrSysRef      → max 35 chars
+          UETR           → max 36 chars
         """
         # UETR is handled by the dedicated _validate_uetr_in_xml validator (Step 4.7)
         # which checks UUID v4 format fully, so it is excluded here to avoid
@@ -827,6 +829,40 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                     f"Length {actual_len} exceeds maximum allowed {max_len}.",
                     f"Shorten the value of <{tag_name}> to at most {max_len} characters. "
                     f"Current value has {actual_len} characters."
+                ))
+
+        # ── Context-specific <Id> max-length checks ───────────────────────────
+        # <Id> is too generic to add globally (it appears in accounts, parties,
+        # etc.), but certain parent containers restrict it to Max16Text under
+        # ISO 20022 / CBPR+.  We detect them via a two-level regex:
+        #   <ParentTag> ... <Id>value</Id> ... </ParentTag>
+        _CTX_ID_MAX16_PARENTS = {"Assgnmt", "Case"}
+        _ctx_id_patt = re.compile(
+            r'<(' + "|".join(re.escape(p) for p in _CTX_ID_MAX16_PARENTS) + r')[^>]*>'
+            r'(?:(?!</' + "|".join(re.escape(p) for p in _CTX_ID_MAX16_PARENTS) + r'>).)*?'
+            r'<Id>\s*([^<]+?)\s*</Id>',
+            re.DOTALL,
+        )
+        for _cm in _ctx_id_patt.finditer(xml_content):
+            _parent   = _cm.group(1)
+            _id_value = _cm.group(2).strip()
+            _id_len   = len(_id_value)
+            if _id_len > 16:
+                try:
+                    _line_num = xml_content.count('\n', 0, _cm.start()) + 1
+                except Exception:
+                    _line_num = "Unknown"
+                report.add_issue(ValidationIssue(
+                    "ERROR",
+                    2,
+                    "ID_LENGTH_ERROR",
+                    f"//{_parent}/Id",
+                    f"Invalid length in element <{_parent}/Id> at line {_line_num}: "
+                    f"Length {_id_len} exceeds maximum allowed 16.",
+                    f"Shorten the Assgnmt.Id value to 16 characters or fewer. "
+                    f"This field must be maximum 16 characters long. "
+                    f"The current value exceeds 16 characters.",
+                    line=_line_num,
                 ))
 
         # ── CBPR+ charset check for AppHdr ID fields ──────────────────────────

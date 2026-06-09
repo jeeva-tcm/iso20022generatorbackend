@@ -1514,25 +1514,31 @@ class FixSuggester:
             except etree.XMLSyntaxError:
                 raise FixApplyError(f"XML parse error: {e}")
 
+    # AppHdr-only tags that must NOT appear as direct children of BusMsgEnvlp.
+    # When they do appear there (copy-paste / AI generation artefact) they are
+    # stray duplicates of what's already inside <AppHdr> and must be removed.
+    _APPHDR_ONLY_TAGS = frozenset({
+        "BizMsgIdr", "MsgDefIdr", "BizSvc", "CreDt", "CreDtTm",
+        "CharSet", "Fr", "To", "MsgDefIdrRef",
+    })
+
     def _normalize_busmsgenvlp(self, xml: str) -> str:
-        """Fix BusMsgEnvlp envelope where Document is wrongly nested inside AppHdr.
+        """Fix BusMsgEnvlp envelope structure issues.
+
+        Handles two problems:
+
+        1. Document wrongly nested inside AppHdr (move it to sibling).
+
+        2. Stray AppHdr-only tags (BizMsgIdr, MsgDefIdr, BizSvc, CreDt, …)
+           placed as direct children of BusMsgEnvlp instead of inside AppHdr.
+           These cause XSD "not expected" errors and the inserter re-adds them
+           endlessly. Remove them — they already exist inside AppHdr.
 
         Correct SWIFT CBPR+ BusMsgEnvlp structure:
           <BusMsgEnvlp>
             <AppHdr>...</AppHdr>
             <Document>...</Document>   ← sibling of AppHdr
           </BusMsgEnvlp>
-
-        Wrong structure (often produced by naive XML editors / AI):
-          <BusMsgEnvlp>
-            <AppHdr>
-              ...
-              <Document>...</Document>   ← child of AppHdr — WRONG
-            </AppHdr>
-          </BusMsgEnvlp>
-
-        When the wrong structure is detected, Document is moved out of AppHdr
-        and inserted as the next sibling. All namespaces are preserved.
         """
         try:
             root = etree.fromstring(xml.encode("utf-8"))
@@ -1549,28 +1555,43 @@ class FixSuggester:
         if apphdr is None:
             return xml
 
-        # Document nested inside AppHdr?
+        # ── Problem 2: strip stray AppHdr-only tags from BusMsgEnvlp level ──
+        # These are tags that belong inside AppHdr. At BusMsgEnvlp level they
+        # are invalid and cause cascading "not expected" XSD errors that the
+        # inserter then tries to fix by re-inserting them — infinite loop.
+        _stray_removed = False
+        for child in list(root):
+            if not isinstance(child.tag, str):
+                continue
+            if (etree.QName(child.tag).localname in self._APPHDR_ONLY_TAGS
+                    and child is not apphdr):
+                root.remove(child)
+                _stray_removed = True
+
+        # ── Problem 1: Document nested inside AppHdr ──────────────────────────
         doc_in_apphdr = next((c for c in apphdr
                               if isinstance(c.tag, str)
                               and etree.QName(c.tag).localname == "Document"), None)
-        if doc_in_apphdr is None:
+        if doc_in_apphdr is None and not _stray_removed:
             return xml  # structure already correct
 
-        # Document already exists as direct child of BusMsgEnvlp?
-        doc_in_envlp = next((c for c in root
-                             if isinstance(c.tag, str)
-                             and etree.QName(c.tag).localname == "Document"), None)
-        if doc_in_envlp is not None:
-            # Both exist: just remove the one inside AppHdr (duplicate)
-            apphdr.remove(doc_in_apphdr)
-        else:
-            # Move Document from inside AppHdr to after AppHdr in BusMsgEnvlp
-            apphdr.remove(doc_in_apphdr)
-            apphdr_idx = list(root).index(apphdr)
-            # Preserve whitespace tail
-            if doc_in_apphdr.tail is None:
-                doc_in_apphdr.tail = apphdr.tail
-            root.insert(apphdr_idx + 1, doc_in_apphdr)
+        # ── Problem 1 fix: move Document out of AppHdr if needed ─────────────
+        if doc_in_apphdr is not None:
+            # Document already exists as direct child of BusMsgEnvlp?
+            doc_in_envlp = next((c for c in root
+                                 if isinstance(c.tag, str)
+                                 and etree.QName(c.tag).localname == "Document"), None)
+            if doc_in_envlp is not None:
+                # Both exist: just remove the one inside AppHdr (duplicate)
+                apphdr.remove(doc_in_apphdr)
+            else:
+                # Move Document from inside AppHdr to after AppHdr in BusMsgEnvlp
+                apphdr.remove(doc_in_apphdr)
+                apphdr_idx = list(root).index(apphdr)
+                # Preserve whitespace tail
+                if doc_in_apphdr.tail is None:
+                    doc_in_apphdr.tail = apphdr.tail
+                root.insert(apphdr_idx + 1, doc_in_apphdr)
 
         decl = ""
         m = re.match(r"(<\?xml[^?]*\?>)", xml.strip())
@@ -1990,6 +2011,13 @@ class FixSuggester:
             # Allow optional tags only when the validator explicitly named them
             # (user removed them) or when explicit_missing mode is active.
             if not explicit_missing and tag in _xsd_optional and tag not in _exp_set:
+                continue
+            # Never insert AppHdr-only tags into BusMsgEnvlp — they belong
+            # inside AppHdr and appear there as stray elements at envlp level
+            # only due to copy-paste errors. Inserting them again would create
+            # duplicates; _normalize_busmsgenvlp already removes the strays.
+            if (parent_local == "BusMsgEnvlp"
+                    and tag in self._APPHDR_ONLY_TAGS):
                 continue
             wanted.append(tag)
         # If the offending element is itself a near-miss of something we'd insert
@@ -2963,8 +2991,15 @@ class FixSuggester:
         if _envlp_fixed != xml:
             _envlp_original = xml
             xml = _envlp_fixed
-            if code in ("SCHEMA_VAL", "XML_SYNTAX", "STRUCTURE_ERROR",
-                        "MISSING_STRUCTURE", "") or "AppHdr" in msg or "Document" in msg:
+            # Return whole-doc fix for schema/structure errors and any error
+            # whose path or message involves a tag we just moved/removed at
+            # the BusMsgEnvlp level (stray AppHdr-only tags).
+            _path_tag = path.split("/")[-1].split("[")[0] if path else ""
+            _is_envlp_stray = _path_tag in self._APPHDR_ONLY_TAGS
+            if (_is_envlp_stray
+                    or code in ("SCHEMA_VAL", "XML_SYNTAX", "STRUCTURE_ERROR",
+                                "MISSING_STRUCTURE", "")
+                    or "AppHdr" in msg or "Document" in msg):
                 return FixSuggestion(
                     "/", _envlp_original, _envlp_fixed, code,
                     msg or "BusMsgEnvlp structure corrected: Document moved to sibling of AppHdr.",
@@ -2974,9 +3009,11 @@ class FixSuggester:
         try:
             root = self._parse_xml(xml)
         except FixApplyError:
-            # Structural parse failure that recovery also couldn't fix —
-            # last resort is the LLM.
-            return self._llm_fallback("/", xml[:500], code, msg, fix_hint)
+            # XML cannot be parsed at all — recovery already ran above and
+            # couldn't fix it. Do NOT call LLM with a truncated fragment
+            # (xml[:500]) as that produces partial output which overwrites the
+            # whole document when xpath="/". Return unavailable instead.
+            return self._unavail(path, code, msg)
 
         # ── Duplicate element → keep the first valid occurrence, remove extras ─
         # Runs before the ordering/insert guards so a duplicate (e.g. a second
@@ -3679,22 +3716,39 @@ class FixSuggester:
                     return FixSuggestion(self._xpath_of(_lel), self._serialize(_lel),
                                          self._serialize(_lel_copy), code, msg, "high")
 
-        # ── ID_LENGTH_ERROR — ID field exceeds Max35Text → truncate ───────────
+        # ── ID_LENGTH_ERROR — ID field exceeds max length → truncate ─────────
         if code == "ID_LENGTH_ERROR" or ("length" in msg.lower() and "max" in msg.lower()
                                           and any(t in msg for t in ("Id", "MsgId", "EndToEndId", "TxId", "InstrId"))):
+            # Extract the actual max length from the error message (e.g. "maximum allowed 16")
+            _maxlen_m = re.search(r"maximum\s+(?:allowed\s+)?(\d+)", msg, re.I)
+            _max_id_len = int(_maxlen_m.group(1)) if _maxlen_m else 35
+
             _id_tags = {"MsgId", "EndToEndId", "TxId", "InstrId", "BizMsgIdr",
-                        "OrgnlMsgId", "OrgnlEndToEndId", "OrgnlInstrId", "PmtInfId"}
+                        "OrgnlMsgId", "OrgnlEndToEndId", "OrgnlInstrId", "PmtInfId",
+                        "Id", "ClrSysRef"}
             _pp = [p for p in path.replace("/", ".").split(".") if p and _VALID_XML_NAME.match(p)]
             _tgt_tag = _pp[-1] if _pp else ""
             _tgt_set = {_tgt_tag} if _tgt_tag else _id_tags
+
+            # When the target is the generic "Id" tag, also use the parent context
+            # (e.g. Assgnmt/Id) to pick the right element among many <Id> nodes.
+            _parent_tag = _pp[-2] if len(_pp) >= 2 else ""
+
             for _iel in root.iter():
                 if not isinstance(_iel.tag, str): continue
                 _ln = etree.QName(_iel.tag).localname
-                if _ln in _tgt_set and _iel.text and len(_iel.text.strip()) > 35:
-                    _iel_copy = self._copy(_iel)
-                    _iel_copy.text = _iel.text.strip()[:35]
-                    return FixSuggestion(self._xpath_of(_iel), self._serialize(_iel),
-                                         self._serialize(_iel_copy), code, msg, "high")
+                if _ln not in _tgt_set: continue
+                if not (_iel.text and len(_iel.text.strip()) > _max_id_len): continue
+                # If target is generic "Id", require parent tag to match for precision
+                if _ln == "Id" and _parent_tag:
+                    _par = _iel.getparent()
+                    _par_ln = etree.QName(_par.tag).localname if _par is not None and isinstance(_par.tag, str) else ""
+                    if _par_ln and _par_ln != _parent_tag:
+                        continue
+                _iel_copy = self._copy(_iel)
+                _iel_copy.text = _iel.text.strip()[:_max_id_len]
+                return FixSuggestion(self._xpath_of(_iel), self._serialize(_iel),
+                                     self._serialize(_iel_copy), code, msg, "high")
 
         # ── DUPLICATE_ID_VALUE — same ID used twice → append suffix ───────────
         if code == "DUPLICATE_ID_VALUE":
@@ -6237,6 +6291,21 @@ class FixSuggester:
         if parent is None:
             return None
         parent_path = self._local_name_path(parent)
+
+        # Fast-path: stray AppHdr-only tag directly inside BusMsgEnvlp.
+        # Remove it outright — it has no business being there regardless of
+        # what the SWIFT envelope XSD says about cardinality.
+        _seq_par_local_early = etree.QName(parent.tag).localname if isinstance(parent.tag, str) else ""
+        if (_seq_par_local_early == "BusMsgEnvlp"
+                and offending in self._APPHDR_ONLY_TAGS):
+            _off_idx = next((i for i, e in enumerate(parent) if e is off_el), None)
+            if _off_idx is not None:
+                parent_copy = self._copy(parent)
+                parent_copy.remove(list(parent_copy)[_off_idx])
+                return FixSuggestion(self._xpath_of(parent),
+                                     self._serialize(parent),
+                                     self._serialize(parent_copy),
+                                     code, msg, "high")
         # Build new children in the PARENT's namespace (AppHdr is head.001, the
         # Document body is the message namespace) — not the document root's.
         ns = etree.QName(parent.tag).namespace or ns
@@ -6433,8 +6502,14 @@ class FixSuggester:
                                          self._serialize(parent_copy), code, msg, "high")
             return None
 
+        _seq_parent_local = parent_path[-1] if parent_path else ""
         parent_copy = self._copy(parent)
         for child in to_add:
+            # Never insert AppHdr-only tags directly into BusMsgEnvlp — they
+            # belong inside AppHdr; inserting them here creates invalid strays.
+            if (_seq_parent_local == "BusMsgEnvlp"
+                    and child in self._APPHDR_ONLY_TAGS):
+                continue
             child_el = self._build_child(child, "", ns, tmap,
                                          existing_parent=parent_copy,
                                          rules_idx=rules_idx,
@@ -7799,6 +7874,21 @@ class FixSuggester:
                 return FixSuggestion(xpath, original_fragment, self._serialize(el_copy), code, msg, "high")
         # -----------------------------------
 
+        # ── Empty constrained leaf (e.g. <BICFI/>, <IBAN/>) → generate value ──
+        # el.text is None for self-closing tags. The constraint-repair block
+        # below requires el.text to be truthy, so it skips empty elements and
+        # they fall through to a no-op. Handle them here: regenerate a valid
+        # value from the KB constraint so the element is filled, not deleted.
+        if not list(el) and not (el.text or "").strip():
+            _empty_con = _kb_field_constraint(el_local)
+            if _empty_con and isinstance(_empty_con, dict):
+                _new_empty = self._regenerate_value(el_local, el, _empty_con, fix_hint, msg)
+                if _new_empty is not None and _new_empty.strip():
+                    el_copy = self._copy(el)
+                    el_copy.text = _new_empty
+                    return FixSuggestion(xpath, original_fragment,
+                                         self._serialize(el_copy), code, msg, "high")
+
         # ── Bad text value vs field-constraint regex: regenerate it ───────────
         # Highest-priority deterministic fix for cases like UETR=`UETR`,
         # Amt=`EU`, MsgId=`X` * 50, BICFI=`CREDITMM` (too short).
@@ -8380,6 +8470,120 @@ class FixSuggester:
 
     # ── Apply fixes to XML ────────────────────────────────────────────────────
 
+    @staticmethod
+    def _fix_xml_declaration(xml: str) -> Optional[str]:
+        """
+        Return a corrected copy of *xml* if its XML declaration is malformed,
+        otherwise return None (nothing to fix).
+
+        Handles cases like:
+          <?xml version="1.0" encoding="UTF-8"!?>   ← stray '!' before '?>'
+          <?xml version="1.0" encoding="UTF-8" !?>  ← stray '!' with space
+          <?xml version='1.0' encoding='UTF-8'!?>   ← single-quoted variant
+          <?xml version="1.0"!encoding="UTF-8"?>    ← '!' between attributes
+          <?xml!version="1.0"?>                     ← '!' right after 'xml'
+
+        Strategy: if the prolog line contains forbidden characters outside of
+        the quoted attribute values, rebuild it from what we can parse out of it
+        (version + encoding) and replace the broken declaration with a clean one.
+        """
+        import re as _re
+
+        # Match the entire XML declaration — anything from '<?xml' up to the
+        # first '?>' on the first non-whitespace content.
+        # Use .*? (non-greedy) so we stop at the earliest '?>' regardless of
+        # what garbage characters (like '!') appear before it.
+        _decl_patt = _re.compile(r'^(\s*)<\?xml(.*?)(\?>)', _re.DOTALL)
+        m = _decl_patt.match(xml)
+        if m is None:
+            return None  # No XML declaration — nothing to fix here
+
+        leading  = m.group(1)
+        inner    = m.group(2)   # everything between '<?xml' and '?>'
+        close    = m.group(3)   # '?>'
+        rest     = xml[m.end():]
+
+        # If the declaration is already well-formed, nothing to do.
+        # A well-formed inner section matches: optional space + known attributes
+        # (version, encoding, standalone) with no other characters.
+        _clean_patt = _re.compile(
+            r'''^\s*
+                (?:version\s*=\s*["'][^"']*["']\s*)?
+                (?:encoding\s*=\s*["'][^"']*["']\s*)?
+                (?:standalone\s*=\s*["'][^"']*["']\s*)?
+            $''',
+            _re.VERBOSE,
+        )
+        if _clean_patt.match(inner) and close == '?>':
+            return None  # Already valid
+
+        # Strip ALL characters that don't belong in the prolog (including '!').
+        # Extract version and encoding values (ignore everything else).
+        _ver_m = _re.search(r'version\s*=\s*["\']([^"\']*)["\']', inner)
+        _enc_m = _re.search(r'encoding\s*=\s*["\']([^"\']*)["\']', inner)
+        _std_m = _re.search(r'standalone\s*=\s*["\']([^"\']*)["\']', inner)
+
+        version    = _ver_m.group(1) if _ver_m else "1.0"
+        encoding   = _enc_m.group(1) if _enc_m else "UTF-8"
+        standalone = _std_m.group(1) if _std_m else None
+
+        clean_decl = f'<?xml version="{version}" encoding="{encoding}"'
+        if standalone:
+            clean_decl += f' standalone="{standalone}"'
+        clean_decl += '?>'
+
+        return leading + clean_decl + rest
+
+    def _try_xml_recovery(self, xml: str, code: str, msg: str) -> Optional[FixSuggestion]:
+        """Attempt document-level XML syntax repairs. Returns FixSuggestion("/", ...) or None."""
+        # Stage 0: malformed XML declaration (e.g. '<?xml version="1.0" encoding="UTF-8"!?>')
+        # Must run FIRST — a broken prolog prevents lxml from parsing at all, so
+        # every subsequent stage would silently fail.
+        fixed = self._fix_xml_declaration(xml)
+        if fixed is not None and fixed != xml:
+            return FixSuggestion("/", xml, fixed, code, msg, "high")
+
+        # Stage 1: escape unescaped & characters
+        fixed = self._escape_reserved_xml_chars(xml)
+        if fixed is not None:
+            return FixSuggestion("/", xml, fixed, code, msg, "high")
+
+        # Stage 2: surgical unclosed-tag repair
+        fixed = self._try_surgical_unclosed_tag_fix(xml, msg)
+        if fixed is not None:
+            return FixSuggestion("/", xml, fixed, code, msg, "high")
+
+        # Stage 3: lxml recovery-mode parse.
+        # Apply declaration fix before handing to lxml so the parser has a
+        # valid prolog to work with even when the body is the real problem.
+        # SAFETY: lxml recover=True silently drops unparseable content, which
+        # can produce a SHORTER document than the original (truncated output).
+        # Only accept the recovered XML when it has at least as many elements
+        # as the original — if it's shorter, recovery just discarded content
+        # rather than fixing it, so we must decline.
+        _xml_for_lxml = self._fix_xml_declaration(xml) or xml
+        try:
+            _orig_count = xml.count("<") - xml.count("</") - xml.count("/>")
+            parser = etree.XMLParser(recover=True)
+            recovered_root = etree.fromstring(_xml_for_lxml.encode("utf-8"), parser=parser)
+            if recovered_root is not None:
+                decl = ""
+                import re as _re
+                m = _re.match(r"(<\?xml[^?]*\?>)", _xml_for_lxml.strip())
+                if m:
+                    decl = m.group(1) + "\n"
+                recovered_xml = decl + etree.tostring(recovered_root, encoding="unicode", pretty_print=True)
+                _recv_count = recovered_xml.count("<") - recovered_xml.count("</") - recovered_xml.count("/>")
+                # Decline if recovery lost elements (content was dropped, not fixed)
+                if _recv_count < _orig_count:
+                    return None
+                if recovered_xml.strip() != xml.strip():
+                    return FixSuggestion("/", xml, recovered_xml, code, msg, "low")
+        except Exception:
+            pass
+
+        return None
+
     def _unavail(self, path: str, code: str, message: str) -> FixSuggestion:
         """Return an 'unavailable' suggestion placeholder."""
         return FixSuggestion(
@@ -8409,6 +8613,23 @@ class FixSuggester:
                 )
             except Exception as e:
                 raise FixApplyError(f"Cannot parse source XML: {e}") from e
+
+        # xpath="/" means whole-document replacement (used by _try_xml_recovery)
+        if xpath in ("/", ""):
+            # Safety: never shrink the document significantly. lxml recover=True
+            # silently drops content, so a whole-doc replacement that is much
+            # shorter than the original means content was lost, not fixed.
+            # Allow up to 20% size reduction (normalisation / whitespace changes),
+            # but reject anything more aggressive.
+            _orig_len = len(xml.strip())
+            _frag_len = len(fragment_xml.strip())
+            if _orig_len > 0 and _frag_len < _orig_len * 0.8:
+                raise FixApplyError(
+                    f"Whole-document replacement rejected: "
+                    f"fragment ({_frag_len} chars) is more than 20% shorter than "
+                    f"the original ({_orig_len} chars). Content would be lost."
+                )
+            return fragment_xml
 
         # Locate target element via the indexed xpath produced by _xpath_of().
         # We strip namespace predicates for matching — lxml namespace handling

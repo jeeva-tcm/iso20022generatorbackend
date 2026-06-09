@@ -928,6 +928,24 @@ class Layer3Mixin:
             print(f"DEBUG: Error checking for duplicate MsgId/UETR: {e}")
             return True # Fail open to avoid blocking if DB has issues
 
+    def _validate_entity_mismatch_from_data(self, data: Dict[str, Any], line_map: Dict[str, int], report: ValidationReport):
+        """Run entity-mismatch priority rules using already-normalized canonical data (no re-parse)."""
+        try:
+            all_rules = self._load_all_rules(report.message_type)
+            priority_rules = [
+                r for r in all_rules
+                if r.get("rule_id") in [
+                    "L3-BIZ-PARTY-NAME-ENTITY-MATCH-ORG",
+                    "L3-BIZ-PARTY-NAME-ENTITY-MATCH-PRVT",
+                    "L3_ORG_SCHEME_VALIDATION",
+                    "L3_PRVT_SCHEME_VALIDATION"
+                ]
+            ]
+            for rule in priority_rules:
+                self._execute_rule_logic(rule, data, line_map, self.codelists, report)
+        except Exception as e:
+            print(f"DEBUG: Entity mismatch check failed: {e}")
+
     def validate_entity_mismatch(self, xml_content: str, report: ValidationReport):
         """
         Special early check for Entity Mismatch (L3-BIZ-PARTY-NAME-ENTITY-MATCH).
