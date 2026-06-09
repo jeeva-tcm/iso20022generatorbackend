@@ -3206,10 +3206,13 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
 
         CHECKED_TAGS = {
             'Nm', 'StrtNm', 'TwnNm', 'BldgNm', 'AdrLine',
-            'DstrctNm', 'CtrySubDvsn', 'TwnLctnNm', 'ClrSysRef'
+            'DstrctNm', 'CtrySubDvsn', 'TwnLctnNm', 'ClrSysRef',
+            'BldgNb', 'PstCd', 'Dept', 'SubDept', 'Flr', 'Room', 'PstBx',
         }
-        # ISO 20022 MX extended character set for Strd fields
-        SAFE = _re.compile(r'^[0-9a-zA-Z/\-\?:\(\)\.,\'\+ !#$%&\*=^_`\{\|\}~\x22;<>@\[\\\]]+$')
+        # CBPR+ RestrictedFINXMax35Text / RestrictedFINMax140Text permitted set.
+        # Only: A-Z a-z 0-9 space / - ? : ( ) . , ' +
+        # Everything else (! @ # $ % ^ & * _ { } [ ] | ; < > " ~ ` = etc.) is forbidden.
+        SAFE = _re.compile(r"^[A-Za-z0-9 /\-?:\(\)\.,\'+]+$")
         tag_alt = "|".join(_re.escape(t) for t in CHECKED_TAGS)
         patt = _re.compile(r'<(' + tag_alt + r')>\s*([^<]+?)\s*</\1>')
 
@@ -3237,7 +3240,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             # 2. Charset check (strip for this check specifically)
             val_to_check = raw_value.strip()
             if val_to_check and not SAFE.match(val_to_check):
-                inv = sorted(set(c for c in val_to_check if not _re.match(r'[0-9a-zA-Z/\-\?:\(\)\.,\'\+ !#$%&\*=^_`\{\|\}~\x22;<>@\[\\\]]', c)))
+                inv = sorted(set(c for c in val_to_check if not _re.match(r"[A-Za-z0-9 /\-?:\(\)\.,\'+]", c)))
                 inv_display = ' '.join(repr(c) for c in inv)
                 try:
                     line_num = xml_content.count('\n', 0, m.start()) + 1
@@ -3246,9 +3249,9 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                 report.add_issue(_VI(
                     "ERROR", 3, "INVALID_CHARSET", str(line_num),
                     f"Field <{tag_name}> contains invalid character(s): {inv_display}. "
-                    f"Only ISO 20022 MX permitted characters are allowed.",
-                    f"Remove or replace {inv_display} in <{tag_name}>. "
-                    f"Allowed characters: letters, digits, space, and: / - ? : ( ) . , ' + ! # $ % & * = ^ _ ` {{{{ | }}}} ~ \" ; < > @ [ \\ ]."
+                    f"Only CBPR+ RestrictedFINXMax35Text characters are allowed.",
+                    f"Remove {inv_display} from <{tag_name}>. "
+                    f"Allowed characters: A-Z a-z 0-9 space / - ? : ( ) . , ' +"
                 ))
 
     def _get_xpath_for_element(self, element) -> str:

@@ -64,7 +64,7 @@ class Layer2Mixin:
         # Characters genuinely forbidden as inter-element junk in SWIFT/ISO 20022.
         # Excludes . : ' " because those appear legitimately in amounts, timestamps,
         # BizSvc values (swift.cbprplus.02), and attribute-like content.
-        FORBIDDEN = set(',#;@{}[]()')
+        FORBIDDEN = set(',#;@{}[]()!')
         issues = []
 
         try:
