@@ -1,6 +1,7 @@
 {
   "messageType": "pacs.009.001.08",
   "version": "SR2026",
+  "standard": "ISO 20022 CBPR+",
   "businessService": "swift.cbprplus.04",
   "validationMode": "STRICT",
 
@@ -12,8 +13,8 @@
       "expected": "swift.cbprplus.04",
       "severity": "ERROR",
       "errorCode": "PACS009_HDR_001",
-      "errorMessage": "Invalid Business Service. Expected swift.cbprplus.04.",
-      "fixSuggestion": "Set AppHdr/ BizSvc to swift.cbprplus.04."
+      "errorMessage": "Invalid Business Service.",
+      "fixSuggestion": "Set AppHdr/BizSvc to swift.cbprplus.04."
     },
     {
       "ruleId": "HDR002",
@@ -27,13 +28,43 @@
     },
     {
       "ruleId": "HDR003",
-      "field1": "AppHdr/BizMsgIdr",
-      "field2": "Document/FICdtTrf/GrpHdr/MsgId",
-      "type": "MATCH",
+      "type": "FIELD_MATCH",
+      "sourceField": "AppHdr/BizMsgIdr",
+      "targetField": "GrpHdr/MsgId",
       "severity": "ERROR",
       "errorCode": "PACS009_HDR_003",
-      "errorMessage": "BizMsgIdr must match MsgId.",
-      "fixSuggestion": "Use identical values for BizMsgIdr and MsgId."
+      "errorMessage": "BizMsgIdr must match MsgId."
+    },
+    {
+      "ruleId": "HDR004",
+      "type": "FIELD_MATCH",
+      "sourceField": "AppHdr/Fr/FIId/FinInstnId/BICFI",
+      "targetField": "Document/FICdtTrf/CdtTrfTxInf/InstgAgt/FinInstnId/BICFI",
+      "severity": "ERROR",
+      "errorCode": "PACS009_HDR_004",
+      "errorMessage": "BAH From BIC must match InstgAgt BIC."
+    },
+    {
+      "ruleId": "HDR005",
+      "type": "FIELD_MATCH",
+      "sourceField": "AppHdr/To/FIId/FinInstnId/BICFI",
+      "targetField": "Document/FICdtTrf/CdtTrfTxInf/InstdAgt/FinInstnId/BICFI",
+      "severity": "ERROR",
+      "skipWhen": {
+        "field": "AppHdr/CpyDplct",
+        "values": ["COPY", "CODU"]
+      },
+      "errorCode": "PACS009_HDR_005",
+      "errorMessage": "BAH To BIC must match InstdAgt BIC."
+    },
+    {
+      "ruleId": "HDR006",
+      "field": "AppHdr/CpyDplct",
+      "type": "ENUM",
+      "allowedValues": ["COPY", "CODU", "DUPL"],
+      "severity": "ERROR",
+      "errorCode": "PACS009_HDR_006",
+      "errorMessage": "Invalid CopyDuplicate value."
     }
   ],
 
@@ -41,25 +72,29 @@
     {
       "ruleId": "GRP001",
       "field": "GrpHdr/NbOfTxs",
-      "type": "FIXED_VALUE",
-      "expected": "1",
+      "type": "COUNT_MATCH",
+      "countOf": "Document/FICdtTrf/CdtTrfTxInf",
+      "expected": 1,
       "severity": "ERROR",
       "errorCode": "PACS009_GRP_001",
-      "errorMessage": "Number of transactions must be 1.",
-      "fixSuggestion": "Set NbOfTxs to 1."
+      "errorMessage": "Number of transactions must be exactly 1 and must match actual CdtTrfTxInf count."
     },
     {
       "ruleId": "GRP002",
       "field": "GrpHdr/SttlmInf/SttlmMtd",
       "type": "ENUM",
-      "allowedValues": [
-        "INDA",
-        "INGA"
-      ],
+      "allowedValues": ["INDA", "INGA"],
       "severity": "ERROR",
       "errorCode": "PACS009_GRP_002",
-      "errorMessage": "Invalid settlement method.",
-      "fixSuggestion": "Use INDA or INGA."
+      "errorMessage": "Invalid settlement method."
+    },
+    {
+      "ruleId": "GRP003",
+      "field": "GrpHdr/CreDtTm",
+      "type": "ISO_DATETIME",
+      "severity": "ERROR",
+      "errorCode": "PACS009_GRP_003",
+      "errorMessage": "Invalid Group Header Creation DateTime."
     }
   ],
 
@@ -68,11 +103,11 @@
       "ruleId": "TXN001",
       "field": "CdtTrfTxInf/PmtId/UETR",
       "type": "UUID_V4",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
       "mandatory": true,
       "severity": "ERROR",
       "errorCode": "PACS009_TXN_001",
-      "errorMessage": "Invalid UETR.",
-      "fixSuggestion": "Provide a valid UUIDv4 UETR."
+      "errorMessage": "Invalid UETR. Must be UUID version 4."
     },
     {
       "ruleId": "TXN002",
@@ -82,8 +117,7 @@
       "mandatory": true,
       "severity": "ERROR",
       "errorCode": "PACS009_TXN_002",
-      "errorMessage": "Invalid settlement date.",
-      "fixSuggestion": "Use format YYYY-MM-DD without timezone."
+      "errorMessage": "Invalid settlement date."
     },
     {
       "ruleId": "TXN003",
@@ -92,11 +126,33 @@
       "mandatory": true,
       "maxDigits": 14,
       "fractionDigits": 5,
-      "positiveOnly": true,
       "severity": "ERROR",
       "errorCode": "PACS009_TXN_003",
-      "errorMessage": "Invalid settlement amount.",
-      "fixSuggestion": "Provide a positive amount with max 14 digits and 5 decimals."
+      "errorMessage": "Invalid settlement amount."
+    },
+    {
+      "ruleId": "TXN004",
+      "field": "CdtTrfTxInf/IntrBkSttlmAmt",
+      "type": "POSITIVE_AMOUNT",
+      "severity": "ERROR",
+      "errorCode": "PACS009_TXN_004",
+      "errorMessage": "Settlement amount must be greater than zero."
+    },
+    {
+      "ruleId": "TXN005",
+      "field": "CdtTrfTxInf/IntrBkSttlmAmt/@Ccy",
+      "type": "ISO4217_CURRENCY",
+      "severity": "ERROR",
+      "errorCode": "PACS009_TXN_005",
+      "errorMessage": "Invalid ISO 4217 currency code."
+    },
+    {
+      "ruleId": "TXN006",
+      "field": "CdtTrfTxInf/IntrBkSttlmAmt",
+      "type": "CURRENCY_DECIMAL_PRECISION",
+      "severity": "ERROR",
+      "errorCode": "PACS009_TXN_006",
+      "errorMessage": "Invalid decimal precision for currency."
     }
   ],
 
@@ -104,15 +160,17 @@
     {
       "ruleId": "ADR001",
       "field": "PstlAdr",
-      "type": "HYBRID_ADDRESS",
-      "mandatoryFields": [
-        "TwnNm",
-        "Ctry"
+      "scope": [
+        "Document/FICdtTrf/CdtTrfTxInf/Dbtr/PstlAdr",
+        "Document/FICdtTrf/CdtTrfTxInf/Cdtr/PstlAdr",
+        "Document/FICdtTrf/CdtTrfTxInf/IntrmyAgt1/FinInstnId/PstlAdr",
+        "Document/FICdtTrf/CdtTrfTxInf/IntrmyAgt2/FinInstnId/PstlAdr"
       ],
+      "type": "STRUCTURED_ADDRESS",
+      "mandatoryFields": ["TwnNm", "Ctry"],
       "severity": "ERROR",
       "errorCode": "PACS009_ADR_001",
-      "errorMessage": "Structured address is incomplete.",
-      "fixSuggestion": "Provide Town Name and Country."
+      "errorMessage": "Structured address is incomplete. TwnNm and Ctry are mandatory."
     }
   ],
 
@@ -122,22 +180,33 @@
       "field": "InstgAgt/FinInstnId/BICFI",
       "type": "BIC",
       "mandatory": true,
-      "liveBicValidation": true,
+      "liveBicValidation": false,
       "severity": "ERROR",
       "errorCode": "PACS009_BIC_001",
-      "errorMessage": "Invalid instructing agent BIC.",
-      "fixSuggestion": "Provide a valid active SWIFT BIC."
+      "errorMessage": "Invalid instructing agent BIC."
     },
     {
       "ruleId": "BIC002",
       "field": "InstdAgt/FinInstnId/BICFI",
       "type": "BIC",
       "mandatory": true,
-      "liveBicValidation": true,
+      "liveBicValidation": false,
       "severity": "ERROR",
       "errorCode": "PACS009_BIC_002",
-      "errorMessage": "Invalid instructed agent BIC.",
-      "fixSuggestion": "Provide a valid active SWIFT BIC."
+      "errorMessage": "Invalid instructed agent BIC."
+    }
+  ],
+
+  "leiRules": [
+    {
+      "ruleId": "LEI001",
+      "field": "*/FinInstnId/LEI",
+      "type": "REGEX",
+      "pattern": "^[A-Z0-9]{20}$",
+      "checksum": "ISO17442",
+      "severity": "ERROR",
+      "errorCode": "PACS009_LEI_001",
+      "errorMessage": "Invalid LEI format. Must be 20 uppercase alphanumeric characters with a valid ISO 17442 checksum."
     }
   ],
 
@@ -147,18 +216,82 @@
       "type": "SUPPLEMENTARY_DATA_NOT_ALLOWED",
       "severity": "ERROR",
       "errorCode": "PACS009_CBPR_001",
-      "errorMessage": "SupplementaryData is not allowed in CBPR+.",
-      "fixSuggestion": "Remove SupplementaryData block."
+      "errorMessage": "SupplementaryData is not allowed in CBPR+."
     },
     {
       "ruleId": "CBPR002",
-      "type": "SERVICE_LEVEL",
       "field": "PmtTpInf/SvcLvl/Cd",
+      "type": "FIXED_VALUE",
       "expected": "G004",
+      "configurable": true,
+      "configNote": "Verify against your SR2026 CBPR+ business specification. Set configurable=false to enforce strictly, or replace with ENUM type if multiple service level codes are permitted in your flow.",
       "severity": "ERROR",
       "errorCode": "PACS009_CBPR_002",
-      "errorMessage": "Invalid GPI Service Level Code.",
-      "fixSuggestion": "Use G004 for pacs.009."
+      "errorMessage": "Invalid GPI Service Level Code. Expected G004."
     }
+  ],
+
+  "formatRules": [
+    {
+      "ruleId": "FMT001",
+      "type": "FIN_X_CHARACTER_SET",
+      "scope": [
+        "AppHdr/BizMsgIdr",
+        "Document/FICdtTrf/GrpHdr/MsgId",
+        "Document/FICdtTrf/CdtTrfTxInf/PmtId/InstrId",
+        "Document/FICdtTrf/CdtTrfTxInf/PmtId/EndToEndId",
+        "Document/FICdtTrf/CdtTrfTxInf/PmtId/TxId",
+        "Document/FICdtTrf/CdtTrfTxInf/RmtInf/Ustrd",
+        "Document/FICdtTrf/CdtTrfTxInf/InstrForNxtAgt/InstrInf",
+        "Document/FICdtTrf/CdtTrfTxInf/InstrForCdtrAgt/InstrInf",
+        "Document/FICdtTrf/CdtTrfTxInf/Purp/Prtry"
+      ],
+      "severity": "ERROR",
+      "errorCode": "PACS009_FMT_001",
+      "errorMessage": "Invalid FIN-X character detected in free-text field."
+    }
+  ],
+
+  "duplicateRules": [
+    {
+      "ruleId": "DUP001",
+      "field": "UETR",
+      "type": "HISTORICAL_DUPLICATE_CHECK",
+      "lookbackWindow": "PT24H",
+      "severity": "WARNING",
+      "errorCode": "PACS009_DUP_001",
+      "errorMessage": "Possible duplicate — UETR has been seen within the lookback window."
+    },
+    {
+      "ruleId": "DUP002",
+      "field": "MsgId",
+      "type": "HISTORICAL_DUPLICATE_CHECK",
+      "lookbackWindow": "PT24H",
+      "severity": "WARNING",
+      "errorCode": "PACS009_DUP_002",
+      "errorMessage": "Possible duplicate — MsgId has been seen within the lookback window."
+    },
+    {
+      "ruleId": "DUP003",
+      "field": "BizMsgIdr",
+      "type": "HISTORICAL_DUPLICATE_CHECK",
+      "lookbackWindow": "PT24H",
+      "severity": "WARNING",
+      "errorCode": "PACS009_DUP_003",
+      "errorMessage": "Possible duplicate — BizMsgIdr has been seen within the lookback window."
+    }
+  ],
+
+  "validationOrder": [
+    "XSD",
+    "HEADER",
+    "GROUP_HEADER",
+    "TRANSACTION",
+    "ADDRESS",
+    "BIC",
+    "LEI",
+    "CBPR",
+    "FORMAT",
+    "DUPLICATE"
   ]
 }

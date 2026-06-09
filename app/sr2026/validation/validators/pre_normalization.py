@@ -400,14 +400,9 @@ class PreNormalizationValidator:
             'OrgId':             "AnyBIC, LEI, or Othr/Id",
             'PrvtId':            "DtAndPlcOfBirth or Othr/Id",
             'SchmeNm':           "<Cd> or <Prtry>",
-            'Othr':              "an identifier value <Id>",
             'ClrSys':            "<Cd> or <Prtry>",
             # ── Postal address (all children optional in XSD) ──
             'PstlAdr':           "Ctry, TwnNm, StrtNm, BldgNb, PstCd, or AdrLine",
-            # ── Payment identification & group header ──
-            'PmtId':             "EndToEndId (and ideally InstrId, TxId, UETR)",
-            'GrpHdr':            "MsgId, CreDtTm, NbOfTxs and SttlmInf",
-            'SttlmInf':          "SttlmMtd",
             # ── Payment type info (choice containers) ──
             'PmtTpInf':          "SvcLvl, LclInstrm, CtgyPurp, InstrPrty, or ClrChanl",
             'SvcLvl':            "<Cd> or <Prtry>",
@@ -1410,17 +1405,6 @@ class PreNormalizationValidator:
                                     "ERROR", 2, "BBAN_VALIDATION_ERROR", str(line_num), msg, fix
                                 ))
 
-            # ── Amount Validation (strictly positive) ────────────────────────
-            if tag_name in AMOUNT_TAGS:
-                amount_val = (elem.text or '').strip()
-                if amount_val:
-                    parent_tag = local(elem.getparent().tag) if elem.getparent() is not None else ''
-                    for msg, fix in _validate_positive_amount(amount_val, tag_name, line_num, parent_tag):
-                        report.add_issue(ValidationIssue(
-                            "ERROR", 2, "NON_POSITIVE_AMOUNT", str(line_num), msg, fix
-                        ))
-
-
     @staticmethod
     def _validate_nboftxs(xml_content: str, report: ValidationReport) -> None:
         """
@@ -2369,7 +2353,6 @@ class PreNormalizationValidator:
         PreNormalizationValidator._validate_empty_required_containers(xml_content, report)
         PreNormalizationValidator._validate_apphdr_payload_match(xml_content, report)
         PreNormalizationValidator._validate_pain008_fwdgagt_rule(xml_content, report)
-        PreNormalizationValidator._validate_uetr_in_xml(xml_content, report)
         PreNormalizationValidator._validate_account_identifiers_in_xml(xml_content, report)
         PreNormalizationValidator._validate_nboftxs(xml_content, report)
         PreNormalizationValidator._validate_duplicate_ids(xml_content, report)

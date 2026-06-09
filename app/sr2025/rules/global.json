@@ -73,6 +73,7 @@
         "description": "IBAN Based Currency Validation",
         "type": "expression",
         "selector": ".*DbtrAcct\\.Id\\.IBAN$",
+        "condition": "'pain.001' not in DATA.get('AppHdr.MsgDefIdr', '') and 'pain.008' not in DATA.get('AppHdr.MsgDefIdr', '')",
         "expression": "check_iban_currency(KEY, VALUE)",
         "severity": "ERROR",
         "layer": 3

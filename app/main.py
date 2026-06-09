@@ -36,6 +36,8 @@ logger = logging.getLogger("iso20022")
 
 def get_active_version(request: Request, payload_version: str = None) -> str:
     version = request.headers.get("x-sr-version")
+    if version:
+        version = version.strip()
     if version not in ["SR2025", "SR2026"]:
         logger.error(f"Invalid or missing x-sr-version header: {version}")
         raise HTTPException(
@@ -621,11 +623,7 @@ def get_message_schema(
 def get_bulk_blocks(message_type: str, raw_request: Request):
     """Return the block definitions (checkboxes) for a given message type."""
     version = get_active_version(raw_request)
-    if version == "SR2026":
-        from app.sr2026.generators.bulk_generator import get_blocks_for_message as get_blocks_2026
-        blocks = get_blocks_2026(message_type)
-    else:
-        blocks = get_blocks_for_message(message_type)
+    blocks = get_blocks_for_message(message_type)
     if not blocks:
         raise HTTPException(status_code=404, detail=f"No block config found for {message_type}")
     return {"message_type": message_type, "blocks": blocks}
@@ -696,14 +694,12 @@ async def bulk_generate(request: dict, raw_request: Request):
         None), error (str | None), reason (str), error_codes (list[str]).
         """
         try:
+            xml = generate_single_xml(message_type, selected_blocks, attempt_idx, version=version)
             if version == "SR2026":
-                from app.sr2026.generators.bulk_generator import generate_single_xml as gen2026
                 from app.sr2026.validation.validators.validator import SR2026Validator
-                xml = gen2026(message_type, selected_blocks, attempt_idx)
                 val = SR2026Validator(history_service=history_service)
                 report = await val.validate(xml, message_type)
             else:
-                xml = generate_single_xml(message_type, selected_blocks, attempt_idx, version=version)
                 report = await validator.validate(xml, mode="Full 1-3", message_type="Auto-detect")
 
             if report.status in ("PASS", "PASSED"):
@@ -760,12 +756,22 @@ async def bulk_generate(request: dict, raw_request: Request):
 
         for r in results:
             if r["ok"] and len(valid_messages) < count:
+                # Build report dict - SR2025 uses .to_dict(), SR2026 returns ApiValidateResponse
+                report_obj = r["report"]
+                if hasattr(report_obj, "to_dict"):
+                    report_dict_item = report_obj.to_dict()
+                elif hasattr(report_obj, "model_dump"):
+                    report_dict_item = report_obj.model_dump()
+                elif hasattr(report_obj, "dict"):
+                    report_dict_item = report_obj.dict()
+                else:
+                    report_dict_item = {"status": getattr(report_obj, "status", "PASSED")}
                 valid_messages.append({
                     "index": len(valid_messages) + 1,
                     "xml": r["xml"],
                     "message_type": message_type,
                     "status": "VALID",
-                    "validation_report": r["report"].to_dict()
+                    "validation_report": report_dict_item
                 })
                 consecutive_failures = 0
                 continue
@@ -856,14 +862,12 @@ async def bulk_generate_stream(request: dict, raw_request: Request):
 
         async def _one_attempt(i: int):
             try:
+                xml = generate_single_xml(message_type, selected_blocks, i, version=version)
                 if version == "SR2026":
-                    from app.sr2026.generators.bulk_generator import generate_single_xml as gen2026
                     from app.sr2026.validation.validators.validator import SR2026Validator
-                    xml = gen2026(message_type, selected_blocks, i)
                     val = SR2026Validator(history_service=history_service)
                     report = await val.validate(xml, message_type)
                 else:
-                    xml = generate_single_xml(message_type, selected_blocks, i, version=version)
                     report = await validator.validate(xml, mode="Full 1-3", message_type="Auto-detect")
 
                 if report.status in ("PASS", "PASSED"):

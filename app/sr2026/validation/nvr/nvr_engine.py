@@ -94,21 +94,6 @@ class NVREngine:
             except ValueError:
                 pass
 
-        # 3. UETR Format Validation
-        uetr_nodes = root_element.xpath("//*[local-name()='UETR' or local-name()='OrgnlUETR']")
-        for uetr in uetr_nodes:
-            val = (uetr.text or "").strip()
-            name = uetr.tag.split('}')[-1] if isinstance(uetr.tag, str) else "UETR"
-            if val and not NVREngine._is_valid_uuid_v4(val):
-                report.add_issue(ValidationIssue(
-                    severity="ERROR",
-                    code="INVALID_UETR_FORMAT",
-                    path=f"//{name}",
-                    message=f"UETR '{val}' has an invalid format. Must be a valid UUID v4 (36 characters, lowercase hex, e.g. 550e8400-e29b-41d4-a716-446655440000).",
-                    line=uetr.sourceline or 1,
-                    fix="Correct the UETR to follow UUID v4 standards."
-                ))
-
         # 4. IBAN Format & Check digit validation
         iban_nodes = root_element.xpath("//*[local-name()='IBAN']")
         for iban in iban_nodes:

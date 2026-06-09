@@ -2592,11 +2592,11 @@ def _gen_pain008(selected: set, idx: int) -> str:
 \t\t\t\t<PmtInfId>{xe(pmt_inf_id)}</PmtInfId>
 \t\t\t\t<PmtMtd>DD</PmtMtd>
 \t\t\t\t<ReqdColltnDt>{rng_date(2)}</ReqdColltnDt>
-{pmt_body}\t\t\t\t<DrctDbtTxInf>
+{pmt_tp}{pmt_body}\t\t\t\t<DrctDbtTxInf>
 \t\t\t\t\t<PmtId>
 \t\t\t\t\t\t<InstrId>{xe(instr_id)}</InstrId>
 \t\t\t\t\t\t<EndToEndId>{xe(e2e_id)}</EndToEndId>
-\t\t\t\t\t\t<UETR>{rng_uetr()}</UETR>
+\t\t\t\t\t\t<UETR>{xe(scenario.uetr)}</UETR>
 \t\t\t\t\t</PmtId>
 \t\t\t\t\t<InstdAmt Ccy="{xe(ccy)}">{amount}</InstdAmt>
 \t\t\t\t\t<DrctDbtTx>
@@ -2613,37 +2613,29 @@ def _gen_pain008(selected: set, idx: int) -> str:
     return xml
 
 
-# ── Single Message Generator ───────────────────────────────────────────────────
-
 def post_process_xml_for_sr2026(xml: str, message_type: str) -> str:
-    """Post-processor for SR2026 XML messages to update BizSvc in BAH."""
-    msg_lower = message_type.lower()
+    """Post-process generated XML to apply SR2026-specific BizSvc values.
     
-    # Update BizSvc version mapping
+    SR2026 BizSvc values per message type (from sr2026/rules/messages/*/base.json):
+    - pacs.009: swift.cbprplus.04
+    - pacs.003: swift.cbprplus.03
+    - All others: swift.cbprplus.04 (default)
+    """
+    msg_lower = message_type.lower()
     if "pacs.009" in msg_lower:
-        if "cov" in msg_lower:
-            xml = xml.replace("<BizSvc>swift.cbprplus.cov.02</BizSvc>", "<BizSvc>swift.cbprplus.cov.04</BizSvc>")
-            xml = xml.replace("<BizSvc>swift.cbprplus.cov.03</BizSvc>", "<BizSvc>swift.cbprplus.cov.04</BizSvc>")
-        elif "adv" in msg_lower:
-            xml = xml.replace("<BizSvc>swift.cbprplus.adv.02</BizSvc>", "<BizSvc>swift.cbprplus.adv.04</BizSvc>")
-            xml = xml.replace("<BizSvc>swift.cbprplus.adv.03</BizSvc>", "<BizSvc>swift.cbprplus.adv.04</BizSvc>")
-        else:
-            xml = xml.replace("<BizSvc>swift.cbprplus.02</BizSvc>", "<BizSvc>swift.cbprplus.04</BizSvc>")
-            xml = xml.replace("<BizSvc>swift.cbprplus.03</BizSvc>", "<BizSvc>swift.cbprplus.04</BizSvc>")
+        # SR2026 pacs.009 requires swift.cbprplus.04
+        xml = xml.replace("<BizSvc>swift.cbprplus.02</BizSvc>", "<BizSvc>swift.cbprplus.04</BizSvc>")
+        xml = xml.replace("<BizSvc>swift.cbprplus.03</BizSvc>", "<BizSvc>swift.cbprplus.04</BizSvc>")
+        xml = xml.replace("<BizSvc>swift.cbprplus.cov.03</BizSvc>", "<BizSvc>swift.cbprplus.04</BizSvc>")
     elif "pacs.003" in msg_lower:
         xml = xml.replace("<BizSvc>swift.cbprplus.02</BizSvc>", "<BizSvc>swift.cbprplus.03</BizSvc>")
     else:
-        # Standard fallback for other types (pacs.008, pacs.004, pacs.002, pacs.010, camt.*, pain.*)
-        # Note: pacs.008, pacs.004, pacs.002, pacs.010 all require swift.cbprplus.04 under SR2026.
-        # camt.052, camt.053, camt.054, camt.055, camt.056, camt.058, camt.060, camt.105 all require swift.cbprplus.03.
-        if any(c in msg_lower for c in ["camt.052", "camt.053", "camt.054", "camt.055", "camt.056", "camt.058", "camt.060", "camt.105"]):
-            xml = xml.replace("<BizSvc>swift.cbprplus.02</BizSvc>", "<BizSvc>swift.cbprplus.03</BizSvc>")
-            xml = xml.replace("<BizSvc>swift.cbprplus.03</BizSvc>", "<BizSvc>swift.cbprplus.03</BizSvc>")
-        else:
-            xml = xml.replace("<BizSvc>swift.cbprplus.02</BizSvc>", "<BizSvc>swift.cbprplus.04</BizSvc>")
-            xml = xml.replace("<BizSvc>swift.cbprplus.03</BizSvc>", "<BizSvc>swift.cbprplus.04</BizSvc>")
+        # Standard fallback: replace old values with swift.cbprplus.04
+        xml = xml.replace("<BizSvc>swift.cbprplus.02</BizSvc>", "<BizSvc>swift.cbprplus.04</BizSvc>")
+        xml = xml.replace("<BizSvc>swift.cbprplus.03</BizSvc>", "<BizSvc>swift.cbprplus.04</BizSvc>")
 
     return xml
+
 
 
 def generate_single_xml(
@@ -2664,21 +2656,17 @@ def _generate_single_xml_raw(
     idx: int
 ) -> str:
     """Generate one ISO 20022 XML message for the given type and return raw XML."""
-    selected = set(b.lower() for b in selected_blocks)
+    selected_lower = set(b.lower() for b in selected_blocks)
 
-    # Always include mandatory blocks; randomly include optional ones so each
-    # generated message has a different structure (50–80% inclusion per block).
+    # Get all blocks for this message type
     blocks_for_type = get_blocks_for_message(message_type)
     block_map = {blk["id"].lower(): blk for blk in blocks_for_type}
     mandatory_ids = {blk["id"].lower() for blk in blocks_for_type if blk.get("mandatory")}
     optional_ids  = {blk["id"].lower() for blk in blocks_for_type if not blk.get("mandatory")}
 
-    # Start with mandatory blocks + any user-pre-selected optional blocks,
-    # then randomly add more optional blocks (65% chance each).
-    candidate_optional = selected & optional_ids  # user pre-selected optional
-    for bid in optional_ids:
-        if bid not in candidate_optional and random.random() < 0.65:
-            candidate_optional.add(bid)
+    # Only include user-selected optional blocks (NO random additions).
+    # Mandatory blocks are ALWAYS included regardless of selection.
+    user_selected_optional = selected_lower & optional_ids
 
     # Enforce `requires` dependency: if a block requires another, that parent
     # must also be included (walk the chain until all deps are satisfied).
@@ -2692,10 +2680,10 @@ def _generate_single_xml_raw(
                 acc.add(req_lower)
                 _ensure_deps(req_lower, acc)
 
-    for bid in list(candidate_optional):
-        _ensure_deps(bid, candidate_optional)
+    for bid in list(user_selected_optional):
+        _ensure_deps(bid, user_selected_optional)
 
-    selected = mandatory_ids | candidate_optional
+    selected = mandatory_ids | user_selected_optional
 
     selected_blocks_ctx.set(selected)
     msg_lower = message_type.lower()

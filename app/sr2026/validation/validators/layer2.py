@@ -131,6 +131,7 @@ class Layer2Validator:
                 clean_msg = re.sub(r'\{[^\}]+\}', '', error.message)
                 report.add_issue(ValidationIssue(
                     severity="ERROR",
+                    layer=2,
                     code="SCHEMA_VALIDATION_ERROR",
                     path=f"//{error.domain or ''}",
                     message=f"XSD Validation Error: {clean_msg}",
