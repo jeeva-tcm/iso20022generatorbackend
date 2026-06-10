@@ -234,5 +234,40 @@
         "layer": 3,
         "errorMessage": "ChrgsInf is present but the Agt element is absent.",
         "fix": "Add <Agt><FinInstnId><BICFI>{agent_BIC}</BICFI></FinInstnId></Agt> inside ChrgsInf."
+    },
+    {
+        "rule_id": "PACS003_CREDTTM_DATE_FORMAT",
+        "name": "PACS003_CreDtTm_Date_Format_Invalid",
+        "description": "GrpHdr/CreDtTm contains an invalid ISO 8601 datetime. Common errors: 'Z' suffix, milliseconds (.123), missing timezone offset.",
+        "selector": "Document.FIToFICstmrDrctDbt.GrpHdr.CreDtTm",
+        "type": "expression",
+        "expression": "re.match(r'^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}([+-]\\d{2}:\\d{2})$', str(VALUE).strip())",
+        "severity": "ERROR",
+        "layer": 2,
+        "errorMessage": "GrpHdr/CreDtTm has an invalid datetime format. Must be YYYY-MM-DDTHH:MM:SS+HH:MM (no Z, no milliseconds).",
+        "fix": "Replace with a valid ISO 8601 datetime. Format: YYYY-MM-DDTHH:MM:SS+00:00 (e.g. 2026-06-09T10:00:00+00:00). Never use 'Z' suffix or milliseconds."
+    },
+    {
+        "rule_id": "PACS003_APPHDR_CREDT_FORMAT",
+        "name": "PACS003_AppHdr_CreDt_Format_Invalid",
+        "description": "AppHdr/CreDt contains an invalid datetime. Must be YYYY-MM-DDTHH:MM:SS+HH:MM. Z suffix and milliseconds are forbidden under CBPR+.",
+        "selector": "AppHdr.CreDt",
+        "type": "expression",
+        "expression": "re.match(r'^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}([+-]\\d{2}:\\d{2})$', str(VALUE).strip())",
+        "severity": "ERROR",
+        "layer": 2,
+        "errorMessage": "AppHdr/CreDt has an invalid datetime format. Must be YYYY-MM-DDTHH:MM:SS+HH:MM (no Z, no milliseconds).",
+        "fix": "Replace with a valid ISO 8601 datetime with timezone. Example: 2026-06-09T10:00:00+00:00."
+    },
+    {
+        "rule_id": "PACS003_CHARSET",
+        "name": "PACS003_Character_Set_Usage",
+        "description": "All text values must comply with the CBPR+ permitted character set. Standard fields: A-Z a-z 0-9 space /\\-?:().,'+. Extended fields (Nm, Adr, RmtInf): additionally !#$&%*=^_{{|}}~\";<>@[\\]. Use &lt; for < and &gt; for >.",
+        "type": "expression",
+        "expression": "all(re.match(r'^[A-Za-z0-9 /\\-?:().,\\'+]*$', str(v)) for k, v in DATA.items() if isinstance(v, str) and not k.endswith('@Ccy') and not k.endswith('@Tp') and not re.search(r'(IBAN|BIC|LEI|UETR|MsgId|BizMsgIdr|CreDtTm|IntrBkSttlmDt|Nm|AdrLine|StrtNm|TwnNm|Ustrd|AddtlInf)', k))",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Character set used does not comply with CBPR+ UHB specifications. Only A-Z a-z 0-9 space and /\\-?:().,\\' are permitted in standard fields. Nm/Adr/RmtInf fields allow extended charset including !#$&%*=^_{{|}}~\";<>@[\\].",
+        "fix": "Remove characters outside the CBPR+ permitted set. For Nm/Adr/RmtInf fields use the extended charset. Replace < with &lt; and > with &gt;."
     }
 ]

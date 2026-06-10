@@ -719,6 +719,19 @@
             "root_cause": "Illegal XML element/attribute name.",
             "fix": "Repair to the legal schema name."
         },
+        "WF_STRAY_CHAR_IN_TAG": {
+            "root_cause": "Illegal character inside a tag opening/closing (e.g. '!' in '<BusMsgEnvlp xmlns=\"...\"!>' or in '<BusMsgEnvlp!>'). The character appears AFTER the closing quote of the last attribute value but BEFORE the closing '>' of the tag.",
+            "fix": "Strip the stray character(s) between the last attribute quote and the closing '>'. Example: '<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\"!>' → '<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">'. Pattern: remove any non-whitespace, non-'>' characters that appear after the last '\"' or \"'\" in a tag but before its closing '>'.",
+            "auto_fixable": true,
+            "detection_regex": "(<[A-Za-z][^>]*?[\"'][^\"'>]*)[^A-Za-z0-9 \\t\\r\\n/>=\\-_.:\"']+(>|/>)",
+            "applies_to": "all message types — pacs.008, pacs.009, pacs.002, pacs.003, pacs.004, pacs.010, pain.001, pain.002, pain.008, camt.052, camt.053, camt.054, camt.055, camt.056, camt.057"
+        },
+        "WF_STRAY_CHAR_IN_SELF_CLOSE_TAG": {
+            "root_cause": "Stray character before '/>' in a self-closing tag (e.g. '<BICFI!/>') or before '>' in an opening tag with no attributes (e.g. '<Document!>').",
+            "fix": "Strip the stray character(s). '<BICFI!/>' → '<BICFI/>'. '<Document!>' → '<Document>'.",
+            "auto_fixable": true,
+            "applies_to": "all message types"
+        },
         "WF_STRAY_TEXT_BETWEEN_ELEMENTS": {
             "root_cause": "Unexpected text/character between child elements.",
             "fix": "Remove the stray text."

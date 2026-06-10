@@ -893,8 +893,15 @@ class Layer2Mixin:
 
         # ── 2. BIC / BICFI ────────────────────────────────────────────────
         if any(x in msg.upper() for x in ["BICFI", "BICBE", "ANYBIC", "BIC"]):
-            bic_val = bad_value()
+            bic_val = bad_value().strip()  # strip whitespace — XSD reports raw element text incl. newlines
             if "pattern" in msg.lower() or "facet" in msg.lower():
+                # Whitespace-only difference: stripped value is a valid BIC but raw had whitespace
+                _BIC_PAT = re.compile(r'^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$')
+                if bic_val and _BIC_PAT.match(bic_val):
+                    return (
+                        f"BIC '{bic_val}' contains leading/trailing whitespace.",
+                        f"Remove the whitespace inside the <BICFI> element. The value should be exactly '{bic_val}' with no spaces or newlines."
+                    )
                 if bic_val and len(bic_val) >= 6 and not (bic_val[4].isalpha() and bic_val[5].isalpha()):
                     return (
                         f"Invalid BIC — bad country code: '{bic_val[4:6]}'.",
@@ -913,6 +920,11 @@ class Layer2Mixin:
                     "and optional 3-char branch code. Example: 'BNKGB2LXXX'."
                 )
             if "length" in msg.lower() or "atomic type" in msg.lower():
+                if bic_val and re.compile(r'^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$').match(bic_val):
+                    return (
+                        f"BIC '{bic_val}' contains leading/trailing whitespace.",
+                        f"Remove the whitespace inside the <BICFI> element. The value should be exactly '{bic_val}' with no spaces or newlines."
+                    )
                 return (
                     "BIC has incorrect length.",
                     "A BIC (Bank Identifier Code) must be exactly 8 or 11 characters long."

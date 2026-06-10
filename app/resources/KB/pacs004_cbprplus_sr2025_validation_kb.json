@@ -150,6 +150,20 @@
             "Read InstdAgt/FinInstnId/BICFI from the transaction block and set AppHdr/To/FIId/FinInstnId/BICFI to match.",
             "Alternatively update InstdAgt/BICFI to match AppHdr/To if To is authoritative."
           ]
+        },
+        {
+          "error_id": "APPHDR_TO_INVALID_BIC",
+          "error_code": "INVALID_BICFI",
+          "severity": "Fatal",
+          "description": "AppHdr/To contains an invalid or malformed BIC.",
+          "affected_tags": [
+            "AppHdr/To/FIId/FinInstnId/BICFI"
+          ],
+          "possible_fixes": [
+            "Replace with a valid BICFI: 8 or 11 uppercase alphanumeric characters per ISO 9362.",
+            "Pattern: [A-Z]{6}[A-Z2-9][A-NP-Z0-9]([A-Z0-9]{3})?",
+            "Example valid BIC: DEUTDEFFXXX"
+          ]
         }
       ]
     },
@@ -327,6 +341,18 @@
           ]
         },
         {
+          "error_id": "CREDT_NO_TIMEZONE",
+          "error_code": "CBPR_DATETIME_NO_TIMEZONE",
+          "severity": "Fatal",
+          "description": "AppHdr/CreDt has no timezone offset; CBPR+ requires an explicit +HH:MM offset.",
+          "affected_tags": [
+            "AppHdr/CreDt"
+          ],
+          "possible_fixes": [
+            "Append a timezone offset. Example: 2026-06-01T10:00:00 -> 2026-06-01T10:00:00+00:00."
+          ]
+        },
+        {
           "error_id": "CREDT_PAST_DATE",
           "error_code": "PAST_DATE_ERROR",
           "severity": "Warning",
@@ -490,6 +516,18 @@
           ],
           "possible_fixes": [
             "Strip milliseconds."
+          ]
+        },
+        {
+          "error_id": "CREDTTM_NO_TIMEZONE",
+          "error_code": "CBPR_DATETIME_NO_TIMEZONE",
+          "severity": "Fatal",
+          "description": "GrpHdr/CreDtTm has no timezone offset; CBPR+ requires an explicit +HH:MM offset.",
+          "affected_tags": [
+            "GrpHdr/CreDtTm"
+          ],
+          "possible_fixes": [
+            "Append a timezone offset. Example: 2026-06-01T10:00:00 -> 2026-06-01T10:00:00+00:00."
           ]
         },
         {

@@ -141,7 +141,7 @@ _AUTOFIX_WARNING_CODES = {
 
 
 async def _auto_fix_iterative(original_xml: str, message_type: str = "Auto-detect",
-                              max_rounds: int = 12):
+                              max_rounds: int = 8):
     """
     Iteratively validate → fix → re-validate until the document is clean, no
     further actionable fix can be produced, or no progress is made.
@@ -156,6 +156,20 @@ async def _auto_fix_iterative(original_xml: str, message_type: str = "Auto-detec
     issue list (right lines/paths, newly-revealed errors), which is what makes
     "fix everything at once" actually converge.
 
+    Performance vs. coverage:
+      max_rounds is a SAFETY BACKSTOP, not the normal terminator. The real exit
+      is the diminishing-returns guard below: the loop stops the moment a
+      well-formed round fails to reduce the error count. So:
+        • easy messages exit in 1-2 rounds (fast — most common case),
+        • deeply-broken messages still get the rounds they need (XSD reveals one
+          sequence-error per container, so multi-level breakage needs multiple
+          rounds to fully unwind),
+        • nothing ever grinds rounds that aren't improving the document.
+      A higher cap therefore costs ~nothing on the common case and only protects
+      coverage on the hard cases — which is why it is 6, not 3. Lowering it
+      trades fix completeness on badly-broken messages for a speed-up the
+      stall-exit already delivers on the common case.
+
     Returns (fixed_xml, rounds_used, total_fixes_applied).
     """
     cur = original_xml
@@ -165,21 +179,14 @@ async def _auto_fix_iterative(original_xml: str, message_type: str = "Auto-detec
     best_xml = cur
     best_errors = None  # fewest ERROR count seen so far
     best_wf = None      # well-formedness of the best state (None until 1st round)
-
-    from lxml import etree as _etree
-
-    def _is_wellformed(x: str) -> bool:
-        try:
-            _etree.fromstring(x.encode("utf-8"))
-            return True
-        except Exception:
-            return False
+    prev_round_errors = None  # error count at the END of the previous round (for stall-exit)
 
     for _ in range(max_rounds):
         report = await validator.validate(
             cur, mode="Full 1-3", message_type=message_type or "Auto-detect"
         )
-        details = report.to_dict().get("details", []) or []
+        report_dict = report.to_dict()
+        details = report_dict.get("details", []) or []
         errors = [d for d in details if d.get("severity") in ("ERROR", "CRITICAL")]
 
         # A few codelist-validity rules are WARNINGs (their external code lists may
@@ -214,7 +221,8 @@ async def _auto_fix_iterative(original_xml: str, message_type: str = "Auto-detec
         # <EndToEndId>) clears the ordering error but REVEALS a previously-hidden,
         # possibly-unfixable error, keeping the count constant. A fix that
         # INCREASES the count within the same well-formedness is still rejected.
-        cur_wf = _is_wellformed(cur)
+        # Layer 1 already parsed the XML — read well-formedness from its status.
+        cur_wf = report_dict.get("layer_status", {}).get("1", {}).get("status") == "✅"
         if (best_errors is None
                 or (cur_wf and not best_wf)
                 or (cur_wf == best_wf and len(errors) <= best_errors)):
@@ -224,6 +232,24 @@ async def _auto_fix_iterative(original_xml: str, message_type: str = "Auto-detec
 
         if not fixable:
             break  # clean — no errors and no auto-fixable warnings remain
+
+        # ── Diminishing-returns early-exit ───────────────────────────────────
+        # Once the document is well-formed, a round that fails to REDUCE the
+        # ERROR count vs. the previous WELL-FORMED round is spending compute (a
+        # full validate + suggest_batch + apply_batch pass) for no net gain — the
+        # remaining errors are ones the fixer can't resolve. Stop early instead
+        # of grinding the remaining rounds.
+        #
+        # CRITICAL: prev_round_errors is only recorded on WELL-FORMED rounds, so
+        # the malformed→well-formed transition (which legitimately RAISES the
+        # count by revealing previously-hidden Layer 2-3 errors) can never be the
+        # baseline — we never falsely "stall-exit" on that jump. The
+        # oscillation/no-progress guards below still cover everything else.
+        if cur_wf:
+            if (prev_round_errors is not None
+                    and len(errors) >= prev_round_errors):
+                break
+            prev_round_errors = len(errors)
 
         rounds_used += 1
         # Fix up to 20 per round; the next round re-validates and continues,
@@ -261,7 +287,7 @@ async def _apply_auto_fixes(report_dict, original_xml, message_type="Auto-detect
             # This runs inline on EVERY /validate to produce the preview banner's
             # fixed_xml. Cap rounds low for speed — the preview only needs the bulk
             # of fixes; the explicit "Fix All" endpoint (/fixes/auto-fix) still
-            # runs the full 12 rounds when the user commits.
+            # runs the full 8 rounds when the user commits.
             fixed_xml, rounds, applied = await _auto_fix_iterative(
                 original_xml, message_type, max_rounds=4
             )

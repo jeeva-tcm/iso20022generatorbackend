@@ -299,7 +299,11 @@ def _cbpr_bizsvc_value(msg_type: str, xml: str = "") -> Optional[str]:
       • ADV  → swift.cbprplus.adv.03   (carries <Prtry>ADV</Prtry>)
       • COV  → swift.cbprplus.cov.03   (carries UndrlygCstmrCdtTrf)
     For every other family the per-message KB 'expected_value' is authoritative
-    (pacs.008/pacs.003 → .03; pain.*/camt.*/pacs.010 → .02).
+    (pacs.008/pacs.003 → .03; camt.052-055/camt.057 → .03; camt.056/pain.*/
+    pacs.010 → .02). NOTE: the value MUST agree with the message's own validator
+    rule (e.g. camt.057 CBPR_R8 enforces .03 as an ERROR) — a mismatch makes the
+    auto-fix loop oscillate forever, so KB expected_value and the rule JSON must
+    stay in lockstep.
     """
     low = f"{msg_type} {xml}".lower()
     fam = (msg_type or "").lower()
@@ -735,10 +739,23 @@ def _extract_literal_from_fix(fix_text: str, leaf: str) -> Optional[str]:
     if m and _ok(m.group(1)):
         return m.group(1).strip()
 
-    # 2. Quoted literal (prefer ones that look like real values: codes / dotted ids)
+    # 2. Quoted literal (prefer ones that look like real values: codes / dotted ids).
+    #    GUARD: the alternation regex can pair the CLOSING quote of one literal
+    #    with the OPENING quote of the next — e.g. "Replace 'Z' with '+00:00'"
+    #    yields the span "' with '" → "with", an English filler word, NOT a value.
+    #    Two defences: (a) reject candidates with internal whitespace (real ISO
+    #    literals — codes, BICs, dates, ids — never contain spaces), and (b)
+    #    reject a small stop-word list of connectives that show up in fix prose.
+    _STOPWORDS = {
+        "with", "the", "and", "for", "use", "set", "add", "to", "from", "into",
+        "this", "that", "value", "element", "field", "tag", "replace", "remove",
+    }
     for qm in re.finditer(r"'([^']{2,40})'|\"([^\"]{2,40})\"", fix_text):
         cand = (qm.group(1) or qm.group(2) or "").strip()
-        if _ok(cand) and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._\-]*", cand):
+        if (_ok(cand)
+                and " " not in cand                       # no internal whitespace
+                and cand.lower() not in _STOPWORDS         # not a connective word
+                and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._\-]*", cand)):
             return cand
 
     # 3. "one of: A, B, C" enumeration → first option
@@ -968,6 +985,50 @@ def _verify_iban_mod97(iban: str) -> bool:
         return int(numeric) % 97 == 1
     except Exception:
         return False
+
+
+def _iban_for_ccy(root: Optional["etree._Element"],
+                  el: Optional["etree._Element"] = None) -> str:
+    """Return a dummy IBAN whose country currency matches the nearest Ccy attribute.
+
+    Lookup order:
+      1. Scan amount elements (IntrBkSttlmAmt, InstdAmt, TtlIntrBkSttlmAmt, Amt)
+         for a Ccy attribute; use the first one found.
+      2. Map currency → IBAN country via dummy_data.currencies_by_country KB entry.
+      3. Pick a matching IBAN from dummy_data.ibans[country_code].
+      4. Fall back to KB default IBAN, then hard-coded EUR DE IBAN.
+    """
+    _CCY_AMT_TAGS = {"IntrBkSttlmAmt", "InstdAmt", "TtlIntrBkSttlmAmt", "Amt",
+                     "EqvtAmt", "InstdAmt", "TxAmt"}
+    _FALLBACK = "DE89370400440532013000"  # DE/EUR — most common cross-border currency
+    _IBAN_PAT = re.compile(r'^[A-Z]{2}[0-9]{2}[A-Z0-9]{10,30}$')
+    _NON_IBAN = {"US", "CA", "AU", "NZ", "HK", "SG", "JP", "CN", "IN"}
+
+    tx_ccy: Optional[str] = None
+    if root is not None:
+        for _a in root.iter():
+            if not isinstance(_a.tag, str):
+                continue
+            _ccy = _a.get("Ccy")
+            if _ccy and etree.QName(_a.tag).localname in _CCY_AMT_TAGS:
+                tx_ccy = _ccy
+                break
+
+    ibdata = (_kb_get("dummy_data.ibans", {}) or
+              _enterprise_shared("dummy_data.ibans", {}) or {})
+    if not isinstance(ibdata, dict):
+        ibdata = {}
+
+    if tx_ccy:
+        ccy_by_ctry = (_kb_get("dummy_data.currencies_by_country", {}) or {})
+        if isinstance(ccy_by_ctry, dict):
+            for ctry, ccy in ccy_by_ctry.items():
+                if ccy == tx_ccy and ctry not in _NON_IBAN and ctry in ibdata:
+                    cand = ibdata[ctry]
+                    if isinstance(cand, str) and _IBAN_PAT.match(cand) and _verify_iban_mod97(cand):
+                        return cand
+
+    return ibdata.get("default") or _FALLBACK
 
 
 def _detect_msg_type(xml: str) -> str:
@@ -1416,6 +1477,14 @@ def _xsd_simple_value(name: str, type_name: str, info: dict) -> Optional[str]:
     if "iban" in tnl:                         return "GB29NWBK60161331926819"
     if "countrycode" in tnl:                  return "US"
     if "currencycode" in tnl or "currency" in tnl: return "USD"
+    # External code-list elements: avoid SMPL-Cd / SMPL-Prtry placeholders.
+    # These are string-typed with no embedded XSD enums (the list is external).
+    # Use well-known codelist defaults so the inserted scaffold is schema-valid.
+    nl = name.lower()
+    if nl == "cd":                            return "SEPA"   # overridden by parent context later
+    if nl in ("prtry", "issr"):               return "NOTPROVIDED"
+    if nl in ("chrgbr",):                     return "SHAR"
+    if nl in ("txsts", "grpsts"):             return "ACCP"
     return None
 
 
@@ -1453,7 +1522,14 @@ def _xsd_build(name: str, type_name: str, tmap: Optional[_XsdTypeMap], ns: str, 
             if child is not None:
                 el.append(child)
         return el
-    el.text = f"SMPL-{name}"
+    # Unknown kind fallback — apply same name-based defaults as _xsd_simple_value
+    # to avoid generating schema-invalid placeholder values like 'SMPL-Cd'.
+    _nl = name.lower()
+    if _nl == "cd":                  el.text = "SEPA"
+    elif _nl in ("prtry", "issr"):   el.text = "NOTPROVIDED"
+    elif _nl in ("chrgbr",):         el.text = "SHAR"
+    elif _nl in ("txsts", "grpsts"): el.text = "ACCP"
+    else:                            el.text = f"SMPL-{name}"
     return el
 
 
@@ -1525,19 +1601,32 @@ class FixSuggester:
     def _normalize_busmsgenvlp(self, xml: str) -> str:
         """Fix BusMsgEnvlp envelope structure issues.
 
-        Handles two problems:
+        Handles the following problems:
 
-        1. Document wrongly nested inside AppHdr (move it to sibling).
+        1. Document wrongly nested inside AppHdr → move it to sibling.
 
         2. Stray AppHdr-only tags (BizMsgIdr, MsgDefIdr, BizSvc, CreDt, …)
-           placed as direct children of BusMsgEnvlp instead of inside AppHdr.
-           These cause XSD "not expected" errors and the inserter re-adds them
-           endlessly. Remove them — they already exist inside AppHdr.
+           placed as direct children of BusMsgEnvlp → remove them.
+
+        3. <Fr> or <To> deleted, leaving <FIId> as a direct AppHdr child.
+           When this happens, AppHdr-level tags (BizMsgIdr, MsgDefIdr, …)
+           often get absorbed inside <FIId> because the closing </Fr> was
+           the delimiter. Fix: re-wrap <FIId> in <Fr>, then extract any
+           AppHdr-level siblings that were wrongly placed inside <FIId>.
+
+        4. <FinInstnId> inside Fr/To/FIId has no children (opening tag was
+           deleted along with its content). Inject a dummy <BICFI> so the
+           document is structurally complete after tag-balance recovery.
 
         Correct SWIFT CBPR+ BusMsgEnvlp structure:
           <BusMsgEnvlp>
-            <AppHdr>...</AppHdr>
-            <Document>...</Document>   ← sibling of AppHdr
+            <AppHdr>
+              <Fr><FIId><FinInstnId>…</FinInstnId></FIId></Fr>
+              <To><FIId><FinInstnId>…</FinInstnId></FIId></To>
+              <BizMsgIdr>…</BizMsgIdr>
+              …
+            </AppHdr>
+            <Document>…</Document>
           </BusMsgEnvlp>
         """
         try:
@@ -1555,43 +1644,252 @@ class FixSuggester:
         if apphdr is None:
             return xml
 
+        ah_ns = etree.QName(apphdr.tag).namespace or ""
+        _changed = False
+
+        # ── Problem 3: bare <FIId> as direct AppHdr child ─────────────────────
+        # Caused by deleting <Fr> or <To> opening tag — the <FIId> content
+        # and any following AppHdr-level tags (BizMsgIdr, MsgDefIdr, …) end up
+        # inside <FIId> instead of at AppHdr level.
+        # Sub-case: balance engine may have re-inserted an empty <Fr>/<To> shell
+        # AFTER the orphaned FIId content — detect this and move the FIId inside.
+        _APPHDR_SIBLINGS = self._APPHDR_ONLY_TAGS  # BizMsgIdr, MsgDefIdr, BizSvc, CreDt, …
+        _apphdr_children = list(apphdr)
+        for _ci, fiid_el in enumerate(_apphdr_children):
+            if not isinstance(fiid_el.tag, str):
+                continue
+            if etree.QName(fiid_el.tag).localname != "FIId":
+                continue
+
+            # Extract any AppHdr-level tags that got absorbed inside <FIId>
+            absorbed = []
+            for child in list(fiid_el):
+                if not isinstance(child.tag, str):
+                    continue
+                if etree.QName(child.tag).localname in _APPHDR_SIBLINGS:
+                    fiid_el.remove(child)
+                    absorbed.append(child)
+
+            # Determine the correct wrapper: check if an empty Fr or To sits
+            # immediately adjacent (before or after) this bare FIId — the balance
+            # engine inserts the synthetic open AFTER the orphan's content, so the
+            # empty shell will be at index _ci+1.  If found, move the FIId inside
+            # that empty shell rather than creating a brand-new wrapper.
+            _prev = _apphdr_children[_ci - 1] if _ci > 0 else None
+            _next = _apphdr_children[_ci + 1] if _ci + 1 < len(_apphdr_children) else None
+
+            def _is_empty_frto(el, tag_name):
+                return (el is not None and isinstance(el.tag, str)
+                        and etree.QName(el.tag).localname == tag_name
+                        and not any(isinstance(c.tag, str) for c in el))
+
+            _target_shell = None
+            if _is_empty_frto(_next, "Fr") or _is_empty_frto(_next, "To"):
+                _target_shell = _next
+            elif _is_empty_frto(_prev, "Fr") or _is_empty_frto(_prev, "To"):
+                _target_shell = _prev
+
+            if _target_shell is not None:
+                # Move FIId into the adjacent empty Fr/To shell
+                fiid_idx = list(apphdr).index(fiid_el)
+                apphdr.remove(fiid_el)
+                _target_shell.insert(0, fiid_el)
+            else:
+                # No adjacent empty shell — need to determine Fr or To from context
+                fr_exists = any(isinstance(c.tag, str) and etree.QName(c.tag).localname == "Fr"
+                                for c in apphdr)
+                to_exists = any(isinstance(c.tag, str) and etree.QName(c.tag).localname == "To"
+                                for c in apphdr)
+                # If both exist already, pick whichever one is empty
+                if fr_exists and not to_exists:
+                    wrapper_name = "To"
+                elif to_exists and not fr_exists:
+                    wrapper_name = "Fr"
+                else:
+                    wrapper_name = "Fr"
+                tag_qname = f"{{{ah_ns}}}{wrapper_name}" if ah_ns else wrapper_name
+                wrapper = etree.Element(tag_qname)
+                fiid_idx = list(apphdr).index(fiid_el)
+                apphdr.remove(fiid_el)
+                wrapper.append(fiid_el)
+                apphdr.insert(fiid_idx, wrapper)
+
+            # Re-insert absorbed AppHdr-level tags after the FIId's parent wrapper
+            _frto_now = fiid_el.getparent()
+            if _frto_now is not None and _frto_now.getparent() is apphdr:
+                insert_pos = list(apphdr).index(_frto_now) + 1
+            else:
+                insert_pos = list(apphdr).index(fiid_el) + 1 if fiid_el in list(apphdr) else len(list(apphdr))
+            for tag_el in absorbed:
+                apphdr.insert(insert_pos, tag_el)
+                insert_pos += 1
+
+            _changed = True
+
+        # ── Problem 3b: AppHdr-level tags absorbed inside Fr or To ─────────────
+        # Covers two sub-cases:
+        #   (i)  tags absorbed as direct children of Fr/To (balance swallowed them
+        #        because </To> close was missing, so everything up to </AppHdr>
+        #        ended up inside To).
+        #   (ii) tags absorbed inside Fr/To > FIId (previous behaviour).
+        # Lift BizMsgIdr, MsgDefIdr, BizSvc, CreDt, etc. back to AppHdr level.
+        for _frto_el in [c for c in list(apphdr)
+                         if isinstance(c.tag, str)
+                         and etree.QName(c.tag).localname in ("Fr", "To")]:
+            _apphdr_idx = list(apphdr).index(_frto_el)
+            _lift_pos = _apphdr_idx + 1
+
+            # (i) Direct children of Fr/To that belong at AppHdr level
+            for _direct in list(_frto_el):
+                if not isinstance(_direct.tag, str):
+                    continue
+                _local = etree.QName(_direct.tag).localname
+                if _local in self._APPHDR_ONLY_TAGS:
+                    _frto_el.remove(_direct)
+                    apphdr.insert(_lift_pos, _direct)
+                    _lift_pos += 1
+                    _changed = True
+
+            # (ii) Children of FIId inside Fr/To
+            _fiid = next((c for c in _frto_el
+                          if isinstance(c.tag, str)
+                          and etree.QName(c.tag).localname == "FIId"), None)
+            if _fiid is None:
+                continue
+            for _absorbed in list(_fiid):
+                if not isinstance(_absorbed.tag, str):
+                    continue
+                _local = etree.QName(_absorbed.tag).localname
+                if _local in self._APPHDR_ONLY_TAGS or _local in ("Fr", "To"):
+                    _fiid.remove(_absorbed)
+                    if _local in ("Fr", "To") and len(_absorbed) == 0:
+                        pass  # discard empty stray Fr/To
+                    else:
+                        apphdr.insert(_lift_pos, _absorbed)
+                        _lift_pos += 1
+                    _changed = True
+
+        # ── Problem 4: missing or incomplete Fr/To AppHdr blocks ──────────────
+        # Handles two sub-cases:
+        #   a) Fr/To entirely absent (stripped by _strip_empty_apphdr_frto_closes
+        #      after their content + opening tags were all deleted) → create from scratch.
+        #   b) Fr/To present but FIId/FinInstnId/BICFI chain broken or empty
+        #      (after _balance_xml_tags restored the skeleton) → fill in missing levels.
+        # In both cases the result is Fr/To > FIId > FinInstnId > BICFI(dummy).
+        _dummy_bic_fr = "DEUTDEFFXXX"
+        _dummy_bic_to = "CHASUS33XXX"
+        for _insert_pos, frto_local, dummy_bic in ((0, "Fr", _dummy_bic_fr), (1, "To", _dummy_bic_to)):
+            frto_el = next((c for c in apphdr
+                            if isinstance(c.tag, str)
+                            and etree.QName(c.tag).localname == frto_local), None)
+            if frto_el is None:
+                # Create the whole Fr/To > FIId > FinInstnId > BICFI chain
+                wrapper_tag = f"{{{ah_ns}}}{frto_local}" if ah_ns else frto_local
+                fiid_tag    = f"{{{ah_ns}}}FIId"         if ah_ns else "FIId"
+                fin_tag     = f"{{{ah_ns}}}FinInstnId"   if ah_ns else "FinInstnId"
+                bicfi_tag   = f"{{{ah_ns}}}BICFI"        if ah_ns else "BICFI"
+                frto_el = etree.Element(wrapper_tag)
+                fiid_el = etree.SubElement(frto_el, fiid_tag)
+                fin_el  = etree.SubElement(fiid_el, fin_tag)
+                bicfi_el = etree.SubElement(fin_el, bicfi_tag)
+                bicfi_el.text = dummy_bic
+                apphdr.insert(_insert_pos, frto_el)
+                _changed = True
+                continue
+            # Fr/To exists — ensure FIId inside it
+            fiid_el = next((c for c in frto_el
+                            if isinstance(c.tag, str)
+                            and etree.QName(c.tag).localname == "FIId"), None)
+            if fiid_el is None:
+                fiid_tag = f"{{{ah_ns}}}FIId" if ah_ns else "FIId"
+                fiid_el = etree.SubElement(frto_el, fiid_tag)
+                _changed = True
+            # Ensure FinInstnId inside FIId
+            fin_el = next((c for c in fiid_el
+                           if isinstance(c.tag, str)
+                           and etree.QName(c.tag).localname == "FinInstnId"), None)
+            if fin_el is None:
+                fin_ns = etree.QName(fiid_el.tag).namespace or ah_ns
+                fin_tag = f"{{{fin_ns}}}FinInstnId" if fin_ns else "FinInstnId"
+                fin_el = etree.SubElement(fiid_el, fin_tag)
+                _changed = True
+            # AppHdr FinInstnId may only contain BICFI (CBPR+ restriction).
+            # Strip everything except BICFI; inject dummy BICFI if none present.
+            _allowed_in_apphdr_fininstnid = {"BICFI"}
+            for _child in list(fin_el):
+                if not isinstance(_child.tag, str):
+                    continue
+                if etree.QName(_child.tag).localname not in _allowed_in_apphdr_fininstnid:
+                    fin_el.remove(_child)
+                    _changed = True
+            if not [c for c in fin_el if isinstance(c.tag, str)]:
+                fin_ns = etree.QName(fin_el.tag).namespace or ah_ns
+                bicfi_tag = f"{{{fin_ns}}}BICFI" if fin_ns else "BICFI"
+                bicfi_el = etree.SubElement(fin_el, bicfi_tag)
+                bicfi_el.text = dummy_bic
+                _changed = True
+
         # ── Problem 2: strip stray AppHdr-only tags from BusMsgEnvlp level ──
-        # These are tags that belong inside AppHdr. At BusMsgEnvlp level they
-        # are invalid and cause cascading "not expected" XSD errors that the
-        # inserter then tries to fix by re-inserting them — infinite loop.
-        _stray_removed = False
         for child in list(root):
             if not isinstance(child.tag, str):
                 continue
             if (etree.QName(child.tag).localname in self._APPHDR_ONLY_TAGS
                     and child is not apphdr):
                 root.remove(child)
-                _stray_removed = True
+                _changed = True
 
         # ── Problem 1: Document nested inside AppHdr ──────────────────────────
         doc_in_apphdr = next((c for c in apphdr
                               if isinstance(c.tag, str)
                               and etree.QName(c.tag).localname == "Document"), None)
-        if doc_in_apphdr is None and not _stray_removed:
-            return xml  # structure already correct
-
-        # ── Problem 1 fix: move Document out of AppHdr if needed ─────────────
         if doc_in_apphdr is not None:
-            # Document already exists as direct child of BusMsgEnvlp?
             doc_in_envlp = next((c for c in root
                                  if isinstance(c.tag, str)
                                  and etree.QName(c.tag).localname == "Document"), None)
             if doc_in_envlp is not None:
-                # Both exist: just remove the one inside AppHdr (duplicate)
                 apphdr.remove(doc_in_apphdr)
             else:
-                # Move Document from inside AppHdr to after AppHdr in BusMsgEnvlp
                 apphdr.remove(doc_in_apphdr)
                 apphdr_idx = list(root).index(apphdr)
-                # Preserve whitespace tail
                 if doc_in_apphdr.tail is None:
                     doc_in_apphdr.tail = apphdr.tail
                 root.insert(apphdr_idx + 1, doc_in_apphdr)
+            _changed = True
+
+        # ── Problem 5: duplicate AppHdr children (Fr, To, BizMsgIdr, …) ─────────
+        # _balance_xml_tags + Problem 3b can leave duplicate AppHdr-level tags:
+        # - An empty <To> from the balance engine alongside the real <To> rebuilt
+        #   by Problem 3.
+        # - An empty <BizMsgIdr/> lifted from inside Fr/FIId alongside the real
+        #   <BizMsgIdr> that was already at AppHdr level.
+        # For each tag that appears more than once: keep the first element that
+        # has non-empty content (text or children); remove the rest.
+        _seen_locals: dict = {}
+        for _ch in list(apphdr):
+            if not isinstance(_ch.tag, str):
+                continue
+            _loc = etree.QName(_ch.tag).localname
+            if _loc not in _seen_locals:
+                _seen_locals[_loc] = _ch
+            else:
+                # Duplicate — decide which to keep
+                _prev = _seen_locals[_loc]
+                _prev_has = len(_prev) > 0 or (_prev.text and _prev.text.strip())
+                _cur_has  = len(_ch)   > 0 or (_ch.text   and _ch.text.strip())
+                if _cur_has and not _prev_has:
+                    # Current has content, previous is empty — swap keeper
+                    apphdr.remove(_prev)
+                    _seen_locals[_loc] = _ch
+                else:
+                    # Previous is already the better (or equal) one — drop current
+                    apphdr.remove(_ch)
+                _changed = True
+
+        if not _changed:
+            return xml
+
+        # Strip stale text/tail whitespace so pretty_print produces clean output
+        etree.indent(root, space="    ")
 
         decl = ""
         m = re.match(r"(<\?xml[^?]*\?>)", xml.strip())
@@ -2977,7 +3275,11 @@ class FixSuggester:
             "missing" in msg.lower()
             and any(k in msg.lower() for k in ("declaration", "header", "xml"))
         )
-        if _is_syntax_code or _has_unescaped_amp or _has_missing_decl or "reserved" in msg.lower() or "unclosed" in msg.lower():
+        _msg_lower = msg.lower()
+        if (_is_syntax_code or _has_unescaped_amp or _has_missing_decl
+                or "reserved" in _msg_lower or "unclosed" in _msg_lower
+                or "close the open tag" in _msg_lower
+                or ("add </" in _msg_lower and "closing tag" in _msg_lower)):
             recovered = self._try_xml_recovery(xml, code, msg)
             if recovered is not None:
                 return recovered
@@ -3082,8 +3384,7 @@ class FixSuggester:
                                 _good_iban = _cand
                                 break
                 if _good_iban is None:
-                    _ibdata = _ibdata if isinstance(_ibdata, dict) else {}
-                    _good_iban = _ibdata.get("default") or "GB29NWBK60161331926819"
+                    _good_iban = _iban_for_ccy(root)
                 if _good_iban != (_iban_target.text or "").strip():
                     _tc = self._copy(_iban_target)
                     _tc.text = _good_iban
@@ -3310,6 +3611,39 @@ class FixSuggester:
             if _eo_fix2 is not None:
                 return _eo_fix2
 
+        # ── Route: simple-type element contains child elements ────────────────
+        # "Field 'X': Element content is not allowed, because the type definition
+        # is simple." — the element is declared as Max35Text (or similar simple
+        # type) but the XML has child elements inside it (e.g. <Id> containing
+        # an <IBAN> child alongside text, from copy-paste or editor error).
+        # Fix: strip all child elements, keep only the text content. Use line
+        # hint to pick the right element when multiple same-name elements exist.
+        if code == "SCHEMA_VAL" and "element content is not allowed" in msg.lower() and "simple" in msg.lower():
+            _st_m = re.search(r"[Ff]ield '([\w:{}.\-]+)'", msg)
+            _st_tag = _st_m.group(1).split('}')[-1].split(':')[-1] if _st_m else ""
+            if _st_tag:
+                _st_cands = [_e for _e in root.iter()
+                             if isinstance(_e.tag, str)
+                             and etree.QName(_e.tag).localname == _st_tag
+                             and len(_e) > 0]  # must have child elements to be relevant
+                if _st_cands:
+                    _lh = getattr(self, "_line_hint", None)
+                    _st_el = (min(_st_cands,
+                                  key=lambda _e: abs((_e.sourceline or 0) - _lh))
+                              if _lh is not None else _st_cands[0])
+                    _st_copy = self._copy(_st_el)
+                    # Keep only text content; remove all child elements
+                    _text = (_st_copy.text or "").strip()
+                    for _ch in list(_st_copy):
+                        _st_copy.remove(_ch)
+                    _st_copy.text = _text if _text else None
+                    return FixSuggestion(
+                        self._xpath_of(_st_el),
+                        self._serialize(_st_el),
+                        self._serialize(_st_copy),
+                        code, msg, "high"
+                    )
+
         # ── Route: ADDR_CTRY_MISSING — Country missing from PstlAdr ─────────
         # Emitted with path=line_number (→ "/"), so normal path-walking fails.
         # We extract the party name from the message, locate the right PstlAdr,
@@ -3451,6 +3785,17 @@ class FixSuggester:
                            if (_p is not None and isinstance(_p.tag, str)) else "")
                     if _pl in _CBPR_FORBIDDEN_CHILDREN and _off_local in _CBPR_FORBIDDEN_CHILDREN[_pl]:
                         _cands.append((_el, _p))
+                    # AppHdr/FinInstnId may only contain BICFI (CBPR+ head.001
+                    # restriction). Nm/PstlAdr/ClrSysMmbId/LEI/Othr are valid in
+                    # Document FinInstnId blocks but NOT in AppHdr Fr/To chains.
+                    _apphdr_fininstnid_forbidden = {"Nm", "PstlAdr", "ClrSysMmbId", "LEI", "Othr"}
+                    if (_pl == "FinInstnId" and _off_local in _apphdr_fininstnid_forbidden):
+                        # Confirm this FinInstnId is under AppHdr (not Document)
+                        _anc_locals = {etree.QName(a.tag).localname
+                                       for a in _el.iterancestors()
+                                       if isinstance(a.tag, str)}
+                        if "AppHdr" in _anc_locals and "Document" not in _anc_locals:
+                            _cands.append((_el, _p))
                 if _cands:
                     _lh = getattr(self, "_line_hint", None)
                     _el, _p = (min(_cands, key=lambda t: abs((t[0].sourceline or 0) - _lh))
@@ -3715,6 +4060,34 @@ class FixSuggester:
                     _lel_copy.text = "549300TRUWOII88U4F73"
                     return FixSuggestion(self._xpath_of(_lel), self._serialize(_lel),
                                          self._serialize(_lel_copy), code, msg, "high")
+
+        # ── BICFI whitespace — strip leading/trailing whitespace from BIC value ─
+        # XSD pattern check fails when <BICFI> contains embedded newlines/spaces
+        # (e.g. "BNPPGB2LXXX\n            "). The stripped value is a valid BIC;
+        # fix by trimming the element text in-place.
+        _is_bic_ws = (
+            "whitespace" in msg.lower()
+            and any(k in msg.upper() for k in ("BICFI", "BIC"))
+        )
+        if _is_bic_ws:
+            _BIC_RE = re.compile(r'^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$')
+            # Try to extract the expected BIC from the message (after stripping)
+            _bic_hint = re.search(r"exactly '([A-Z0-9]{8,11})'", msg)
+            _target_bic = _bic_hint.group(1) if _bic_hint else None
+            for _bel in root.iter():
+                if not isinstance(_bel.tag, str):
+                    continue
+                if etree.QName(_bel.tag).localname not in ("BICFI", "AnyBIC"):
+                    continue
+                _raw = _bel.text or ""
+                _stripped = _raw.strip()
+                if _raw != _stripped and _BIC_RE.match(_stripped):
+                    if _target_bic and _stripped != _target_bic:
+                        continue
+                    _bel_copy = self._copy(_bel)
+                    _bel_copy.text = _stripped
+                    return FixSuggestion(self._xpath_of(_bel), self._serialize(_bel),
+                                         self._serialize(_bel_copy), code, msg, "high")
 
         # ── ID_LENGTH_ERROR — ID field exceeds max length → truncate ─────────
         if code == "ID_LENGTH_ERROR" or ("length" in msg.lower() and "max" in msg.lower()
@@ -3982,6 +4355,32 @@ class FixSuggester:
                         _s_copy.text = "CUST"
                         return FixSuggestion(self._xpath_of(_sel), self._serialize(_sel),
                                               self._serialize(_s_copy), code, msg, "low")
+
+        # ── ACCT_TP_EMPTY_CD / CDORPRTRY_EMPTY_CD / SVCLVL_EMPTY_CD ──────────
+        # Empty <Cd/> inside a typed container — fill with a sensible default.
+        _EMPTY_CD_DEFAULTS = {
+            "ACCT_TP_EMPTY_CD":    ("Tp",        "CACC"),
+            "CDORPRTRY_EMPTY_CD":  ("CdOrPrtry", "CINV"),
+            "SVCLVL_EMPTY_CD":     ("SvcLvl",    "SEPA"),
+        }
+        if code in _EMPTY_CD_DEFAULTS:
+            _parent_tag, _default_val = _EMPTY_CD_DEFAULTS[code]
+            for _ecd in root.iter():
+                if not isinstance(_ecd.tag, str):
+                    continue
+                if etree.QName(_ecd.tag).localname != "Cd":
+                    continue
+                if (_ecd.text or "").strip():
+                    continue
+                _par = _ecd.getparent()
+                if _par is None or not isinstance(_par.tag, str):
+                    continue
+                if etree.QName(_par.tag).localname != _parent_tag:
+                    continue
+                _ecd_copy = self._copy(_ecd)
+                _ecd_copy.text = _default_val
+                return FixSuggestion(self._xpath_of(_ecd), self._serialize(_ecd),
+                                      self._serialize(_ecd_copy), code, msg, "high")
 
         # ── SCHEME_MISSING / SCHEME_MISSING_CHILD — add SchmeNm/Cd ────────────
         if code in ("SCHEME_MISSING", "SCHEME_MISSING_CHILD"):
@@ -4450,6 +4849,58 @@ class FixSuggester:
                         _bic2.text = "DEUTDEFFXXX"
                         return FixSuggestion(self._xpath_of(_tx_el), _orig_tx,
                                               self._serialize(_tx_copy), code, msg, "low")
+
+        # ── CAMT053_LASTPGIND_CLBD_MISSING — add CLBD closing balance ───────────
+        if code == "CAMT053_LASTPGIND_CLBD_MISSING":
+            for _stmt in root.iter():
+                if not isinstance(_stmt.tag, str): continue
+                if etree.QName(_stmt.tag).localname != 'Stmt': continue
+                _stmt_ns = etree.QName(_stmt.tag).namespace or ns
+                def _mk(tag, parent=None, text=None):
+                    el = etree.SubElement(
+                        parent if parent is not None else _stmt,
+                        f"{{{_stmt_ns}}}{tag}" if _stmt_ns else tag
+                    )
+                    if text is not None:
+                        el.text = text
+                    return el
+                _orig_stmt = self._serialize(_stmt)
+                _stmt_copy = self._copy(_stmt)
+                # Build <Bal><Tp><CdOrPrtry><Cd>CLBD</Cd></CdOrPrtry></Tp>
+                # <CdtDbtInd>CRDT</CdtDbtInd><Amt Ccy="EUR">0.00</Amt></Bal>
+                _bal = etree.SubElement(
+                    _stmt_copy,
+                    f"{{{_stmt_ns}}}Bal" if _stmt_ns else "Bal"
+                )
+                _tp  = etree.SubElement(_bal,  f"{{{_stmt_ns}}}Tp"  if _stmt_ns else "Tp")
+                _cop = etree.SubElement(_tp,   f"{{{_stmt_ns}}}CdOrPrtry" if _stmt_ns else "CdOrPrtry")
+                _cd  = etree.SubElement(_cop,  f"{{{_stmt_ns}}}Cd"  if _stmt_ns else "Cd")
+                _cd.text = "CLBD"
+                _cdi = etree.SubElement(_bal,  f"{{{_stmt_ns}}}CdtDbtInd" if _stmt_ns else "CdtDbtInd")
+                _cdi.text = "CRDT"
+                _amt = etree.SubElement(_bal,  f"{{{_stmt_ns}}}Amt" if _stmt_ns else "Amt")
+                _amt.set("Ccy", "EUR")
+                _amt.text = "0.00"
+                return FixSuggestion(self._xpath_of(_stmt), _orig_stmt,
+                                      self._serialize(_stmt_copy), code, msg, "low")
+
+        # ── CAMT053_LASTPGIND_INTM_SUBTYPE — remove INTM subtype ─────────────
+        if code == "CAMT053_LASTPGIND_INTM_SUBTYPE":
+            for _sub in root.iter():
+                if not isinstance(_sub.tag, str): continue
+                if etree.QName(_sub.tag).localname != 'Cd': continue
+                if (_sub.text or '').strip() != 'INTM': continue
+                _subtype_par = _sub.getparent()
+                if _subtype_par is None or etree.QName(_subtype_par.tag).localname != 'SubType': continue
+                _tp_par = _subtype_par.getparent()
+                if _tp_par is None or etree.QName(_tp_par.tag).localname != 'Tp': continue
+                _tp_copy = self._copy(_tp_par)
+                # Remove SubType from the copy
+                for _ch in list(_tp_copy):
+                    if isinstance(_ch.tag, str) and etree.QName(_ch.tag).localname == 'SubType':
+                        _tp_copy.remove(_ch)
+                return FixSuggestion(self._xpath_of(_tp_par), self._serialize(_tp_par),
+                                      self._serialize(_tp_copy), code, msg, "high")
 
         # ── PACS009_POSTAL_ADDRESS — incomplete postal address ────────────────
         if code == "PACS009_POSTAL_ADDRESS":
@@ -4930,6 +5381,7 @@ class FixSuggester:
         target_bic = doc_bic_m.group(1).strip() if doc_bic_m else None
 
         # Fallback: scan document body for the canonical agent BICFI.
+        _BIC_RE = re.compile(r"^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$")
         if not target_bic:
             apphdr_ids = {id(el) for el in apphdr.iter()}
             for el in root.iter():
@@ -4939,6 +5391,20 @@ class FixSuggester:
                     continue
                 if f"/{doc_agent}/" in self._xpath_of(el).lower():
                     target_bic = (el.text or "").strip()
+                    break
+
+        # Second fallback: any valid BICFI in the body when the agent-specific
+        # scan found nothing (e.g. message format doesn't quote the BIC inline).
+        if not target_bic:
+            apphdr_ids = {id(el) for el in apphdr.iter()}
+            for el in root.iter():
+                if not isinstance(el.tag, str) or id(el) in apphdr_ids:
+                    continue
+                if etree.QName(el.tag).localname != "BICFI":
+                    continue
+                txt = (el.text or "").strip()
+                if txt and _BIC_RE.match(txt):
+                    target_bic = txt
                     break
 
         if not target_bic:
@@ -5045,11 +5511,83 @@ class FixSuggester:
         self, root: "etree._Element", code: str, msg: str, fix_hint: str
     ) -> Optional["FixSuggestion"]:
         """
-        Fix CURR_IBAN_MISMATCH: update the currency Ccy attribute on the relevant
-        amount element to match the currency expected for the IBAN country.
+        Fix CURR_IBAN_MISMATCH.
+
+        Two cases:
+          A. IBAN is wrong (dummy/placeholder) — replace the IBAN with one whose
+             country matches the actual payment currency.
+          B. Currency is wrong — update the Ccy attribute to match the IBAN country.
+
+        We prefer case A when:
+          - The offending IBAN is the known dummy default (GB29NWBK60161331926819), OR
+          - Another IBAN in the same document already matches the payment currency, which
+            means the payment currency is authoritative and only the DbtrAcct IBAN is stale.
         """
+        # ── Extract actual currency (the one on the amount element, e.g. EUR) ──
+        wrong_ccy_m = re.search(r"Currency\s+([A-Z]{3})\s+does not match", msg, re.I)
+        actual_ccy = wrong_ccy_m.group(1).upper() if wrong_ccy_m else None
+
+        # ── Extract IBAN country from message ──
+        # "for IBAN country GB" / "country code 'GB'"
+        ctry_m = re.search(r"(?:IBAN country|country code[^A-Z]*)([A-Z]{2})\b", msg, re.I)
+        iban_country = ctry_m.group(1).upper() if ctry_m else None
+
+        # ── Find the offending IBAN element ──
+        _IBAN_PAT = re.compile(r'^[A-Z]{2}[0-9]{2}[A-Z0-9]{10,30}$')
+        _KNOWN_DUMMIES = {
+            "GB29NWBK60161331926819",
+            "DE89370400440532013000",
+        }
+        offending_iban_el = None
+        for _el in root.iter():
+            if not isinstance(_el.tag, str):
+                continue
+            if etree.QName(_el.tag).localname != "IBAN":
+                continue
+            _iban_val = (_el.text or "").strip()
+            if iban_country and _iban_val[:2].upper() == iban_country:
+                offending_iban_el = _el
+                break
+
+        # ── Decide: fix the IBAN or fix the currency? ──
+        fix_iban = False
+        if offending_iban_el is not None:
+            _iban_val = (offending_iban_el.text or "").strip()
+            # Case A1: it's a known dummy IBAN → definitely fix the IBAN
+            if _iban_val in _KNOWN_DUMMIES:
+                fix_iban = True
+            # Case A2: another valid IBAN in the doc already matches actual_ccy
+            elif actual_ccy:
+                _ccy_by_ctry = _kb_get("dummy_data.currencies_by_country", {}) or {}
+                for _other_el in root.iter():
+                    if not isinstance(_other_el.tag, str):
+                        continue
+                    if etree.QName(_other_el.tag).localname != "IBAN":
+                        continue
+                    if _other_el is offending_iban_el:
+                        continue
+                    _ot = (_other_el.text or "").strip()
+                    if (_ot and _IBAN_PAT.match(_ot)
+                            and _ccy_by_ctry.get(_ot[:2].upper()) == actual_ccy):
+                        fix_iban = True
+                        break
+
+        if fix_iban and offending_iban_el is not None and actual_ccy:
+            # Replace the IBAN with one whose country matches actual_ccy
+            _new_iban = _iban_for_ccy(root, offending_iban_el)
+            _old_text = (offending_iban_el.text or "").strip()
+            if _new_iban and _new_iban != _old_text:
+                _el_copy = self._copy(offending_iban_el)
+                _el_copy.text = _new_iban
+                return FixSuggestion(
+                    self._xpath_of(offending_iban_el),
+                    self._serialize(offending_iban_el),
+                    self._serialize(_el_copy),
+                    code, msg, "high",
+                )
+
+        # ── Case B: fix the currency attribute on the amount element ──
         combined = f"{msg} {fix_hint}"
-        # Extract expected currency: "expected currency SEK" / "currency to SEK"
         ccy_m = re.search(
             r"(?:expected\s+currency|update.*?currency\s+to|currency\s+to)\s+([A-Z]{3})\b",
             combined, re.I
@@ -5060,28 +5598,23 @@ class FixSuggester:
             return None
         expected_ccy = ccy_m.group(1).upper()
 
-        wrong_ccy_m = re.search(r"Currency\s+([A-Z]{3})\s+does not match", msg, re.I)
-        wrong_ccy = wrong_ccy_m.group(1).upper() if wrong_ccy_m else None
-
         PREF_TAGS = {"IntrBkSttlmAmt", "RtrdIntrBkSttlmAmt", "InstdAmt",
                      "RtrdInstdAmt", "TtlIntrBkSttlmAmt"}
         target_el = None
-        # Priority: preferred amount tags with the wrong currency
-        for el in root.iter():
-            if not isinstance(el.tag, str):
+        for _el in root.iter():
+            if not isinstance(_el.tag, str):
                 continue
-            local = etree.QName(el.tag).localname
-            ccy = el.get("Ccy")
+            local = etree.QName(_el.tag).localname
+            ccy = _el.get("Ccy")
             if ccy is None:
                 continue
-            if local in PREF_TAGS and (not wrong_ccy or ccy == wrong_ccy):
-                target_el = el
+            if local in PREF_TAGS and (not actual_ccy or ccy == actual_ccy):
+                target_el = _el
                 break
-        # Fallback: any element with the wrong Ccy value
-        if target_el is None and wrong_ccy:
-            for el in root.iter():
-                if isinstance(el.tag, str) and el.get("Ccy") == wrong_ccy:
-                    target_el = el
+        if target_el is None and actual_ccy:
+            for _el in root.iter():
+                if isinstance(_el.tag, str) and _el.get("Ccy") == actual_ccy:
+                    target_el = _el
                     break
 
         if target_el is None or target_el.get("Ccy") == expected_ccy:
@@ -5874,11 +6407,7 @@ class FixSuggester:
                 return banks[0].get("bicfi", "DEUTDEFFXXX")
             return "DEUTDEFFXXX"
         if ctype == "IBAN" or "iban" in tn:
-            ibans = (_kb_get("dummy_data.ibans", {}) or
-                     _enterprise_shared("dummy_data.ibans", {}) or {})
-            if isinstance(ibans, dict):
-                return ibans.get("default", "GB29NWBK60161331926819")
-            return "GB29NWBK60161331926819"
+            return _iban_for_ccy(root, el)
         if ctype == "Currency":
             return "USD"
         if ctype == "Country":
@@ -7406,6 +7935,9 @@ class FixSuggester:
                     _cl, _prefs = "cancellation_reason", ("DUPL", "CUST", "NARR", "CNCL")
                 else:
                     _cl, _prefs = "return_reason", ("AC01", "CUST", "NARR")
+            elif _parname == "Sts":
+                # <Ntry><Sts><Cd> / <TxDtls><Sts><Cd> → EntryStatus1Code (camt.052/053/054)
+                _cl, _prefs = "entry_status", ("BOOK", "PDNG", "INFO", "FUTR")
             if _cl:
                 _codes = _codelist_codes(_cl)
                 _cur = (el.text or "").strip()
@@ -7441,13 +7973,33 @@ class FixSuggester:
         # "currency" — do NOT route here when the error is about the NUMERIC VALUE
         # (decimal precision, invalid number, etc.).  The Ccy-attribute path is
         # only correct when the error explicitly targets the currency CODE itself.
+        # Guard: if the quoted "currency code" value looks like a corrupted amount
+        # (digits + letters, e.g. '430182.38ABC38'), the real problem is the amount
+        # text — don't route to the Ccy attribute fixer.
+        _quoted_val_m = re.search(r"'([^']{3,})'", msg)
+        _quoted_is_corrupt_amount = (
+            _quoted_val_m is not None
+            and (
+                # digits + letters mixed → corrupted amount text
+                (re.search(r'\d', _quoted_val_m.group(1))
+                 and re.search(r'[A-Za-z]', _quoted_val_m.group(1))
+                 and len(_quoted_val_m.group(1)) > 3)
+                # numeric with multiple dots → amount with extra decimal places
+                or (re.match(r'^[\d.]+$', _quoted_val_m.group(1))
+                    and _quoted_val_m.group(1).count('.') > 1)
+                # numeric string longer than a Ccy code → can't be a currency code
+                or (re.match(r'^[\d.,]+$', _quoted_val_m.group(1))
+                    and len(_quoted_val_m.group(1)) > 3)
+            )
+        )
         _ccy_is_the_issue = (
             "ccy" in msg_l                       # explicit @Ccy mention
             or "currency code" in msg_l          # "invalid currency code"
             or "currencycode" in msg_l           # XSD attribute error
             or "@ccy" in msg_l                   # attribute path
             or (el.get("Ccy") is None and "currency" in msg_l)  # Ccy attr absent
-        ) and not re.search(r"'[\s\d.]+'\s*(is not|not valid|not a)", msg_l)
+        ) and not re.search(r"'[\s\d.]+'\s*(is not|not valid|not a)", msg_l) \
+          and not _quoted_is_corrupt_amount
         if _ccy_is_the_issue and \
            (el_local.endswith("Amt") or el_local == "Amt"
             or el.get("Ccy") is not None or "amount" in msg_l):
@@ -7516,7 +8068,7 @@ class FixSuggester:
         _numeric_field = (
             el_local.endswith("Nb")
             or el_local in {"ElctrncSeqNb", "LglSeqNb", "NbOfTxs", "TtlNbOfTxs",
-                            "PgNb", "NbOfDays", "Qty", "Nb"}
+                            "NbOfNtries", "PgNb", "NbOfDays", "Qty", "Nb"}
             or (isinstance(_kb_field_constraint(el_local), dict)
                 and _kb_field_constraint(el_local).get("type") in ("Number", "Numeric15", "Quantity"))
         )
@@ -7533,6 +8085,25 @@ class FixSuggester:
                 el_copy.text = _new
                 return FixSuggestion(xpath, original_fragment,
                                      self._serialize(el_copy), code, msg, "high")
+
+        # ── BizMsgIdr empty (EMPTY_BIZSMSGIDR) ──────────────────────────────────
+        # BizMsgIdr present but empty (length 0, min_length 1). Generate a value:
+        # prefer GrpHdr/MsgId from the document; fall back to date-based dummy.
+        if el_local == "BizMsgIdr" and not (el.text or "").strip() and "length" in msg_l:
+            _fill_val: Optional[str] = None
+            try:
+                _biz_root2 = el.getroottree().getroot() if el.getroottree() is not None else None
+            except Exception:
+                _biz_root2 = None
+            if _biz_root2 is not None:
+                _fill_val = self._harvest_value(_biz_root2, "MsgId")
+            if not _fill_val:
+                import datetime as _dt
+                _fill_val = "MSG-" + _dt.date.today().strftime("%Y%m%d") + "-001"
+            el_copy = self._copy(el)
+            el_copy.text = _fill_val
+            return FixSuggestion(xpath, original_fragment,
+                                 self._serialize(el_copy), code, msg, "high")
 
         # ── BizMsgIdr must equal GrpHdr/MsgId (KB rule DEP_001) ─────────────────
         # Fix direction: if MsgId has invalid CBPR+ chars AND stripping them gives
@@ -7756,11 +8327,49 @@ class FixSuggester:
                 return FixSuggestion(xpath, original_fragment,
                                      self._serialize(el_copy), code, msg, "high")
 
-        # ── Count / sum aggregates (NbOfTxs, CtrlSum) ─────────────────────────
+        # ── Count / sum aggregates (NbOfTxs, NbOfNtries, CtrlSum, PgNb) ────────
         # These are derived from the document, so there's a single correct
         # value — compute it rather than guessing. Without this they fell
         # through to a low-confidence no-op and silently dropped out of batches.
-        if el_local in ("NbOfTxs", "CtrlSum"):
+        # ── CdtDbtInd empty / invalid ─────────────────────────────────────────
+        # CreditDebitCode: only "CRDT" or "DBIT" are valid.
+        # Infer from context: look for an Amt sibling or ancestor TxAmt/Amt —
+        # if the amount path contains a credit indicator in the parent tag name
+        # (Bal, TxDtls, Ntry) we inspect the parent element's local name; the
+        # sibling RvslInd or a parent tag "Stmt" leans toward CRDT.
+        # Safest default when context is ambiguous: "CRDT".
+        if el_local == "CdtDbtInd":
+            cur = (el.text or "").strip()
+            if cur not in ("CRDT", "DBIT"):
+                try:
+                    _cdi_root = el.getroottree().getroot()
+                except Exception:
+                    _cdi_root = None
+                inferred = "CRDT"  # default
+                # Walk up the ancestor chain for context clues
+                parent = el.getparent()
+                if parent is not None:
+                    p_local = etree.QName(parent.tag).localname if isinstance(parent.tag, str) else ""
+                    # Ntry (statement entry): look for Amt sibling with CdtDbtInd
+                    # TxDtls: same
+                    # RvslInd=true → typically DBIT reversal → keep CRDT (original was CRDT)
+                    # Bal (balance) → opening/closing balance
+                    # No reliable signal beyond doc context → default CRDT
+                    if p_local in ("Ntry", "TxDtls", "Bal", "Rpt", "TxInf"):
+                        # Look for another CdtDbtInd sibling with a value to borrow
+                        for _sib in parent:
+                            if (isinstance(_sib.tag, str)
+                                    and etree.QName(_sib.tag).localname == "CdtDbtInd"
+                                    and _sib is not el
+                                    and (_sib.text or "").strip() in ("CRDT", "DBIT")):
+                                inferred = (_sib.text or "").strip()
+                                break
+                el_copy = self._copy(el)
+                el_copy.text = inferred
+                return FixSuggestion(xpath, original_fragment,
+                                     self._serialize(el_copy), code, msg, "high")
+
+        if el_local in ("NbOfTxs", "NbOfNtries", "CtrlSum", "PgNb", "LastPgInd"):
             try:
                 root = el.getroottree().getroot() if el.getroottree() is not None else None
             except Exception:
@@ -7778,6 +8387,43 @@ class FixSuggester:
                         el_copy.text = str(count)
                         return FixSuggestion(xpath, original_fragment,
                                              self._serialize(el_copy), code, msg, "high")
+
+                elif el_local == "NbOfNtries":
+                    # Count actual <Ntry> elements in the document (camt statement entries)
+                    ntry_count = sum(
+                        1 for n in root.iter()
+                        if isinstance(n.tag, str)
+                        and etree.QName(n.tag).localname == "Ntry"
+                    )
+                    # If no entries found, default to 0 (valid per XSD: [0-9]{1,15})
+                    new_val = str(ntry_count) if ntry_count > 0 else "0"
+                    if new_val != (el.text or "").strip():
+                        el_copy = self._copy(el)
+                        el_copy.text = new_val
+                        return FixSuggestion(xpath, original_fragment,
+                                             self._serialize(el_copy), code, msg, "high")
+
+                elif el_local == "PgNb":
+                    # Default to page 1 when empty — the user deleted it
+                    new_val = (el.text or "").strip() or "1"
+                    if not re.match(r"^[0-9]{1,5}$", new_val):
+                        new_val = "1"
+                    if new_val != (el.text or "").strip():
+                        el_copy = self._copy(el)
+                        el_copy.text = new_val
+                        return FixSuggestion(xpath, original_fragment,
+                                             self._serialize(el_copy), code, msg, "high")
+
+                elif el_local == "LastPgInd":
+                    # YesNoIndicator: must be "true" or "false"; default "true" when empty
+                    cur = (el.text or "").strip().lower()
+                    new_val = cur if cur in ("true", "false") else "true"
+                    if new_val != (el.text or "").strip():
+                        el_copy = self._copy(el)
+                        el_copy.text = new_val
+                        return FixSuggestion(xpath, original_fragment,
+                                             self._serialize(el_copy), code, msg, "high")
+
                 else:  # CtrlSum — sum the interbank settlement (or instructed) amounts
                     total = 0.0
                     found = False
@@ -8041,26 +8687,13 @@ class FixSuggester:
                 el_copy.text = chosen
                 return FixSuggestion(xpath, original_fragment, self._serialize(el_copy), code, msg, "high")
 
-            # ── CODELIST_MAP: element mapped to curated valid-code list ───────
-            if el_local in _CODELIST_MAP:
-                valid_codes = _CODELIST_MAP[el_local]
-                cur_text    = (el.text or "").strip()
-                if valid_codes and cur_text not in valid_codes:
-                    chosen_code = valid_codes[0]
-                    combined    = fix_hint + " " + msg
-                    for vc in valid_codes:
-                        if re.search(rf'\b{re.escape(vc)}\b', combined):
-                            chosen_code = vc
-                            break
-                    el_copy      = self._copy(el)
-                    el_copy.text = chosen_code
-                    return FixSuggestion(xpath, original_fragment,
-                                         self._serialize(el_copy), code, msg, "high")
-
-            # ── Try the generic value fixer (type-aware) ──────────────────────
-            fv = self._fix_value(el, code, msg, fix_hint, ns)
-            if fv is not None:
-                return fv
+            # ── Generate a type-aware value for the empty leaf ────────────────
+            constraint = _kb_field_constraint(el_local) or {}
+            new_val = self._regenerate_value(el_local, el, constraint, fix_hint, msg)
+            if new_val is not None and new_val != (el.text or "").strip():
+                el_copy = self._copy(el)
+                el_copy.text = new_val
+                return FixSuggestion(xpath, original_fragment, self._serialize(el_copy), code, msg, "high")
 
             enum_m = (re.search(r"must be ['\"]?([A-Z]{2,10})['\"]?\s+\(", msg) or
                       re.search(r"valid.*?code.*?['\"]([A-Z]{2,10})['\"]", msg, re.I) or
@@ -8079,16 +8712,39 @@ class FixSuggester:
 
         # ── BIC invalid ───────────────────────────────────────────────────────
         if ("bic" in msg_l or "bicfi" in msg_l) and "invalid" in msg_l:
-            # Try to extract a valid BIC from fix_hint
+            # Prefer a valid BIC from fix_hint, then harvest from the document body
+            # (so AppHdr Fr matches InstgAgt and L3-PACS-MATCH-FR doesn't fire next round).
             bic_m = re.search(r'\b([A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)\b', fix_hint)
+            _bic_val = bic_m.group(1) if bic_m else None
+            if not _bic_val:
+                _BIC_PAT = re.compile(r"^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$")
+                try:
+                    _bic_root = el.getroottree().getroot()
+                except Exception:
+                    _bic_root = None
+                if _bic_root is not None:
+                    _apphdr = _bic_root.find(".//{*}AppHdr")
+                    _apphdr_ids = {id(x) for x in _apphdr.iter()} if _apphdr is not None else set()
+                    for _b in _bic_root.iter():
+                        if not isinstance(_b.tag, str) or id(_b) in _apphdr_ids:
+                            continue
+                        if etree.QName(_b.tag).localname == "BICFI":
+                            _t = (_b.text or "").strip()
+                            if _t and _BIC_PAT.match(_t):
+                                _bic_val = _t
+                                break
             el_copy = self._copy(el)
-            el_copy.text = bic_m.group(1) if bic_m else "DEUTDEFFXXX"
+            el_copy.text = _bic_val or "DEUTDEFFXXX"
             return FixSuggestion(xpath, original_fragment, self._serialize(el_copy), code, msg, "high")
 
         # ── IBAN invalid ──────────────────────────────────────────────────────
         if "iban" in msg_l and "invalid" in msg_l:
+            try:
+                _fv_root = el.getroottree().getroot()
+            except Exception:
+                _fv_root = None
             el_copy = self._copy(el)
-            el_copy.text = "GB29NWBK60161331926819"
+            el_copy.text = _iban_for_ccy(_fv_root, el)
             return FixSuggestion(xpath, original_fragment, self._serialize(el_copy), code, msg, "high")
 
         # A candidate value extracted from free-text is only acceptable if it
@@ -8395,6 +9051,38 @@ class FixSuggester:
                     )
 
             suggestions.append(sug)
+
+        # Roll-forward coherence: each actionable fragment was built against the
+        # XML state at the moment its issue was processed — so an EARLIER fix's
+        # fragment does NOT contain the changes of LATER fixes in the same
+        # parent/ancestor lineage. apply_batch replays all fragments against the
+        # ORIGINAL xml, where replaying a stale ancestor fragment would wipe a
+        # later descendant change (lost fix), and replaying a descendant after a
+        # rolled-forward ancestor would re-insert content the ancestor already
+        # has (DUPLICATE). Fix: re-serialise every actionable fragment from the
+        # FINAL fully-rolled-forward tree, so each xpath's fragment reflects ALL
+        # nested fixes. Combined with apply_batch's outermost-wins collapse, the
+        # replay then reproduces current_xml exactly — no losses, no duplicates.
+        try:
+            _final_root = self._parse_xml(current_xml)
+        except Exception:
+            _final_root = None
+        if _final_root is not None:
+            refreshed: list[FixSuggestion] = []
+            for sug in suggestions:
+                if (sug.confidence in ("high", "low")
+                        and sug.xpath and sug.xpath not in ("/", "")
+                        and sug.fragment_xml
+                        and sug.fragment_xml != sug.original_fragment):
+                    _el = self._find_by_xpath(_final_root, sug.xpath)
+                    if _el is not None:
+                        sug = FixSuggestion(
+                            sug.xpath, sug.original_fragment,
+                            self._serialize(_el),
+                            sug.issue_code, sug.issue_message, sug.confidence,
+                        )
+                refreshed.append(sug)
+            suggestions = refreshed
         return suggestions
 
     # ── XML syntax recovery ───────────────────────────────────────────────────
@@ -8412,12 +9100,31 @@ class FixSuggester:
     def _try_surgical_unclosed_tag_fix(self, xml: str, msg: str) -> Optional[str]:
         """
         Surgical Stage-0 repair for a missing closing tag.
+
+        Handles two message formats:
+          A) lxml: "Unclosed tag <FinInstnId> at line 13. The tag <FinInstnId> must be
+             closed with </FinInstnId> before the closing tag </FIId> at line 13."
+          B) user-facing: "Add </FinInstnId> to close the open tag ... before the
+             </FIId> closing tag at line 13"
+
+        Returns the fully-parsed fixed XML if the single insertion resolves all
+        parse errors, OR passes the partially-patched XML through _balance_xml_tags
+        when other structural errors remain (common when the document has multiple
+        simultaneous breakages).
         """
+        # Format A: lxml native error (may include "at line N" before "before the closing tag")
         m = re.search(
-            r"Unclosed\s+tag\s+<([\w:]+)>.*?"
-            r"before\s+the\s+closing\s+tag\s+</([\w:]+)>.*?at\s+line\s+(\d+)",
+            r"Unclosed\s+tag\s+<?([\w:]+)>?.*?"
+            r"before\s+the\s+closing\s+tag\s+</?([\w:]+)>?.*?at\s+line\s+(\d+)",
             msg, re.I | re.S,
         )
+        # Format B: "Add </X> to close the open tag ... before the </Y> closing tag at line N"
+        if not m:
+            m = re.search(
+                r"Add\s+</?([\w:]+)>?\s+to\s+close\s+the\s+open\s+tag.*?"
+                r"before\s+the\s+</?([\w:]+)>\s+closing\s+tag\s+at\s+line\s+(\d+)",
+                msg, re.I | re.S,
+            )
         if not m:
             return None
 
@@ -8440,7 +9147,20 @@ class FixSuggester:
 
         indent = re.match(r"(\s*)", target_line).group(1)
 
-        # Try 1: insert AFTER </conflict_tag>
+        # Try 1: insert BEFORE </conflict_tag> (most common: <FinInstnId></FIId> → <FinInstnId></FinInstnId></FIId>)
+        fixed_line_before = close_pat.sub(
+            f"</{missing_tag}>" + r"\1",
+            target_line, count=1,
+        )
+        fixed_lines_before = lines[:conflict_ln - 1] + [fixed_line_before] + lines[conflict_ln:]
+        fixed_xml_before = "".join(fixed_lines_before)
+        try:
+            etree.fromstring(fixed_xml_before.encode("utf-8"))
+            return fixed_xml_before
+        except etree.XMLSyntaxError:
+            pass
+
+        # Try 2: insert AFTER </conflict_tag>
         fixed_line_after = close_pat.sub(
             r"\1" + f"\n{indent}</{missing_tag}>",
             target_line, count=1,
@@ -8453,16 +9173,338 @@ class FixSuggester:
         except etree.XMLSyntaxError:
             pass
 
-        # Try 2: insert BEFORE </conflict_tag>
-        fixed_line_before = close_pat.sub(
-            f"\n{indent}</{missing_tag}>" + r"\1",
-            target_line, count=1,
+        # The single insertion didn't produce a fully valid document — other
+        # structural errors remain (e.g. truncated tags, mismatched closes).
+        # Strip any split/truncated tags first, then run the balance engine
+        # on the partially-fixed XML so all breakages are resolved in one pass.
+        for _partial in (fixed_xml_before, fixed_xml_after):
+            _cleaned = self._strip_split_tags(_partial) or _partial
+            _balanced = self._balance_xml_tags(_cleaned)
+            if _balanced is not None and _balanced != xml:
+                return _balanced
+
+        return None
+
+    @staticmethod
+    def _fix_stray_closing_tag(xml: str, msg: str) -> Optional[str]:
+        """Thin shim: delegates to the full tag-balance engine."""
+        return FixSuggester._balance_xml_tags(xml)
+
+    @staticmethod
+    def _strip_empty_apphdr_frto_closes(xml: str) -> Optional[str]:
+        """
+        Clean up broken Fr/To blocks in the AppHdr header area.
+
+        Handles three sub-patterns that all mean "the Fr or To content was
+        deleted and what remains is garbage the balance engine can't reconstruct":
+
+        A) Pure orphaned closes (no opening tags):
+               \\n    </FIId>\\n</Fr>
+               \\n    </FinInstnId>\\n</FIId>\\n</To>
+
+        B) Stray text + orphaned close (BICFI value leaked out of the deleted
+           Fr block, e.g.):
+               \\n\\t\\tBNPPGB2LXXX</BICFI>\\n    <To> ...
+
+        C) <Fr> or <To> present but contains a bare <BICFI> as direct child
+           (FIId/FinInstnId wrappers deleted).  Strip the To/Fr content; the
+           Problem 4 handler will rebuild FIId/FinInstnId/BICFI from scratch.
+
+        In all cases the result is a parseable (or at least better) document
+        that _normalize_busmsgenvlp Problem 4 can then fully repair.
+        """
+        import re as _re
+
+        ah_open = _re.search(r'<AppHdr\b[^>]*>', xml)
+        if not ah_open:
+            return None
+
+        after_ah = xml[ah_open.end():]
+        changed = False
+
+        # ── Pattern B: stray text + orphaned </BICFI> before the first real
+        # opening tag inside AppHdr  (e.g. "\n\t\tBNPPGB2LXXX</BICFI>\n<To>")
+        # Strip everything from after AppHdr open up to (but not including) the
+        # first recognised AppHdr-level open tag or the first <Fr>/<To>/<BizMsgIdr>
+        _first_legit_open = _re.search(
+            r'<(?:Fr|To|FIId|BizMsgIdr|MsgDefIdr|BizSvc|CreDt)\b', after_ah)
+        _first_close_b = _re.search(
+            r'</(?:BICFI|FinInstnId|FIId|Fr)\s*>', after_ah)
+        if (_first_close_b is not None
+                and (_first_legit_open is None
+                     or _first_close_b.start() < _first_legit_open.start())):
+            # There is an orphaned close before the first real open → strip
+            # everything before the first legit open (including stray text)
+            if _first_legit_open:
+                after_ah = after_ah[_first_legit_open.start():]
+            else:
+                # No legit open at all — strip up to the end of the close cluster
+                after_ah = _re.sub(
+                    r'^[\s\S]*?(?:</(?:BICFI|FinInstnId|FIId|Fr|To)\s*>\s*)+',
+                    '', after_ah, count=1)
+            changed = True
+
+        # ── Pattern A: pure whitespace + orphaned close cluster at start
+        _orphan_close_re = _re.compile(
+            r'^[\s]*(?:</(?:FIId|Fr|FinInstnId|To|BICFI)>[\s]*)+',
+            _re.MULTILINE,
         )
-        fixed_lines_before = lines[:conflict_ln - 1] + [fixed_line_before] + lines[conflict_ln:]
-        fixed_xml_before = "".join(fixed_lines_before)
+        _first_open_a = _re.search(r'<[A-Za-z]', after_ah)
+        _first_close_a = _re.search(r'</(?:FIId|Fr|FinInstnId|To)\s*>', after_ah)
+        if (_first_close_a is not None
+                and (_first_open_a is None
+                     or _first_open_a.start() > _first_close_a.start())):
+            cleaned = _orphan_close_re.sub('', after_ah, count=1)
+            if cleaned != after_ah:
+                after_ah = cleaned
+                changed = True
+
+        # ── Pattern C: <Fr> or <To> open but contains bare <BICFI> as direct
+        # child (FIId/FinInstnId wrappers missing).  Detect by parsing and
+        # checking; if found, strip the inner content so Problem 4 rebuilds it.
+        # We do this on the raw text: find <Fr>…</Fr> or <To>…</To> blocks that
+        # contain a <BICFI> but no <FIId>.
+        for _ft in ('Fr', 'To'):
+            _blk = _re.search(
+                rf'(<{_ft}>)([\s\S]*?)</{_ft}>',
+                after_ah)
+            if _blk:
+                inner = _blk.group(2)
+                has_bicfi = bool(_re.search(r'<BICFI\b', inner))
+                has_fiid  = bool(_re.search(r'<FIId\b',  inner))
+                has_fininstnid = bool(_re.search(r'<FinInstnId\b', inner))
+                # If BICFI is present but the required wrappers are absent,
+                # strip the inner content — Problem 4 will rebuild the chain.
+                if has_bicfi and (not has_fiid or not has_fininstnid):
+                    after_ah = after_ah[:_blk.start(2)] + '\n        ' + after_ah[_blk.end(2):]
+                    changed = True
+
+        if not changed:
+            return None
+        result = xml[:ah_open.end()] + after_ah
+        if result == xml:
+            return None
+        return result
+
+    @staticmethod
+    def _strip_split_tags(xml: str) -> Optional[str]:
+        """
+        Remove truncated/split XML tags where the tag delimiter spans a newline,
+        e.g. ``</CdtrAg\n\t\t\t\t\tNm>`` — the tag name was broken across lines
+        making it untokenizable by both lxml and _balance_xml_tags.
+
+        Pattern matched: ``</partial-name  WHITESPACE/NEWLINE  non-<>-chars>``
+        The entire fragment (from ``</`` to the closing ``>``) is removed so the
+        surrounding content (orphaned close tags, text nodes) is left intact for
+        the balance engine to reconstruct.
+
+        Returns the cleaned XML string if any split tags were removed, else None.
+        """
+        import re as _re
+        # Match: </ then a partial tag name (word chars), then whitespace that
+        # includes at least one newline, then any non-<> chars, then >
+        _split_tag_re = _re.compile(r'</[\w:.-]+[ \t]*\n[^<>]*>', _re.DOTALL)
+        fixed = _split_tag_re.sub('', xml)
+        return fixed if fixed != xml else None
+
+    @staticmethod
+    def _balance_xml_tags(xml: str) -> Optional[str]:
+        """
+        Scan every tag token in the raw XML text and re-insert any missing
+        opening tags at the correct position, preserving all existing content.
+
+        Algorithm
+        ---------
+        1. Tokenise the raw text into a list of (kind, name, raw, char_offset)
+           tuples where kind ∈ {'open', 'close', 'self', 'decl', 'text'}.
+           Namespace prefixes are stripped for matching; the original raw token
+           text (including namespace and attributes) is kept for reconstruction.
+
+        2. Walk tokens left-to-right maintaining an open-tag stack.
+           When a closing tag </Y> is found with no matching open <Y> anywhere
+           in the current stack → </Y> is an *orphaned close*: its opening tag
+           was deleted.
+
+        3. For each orphaned close we insert a synthetic opening tag immediately
+           before the first token that logically belongs inside it.
+           Heuristic: insert just before the first non-text content token
+           that sits between the previous stack frame's open and this close.
+
+        4. Serialise the patched token list back to a string.
+           If the result parses cleanly with lxml → return it.
+           Otherwise return None (don't corrupt the document).
+        """
+        import re as _re
+
+        # ── Tokeniser ──────────────────────────────────────────────────────────
+        # Matches: XML declaration, comments, CDATA, self-closing, open, close tags
+        _TOK = _re.compile(
+            r'(<\?[^?]*\?>)'           # XML declaration / PI
+            r'|(<!--.*?-->)'            # comment
+            r'|(<!\[CDATA\[.*?\]\]>)'  # CDATA
+            r'|(<([\w:.-]+)([^>]*?)/\s*>)'  # self-closing  <Tag … />
+            r'|(<([\w:.-]+)([^>]*)>)'       # opening tag   <Tag … >
+            r'|(</([\w:.-]+)\s*>)',          # closing tag   </Tag>
+            _re.DOTALL,
+        )
+
+        tokens = []   # list of [kind, localname, raw_text, insert_before_idx]
+        pos = 0
+        for m in _TOK.finditer(xml):
+            if m.start() > pos:
+                tokens.append(['text', '', xml[pos:m.start()], -1])
+            if m.group(1):
+                tokens.append(['decl', '', m.group(0), -1])
+            elif m.group(2):
+                tokens.append(['comment', '', m.group(0), -1])
+            elif m.group(3):
+                tokens.append(['cdata', '', m.group(0), -1])
+            elif m.group(4):   # self-closing
+                local = m.group(5).split(':')[-1]
+                tokens.append(['self', local, m.group(0), -1])
+            elif m.group(7):   # opening
+                local = m.group(8).split(':')[-1]
+                tokens.append(['open', local, m.group(0), -1])
+            elif m.group(10):  # closing — group(10)=full "</Tag>", group(11)=tag name
+                local = m.group(11).split(':')[-1]
+                tokens.append(['close', local, m.group(0), -1])
+            pos = m.end()
+        if pos < len(xml):
+            tokens.append(['text', '', xml[pos:], -1])
+
+        # ── Balance pass ───────────────────────────────────────────────────────
+        # stack entries: (localname, token_index_of_open_tag)
+        stack: list = []
+        insertions: list = []   # (insert_before_token_idx, tag_raw_text)
+        # last_child_end[depth] tracks the token index of the last close tag
+        # that was MATCHED at each stack depth. Used so sibling orphans are
+        # inserted AFTER the previous sibling's close, not before it.
+        last_child_end: dict = {}   # stack_depth -> last matched-close token idx
+
+        i = 0
+        while i < len(tokens):
+            kind, local, raw, _ = tokens[i]
+
+            if kind == 'open':
+                stack.append((local, i))
+
+            elif kind == 'close':
+                # Walk the stack looking for the matching open
+                matched = False
+                for depth in range(len(stack) - 1, -1, -1):
+                    if stack[depth][0] == local:
+                        # Any elements above `depth` were opened but not yet
+                        # closed — insert synthetic closes for them right before
+                        # this closing tag (innermost first).
+                        for _auto_local, _auto_open_idx in reversed(stack[depth + 1:]):
+                            _auto_indent = ''
+                            if _auto_open_idx > 0 and tokens[_auto_open_idx - 1][0] == 'text':
+                                _t2 = tokens[_auto_open_idx - 1][2]
+                                _nl2 = _t2.rfind('\n')
+                                if _nl2 != -1:
+                                    _auto_indent = _re.match(r'(\s*)', _t2[_nl2 + 1:]).group(1)
+                            insertions.append((i, f'{_auto_indent}</{_auto_local}>'))
+                        # Pop everything above
+                        stack = stack[:depth]
+                        # Record this close as the last child end at parent depth
+                        parent_depth = len(stack) - 1
+                        last_child_end[parent_depth] = i
+                        matched = True
+                        break
+
+                if not matched:
+                    # Orphaned close: </local> has no open on the stack.
+                    # Insert a synthetic <local> open at the correct position.
+                    #
+                    # Correct insert point = right after the last matched sibling
+                    # close at this parent's depth (if any), otherwise right after
+                    # the parent's own open tag.  This ensures sibling orphans like
+                    # </Fr> and </To> each get their open inserted in the right slot
+                    # rather than both collapsing to the parent's first-child position.
+                    parent_depth = len(stack) - 1
+                    parent_open_tok_idx = stack[-1][1] if stack else 0
+                    # insert_at = right after the last matched sibling close
+                    # (or right after the parent open if no previous sibling).
+                    # Everything between scan_from and i belongs inside the
+                    # missing open tag — wrap all of it.
+                    scan_from = last_child_end.get(parent_depth, parent_open_tok_idx) + 1
+                    insert_at = scan_from  # insert open at start of its content
+
+                    # The orphaned close tells us the indent level of this element.
+                    close_indent = ''
+                    for j in range(i - 1, -1, -1):
+                        if tokens[j][0] == 'text':
+                            t = tokens[j][2]
+                            nl = t.rfind('\n')
+                            if nl != -1:
+                                close_indent = _re.match(r'(\s*)', t[nl + 1:]).group(1)
+                            break
+                    syn_open = f'{close_indent}<{local}>\n'
+                    insertions.append((insert_at, syn_open))
+                    # The orphaned close IS the matching close for this synthetic
+                    # open — record it as matched so last_child_end is updated,
+                    # and do NOT push onto the stack (avoids duplicate close from
+                    # auto-pop when the parent element later closes).
+                    last_child_end[parent_depth] = i
+
+            i += 1
+
+        # ── Pass 2: unclosed open tags ──────────────────────────────────────
+        # Any element still on the stack was opened but never closed.
+        # Append synthetic closing tags in reverse stack order (innermost first).
+        # Skip the document-root element (depth 0) — lxml will reject a bare
+        # root close appended after BusMsgEnvlp already has its close.
+        for _local, _open_idx in reversed(stack[1:]):
+            # Read indent from the text token before the open tag
+            _indent = ''
+            if _open_idx > 0 and tokens[_open_idx - 1][0] == 'text':
+                _t = tokens[_open_idx - 1][2]
+                _nl = _t.rfind('\n')
+                if _nl != -1:
+                    _indent = _re.match(r'(\s*)', _t[_nl + 1:]).group(1)
+            tokens.append(['close', _local, f'\n{_indent}</{_local}>', -1])
+            insertions.append((-1, ''))  # sentinel so `if not insertions` stays False
+
+        if not insertions:
+            return None  # document was already balanced
+
+        # ── Apply insertions (in reverse order so indices stay valid) ──────────
+        # Each insertion goes BETWEEN the text-whitespace token and the first
+        # child token.  To keep indentation clean we split the preceding text
+        # token at its last newline: everything up to and including '\n' stays
+        # before the new open tag; the trailing whitespace (the child's indent)
+        # is prepended to the child token's existing leading whitespace.
+        for ins_idx, ins_text in sorted(insertions, reverse=True):
+            # Adjust: if the token just before ins_idx is pure-whitespace text,
+            # split it so the open tag lands at the correct column.
+            if ins_idx > 0 and tokens[ins_idx - 1][0] == 'text':
+                prev_text = tokens[ins_idx - 1][2]
+                nl = prev_text.rfind('\n')
+                if nl != -1:
+                    before_nl = prev_text[:nl + 1]   # keep up to \n
+                    after_nl  = prev_text[nl + 1:]   # trailing whitespace (child indent)
+                    tokens[ins_idx - 1][2] = before_nl
+                    # Insert the open tag then re-prepend the child indent
+                    tokens.insert(ins_idx, ['text', '', after_nl, -1])
+                    tokens.insert(ins_idx, ['open', '', ins_text, -1])
+                    continue
+            tokens.insert(ins_idx, ['open', '', ins_text, -1])
+
+        result = ''.join(t[2] for t in tokens)
+
+        # ── Validate ───────────────────────────────────────────────────────────
         try:
-            etree.fromstring(fixed_xml_before.encode("utf-8"))
-            return fixed_xml_before
+            etree.fromstring(result.encode('utf-8'))
+            return result
+        except etree.XMLSyntaxError:
+            pass
+
+        # One more attempt: strip the XML declaration if present (lxml adds one
+        # when serialising but the outer caller may not expect it)
+        result2 = _re.sub(r'^\s*<\?xml[^?]*\?>\s*', '', result)
+        try:
+            etree.fromstring(result2.encode('utf-8'))
+            return result2
         except etree.XMLSyntaxError:
             pass
 
@@ -8534,12 +9576,166 @@ class FixSuggester:
 
         return leading + clean_decl + rest
 
+    @staticmethod
+    def _fix_stray_chars_in_tags(xml: str) -> Optional[str]:
+        """Remove illegal characters that appear inside XML tags but outside quoted
+        attribute values — e.g. '<BusMsgEnvlp xmlns="urn:swift:xsd:envelope"!>'.
+
+        Strategy: walk the raw text character-by-character. When inside a tag
+        (after '<' but before the matching '>'), track whether we are inside a
+        quoted attribute value. Any character outside quotes that is not a legal
+        XML tag character is stripped.
+
+        Legal characters inside a tag (outside quotes): letters, digits,
+        whitespace, =, /, -, _, ., :, "', and of course >.
+        """
+        if '<' not in xml:
+            return None
+
+        legal_in_tag = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+                           '0123456789 \t\r\n=/_-.:"\'>/?')
+        result = []
+        i = 0
+        changed = False
+        n = len(xml)
+        while i < n:
+            ch = xml[i]
+            if ch != '<':
+                result.append(ch)
+                i += 1
+                continue
+            # Inside a tag — collect chars until the matching unquoted '>'
+            tag_chars = ['<']
+            i += 1
+            in_quote = None
+            while i < n:
+                c = xml[i]
+                if in_quote:
+                    tag_chars.append(c)
+                    if c == in_quote:
+                        in_quote = None
+                elif c in ('"', "'"):
+                    in_quote = c
+                    tag_chars.append(c)
+                elif c == '>':
+                    tag_chars.append('>')
+                    i += 1
+                    break
+                elif c in legal_in_tag:
+                    tag_chars.append(c)
+                else:
+                    # Stray illegal char — strip it
+                    changed = True
+                i += 1
+            result.extend(tag_chars)
+        return ''.join(result) if changed else None
+
+    @staticmethod
+    def _close_unclosed_text_elements(xml: str) -> Optional[str]:
+        """
+        Insert missing closing tags for text-only elements whose content runs
+        into the next sibling's opening tag without a proper close.
+
+        Handles patterns like:
+          <CxlId>CXLIDGW2DI8MWLZ                      ← no </CxlId>
+          <Case>...
+          <BICFI>CREDDKKHXXX                          ← no </BICFI>
+          </FinInstnId>
+          <OrgnlIntrBkSttlmAmt Ccy="DKK">378369.51    ← no close
+          <OrgnlIntrBkSttlmDt>2026-06-10              ← no close
+
+        Also strips empty/anonymous close tags: </>
+
+        Algorithm: scan line by line. For a line of the form
+        ``<Tag [attrs]>TEXT`` where TEXT is non-empty, contains no '<', and
+        the line itself has no matching ``</Tag>``, check whether the next
+        non-blank line starts with '<' (i.e. a new tag begins there — the
+        current element's content should have ended on this line). If so,
+        append ``</Tag>`` to the end of the current line.
+
+        Returns fixed XML if changes were made, else None.
+        """
+        import re as _re
+
+        # Step 0: strip empty close tags </>  (invalid XML, means nothing)
+        stripped = _re.sub(r'<\s*/\s*>', '', xml)
+        changed = stripped != xml
+        xml = stripped
+
+        # Matches the LAST open-tag-then-text at the END of a line, allowing
+        # other (complete) tags to precede it on the same line. Examples:
+        #   "<MsgId>MSG001"           → tag=MsgId, text=MSG001
+        #   "<Dbtr><Nm>John Doe"      → tag=Nm,    text=John Doe  (Dbtr precedes)
+        # TEXT has no '<' or '>', is non-empty. Self-closing tags (attrs ending
+        # in '/') are excluded via the attrs group.
+        _TRAILING_OPEN_TEXT = _re.compile(
+            r'<([A-Za-z][\w.\-]*(?::[A-Za-z][\w.\-]*)?)((?:\s[^<>]*)?)>'
+            r'([^<>]+)$'
+        )
+
+        lines = xml.splitlines(keepends=True)
+        result = list(lines)
+        modified = False
+
+        for i in range(len(result)):
+            line = result[i]
+            line_body = line.rstrip('\r\n')
+            m = _TRAILING_OPEN_TEXT.search(line_body)
+            if not m:
+                continue
+            tag_name = m.group(1)
+            attrs    = m.group(2) or ""
+            text_part = m.group(3)
+            # Skip self-closing tags (attrs ending in '/')
+            if attrs.rstrip().endswith('/'):
+                continue
+            if not text_part.strip():
+                continue
+            # Find next non-blank line
+            next_line = None
+            for k in range(i + 1, len(result)):
+                if result[k].strip():
+                    next_line = result[k].strip()
+                    break
+            if next_line is None or not next_line.startswith('<'):
+                continue
+            # Append the missing closing tag
+            nl = line[len(line_body):]  # preserve original line ending
+            result[i] = line_body + f'</{tag_name}>' + nl
+            modified = True
+
+        if not modified and not changed:
+            return None
+        fixed = ''.join(result)
+        # Validate the result parses
+        try:
+            etree.fromstring(fixed.encode('utf-8'))
+            return fixed
+        except etree.XMLSyntaxError:
+            # Even if not fully valid yet, return if it's different — subsequent
+            # stages (balance engine, surgical fix) will handle remaining issues
+            return fixed if fixed != xml else None
+
     def _try_xml_recovery(self, xml: str, code: str, msg: str) -> Optional[FixSuggestion]:
         """Attempt document-level XML syntax repairs. Returns FixSuggestion("/", ...) or None."""
+        # Stage -1: entirely missing XML declaration — just prepend it.
+        # Must run before Stage 0 so that a completely absent prolog is handled
+        # without falling through to the LLM path.
+        if not re.match(r'^\s*<\?xml', xml):
+            fixed = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml.lstrip()
+            return FixSuggestion("/", xml, fixed, code, msg, "high")
+
         # Stage 0: malformed XML declaration (e.g. '<?xml version="1.0" encoding="UTF-8"!?>')
         # Must run FIRST — a broken prolog prevents lxml from parsing at all, so
         # every subsequent stage would silently fail.
         fixed = self._fix_xml_declaration(xml)
+        if fixed is not None and fixed != xml:
+            return FixSuggestion("/", xml, fixed, code, msg, "high")
+
+        # Stage 0.5: stray illegal chars inside XML tags
+        # e.g. '<BusMsgEnvlp xmlns="urn:swift:xsd:envelope"!>' — the '!' before '>'
+        # prevents lxml from parsing. Must run before any stage that tries to parse.
+        fixed = self._fix_stray_chars_in_tags(xml)
         if fixed is not None and fixed != xml:
             return FixSuggestion("/", xml, fixed, code, msg, "high")
 
@@ -8548,9 +9744,79 @@ class FixSuggester:
         if fixed is not None:
             return FixSuggestion("/", xml, fixed, code, msg, "high")
 
+        # Stage 1.5: close unclosed text elements + strip empty </> close tags.
+        # Handles patterns like <CxlId>TEXT\n<NextSibling> where </CxlId> was
+        # omitted, and </>  (anonymous close tags with no tag name).
+        _close_fixed = self._close_unclosed_text_elements(xml)
+        if _close_fixed is not None and _close_fixed != xml:
+            # Run balance engine on result to catch any remaining orphaned tags
+            _bal = self._balance_xml_tags(_close_fixed)
+            _final_close = _bal if _bal is not None else _close_fixed
+            if _final_close != xml:
+                _final_close = self._normalize_busmsgenvlp(_final_close)
+                return FixSuggestion("/", xml, _final_close, code, msg, "high")
+
         # Stage 2: surgical unclosed-tag repair
         fixed = self._try_surgical_unclosed_tag_fix(xml, msg)
         if fixed is not None:
+            return FixSuggestion("/", xml, fixed, code, msg, "high")
+
+        # Stage 2.2: strip empty AppHdr Fr/To orphaned-close clusters.
+        # When the entire content of a <Fr> or <To> block is deleted (both
+        # opening tags AND all inner content), the raw XML contains only
+        # whitespace-only orphaned closes like:
+        #     \n    </FIId>\n</Fr>   or   \n    </FinInstnId>\n</FIId>\n</To>
+        # The balance engine cannot reconstruct the correct nesting from closes
+        # alone (it sees siblings where it should see nesting).  The safe fix:
+        # strip these empty close clusters entirely; _normalize_busmsgenvlp
+        # Problem 4 will then rebuild a complete Fr/To/FIId/FinInstnId/BICFI
+        # block from scratch on the next round.
+        fixed = self._strip_empty_apphdr_frto_closes(xml)
+        if fixed is not None and fixed != xml:
+            return FixSuggestion("/", xml, fixed, code, msg, "high")
+
+        # Stage 2.25: bare '<' followed by whitespace/newline then '/TagName>'
+        # e.g. '<BICFI>\n    CACRNLAAXXX\n    <\n/Fr>' — the '<' is a stray
+        # character; the '/Fr>' on the next line is a valid closing tag fragment
+        # separated from '<' by whitespace. Normalize to '</' so the split-tag
+        # stripper and balance engine can process it normally.
+        _bare_lt_fixed = re.sub(r'<([ \t]*\n[ \t]*/)', r'</', xml)
+        if _bare_lt_fixed != xml:
+            xml = _bare_lt_fixed
+
+        # Stage 2.3: strip split/truncated tags whose name spans a newline.
+        # e.g. ``</CdtrAg\n\t\t\t\t\tNm>`` — the partial closing tag is not a
+        # valid XML token so neither lxml nor _balance_xml_tags can tokenize it.
+        # Removing the broken fragment exposes the surrounding orphaned closes
+        # (</Id>, </Cdtr>) so Stage 2.5 can reconstruct the correct nesting.
+        # After stripping, re-run Stage 2 surgical fix (the unclosed-tag error
+        # may still be present) then pass into the balance engine.
+        _split_stripped = self._strip_split_tags(xml)
+        if _split_stripped is not None and _split_stripped != xml:
+            # Try surgical fix on the cleaned XML first
+            _surgical_on_stripped = self._try_surgical_unclosed_tag_fix(_split_stripped, msg)
+            _base_for_balance = _surgical_on_stripped or _split_stripped
+            fixed = self._balance_xml_tags(_base_for_balance)
+            if fixed is not None and fixed != xml:
+                fixed = self._normalize_busmsgenvlp(fixed)
+                return FixSuggestion("/", xml, fixed, code, msg, "high")
+            # Even if balance engine couldn't fully fix it, return the stripped
+            # version so at least the untokenizable fragment is removed.
+            if _split_stripped != xml:
+                return FixSuggestion("/", xml, _split_stripped, code, msg, "high")
+
+        # Stage 2.5: full tag-balance engine
+        # Scans every tag token across the entire document, detects any orphaned
+        # closing tags (whose opening tag was deleted) and re-inserts the missing
+        # opening tag at the correct position. Handles all "Opening and ending tag
+        # mismatch" errors, missing FIId wrappers, and any other case where an
+        # opening tag was manually removed.
+        # After balancing, always run _normalize_busmsgenvlp so that Fr/To content
+        # that ended up in the wrong place (FIId floating outside shell, BizMsgIdr
+        # swallowed inside To, etc.) gets corrected before returning the result.
+        fixed = self._balance_xml_tags(xml)
+        if fixed is not None and fixed != xml:
+            fixed = self._normalize_busmsgenvlp(fixed)
             return FixSuggestion("/", xml, fixed, code, msg, "high")
 
         # Stage 3: lxml recovery-mode parse.
@@ -8708,6 +9974,60 @@ class FixSuggester:
 
         return current
 
+    @staticmethod
+    def _xpath_overlaps(a: str, b: str) -> bool:
+        """True when xpaths *a* and *b* address the same element or one is an
+        ancestor of the other (so replacing one element's subtree would clobber
+        or duplicate the other's change).
+
+        Compares on normalised step lists (leading slash stripped) using prefix
+        containment: '/A/B' overlaps '/A/B/C' (ancestor) and '/A/B' (equal), but
+        not '/A/D'. Positional predicates ([N]) are kept so CdtTrfTxInf[1] and
+        CdtTrfTxInf[2] are correctly treated as DISTINCT, non-overlapping.
+        """
+        if not a or not b:
+            return False
+        pa = [p for p in a.lstrip("/").split("/") if p]
+        pb = [p for p in b.lstrip("/").split("/") if p]
+        n = min(len(pa), len(pb))
+        return pa[:n] == pb[:n]
+
+    def _collapse_overlapping_fixes(self, fixes: list[dict]) -> list[dict]:
+        """Within each group of overlapping xpaths (equal / ancestor / descendant),
+        keep ONLY the outermost (ancestor / shortest-path) fix and drop the rest.
+
+        suggest_batch re-serialises every fragment from the FINAL rolled-forward
+        tree, so an ancestor's fragment already contains all of its descendants'
+        fixes. Applying the ancestor fragment alone therefore reproduces every
+        nested change in one replace. Also applying the descendant fragments
+        would replace subtrees the ancestor fragment already wrote — at best a
+        redundant no-op, at worst (if line-shift moved the target) a DUPLICATE.
+        So we keep the ancestor and discard descendants/equals in its lineage.
+
+        A fix is dropped when ANY OTHER kept fix's xpath is a strict ancestor of
+        it (or equal, keeping the first seen). Order-independent on overlap.
+        """
+        def _depth(xp: str) -> int:
+            return len([p for p in xp.lstrip("/").split("/") if p])
+
+        # Sort outermost-first so ancestors are decided before their descendants.
+        indexed = list(enumerate(fixes))
+        indexed.sort(key=lambda iv: _depth(iv[1].get("xpath", "")))
+
+        kept: list[dict] = []
+        kept_xpaths: list[str] = []
+        for _orig_i, fix in indexed:
+            xp = fix.get("xpath", "")
+            if not xp or xp in ("/", ""):
+                kept.append(fix)
+                continue
+            # Drop if an already-kept fix overlaps (is ancestor-or-equal of) this one.
+            if any(self._xpath_overlaps(xp, k) for k in kept_xpaths):
+                continue
+            kept.append(fix)
+            kept_xpaths.append(xp)
+        return kept
+
     def apply_batch(self, xml: str, fixes: list[dict]) -> str:
         """
         Apply a list of fixes in reverse document order so that earlier
@@ -8715,20 +10035,23 @@ class FixSuggester:
 
         Each fix dict must contain 'xpath' and 'fragment_xml'.
         """
-        # Determine document order for each fix's xpath
-        def _doc_order(fix: dict) -> int:
-            xp = fix.get("xpath", "")
-            if not xp:
-                return 0
-            try:
-                root = etree.fromstring(xml.encode("utf-8"),
-                                        parser=etree.XMLParser(recover=True))
-                el = self._find_by_xpath(root, xp)
-                if el is None:
+        # Collapse overlapping (equal / ancestor / descendant) xpaths to the
+        # last roll-forward fragment per lineage BEFORE re-sorting. This must run
+        # on the ORIGINAL (suggest_batch) order, where "later == more complete".
+        fixes = self._collapse_overlapping_fixes(fixes)
+
+        # Parse once to determine document order for all fixes
+        try:
+            _order_root = etree.fromstring(xml.encode("utf-8"),
+                                           parser=etree.XMLParser(recover=True))
+            def _doc_order(fix: dict) -> int:
+                xp = fix.get("xpath", "")
+                if not xp:
                     return 0
-                # Use element's source line as a proxy for document order
-                return el.sourceline or 0
-            except Exception:
+                el = self._find_by_xpath(_order_root, xp)
+                return (el.sourceline or 0) if el is not None else 0
+        except Exception:
+            def _doc_order(fix: dict) -> int:
                 return 0
 
         # Sort in reverse document order: process last elements first

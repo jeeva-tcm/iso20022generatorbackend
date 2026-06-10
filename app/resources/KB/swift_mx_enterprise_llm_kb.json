@@ -45,7 +45,7 @@
         "fix_format_date": "YYYY-MM-DD using today's actual calendar date",
         "fix_format_datetime": "YYYY-MM-DDTHH:MM:SS+00:00 using current UTC time with +00:00 offset",
         "critical_notes": [
-          "NEVER use 'Z' as timezone suffix \u2014 use '+00:00' instead (CBPR+ requirement)",
+          "NEVER use 'Z' as timezone suffix — use '+00:00' instead (CBPR+ requirement)",
           "NEVER include milliseconds (.sss) in the datetime",
           "For Date-only fields (IntrBkSttlmDt, SttlmDt), use YYYY-MM-DD only",
           "CreDtTm may be updated to 'now' if it is in the past",
@@ -59,7 +59,7 @@
           "BirthDt"
         ],
         "fix_action": "Replace BirthDt with a valid past date.",
-        "fix_format_date": "YYYY-MM-DD \u2014 use a plausible birth date like 1990-01-15",
+        "fix_format_date": "YYYY-MM-DD — use a plausible birth date like 1990-01-15",
         "dummy_value": "1990-01-15"
       },
       "CBPR_DATETIME_Z_FORBIDDEN": {
@@ -136,7 +136,7 @@
         "OrgnlTxId": "ORIG-TXN-20260527-001"
       },
       "dates": {
-        "_note": "USE_TODAY and USE_NOW_OFFSET are sentinel values \u2014 the AI must substitute the actual current date/datetime at fix time.",
+        "_note": "USE_TODAY and USE_NOW_OFFSET are sentinel values — the AI must substitute the actual current date/datetime at fix time.",
         "today": "USE_TODAY",
         "today_comment": "Replace USE_TODAY with the actual current date in YYYY-MM-DD format",
         "settlement": "USE_TODAY",
@@ -708,7 +708,7 @@
           "max_length": 36,
           "min_length": 36,
           "example": "4a1a0945-5772-409a-83ba-240e666e0267",
-          "notes": "UUID v4 \u2014 mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+          "notes": "UUID v4 — mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
         },
         "MsgId": {
           "type": "Max35Text",
@@ -1173,6 +1173,13 @@
           "root_cause": "InstdAmt currency equals IntrBkSttlmAmt currency but XchgRate is present.",
           "fix": "Remove the XchgRate element entirely."
         },
+        "EMPTY_BIZSMSGIDR": {
+          "root_cause": "AppHdr/BizMsgIdr is present but empty (length 0). The field requires at least 1 character.",
+          "fix": "Generate a unique message identifier and set it as the BizMsgIdr value. Prefer to copy GrpHdr/MsgId if present in the Document; otherwise generate MSG-YYYYMMDD-001 using today's date.",
+          "dummy_value": "MSG-20260610-001",
+          "example": "<BizMsgIdr>MSG-20260610-001</BizMsgIdr>",
+          "notes": "Max35Text field — value must be 1-35 characters. Must equal GrpHdr/MsgId when present (see BIZMSGIDR_EQ_GRPHDR_MSGID rule)."
+        },
         "EMPTY_FININSTNID": {
           "root_cause": "A FinInstnId element is present but completely empty (no BICFI, no Nm, no ClrSysMmbId).",
           "fix": "Add a BICFI child element inside FinInstnId using an appropriate BIC from dummy_data.banks."
@@ -1475,7 +1482,7 @@
           "max_length": 36,
           "min_length": 36,
           "example": "4a1a0945-5772-409a-83ba-240e666e0267",
-          "notes": "UUID v4 \u2014 mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+          "notes": "UUID v4 — mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
         },
         "MsgId": {
           "type": "Max35Text",
@@ -1911,6 +1918,13 @@
           "root_cause": "InstdAmt currency equals IntrBkSttlmAmt currency but XchgRate is present.",
           "fix": "Remove the XchgRate element entirely."
         },
+        "EMPTY_BIZSMSGIDR": {
+          "root_cause": "AppHdr/BizMsgIdr is present but empty (length 0). The field requires at least 1 character.",
+          "fix": "Generate a unique message identifier and set it as the BizMsgIdr value. Prefer to copy GrpHdr/MsgId if present in the Document; otherwise generate MSG-YYYYMMDD-001 using today's date.",
+          "dummy_value": "MSG-20260610-001",
+          "example": "<BizMsgIdr>MSG-20260610-001</BizMsgIdr>",
+          "notes": "Max35Text field — value must be 1-35 characters. Must equal GrpHdr/MsgId when present (see BIZMSGIDR_EQ_GRPHDR_MSGID rule)."
+        },
         "EMPTY_FININSTNID": {
           "root_cause": "A FinInstnId element is present but completely empty (no BICFI, no Nm, no ClrSysMmbId).",
           "fix": "Add a BICFI child element inside FinInstnId using an appropriate BIC from dummy_data.banks."
@@ -2188,7 +2202,7 @@
           "max_length": 36,
           "min_length": 36,
           "example": "4a1a0945-5772-409a-83ba-240e666e0267",
-          "notes": "UUID v4 \u2014 mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+          "notes": "UUID v4 — mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
         },
         "MsgId": {
           "type": "Max35Text",
@@ -2582,6 +2596,13 @@
           "root_cause": "InstdAmt currency equals IntrBkSttlmAmt currency but XchgRate is present.",
           "fix": "Remove the XchgRate element entirely."
         },
+        "EMPTY_BIZSMSGIDR": {
+          "root_cause": "AppHdr/BizMsgIdr is present but empty (length 0). The field requires at least 1 character.",
+          "fix": "Generate a unique message identifier and set it as the BizMsgIdr value. Prefer to copy GrpHdr/MsgId if present in the Document; otherwise generate MSG-YYYYMMDD-001 using today's date.",
+          "dummy_value": "MSG-20260610-001",
+          "example": "<BizMsgIdr>MSG-20260610-001</BizMsgIdr>",
+          "notes": "Max35Text field — value must be 1-35 characters. Must equal GrpHdr/MsgId when present (see BIZMSGIDR_EQ_GRPHDR_MSGID rule)."
+        },
         "EMPTY_FININSTNID": {
           "root_cause": "A FinInstnId element is present but completely empty (no BICFI, no Nm, no ClrSysMmbId).",
           "fix": "Add a BICFI child element inside FinInstnId using an appropriate BIC from dummy_data.banks."
@@ -2818,7 +2839,7 @@
           "max_length": 36,
           "min_length": 36,
           "example": "4a1a0945-5772-409a-83ba-240e666e0267",
-          "notes": "UUID v4 \u2014 mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+          "notes": "UUID v4 — mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
         },
         "MsgId": {
           "type": "Max35Text",
@@ -3183,6 +3204,13 @@
           "root_cause": "InstdAmt currency equals IntrBkSttlmAmt currency but XchgRate is present.",
           "fix": "Remove the XchgRate element entirely."
         },
+        "EMPTY_BIZSMSGIDR": {
+          "root_cause": "AppHdr/BizMsgIdr is present but empty (length 0). The field requires at least 1 character.",
+          "fix": "Generate a unique message identifier and set it as the BizMsgIdr value. Prefer to copy GrpHdr/MsgId if present in the Document; otherwise generate MSG-YYYYMMDD-001 using today's date.",
+          "dummy_value": "MSG-20260610-001",
+          "example": "<BizMsgIdr>MSG-20260610-001</BizMsgIdr>",
+          "notes": "Max35Text field — value must be 1-35 characters. Must equal GrpHdr/MsgId when present (see BIZMSGIDR_EQ_GRPHDR_MSGID rule)."
+        },
         "EMPTY_FININSTNID": {
           "root_cause": "A FinInstnId element is present but completely empty (no BICFI, no Nm, no ClrSysMmbId).",
           "fix": "Add a BICFI child element inside FinInstnId using an appropriate BIC from dummy_data.banks."
@@ -3410,7 +3438,7 @@
           "max_length": 36,
           "min_length": 36,
           "example": "4a1a0945-5772-409a-83ba-240e666e0267",
-          "notes": "UUID v4 \u2014 mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+          "notes": "UUID v4 — mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
         },
         "MsgId": {
           "type": "Max35Text",
@@ -3793,6 +3821,13 @@
         "XCHGRATE_FORBIDDEN": {
           "root_cause": "InstdAmt currency equals IntrBkSttlmAmt currency but XchgRate is present.",
           "fix": "Remove the XchgRate element entirely."
+        },
+        "EMPTY_BIZSMSGIDR": {
+          "root_cause": "AppHdr/BizMsgIdr is present but empty (length 0). The field requires at least 1 character.",
+          "fix": "Generate a unique message identifier and set it as the BizMsgIdr value. Prefer to copy GrpHdr/MsgId if present in the Document; otherwise generate MSG-YYYYMMDD-001 using today's date.",
+          "dummy_value": "MSG-20260610-001",
+          "example": "<BizMsgIdr>MSG-20260610-001</BizMsgIdr>",
+          "notes": "Max35Text field — value must be 1-35 characters. Must equal GrpHdr/MsgId when present (see BIZMSGIDR_EQ_GRPHDR_MSGID rule)."
         },
         "EMPTY_FININSTNID": {
           "root_cause": "A FinInstnId element is present but completely empty (no BICFI, no Nm, no ClrSysMmbId).",
@@ -4022,7 +4057,7 @@
           "max_length": 36,
           "min_length": 36,
           "example": "4a1a0945-5772-409a-83ba-240e666e0267",
-          "notes": "UUID v4 \u2014 mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+          "notes": "UUID v4 — mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
         },
         "MsgId": {
           "type": "Max35Text",
@@ -4386,6 +4421,13 @@
         "XCHGRATE_FORBIDDEN": {
           "root_cause": "InstdAmt currency equals IntrBkSttlmAmt currency but XchgRate is present.",
           "fix": "Remove the XchgRate element entirely."
+        },
+        "EMPTY_BIZSMSGIDR": {
+          "root_cause": "AppHdr/BizMsgIdr is present but empty (length 0). The field requires at least 1 character.",
+          "fix": "Generate a unique message identifier and set it as the BizMsgIdr value. Prefer to copy GrpHdr/MsgId if present in the Document; otherwise generate MSG-YYYYMMDD-001 using today's date.",
+          "dummy_value": "MSG-20260610-001",
+          "example": "<BizMsgIdr>MSG-20260610-001</BizMsgIdr>",
+          "notes": "Max35Text field — value must be 1-35 characters. Must equal GrpHdr/MsgId when present (see BIZMSGIDR_EQ_GRPHDR_MSGID rule)."
         },
         "EMPTY_FININSTNID": {
           "root_cause": "A FinInstnId element is present but completely empty (no BICFI, no Nm, no ClrSysMmbId).",
@@ -4614,7 +4656,7 @@
           "max_length": 36,
           "min_length": 36,
           "example": "4a1a0945-5772-409a-83ba-240e666e0267",
-          "notes": "UUID v4 \u2014 mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+          "notes": "UUID v4 — mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
         },
         "MsgId": {
           "type": "Max35Text",
@@ -4979,6 +5021,13 @@
           "root_cause": "InstdAmt currency equals IntrBkSttlmAmt currency but XchgRate is present.",
           "fix": "Remove the XchgRate element entirely."
         },
+        "EMPTY_BIZSMSGIDR": {
+          "root_cause": "AppHdr/BizMsgIdr is present but empty (length 0). The field requires at least 1 character.",
+          "fix": "Generate a unique message identifier and set it as the BizMsgIdr value. Prefer to copy GrpHdr/MsgId if present in the Document; otherwise generate MSG-YYYYMMDD-001 using today's date.",
+          "dummy_value": "MSG-20260610-001",
+          "example": "<BizMsgIdr>MSG-20260610-001</BizMsgIdr>",
+          "notes": "Max35Text field — value must be 1-35 characters. Must equal GrpHdr/MsgId when present (see BIZMSGIDR_EQ_GRPHDR_MSGID rule)."
+        },
         "EMPTY_FININSTNID": {
           "root_cause": "A FinInstnId element is present but completely empty (no BICFI, no Nm, no ClrSysMmbId).",
           "fix": "Add a BICFI child element inside FinInstnId using an appropriate BIC from dummy_data.banks."
@@ -5206,7 +5255,7 @@
           "max_length": 36,
           "min_length": 36,
           "example": "4a1a0945-5772-409a-83ba-240e666e0267",
-          "notes": "UUID v4 \u2014 mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+          "notes": "UUID v4 — mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
         },
         "MsgId": {
           "type": "Max35Text",
@@ -5589,6 +5638,13 @@
         "XCHGRATE_FORBIDDEN": {
           "root_cause": "InstdAmt currency equals IntrBkSttlmAmt currency but XchgRate is present.",
           "fix": "Remove the XchgRate element entirely."
+        },
+        "EMPTY_BIZSMSGIDR": {
+          "root_cause": "AppHdr/BizMsgIdr is present but empty (length 0). The field requires at least 1 character.",
+          "fix": "Generate a unique message identifier and set it as the BizMsgIdr value. Prefer to copy GrpHdr/MsgId if present in the Document; otherwise generate MSG-YYYYMMDD-001 using today's date.",
+          "dummy_value": "MSG-20260610-001",
+          "example": "<BizMsgIdr>MSG-20260610-001</BizMsgIdr>",
+          "notes": "Max35Text field — value must be 1-35 characters. Must equal GrpHdr/MsgId when present (see BIZMSGIDR_EQ_GRPHDR_MSGID rule)."
         },
         "EMPTY_FININSTNID": {
           "root_cause": "A FinInstnId element is present but completely empty (no BICFI, no Nm, no ClrSysMmbId).",
@@ -5828,7 +5884,7 @@
           "max_length": 36,
           "min_length": 36,
           "example": "4a1a0945-5772-409a-83ba-240e666e0267",
-          "notes": "UUID v4 \u2014 mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+          "notes": "UUID v4 — mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
         },
         "MsgId": {
           "type": "Max35Text",
@@ -6192,6 +6248,13 @@
         "XCHGRATE_FORBIDDEN": {
           "root_cause": "InstdAmt currency equals IntrBkSttlmAmt currency but XchgRate is present.",
           "fix": "Remove the XchgRate element entirely."
+        },
+        "EMPTY_BIZSMSGIDR": {
+          "root_cause": "AppHdr/BizMsgIdr is present but empty (length 0). The field requires at least 1 character.",
+          "fix": "Generate a unique message identifier and set it as the BizMsgIdr value. Prefer to copy GrpHdr/MsgId if present in the Document; otherwise generate MSG-YYYYMMDD-001 using today's date.",
+          "dummy_value": "MSG-20260610-001",
+          "example": "<BizMsgIdr>MSG-20260610-001</BizMsgIdr>",
+          "notes": "Max35Text field — value must be 1-35 characters. Must equal GrpHdr/MsgId when present (see BIZMSGIDR_EQ_GRPHDR_MSGID rule)."
         },
         "EMPTY_FININSTNID": {
           "root_cause": "A FinInstnId element is present but completely empty (no BICFI, no Nm, no ClrSysMmbId).",
@@ -6420,7 +6483,7 @@
           "max_length": 36,
           "min_length": 36,
           "example": "4a1a0945-5772-409a-83ba-240e666e0267",
-          "notes": "UUID v4 \u2014 mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+          "notes": "UUID v4 — mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
         },
         "MsgId": {
           "type": "Max35Text",
@@ -6784,6 +6847,13 @@
         "XCHGRATE_FORBIDDEN": {
           "root_cause": "InstdAmt currency equals IntrBkSttlmAmt currency but XchgRate is present.",
           "fix": "Remove the XchgRate element entirely."
+        },
+        "EMPTY_BIZSMSGIDR": {
+          "root_cause": "AppHdr/BizMsgIdr is present but empty (length 0). The field requires at least 1 character.",
+          "fix": "Generate a unique message identifier and set it as the BizMsgIdr value. Prefer to copy GrpHdr/MsgId if present in the Document; otherwise generate MSG-YYYYMMDD-001 using today's date.",
+          "dummy_value": "MSG-20260610-001",
+          "example": "<BizMsgIdr>MSG-20260610-001</BizMsgIdr>",
+          "notes": "Max35Text field — value must be 1-35 characters. Must equal GrpHdr/MsgId when present (see BIZMSGIDR_EQ_GRPHDR_MSGID rule)."
         },
         "EMPTY_FININSTNID": {
           "root_cause": "A FinInstnId element is present but completely empty (no BICFI, no Nm, no ClrSysMmbId).",
@@ -7012,7 +7082,7 @@
           "max_length": 36,
           "min_length": 36,
           "example": "4a1a0945-5772-409a-83ba-240e666e0267",
-          "notes": "UUID v4 \u2014 mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+          "notes": "UUID v4 — mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
         },
         "MsgId": {
           "type": "Max35Text",
@@ -7376,6 +7446,13 @@
         "XCHGRATE_FORBIDDEN": {
           "root_cause": "InstdAmt currency equals IntrBkSttlmAmt currency but XchgRate is present.",
           "fix": "Remove the XchgRate element entirely."
+        },
+        "EMPTY_BIZSMSGIDR": {
+          "root_cause": "AppHdr/BizMsgIdr is present but empty (length 0). The field requires at least 1 character.",
+          "fix": "Generate a unique message identifier and set it as the BizMsgIdr value. Prefer to copy GrpHdr/MsgId if present in the Document; otherwise generate MSG-YYYYMMDD-001 using today's date.",
+          "dummy_value": "MSG-20260610-001",
+          "example": "<BizMsgIdr>MSG-20260610-001</BizMsgIdr>",
+          "notes": "Max35Text field — value must be 1-35 characters. Must equal GrpHdr/MsgId when present (see BIZMSGIDR_EQ_GRPHDR_MSGID rule)."
         },
         "EMPTY_FININSTNID": {
           "root_cause": "A FinInstnId element is present but completely empty (no BICFI, no Nm, no ClrSysMmbId).",
@@ -7604,7 +7681,7 @@
           "max_length": 36,
           "min_length": 36,
           "example": "4a1a0945-5772-409a-83ba-240e666e0267",
-          "notes": "UUID v4 \u2014 mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+          "notes": "UUID v4 — mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
         },
         "MsgId": {
           "type": "Max35Text",
@@ -7987,6 +8064,13 @@
         "XCHGRATE_FORBIDDEN": {
           "root_cause": "InstdAmt currency equals IntrBkSttlmAmt currency but XchgRate is present.",
           "fix": "Remove the XchgRate element entirely."
+        },
+        "EMPTY_BIZSMSGIDR": {
+          "root_cause": "AppHdr/BizMsgIdr is present but empty (length 0). The field requires at least 1 character.",
+          "fix": "Generate a unique message identifier and set it as the BizMsgIdr value. Prefer to copy GrpHdr/MsgId if present in the Document; otherwise generate MSG-YYYYMMDD-001 using today's date.",
+          "dummy_value": "MSG-20260610-001",
+          "example": "<BizMsgIdr>MSG-20260610-001</BizMsgIdr>",
+          "notes": "Max35Text field — value must be 1-35 characters. Must equal GrpHdr/MsgId when present (see BIZMSGIDR_EQ_GRPHDR_MSGID rule)."
         },
         "EMPTY_FININSTNID": {
           "root_cause": "A FinInstnId element is present but completely empty (no BICFI, no Nm, no ClrSysMmbId).",
@@ -8215,7 +8299,7 @@
           "max_length": 36,
           "min_length": 36,
           "example": "4a1a0945-5772-409a-83ba-240e666e0267",
-          "notes": "UUID v4 \u2014 mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+          "notes": "UUID v4 — mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
         },
         "MsgId": {
           "type": "Max35Text",
@@ -8598,6 +8682,13 @@
         "XCHGRATE_FORBIDDEN": {
           "root_cause": "InstdAmt currency equals IntrBkSttlmAmt currency but XchgRate is present.",
           "fix": "Remove the XchgRate element entirely."
+        },
+        "EMPTY_BIZSMSGIDR": {
+          "root_cause": "AppHdr/BizMsgIdr is present but empty (length 0). The field requires at least 1 character.",
+          "fix": "Generate a unique message identifier and set it as the BizMsgIdr value. Prefer to copy GrpHdr/MsgId if present in the Document; otherwise generate MSG-YYYYMMDD-001 using today's date.",
+          "dummy_value": "MSG-20260610-001",
+          "example": "<BizMsgIdr>MSG-20260610-001</BizMsgIdr>",
+          "notes": "Max35Text field — value must be 1-35 characters. Must equal GrpHdr/MsgId when present (see BIZMSGIDR_EQ_GRPHDR_MSGID rule)."
         },
         "EMPTY_FININSTNID": {
           "root_cause": "A FinInstnId element is present but completely empty (no BICFI, no Nm, no ClrSysMmbId).",
@@ -8826,7 +8917,7 @@
           "max_length": 36,
           "min_length": 36,
           "example": "4a1a0945-5772-409a-83ba-240e666e0267",
-          "notes": "UUID v4 \u2014 mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+          "notes": "UUID v4 — mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
         },
         "MsgId": {
           "type": "Max35Text",
@@ -9191,6 +9282,13 @@
           "root_cause": "InstdAmt currency equals IntrBkSttlmAmt currency but XchgRate is present.",
           "fix": "Remove the XchgRate element entirely."
         },
+        "EMPTY_BIZSMSGIDR": {
+          "root_cause": "AppHdr/BizMsgIdr is present but empty (length 0). The field requires at least 1 character.",
+          "fix": "Generate a unique message identifier and set it as the BizMsgIdr value. Prefer to copy GrpHdr/MsgId if present in the Document; otherwise generate MSG-YYYYMMDD-001 using today's date.",
+          "dummy_value": "MSG-20260610-001",
+          "example": "<BizMsgIdr>MSG-20260610-001</BizMsgIdr>",
+          "notes": "Max35Text field — value must be 1-35 characters. Must equal GrpHdr/MsgId when present (see BIZMSGIDR_EQ_GRPHDR_MSGID rule)."
+        },
         "EMPTY_FININSTNID": {
           "root_cause": "A FinInstnId element is present but completely empty (no BICFI, no Nm, no ClrSysMmbId).",
           "fix": "Add a BICFI child element inside FinInstnId using an appropriate BIC from dummy_data.banks."
@@ -9418,7 +9516,7 @@
           "max_length": 36,
           "min_length": 36,
           "example": "4a1a0945-5772-409a-83ba-240e666e0267",
-          "notes": "UUID v4 \u2014 mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+          "notes": "UUID v4 — mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
         },
         "MsgId": {
           "type": "Max35Text",
@@ -9802,6 +9900,13 @@
           "root_cause": "InstdAmt currency equals IntrBkSttlmAmt currency but XchgRate is present.",
           "fix": "Remove the XchgRate element entirely."
         },
+        "EMPTY_BIZSMSGIDR": {
+          "root_cause": "AppHdr/BizMsgIdr is present but empty (length 0). The field requires at least 1 character.",
+          "fix": "Generate a unique message identifier and set it as the BizMsgIdr value. Prefer to copy GrpHdr/MsgId if present in the Document; otherwise generate MSG-YYYYMMDD-001 using today's date.",
+          "dummy_value": "MSG-20260610-001",
+          "example": "<BizMsgIdr>MSG-20260610-001</BizMsgIdr>",
+          "notes": "Max35Text field — value must be 1-35 characters. Must equal GrpHdr/MsgId when present (see BIZMSGIDR_EQ_GRPHDR_MSGID rule)."
+        },
         "EMPTY_FININSTNID": {
           "root_cause": "A FinInstnId element is present but completely empty (no BICFI, no Nm, no ClrSysMmbId).",
           "fix": "Add a BICFI child element inside FinInstnId using an appropriate BIC from dummy_data.banks."
@@ -10029,7 +10134,7 @@
           "max_length": 36,
           "min_length": 36,
           "example": "4a1a0945-5772-409a-83ba-240e666e0267",
-          "notes": "UUID v4 \u2014 mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+          "notes": "UUID v4 — mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
         },
         "MsgId": {
           "type": "Max35Text",
@@ -10393,6 +10498,13 @@
         "XCHGRATE_FORBIDDEN": {
           "root_cause": "InstdAmt currency equals IntrBkSttlmAmt currency but XchgRate is present.",
           "fix": "Remove the XchgRate element entirely."
+        },
+        "EMPTY_BIZSMSGIDR": {
+          "root_cause": "AppHdr/BizMsgIdr is present but empty (length 0). The field requires at least 1 character.",
+          "fix": "Generate a unique message identifier and set it as the BizMsgIdr value. Prefer to copy GrpHdr/MsgId if present in the Document; otherwise generate MSG-YYYYMMDD-001 using today's date.",
+          "dummy_value": "MSG-20260610-001",
+          "example": "<BizMsgIdr>MSG-20260610-001</BizMsgIdr>",
+          "notes": "Max35Text field — value must be 1-35 characters. Must equal GrpHdr/MsgId when present (see BIZMSGIDR_EQ_GRPHDR_MSGID rule)."
         },
         "EMPTY_FININSTNID": {
           "root_cause": "A FinInstnId element is present but completely empty (no BICFI, no Nm, no ClrSysMmbId).",
@@ -10621,7 +10733,7 @@
           "max_length": 36,
           "min_length": 36,
           "example": "4a1a0945-5772-409a-83ba-240e666e0267",
-          "notes": "UUID v4 \u2014 mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+          "notes": "UUID v4 — mandatory in pacs.008/009 under CBPR+. Pattern: [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
         },
         "MsgId": {
           "type": "Max35Text",
@@ -10985,6 +11097,13 @@
         "XCHGRATE_FORBIDDEN": {
           "root_cause": "InstdAmt currency equals IntrBkSttlmAmt currency but XchgRate is present.",
           "fix": "Remove the XchgRate element entirely."
+        },
+        "EMPTY_BIZSMSGIDR": {
+          "root_cause": "AppHdr/BizMsgIdr is present but empty (length 0). The field requires at least 1 character.",
+          "fix": "Generate a unique message identifier and set it as the BizMsgIdr value. Prefer to copy GrpHdr/MsgId if present in the Document; otherwise generate MSG-YYYYMMDD-001 using today's date.",
+          "dummy_value": "MSG-20260610-001",
+          "example": "<BizMsgIdr>MSG-20260610-001</BizMsgIdr>",
+          "notes": "Max35Text field — value must be 1-35 characters. Must equal GrpHdr/MsgId when present (see BIZMSGIDR_EQ_GRPHDR_MSGID rule)."
         },
         "EMPTY_FININSTNID": {
           "root_cause": "A FinInstnId element is present but completely empty (no BICFI, no Nm, no ClrSysMmbId).",

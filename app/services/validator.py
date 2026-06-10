@@ -477,6 +477,9 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             # STEP 4.19: SCHEME NAME ALLOWLIST VALIDATION (Strict Policy)
             self._validate_schme_nm_in_xml(xml_content, report)
 
+            # STEP 4.20: EMPTY CODELIST ELEMENTS (e.g. <Acct><Tp><Cd/> with no value)
+            self._validate_empty_codelist_elements(xml_content, report)
+
             if mode != "Layer 1 only":
                 try:
                     # STEP 4.21: CBPR+ DATETIME FORMAT VALIDATION
@@ -505,6 +508,12 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                     # Base XSD declares FwdgAgt optional, but SWIFT MyStandards
                     # promotes it to mandatory for cross-border direct debits.
                     self._validate_pain008_fwdgagt_rule(xml_content, report)
+
+                    # SWIFT MyStandards Rule: camt.053 LastPgInd=true requires
+                    # exactly one Bal/Tp/CdOrPrtry/Cd='CLBD', and if SubType/Cd
+                    # is present it must not be 'INTM'.
+                    if "camt.053" in detected_type:
+                        self._validate_camt053_lastpgind_clbd(xml_content, report)
 
                     layer2_success = await self._run_layer_2(xml_content, report, detected_type)
                 except Exception as e:
@@ -3603,4 +3612,140 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                         f"{curr_path} → {error_labels['empty_prtry']}",
                         "The <Prtry> tag cannot be empty. Provide a proprietary scheme description or code."
                     ))
+
+    def _validate_empty_codelist_elements(self, xml_content: str, report: ValidationReport) -> None:
+        """
+        Detect empty codelist leaf elements whose value is required but absent.
+
+        Covers:
+          - <Acct><Tp><Cd/> — ExternalCashAccountType1Code must be non-empty
+          - Any other <Cd/> that is a direct child of a known typed container
+            (Tp, CdOrPrtry, SvcLvl, etc.) where an empty value is operationally invalid.
+        """
+        try:
+            parser = etree.XMLParser(recover=True, no_network=True, resolve_entities=False)
+            root = etree.fromstring(xml_content.encode('utf-8'), parser)
+        except Exception:
+            return
+
+        # Map: parent-localname -> (code, human label, fix hint)
+        _EMPTY_CD_PARENTS = {
+            "Tp":         ("ACCT_TP_EMPTY_CD", "Account type code", "Use a valid ExternalCashAccountType1Code such as 'CACC' (Current), 'CASH', 'LOAN', or 'COMM'."),
+            "CdOrPrtry":  ("CDORPRTRY_EMPTY_CD", "Code or proprietary code", "Provide a valid code value or replace <Cd/> with <Prtry>value</Prtry>."),
+            "SvcLvl":     ("SVCLVL_EMPTY_CD",    "Service level code",       "Use a valid ExternalServiceLevel1Code such as 'SEPA', 'NURG', or 'SDVA'."),
+        }
+
+        for el in root.iter():
+            if not isinstance(el.tag, str):
+                continue
+            if el.tag.split('}')[-1] != 'Cd':
+                continue
+            if (el.text or '').strip():
+                continue
+            # empty <Cd/> — check parent context
+            parent = el.getparent()
+            if parent is None or not isinstance(parent.tag, str):
+                continue
+            parent_local = parent.tag.split('}')[-1]
+            entry = _EMPTY_CD_PARENTS.get(parent_local)
+            if entry is None:
+                continue
+            err_code, label, fix = entry
+            line = str(el.sourceline or '/')
+            report.add_issue(ValidationIssue(
+                "ERROR", 3, err_code, line,
+                f"Empty <Cd/> element inside <{parent_local}>: {label} must not be empty.",
+                fix,
+            ))
+
+    def _validate_camt053_lastpgind_clbd(self, xml_content: str, report: ValidationReport) -> None:
+        """
+        SWIFT MyStandards Rule — camt.053:
+        If Stmt/StmtPgntn/LastPgInd = 'true', exactly one Bal/Tp/CdOrPrtry/Cd
+        must have value 'CLBD'. If any Bal/Tp/SubType/Cd is present its value
+        must not be 'INTM'.
+        """
+        try:
+            parser = etree.XMLParser(recover=True, no_network=True, resolve_entities=False)
+            root = etree.fromstring(xml_content.encode('utf-8'), parser)
+        except Exception:
+            return
+
+        def _local(el):
+            return etree.QName(el.tag).localname if isinstance(el.tag, str) else ''
+
+        def _text(el):
+            return (el.text or '').strip()
+
+        def _find_first(parent, *local_names):
+            """Walk a chain of child local names from parent, return final element or None."""
+            cur = parent
+            for name in local_names:
+                cur = next((c for c in cur if _local(c) == name), None)
+                if cur is None:
+                    return None
+            return cur
+
+        # Iterate over every BkToCstmrStmt/Stmt (or just all Stmt elements)
+        for stmt in root.iter():
+            if _local(stmt) != 'Stmt':
+                continue
+
+            # Check LastPgInd
+            pgntn = _find_first(stmt, 'StmtPgntn')
+            if pgntn is None:
+                continue
+            last_pg_el = _find_first(pgntn, 'LastPgInd')
+            if last_pg_el is None:
+                continue
+            if _text(last_pg_el).lower() != 'true':
+                continue
+
+            last_pg_line = str(last_pg_el.sourceline or '/')
+
+            # Collect all Bal/Tp/CdOrPrtry/Cd values
+            clbd_count = 0
+            clbd_line = '/'
+            for bal in stmt:
+                if _local(bal) != 'Bal':
+                    continue
+                tp = _find_first(bal, 'Tp')
+                if tp is None:
+                    continue
+                cdorprtry = _find_first(tp, 'CdOrPrtry')
+                if cdorprtry is not None:
+                    cd_el = _find_first(cdorprtry, 'Cd')
+                    if cd_el is not None and _text(cd_el) == 'CLBD':
+                        clbd_count += 1
+                        clbd_line = str(cd_el.sourceline or '/')
+
+                # Check SubType/Cd != INTM
+                subtype = _find_first(tp, 'SubType')
+                if subtype is not None:
+                    subcd = _find_first(subtype, 'Cd')
+                    if subcd is not None and _text(subcd) == 'INTM':
+                        sub_line = str(subcd.sourceline or '/')
+                        report.add_issue(ValidationIssue(
+                            "ERROR", 3, "CAMT053_LASTPGIND_INTM_SUBTYPE", sub_line,
+                            "When LastPgInd is 'true', Balance SubType Code must not be 'INTM' "
+                            "(intermediate balance not allowed on the final page).",
+                            "Remove <SubType><Cd>INTM</Cd></SubType> from this Balance entry, "
+                            "or change its value to a non-intermediate subtype code.",
+                        ))
+
+            if clbd_count == 0:
+                report.add_issue(ValidationIssue(
+                    "ERROR", 3, "CAMT053_LASTPGIND_CLBD_MISSING", last_pg_line,
+                    "When LastPgInd is 'true', exactly one Balance/Type/CodeOrProprietary/Code "
+                    "must equal 'CLBD' (closing booked balance). No such balance was found.",
+                    "Add a <Bal> entry with <Tp><CdOrPrtry><Cd>CLBD</Cd></CdOrPrtry></Tp> "
+                    "and its corresponding <Amt> to represent the closing booked balance.",
+                ))
+            elif clbd_count > 1:
+                report.add_issue(ValidationIssue(
+                    "ERROR", 3, "CAMT053_LASTPGIND_CLBD_DUPLICATE", clbd_line,
+                    f"When LastPgInd is 'true', exactly one Balance with Code 'CLBD' is required, "
+                    f"but {clbd_count} were found.",
+                    "Remove duplicate CLBD balance entries, keeping exactly one.",
+                ))
 
