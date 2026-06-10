@@ -1,0 +1,48 @@
+{
+  "message": "pacs004",
+  "msgDefIdr": "pacs.004.001.09",
+  "title": "PaymentReturn",
+  "baseVersion": "SR2025",
+  "targetVersion": "SR2026",
+  "source": "pacs SR2026 Changes/pacs004_sr2025_vs_sr2026_comparison.html",
+  "fixedValues": {
+    "bizSvc": "swift.cbprplus.04",
+    "msgDefIdr": "pacs.004.001.09"
+  },
+  "newMandatory": [
+    { "field": "DtOfSgntr", "path": "MandateRelatedInformation/DateOfSignature", "label": "Date Of Signature", "formControls": ["dtOfSgntr"] },
+    { "field": "FrstColltnDt", "path": "MandateRelatedInformation/FirstCollectionDate", "label": "First Collection Date", "formControls": ["frstColltnDt"] },
+    { "field": "FnlColltnDt", "path": "MandateRelatedInformation/FinalCollectionDate", "label": "Final Collection Date", "formControls": ["fnlColltnDt"] },
+    { "field": "FrDt", "path": "FromToDate/FromDate", "label": "From Date", "formControls": ["frDt"] },
+    { "field": "ToDt", "path": "FromToDate/ToDate", "label": "To Date", "formControls": ["toDt"] },
+    { "field": "OrgnlFnlColltnDt", "path": "AmendmentInformationDetails/OriginalFinalCollectionDate", "label": "Original Final Collection Date", "formControls": [] },
+    { "field": "ReqdColltnDt", "path": "OriginalTransactionReference/RequestedCollectionDate", "label": "Requested Collection Date", "formControls": ["reqdColltnDt"] },
+    { "field": "RltdDt", "path": "DocumentLineIdentification/RelatedDate", "label": "Related Date", "formControls": [] },
+    { "field": "Yr", "path": "TaxPeriod/Year", "label": "Tax Period Year", "formControls": [] }
+  ],
+  "mandatoryRemoved": [
+    { "field": "InitgPty", "path": "GroupHeader/InitiatingParty", "label": "Initiating Party", "formControls": [] },
+    { "field": "MndtRltdInf", "path": "MandateRelatedInformation", "label": "Mandate Related Information", "formControls": [] },
+    { "field": "OrgnlTxRef", "path": "OriginalTransactionReference", "label": "Original Transaction Reference", "formControls": [] },
+    { "field": "LclInstrm", "path": "LocalInstrument", "label": "Local Instrument", "formControls": ["lclInstrmCd"] },
+    { "field": "SeqTp", "path": "SequenceType", "label": "Sequence Type", "formControls": ["seqTp"] },
+    { "field": "CtgyPurp", "path": "CategoryPurpose", "label": "Category Purpose", "formControls": ["ctgyPurpCd"] },
+    { "field": "Purp", "path": "Purpose", "label": "Purpose", "formControls": ["purpCd"] }
+  ],
+  "datatypeChanges": [
+    { "field": "BizMsgIdr", "path": "BAH/BusinessMessageIdentifier", "sr2025": "Max35Text", "sr2026": "CBPR_RestrictedFINXMax35Text", "maxLength": 35, "formControls": ["bizMsgId"] }
+  ],
+  "multiplicityChanges": [],
+  "dropdownChanges": [],
+  "newRules": [
+    "CBPR_BusinessMessageIdentifier_FormalRule",
+    "CBPR_From_Instructing_Agent_BIC_FormalRule",
+    "CBPR_To_Instructed_Agent_BIC_1_FormalRule",
+    "CBPR_To_Instructed_Agent_BIC_2_FormalRule"
+  ],
+  "removedRules": [
+    "CBPR_GracePeriod_Hybrid_FormalRule",
+    "CBPR_Business_Service_TextualRule",
+    "CBPR_Business_Service_Usage_TextualRule"
+  ]
+}

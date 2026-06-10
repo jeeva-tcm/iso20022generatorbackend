@@ -1,0 +1,369 @@
+{
+  "message": "pacs.003.001.12",
+  "messageName": "FIToFICustomerDirectDebitV12",
+  "release": "SR2026",
+  "effectiveDate": "2026-11-15",
+  "description": "Validation rules for Direct Debit Transfer (pacs.003) under SWIFT CBPR+ SR2026. Key change: unstructured postal addresses are no longer accepted; hybrid or fully structured addresses required.",
+
+  "rules": [
+
+    {
+      "ruleId": "SR2026-ADDR-001",
+      "name": "PostalAddressStructureMandate",
+      "severity": "ERROR",
+      "category": "Address",
+      "scope": [
+        "DrctDbtTxInf/Dbtr/PstlAdr",
+        "DrctDbtTxInf/Cdtr/PstlAdr",
+        "DrctDbtTxInf/UltmtDbtr/PstlAdr",
+        "DrctDbtTxInf/UltmtCdtr/PstlAdr",
+        "DrctDbtTxInf/DbtrAgt/FinInstnId/PstlAdr",
+        "DrctDbtTxInf/CdtrAgt/FinInstnId/PstlAdr",
+        "DrctDbtTxInf/IntrmyAgt1/FinInstnId/PstlAdr"
+      ],
+      "description": "From SR2026, fully unstructured addresses (AdrLine only) are no longer permitted. A postal address MUST be either fully structured or hybrid (minimum TwnNm + Ctry required in structured fields).",
+      "condition": "If PstlAdr is present",
+      "requirement": "PstlAdr MUST contain TwnNm AND Ctry. Use of AdrLine alone (fully unstructured) is rejected.",
+      "validFormats": ["STRUCTURED", "HYBRID"],
+      "invalidFormats": ["UNSTRUCTURED"],
+      "hybridRule": {
+        "mandatoryStructuredFields": ["TwnNm", "Ctry"],
+        "optionalStructuredFields": ["StrtNm", "BldgNb", "BldgNm", "PstCd", "CtrySubDvsn"],
+        "maxAdrLines": 2
+      },
+      "reference": "SWIFT CBPR+ SR2026 Usage Guidelines – Postal Address"
+    },
+
+    {
+      "ruleId": "SR2026-ADDR-002",
+      "name": "CountryCodeFormat",
+      "severity": "ERROR",
+      "category": "Address",
+      "scope": ["//PstlAdr/Ctry"],
+      "description": "Country code MUST be a valid ISO 3166-1 alpha-2 code (2 uppercase letters).",
+      "pattern": "^[A-Z]{2}$",
+      "reference": "ISO 3166-1 alpha-2"
+    },
+
+    {
+      "ruleId": "SR2026-GRP-001",
+      "name": "GroupHeaderMsgIdPresence",
+      "severity": "ERROR",
+      "category": "GroupHeader",
+      "xpath": "FIToFICstmrDrctDbt/GrpHdr/MsgId",
+      "description": "Message Identification is mandatory and must be unique.",
+      "minLength": 1,
+      "maxLength": 35,
+      "pattern": "[0-9a-zA-Z/\\-?:().,'+ ]{1,35}"
+    },
+
+    {
+      "ruleId": "SR2026-GRP-002",
+      "name": "GroupHeaderCreationDateTime",
+      "severity": "ERROR",
+      "category": "GroupHeader",
+      "xpath": "FIToFICstmrDrctDbt/GrpHdr/CreDtTm",
+      "description": "Creation Date and Time is mandatory. Must be in ISO 8601 format (YYYY-MM-DDThh:mm:ss).",
+      "format": "ISO8601DateTime"
+    },
+
+    {
+      "ruleId": "SR2026-GRP-003",
+      "name": "NumberOfTransactionsConsistency",
+      "severity": "ERROR",
+      "category": "GroupHeader",
+      "xpath": "FIToFICstmrDrctDbt/GrpHdr/NbOfTxs",
+      "description": "NbOfTxs must equal the actual count of DrctDbtTxInf blocks in the message.",
+      "crossFieldRule": "count(FIToFICstmrDrctDbt/DrctDbtTxInf) = FIToFICstmrDrctDbt/GrpHdr/NbOfTxs"
+    },
+
+    {
+      "ruleId": "SR2026-GRP-004",
+      "name": "ControlSumConsistency",
+      "severity": "ERROR",
+      "category": "GroupHeader",
+      "xpath": "FIToFICstmrDrctDbt/GrpHdr/CtrlSum",
+      "description": "If present, CtrlSum must equal the sum of all DrctDbtTxInf/IntrBkSttlmAmt values.",
+      "crossFieldRule": "sum(FIToFICstmrDrctDbt/DrctDbtTxInf/IntrBkSttlmAmt) = FIToFICstmrDrctDbt/GrpHdr/CtrlSum"
+    },
+
+    {
+      "ruleId": "SR2026-GRP-005",
+      "name": "SettlementMethodPresence",
+      "severity": "ERROR",
+      "category": "GroupHeader",
+      "xpath": "FIToFICstmrDrctDbt/GrpHdr/SttlmInf/SttlmMtd",
+      "description": "Settlement Method is mandatory in GroupHeader.",
+      "allowedValues": ["CLRG", "COVE", "INDA", "INGA"]
+    },
+
+    {
+      "ruleId": "SR2026-TXN-001",
+      "name": "PaymentIdEndToEndId",
+      "severity": "ERROR",
+      "category": "TransactionIdentification",
+      "xpath": "FIToFICstmrDrctDbt/DrctDbtTxInf/PmtId/EndToEndId",
+      "description": "End-to-End Identification is mandatory. If not provided by the originator, use 'NOTPROVIDED'.",
+      "maxLength": 35,
+      "notEmpty": true
+    },
+
+    {
+      "ruleId": "SR2026-TXN-002",
+      "name": "UETRFormat",
+      "severity": "ERROR",
+      "category": "TransactionIdentification",
+      "xpath": "FIToFICstmrDrctDbt/DrctDbtTxInf/PmtId/UETR",
+      "description": "UETR (Unique End-to-end Transaction Reference) must be a valid RFC 4122 UUID v4.",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "mandatory": true
+    },
+
+    {
+      "ruleId": "SR2026-TXN-003",
+      "name": "InterBankSettlementAmount",
+      "severity": "ERROR",
+      "category": "Amount",
+      "xpath": "FIToFICstmrDrctDbt/DrctDbtTxInf/IntrBkSttlmAmt",
+      "description": "Interbank Settlement Amount is mandatory. Must be greater than zero. Currency attribute (Ccy) must be a valid ISO 4217 3-letter code.",
+      "greaterThan": 0,
+      "currencyPattern": "^[A-Z]{3}$"
+    },
+
+    {
+      "ruleId": "SR2026-TXN-004",
+      "name": "InterBankSettlementDate",
+      "severity": "ERROR",
+      "category": "Date",
+      "xpath": "FIToFICstmrDrctDbt/DrctDbtTxInf/IntrBkSttlmDt",
+      "description": "Interbank Settlement Date is mandatory. Format: YYYY-MM-DD.",
+      "format": "ISODate"
+    },
+
+    {
+      "ruleId": "SR2026-TXN-005",
+      "name": "PaymentTypeInformationLocalInstrument",
+      "severity": "WARNING",
+      "category": "PaymentTypeInformation",
+      "xpath": "FIToFICstmrDrctDbt/DrctDbtTxInf/PmtTpInf/LclInstrm",
+      "description": "Local Instrument code should be present when applicable for scheme identification (e.g. CORE, B2B for SEPA).",
+      "allowedProprietary": true
+    },
+
+    {
+      "ruleId": "SR2026-TXN-006",
+      "name": "SequenceType",
+      "severity": "ERROR",
+      "category": "PaymentTypeInformation",
+      "xpath": "FIToFICstmrDrctDbt/DrctDbtTxInf/PmtTpInf/SeqTp",
+      "description": "Sequence Type is mandatory for direct debit. Must be one of the allowed codes.",
+      "allowedValues": ["FRST", "RCUR", "FNAL", "OOFF", "RPRE"]
+    },
+
+    {
+      "ruleId": "SR2026-TXN-007",
+      "name": "MandateRelatedInformation",
+      "severity": "ERROR",
+      "category": "Mandate",
+      "xpath": "FIToFICstmrDrctDbt/DrctDbtTxInf/DrctDbtTx/MndtRltdInf",
+      "description": "Mandate Related Information block is mandatory for direct debit transactions.",
+      "requiredChildren": ["MndtId", "DtOfSgntr"],
+      "MndtId": { "maxLength": 35, "notEmpty": true },
+      "DtOfSgntr": { "format": "ISODate" }
+    },
+
+    {
+      "ruleId": "SR2026-TXN-008",
+      "name": "AmendmentIndicator",
+      "severity": "ERROR",
+      "category": "Mandate",
+      "xpath": "FIToFICstmrDrctDbt/DrctDbtTxInf/DrctDbtTx/MndtRltdInf/AmdmntInd",
+      "description": "If AmdmntInd is 'true', AmdmntInfDtls must be present with at least one populated amendment detail.",
+      "crossFieldRule": "if AmdmntInd = true then AmdmntInfDtls must be present"
+    },
+
+    {
+      "ruleId": "SR2026-TXN-009",
+      "name": "CreditorSchemeId",
+      "severity": "WARNING",
+      "category": "Creditor",
+      "xpath": "FIToFICstmrDrctDbt/DrctDbtTxInf/DrctDbtTx/CdtrSchmeId",
+      "description": "Creditor Scheme Identification is recommended for scheme-based direct debits (e.g. SEPA). When used, PrvtId/Othr/SchmeNm/Prtry should indicate the scheme (e.g. 'SEPA')."
+    },
+
+    {
+      "ruleId": "SR2026-TXN-010",
+      "name": "CreditorAgentBIC",
+      "severity": "ERROR",
+      "category": "Agent",
+      "xpath": "FIToFICstmrDrctDbt/DrctDbtTxInf/CdtrAgt/FinInstnId/BICFI",
+      "description": "Creditor Agent BIC must be a valid 8 or 11 character BIC (ISO 9362).",
+      "pattern": "^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$",
+      "mandatory": true
+    },
+
+    {
+      "ruleId": "SR2026-TXN-011",
+      "name": "DebtorAgentBIC",
+      "severity": "ERROR",
+      "category": "Agent",
+      "xpath": "FIToFICstmrDrctDbt/DrctDbtTxInf/DbtrAgt/FinInstnId/BICFI",
+      "description": "Debtor Agent BIC must be a valid 8 or 11 character BIC (ISO 9362).",
+      "pattern": "^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$",
+      "mandatory": true
+    },
+
+    {
+      "ruleId": "SR2026-TXN-012",
+      "name": "CreditorNamePresence",
+      "severity": "ERROR",
+      "category": "Creditor",
+      "xpath": "FIToFICstmrDrctDbt/DrctDbtTxInf/Cdtr/Nm",
+      "description": "Creditor Name is mandatory. Max 140 characters.",
+      "maxLength": 140,
+      "notEmpty": true
+    },
+
+    {
+      "ruleId": "SR2026-TXN-013",
+      "name": "CreditorAccountIBAN",
+      "severity": "ERROR",
+      "category": "Account",
+      "xpath": "FIToFICstmrDrctDbt/DrctDbtTxInf/CdtrAcct/Id",
+      "description": "Creditor Account Identification is mandatory. IBAN is preferred where applicable.",
+      "preferredFormat": "IBAN",
+      "ibanPattern": "^[A-Z]{2}[0-9]{2}[A-Z0-9]{1,30}$"
+    },
+
+    {
+      "ruleId": "SR2026-TXN-014",
+      "name": "DebtorNamePresence",
+      "severity": "ERROR",
+      "category": "Debtor",
+      "xpath": "FIToFICstmrDrctDbt/DrctDbtTxInf/Dbtr/Nm",
+      "description": "Debtor Name is mandatory. Max 140 characters.",
+      "maxLength": 140,
+      "notEmpty": true
+    },
+
+    {
+      "ruleId": "SR2026-TXN-015",
+      "name": "DebtorAccountIBAN",
+      "severity": "ERROR",
+      "category": "Account",
+      "xpath": "FIToFICstmrDrctDbt/DrctDbtTxInf/DbtrAcct/Id",
+      "description": "Debtor Account Identification is mandatory. IBAN is preferred where applicable.",
+      "preferredFormat": "IBAN",
+      "ibanPattern": "^[A-Z]{2}[0-9]{2}[A-Z0-9]{1,30}$"
+    },
+
+    {
+      "ruleId": "SR2026-TXN-016",
+      "name": "PurposeCode",
+      "severity": "WARNING",
+      "category": "Purpose",
+      "xpath": "FIToFICstmrDrctDbt/DrctDbtTxInf/Purp/Cd",
+      "description": "Purpose code is recommended. Must be a valid ISO 20022 ExternalPurpose1Code value.",
+      "codeListReference": "ExternalPurpose1Code"
+    },
+
+    {
+      "ruleId": "SR2026-TXN-017",
+      "name": "RemittanceInformationLength",
+      "severity": "ERROR",
+      "category": "RemittanceInformation",
+      "xpath": "FIToFICstmrDrctDbt/DrctDbtTxInf/RmtInf/Ustrd",
+      "description": "Unstructured remittance information max 140 characters per occurrence.",
+      "maxLength": 140,
+      "maxOccurrences": 1
+    },
+
+    {
+      "ruleId": "SR2026-TXN-018",
+      "name": "RemittanceStructuredOrUnstructured",
+      "severity": "ERROR",
+      "category": "RemittanceInformation",
+      "xpath": "FIToFICstmrDrctDbt/DrctDbtTxInf/RmtInf",
+      "description": "RmtInf must contain either Ustrd or Strd, not both in the same transaction.",
+      "mutualExclusion": ["Ustrd", "Strd"]
+    },
+
+    {
+      "ruleId": "SR2026-TXN-019",
+      "name": "ChargesBearer",
+      "severity": "ERROR",
+      "category": "Charges",
+      "xpath": "FIToFICstmrDrctDbt/DrctDbtTxInf/ChrgBr",
+      "description": "Charges Bearer is mandatory. Must be one of the allowed codes.",
+      "allowedValues": ["DEBT", "CRED", "SHAR", "SLEV"],
+      "mandatory": true
+    },
+
+    {
+      "ruleId": "SR2026-TXN-020",
+      "name": "InstructedAmountCurrencyConsistency",
+      "severity": "WARNING",
+      "category": "Amount",
+      "xpath": "FIToFICstmrDrctDbt/DrctDbtTxInf/InstdAmt",
+      "description": "If InstructedAmount is present, its currency (Ccy) should be consistent with the account currency of the Debtor, where known.",
+      "currencyPattern": "^[A-Z]{3}$"
+    },
+
+    {
+      "ruleId": "SR2026-TXN-021",
+      "name": "CategoryPurposeCode",
+      "severity": "WARNING",
+      "category": "PaymentTypeInformation",
+      "xpath": "FIToFICstmrDrctDbt/DrctDbtTxInf/PmtTpInf/CtgyPurp/Cd",
+      "description": "Category Purpose code, if present, must be a valid ExternalCategoryPurpose1Code.",
+      "codeListReference": "ExternalCategoryPurpose1Code"
+    },
+
+    {
+      "ruleId": "SR2026-CHRSET-001",
+      "name": "CharacterSetCompliance",
+      "severity": "ERROR",
+      "category": "CharacterSet",
+      "scope": ["ALL_TEXT_FIELDS"],
+      "description": "All text fields must use UTF-8. The SWIFT Latin character set applies for CBPR+ usage: a-z, A-Z, 0-9, and / - ? : ( ) . , ' + space.",
+      "allowedCharacterSet": "SWIFT_LATIN",
+      "pattern": "^[a-zA-Z0-9/\\-?:().,'+ ]*$"
+    },
+
+    {
+      "ruleId": "SR2026-VERS-001",
+      "name": "MessageVersionCheck",
+      "severity": "ERROR",
+      "category": "MessageVersion",
+      "description": "Message must conform to pacs.003.001.12 (FIToFICustomerDirectDebitV12) namespace.",
+      "expectedNamespace": "urn:iso:std:iso:20022:tech:xsd:pacs.003.001.12"
+    }
+
+  ],
+
+  "addressFormats": {
+    "STRUCTURED": {
+      "description": "All address components in dedicated elements. Preferred format.",
+      "requiredElements": ["TwnNm", "Ctry"],
+      "optionalElements": ["StrtNm", "BldgNb", "BldgNm", "PstBx", "PstCd", "CtrySubDvsn"],
+      "prohibitedElements": ["AdrLine"]
+    },
+    "HYBRID": {
+      "description": "Mix of structured mandatory elements and up to 2 unstructured AdrLine elements.",
+      "requiredElements": ["TwnNm", "Ctry"],
+      "optionalElements": ["StrtNm", "BldgNb", "BldgNm", "PstBx", "PstCd", "CtrySubDvsn"],
+      "maxAdrLines": 2
+    },
+    "UNSTRUCTURED": {
+      "description": "AdrLine only. REJECTED from SR2026 (November 2026 onwards).",
+      "status": "REJECTED_SR2026"
+    }
+  },
+
+  "references": [
+    "SWIFT CBPR+ Usage Guidelines SR2026",
+    "ISO 20022 pacs.003.001.12 XSD – https://www.iso20022.org/iso-20022-message-definitions",
+    "PMPG Hybrid Postal Address Guidelines v1.10 (Oct 2025)",
+    "SWIFT SR2026 Structured Address Mandate – effective November 2026"
+  ]
+}

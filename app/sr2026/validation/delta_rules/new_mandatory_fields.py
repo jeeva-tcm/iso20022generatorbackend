@@ -82,10 +82,13 @@ class NewMandatoryFieldsValidator:
         app_hdr_nodes = root_element.xpath("//*[local-name()='AppHdr']")
         biz_msg_idr_val = None   # captured for cross-field check later
 
-        # Determine if this is a pacs.008 message (even if AppHdr is missing)
+        # Determine if this is a pacs.008 or pacs.003 message (even if AppHdr is missing)
         is_pacs008 = False
+        is_pacs003 = False
         if root_element.xpath("//*[local-name()='FIToFICstmrCdtTrf']"):
             is_pacs008 = True
+        if root_element.xpath("//*[local-name()='FIToFICstmrDrctDbt']"):
+            is_pacs003 = True
 
         if app_hdr_nodes:
             app_hdr = app_hdr_nodes[0]
@@ -95,6 +98,23 @@ class NewMandatoryFieldsValidator:
 
             if msg_def_idr_nodes and "pacs.008" in _text(msg_def_idr_nodes[0]):
                 is_pacs008 = True
+            if msg_def_idr_nodes and "pacs.003" in _text(msg_def_idr_nodes[0]):
+                is_pacs003 = True
+
+            if is_pacs003 and not is_pacs008:
+                # ── BizSvc must be swift.cbprplus.03 for pacs.003 ─────────
+                expected_biz_svc_003 = "swift.cbprplus.03"
+                if biz_svc_nodes:
+                    val = _text(biz_svc_nodes[0])
+                    if val != expected_biz_svc_003:
+                        report.add_issue(ValidationIssue(
+                            severity="ERROR",
+                            code="INVALID_BIZ_SVC",
+                            path="//AppHdr/BizSvc",
+                            message=f"The value '{val}' is not valid. It must be one of the following values : {expected_biz_svc_003}",
+                            line=biz_svc_nodes[0].sourceline or 1,
+                            fix=f"Set <BizSvc>{expected_biz_svc_003}</BizSvc> in AppHdr.",
+                        ))
 
             if is_pacs008:
                 # ── BizSvc must be swift.cbprplus.04 ──────────────────────

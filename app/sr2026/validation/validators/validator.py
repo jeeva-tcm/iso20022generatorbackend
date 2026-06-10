@@ -10,6 +10,8 @@ from app.sr2026.validation.delta_rules.lei_validator import LEIValidator
 from app.sr2026.validation.delta_rules.tax_validator import TaxValidator
 from app.sr2026.validation.delta_rules.new_mandatory_fields import NewMandatoryFieldsValidator
 from app.sr2026.validation.delta_rules.pacs009_validator import Pacs009Validator
+from app.sr2026.validation.delta_rules.pacs009adv_validator import Pacs009AdvValidator
+from app.sr2026.validation.delta_rules.pacs003_validator import Pacs003Validator
 from app.sr2026.validation.delta_rules.warning_engine import WarningEngine
 from app.schemas.api_validation import ApiValidateResponse, ApiIssue
 
@@ -95,6 +97,12 @@ class SR2026Validator:
 
         # Step 9.5: Pacs.009 specific rules
         Pacs009Validator.validate(root_element, report, message_type)
+
+        # Step 9.51: Pacs.009 ADV-specific rules (pre-advice variant)
+        Pacs009AdvValidator.validate(root_element, report, message_type)
+
+        # Step 9.6: Pacs.003 (Direct Debit) specific rules — SR2026 only
+        Pacs003Validator.validate(root_element, report, message_type)
 
         # Step 10: Warning Engine
         WarningEngine.evaluate(root_element, report)

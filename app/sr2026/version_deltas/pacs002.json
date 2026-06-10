@@ -1,0 +1,55 @@
+{
+  "message": "pacs002",
+  "msgDefIdr": "pacs.002.001.10",
+  "title": "FIToFIPaymentStatusReport",
+  "baseVersion": "SR2025",
+  "targetVersion": "SR2026",
+  "source": "pacs SR2026 Changes/pacs002_sr2025_vs_sr2026_diff.html",
+  "fixedValues": {
+    "bizSvc": "swift.cbprplus.04",
+    "msgDefIdr": "pacs.002.001.10"
+  },
+  "newMandatory": [
+    { "field": "BizSvc", "path": "BAH/BusinessService", "label": "Business Service", "formControls": ["bizSvc"] },
+    { "field": "TxInfAndSts", "path": "TransactionInformationAndStatus", "label": "Transaction Information And Status", "formControls": [] },
+    { "field": "OrgnlGrpInf", "path": "TxInfAndSts/OriginalGroupInformation", "label": "Original Group Information", "formControls": [] },
+    { "field": "OrgnlEndToEndId", "path": "TxInfAndSts/OriginalEndToEndIdentification", "label": "Original End To End Id", "formControls": ["orgnlEndToEndId"] },
+    { "field": "OrgnlUETR", "path": "TxInfAndSts/OriginalUETR", "label": "Original UETR", "formControls": ["orgnlUetr"] },
+    { "field": "TxSts", "path": "TxInfAndSts/TransactionStatus", "label": "Transaction Status", "formControls": ["txSts"] },
+    { "field": "InstgAgt", "path": "TxInfAndSts/InstructingAgent", "label": "Instructing Agent", "formControls": ["instgAgtBic"] },
+    { "field": "InstdAgt", "path": "TxInfAndSts/InstructedAgent", "label": "Instructed Agent", "formControls": ["instdAgtBic"] },
+    { "field": "OrgnlTwnNm", "path": "StsRsnInf/Originator/PostalAddress/TownName", "label": "Originator Town Name", "formControls": ["orgnlTwnNm"] },
+    { "field": "OrgnlCtry", "path": "StsRsnInf/Originator/PostalAddress/Country", "label": "Originator Country", "formControls": ["orgnlCtry"] }
+  ],
+  "mandatoryRemoved": [],
+  "datatypeChanges": [
+    { "field": "BizMsgIdr", "path": "BAH/BusinessMessageIdentifier", "sr2025": "Max35Text", "sr2026": "CBPR_RestrictedFINXMax35Text", "maxLength": 35, "formControls": ["bizMsgId"] },
+    { "field": "OrgnlInstrId", "path": "TxInfAndSts/OriginalInstructionIdentification", "sr2025": "Max35Text", "sr2026": "CBPR_RestrictedFINXMax16Text", "maxLength": 16, "formControls": ["orgnlInstrId"], "note": "Length reduced 35 -> 16" },
+    { "field": "OrgnlEndToEndId", "path": "TxInfAndSts/OriginalEndToEndIdentification", "sr2025": "Max35Text", "sr2026": "CBPR_RestrictedFINXMax35Text", "maxLength": 35, "formControls": ["orgnlEndToEndId"] },
+    { "field": "OrgnlTxId", "path": "TxInfAndSts/OriginalTransactionIdentification", "sr2025": "Max35Text", "sr2026": "CBPR_RestrictedFINXMax35Text", "maxLength": 35, "formControls": ["orgnlTxId"] },
+    { "field": "MmbId", "path": "ClearingSystemMemberIdentification/MemberIdentification", "sr2025": "Max35Text", "sr2026": "CBPR_RestrictedFINXMax28Text", "maxLength": 28, "note": "Length reduced 35 -> 28" },
+    { "field": "AddtlInf", "path": "TxInfAndSts/StsRsnInf/AdditionalInformation", "sr2025": "Max105Text", "sr2026": "CBPR_RestrictedFINXMax105Text", "maxLength": 105, "formControls": ["addtlInf"] },
+    { "field": "CreDt", "path": "BAH/CreationDate", "sr2025": "ISODate", "sr2026": "CBPR_DateTime" },
+    { "field": "CreDtTm", "path": "GroupHeader/CreationDateTime", "sr2025": "ISODateTime", "sr2026": "CBPR_DateTime" },
+    { "field": "Dt", "path": "TxInfAndSts/EffectiveInterbankSettlementDate/Date", "sr2025": "ISODate", "sr2026": "CBPR_Date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    { "field": "Prty", "path": "BAH/Priority", "sr2025": "Priority1Code", "sr2026": "Priority2Code" },
+    { "field": "Amt", "path": "TxInfAndSts/ChargesInformation/Amount", "sr2025": "ActiveOrHistoricCurrencyAndAmount", "sr2026": "CBPR_Amount" }
+  ],
+  "multiplicityChanges": [
+    { "field": "Rltd", "path": "BAH/Related", "sr2025Max": 99, "sr2026Max": 1 },
+    { "field": "StsRsnInf", "path": "TxInfAndSts/StatusReasonInformation", "sr2025Max": 99, "sr2026Max": 1 },
+    { "field": "AddtlInf", "path": "TxInfAndSts/StsRsnInf/AdditionalInformation", "sr2025Max": 99, "sr2026Max": 2, "formControls": ["addtlInf"] },
+    { "field": "AdrLine", "path": "Originator PostalAddress/AddressLine", "sr2025Max": 7, "sr2026Max": 2 }
+  ],
+  "dropdownChanges": [],
+  "newRules": [
+    "CBPR_BusinessMessageIdentifier_FormalRule",
+    "CBPR_From_Instructing_Agent_BIC_FormalRule",
+    "CBPR_To_Instructed_Agent_BIC_1_FormalRule",
+    "CBPR_To_Instructed_Agent_BIC_2_FormalRule"
+  ],
+  "removedRules": [
+    "CBPR_Business_Service_TextualRule",
+    "CBPR_Business_Service_Usage_TextualRule"
+  ]
+}

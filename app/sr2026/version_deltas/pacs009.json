@@ -1,0 +1,43 @@
+{
+  "message": "pacs009",
+  "msgDefIdr": "pacs.009.001.08",
+  "title": "FinancialInstitutionCreditTransfer (CORE)",
+  "baseVersion": "SR2025",
+  "targetVersion": "SR2026",
+  "source": "pacs SR2026 Changes/pacs009_sr2025_vs_sr2026_full_comparison.html",
+  "fixedValues": {
+    "bizSvc": "swift.cbprplus.04",
+    "msgDefIdr": "pacs.009.001.08"
+  },
+  "newMandatory": [
+    { "field": "DbtrAcctProxyTp", "path": "CdtTrfTxInf/DebtorAccount/Proxy/Type", "label": "Debtor Account Proxy Type", "formControls": ["dbtrAcctPrxyTp"] },
+    { "field": "CdtrAcctProxyTp", "path": "CdtTrfTxInf/CreditorAccount/Proxy/Type", "label": "Creditor Account Proxy Type", "formControls": ["cdtrAcctPrxyTp"] },
+    { "field": "DbtrAgtAcctProxyTp", "path": "CdtTrfTxInf/DebtorAgentAccount/Proxy/Type", "label": "Debtor Agent Account Proxy Type", "formControls": ["dbtrAgtAcctPrxyTp"] },
+    { "field": "SttlmAcctProxyTp", "path": "GrpHdr/SettlementInformation/SettlementAccount/Proxy/Type", "label": "Settlement Account Proxy Type", "formControls": ["sttlmAcctPrxyTp"] }
+  ],
+  "mandatoryRemoved": [],
+  "datatypeChanges": [
+    { "field": "BizMsgIdr", "path": "BAH/BusinessMessageIdentifier", "sr2025": "Max35Text", "sr2026": "CBPR_RestrictedFINXMax35Text", "maxLength": 35, "formControls": ["bizMsgId"] },
+    { "field": "IntrBkSttlmDt", "path": "CdtTrfTxInf/InterbankSettlementDate", "sr2025": "ISODate", "sr2026": "CBPR_Date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "formControls": ["intrBkSttlmDt"] },
+    { "field": "DbtrAcctNm", "path": "CdtTrfTxInf/DebtorAccount/Name", "sr2025": "(none)", "sr2026": "CBPR_RestrictedFINXMax70Text", "maxLength": 70 }
+  ],
+  "multiplicityChanges": [],
+  "dropdownChanges": [
+    { "field": "SvcLvl", "path": "CdtTrfTxInf/PmtTpInf/ServiceLevel/Code", "sr2026Allowed": ["G004"], "rule": "CBPR_GPI_ServiceLevel_Code_FormalRule", "note": "GPI ServiceLevel Code in pacs.009 CORE must be 'G004'" }
+  ],
+  "newRules": [
+    "CBPR_BusinessMessageIdentifier_FormalRule",
+    "CBPR_From_Instructing_Agent_BIC_FormalRule",
+    "CBPR_To_Instructed_Agent_BIC_1_FormalRule",
+    "CBPR_To_Instructed_Agent_BIC_2_FormalRule",
+    "CBPR_GPI_ServiceLevel_Code_FormalRule"
+  ],
+  "removedRules": [
+    "CBPR_E2E_CORE_TextualRule",
+    "CBPR_GracePeriod_Hybrid_FormalRule",
+    "CBPR_GracePeriod_Structured_FormalRule",
+    "CBPR_GracePeriod_Unstructured_FormalRule",
+    "CBPR_Business_Service_TextualRule",
+    "CBPR_Business_Service_Usage_TextualRule"
+  ]
+}

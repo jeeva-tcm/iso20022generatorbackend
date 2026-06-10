@@ -31,9 +31,9 @@ class Layer2Validator:
         elif "pacs.008" in msg_type_clean:
             # We want standard pacs.008, not STP
             match_term = "pacs_008_001_08_fito"  # Matches pacs_008_001_08_FIToFICustomer
-        elif "pacs.009.cov" in msg_type_clean or "pacs.009_cov" in msg_type_clean:
+        elif "pacs.009.cov" in msg_type_clean or "pacs.009_cov" in msg_type_clean or ("pacs.009" in msg_type_clean and "_cov" in msg_type_clean):
             match_term = "pacs_009_001_08_cov"
-        elif "pacs.009.adv" in msg_type_clean or "pacs.009_adv" in msg_type_clean:
+        elif "pacs.009.adv" in msg_type_clean or "pacs.009_adv" in msg_type_clean or ("pacs.009" in msg_type_clean and "_adv" in msg_type_clean):
             match_term = "pacs_009_001_08_adv"
         elif "pacs.009" in msg_type_clean:
             match_term = "pacs_009_001_08_financial"  # Matches pacs_009_001_08_FinancialInstitutionCreditTransfer

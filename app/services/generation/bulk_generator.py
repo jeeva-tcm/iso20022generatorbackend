@@ -690,6 +690,7 @@ MESSAGE_BLOCKS: Dict[str, List[Dict]] = {
         {"id": "intermediary_agent_2_account","label": "Intermediary Agent 2 Account","mandatory": False, "requires": ["intermediary_agent_2"]},
         {"id": "intermediary_agent_3",       "label": "Intermediary Agent 3",        "mandatory": False, "requires": ["intermediary_agent_2"]},
         {"id": "intermediary_agent_3_account","label": "Intermediary Agent 3 Account","mandatory": False, "requires": ["intermediary_agent_3"]},
+        {"id": "underlying_fi_transaction",   "label": "Underlying FI Transaction (ADV)", "mandatory": True},
         {"id": "payment_type_information",   "label": "Payment Type Information",    "mandatory": False},
         {"id": "remittance_information",     "label": "Remittance Information",      "mandatory": False},
         {"id": "settlement_time_request",    "label": "Settlement Time Request",     "mandatory": False},
@@ -1126,7 +1127,7 @@ def _gen_pacs009(selected: set, idx: int, is_cov: bool = False, is_adv: bool = F
     uetr = scenario.uetr
     cre_dt = rng_datetime()
     sttlm_dt = rng_date(1)
-    if is_adv or is_cov:
+    if is_cov:
         sttlm_mtd = "COVE"
     else:
         sttlm_mtd = random.choice(SETTLEMENT_METHODS)
@@ -1242,6 +1243,24 @@ def _gen_pacs009(selected: set, idx: int, is_cov: bool = False, is_adv: bool = F
 \t\t\t\t\t<RmtInf><Ustrd>{xe(rng_id('COVREF', 10))}</Ustrd></RmtInf>
 \t\t\t\t</UndrlygCstmrCdtTrf>
 """
+
+    # 18. UndrlygFITxInf — ADV only
+    if is_adv and "underlying_fi_transaction" in selected:
+        tx += f"""\t\t\t\t<UndrlygFITxInf>
+\t\t\t\t\t<InstrId>{xe(rng_id('UINSTR', 11))}</InstrId>
+\t\t\t\t\t<EndToEndId>{xe(e2e_id)}</EndToEndId>
+\t\t\t\t\t<UETR>{xe(rng_uetr())}</UETR>
+\t\t\t\t\t<IntrBkSttlmAmt Ccy="{xe(ccy)}">{amount}</IntrBkSttlmAmt>
+\t\t\t\t\t<IntrBkSttlmDt>{sttlm_dt}</IntrBkSttlmDt>
+\t\t\t\t\t<Dbtr>
+\t\t\t\t\t\t<FinInstnId><BICFI>{xe(debtor_bic)}</BICFI></FinInstnId>
+\t\t\t\t\t</Dbtr>
+\t\t\t\t\t<Cdtr>
+\t\t\t\t\t\t<FinInstnId><BICFI>{xe(creditor_bic)}</BICFI></FinInstnId>
+\t\t\t\t\t</Cdtr>
+\t\t\t\t</UndrlygFITxInf>
+"""
+
 
     # ── v12 namespace and root element ──
     ns = "urn:iso:std:iso:20022:tech:xsd:pacs.009.001.08"

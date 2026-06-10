@@ -214,6 +214,24 @@ async def api_validate(request: ApiValidateRequest, raw_request: Request):
                     if not match.startswith("head."):
                         actual_msg_type = match
                         break
+            
+            # Refine auto-detection using BizSvc for ADV, COV, and STP variants
+            import re as _re_bizsvc
+            try:
+                _xml_src = xml_content if 'xml_content' in locals() else (request.xml_content if hasattr(request, 'xml_content') else getattr(request, 'xml', ''))
+                bizsvc_match = _re_bizsvc.search(r'<BizSvc[^>]*>([^<]+)</BizSvc>', _xml_src)
+                if bizsvc_match:
+                    bizsvc = bizsvc_match.group(1).strip().lower()
+                    if actual_msg_type == "pacs.009.001.08":
+                        if "adv" in bizsvc or bizsvc == "swift.cbprplus.03" or bizsvc == "swift.cbprplus.adv.04":
+                            actual_msg_type = "pacs.009.001.08_ADV"
+                        elif "cov" in bizsvc or bizsvc == "swift.cbprplus.02" or bizsvc == "swift.cbprplus.cov.04":
+                            actual_msg_type = "pacs.009.001.08_COV"
+                    elif actual_msg_type == "pacs.008.001.08":
+                        if "stp" in bizsvc or bizsvc == "swift.cbprplus.02" or bizsvc == "swift.cbprplus.stp.04":
+                            actual_msg_type = "pacs.008.001.08_STP"
+            except Exception:
+                pass
 
         val2026 = SR2026Validator(history_service=history_service)
         return await val2026.validate(request.xml, actual_msg_type)
@@ -242,6 +260,24 @@ async def validate_message(
                     if not match.startswith("head."):
                         actual_msg_type = match
                         break
+            
+            # Refine auto-detection using BizSvc for ADV, COV, and STP variants
+            import re as _re_bizsvc
+            try:
+                _xml_src = xml_content if 'xml_content' in locals() else (request.xml_content if hasattr(request, 'xml_content') else getattr(request, 'xml', ''))
+                bizsvc_match = _re_bizsvc.search(r'<BizSvc[^>]*>([^<]+)</BizSvc>', _xml_src)
+                if bizsvc_match:
+                    bizsvc = bizsvc_match.group(1).strip().lower()
+                    if actual_msg_type == "pacs.009.001.08":
+                        if "adv" in bizsvc or bizsvc == "swift.cbprplus.03" or bizsvc == "swift.cbprplus.adv.04":
+                            actual_msg_type = "pacs.009.001.08_ADV"
+                        elif "cov" in bizsvc or bizsvc == "swift.cbprplus.02" or bizsvc == "swift.cbprplus.cov.04":
+                            actual_msg_type = "pacs.009.001.08_COV"
+                    elif actual_msg_type == "pacs.008.001.08":
+                        if "stp" in bizsvc or bizsvc == "swift.cbprplus.02" or bizsvc == "swift.cbprplus.stp.04":
+                            actual_msg_type = "pacs.008.001.08_STP"
+            except Exception:
+                pass
                 
         val2026 = SR2026Validator(history_service=history_service)
         api_resp = await val2026.validate(request.xml_content, actual_msg_type)
@@ -336,6 +372,24 @@ async def validate_file(
                     if not match.startswith("head."):
                         actual_msg_type = match
                         break
+            
+            # Refine auto-detection using BizSvc for ADV, COV, and STP variants
+            import re as _re_bizsvc
+            try:
+                _xml_src = xml_content if 'xml_content' in locals() else (request.xml_content if hasattr(request, 'xml_content') else getattr(request, 'xml', ''))
+                bizsvc_match = _re_bizsvc.search(r'<BizSvc[^>]*>([^<]+)</BizSvc>', _xml_src)
+                if bizsvc_match:
+                    bizsvc = bizsvc_match.group(1).strip().lower()
+                    if actual_msg_type == "pacs.009.001.08":
+                        if "adv" in bizsvc or bizsvc == "swift.cbprplus.03" or bizsvc == "swift.cbprplus.adv.04":
+                            actual_msg_type = "pacs.009.001.08_ADV"
+                        elif "cov" in bizsvc or bizsvc == "swift.cbprplus.02" or bizsvc == "swift.cbprplus.cov.04":
+                            actual_msg_type = "pacs.009.001.08_COV"
+                    elif actual_msg_type == "pacs.008.001.08":
+                        if "stp" in bizsvc or bizsvc == "swift.cbprplus.02" or bizsvc == "swift.cbprplus.stp.04":
+                            actual_msg_type = "pacs.008.001.08_STP"
+            except Exception:
+                pass
 
         val2026 = SR2026Validator(history_service=history_service)
         api_resp = await val2026.validate(xml_content, actual_msg_type)
@@ -954,25 +1008,79 @@ async def bulk_generate_stream(request: dict, raw_request: Request):
 def get_codelist(list_name: str, raw_request: Request):
     """Serve JSON codelists (like country.json, currency.json) to the frontend.
 
-    Checks x-sr-version header: SR2026 → serve from app.services.validation.app/services/validation/app/services/validation/sr2026/rules/ first,
-    fall back to app/resources/codelists/ if not found there.
-    SR2025 (or absent) → always serve from app/resources/codelists/.
+    Checks x-sr-version header:
+      SR2026 → serve from app/sr2026/rules/ first, fall back to SR2025 codelists.
+      SR2025 (or absent) → serve from app/sr2025/resources/codelists/.
     """
     version = raw_request.headers.get("x-sr-version") or "SR2025"
-    backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    app_dir = os.path.dirname(os.path.abspath(__file__))
 
     if version == "SR2026":
-        sr2026_path = os.path.join(backend_root, "sr2026", "code_sets", f"{list_name}.json")
+        sr2026_path = os.path.join(app_dir, "sr2026", "rules", f"{list_name}.json")
         if os.path.exists(sr2026_path):
             with open(sr2026_path, "r", encoding="utf-8") as f:
                 return json.load(f)
 
-    # SR2025 default (or SR2026 fallback when codelist not in app/services/validation/app/services/validation/sr2026/rules/)
-    codelist_dir = os.path.join(os.path.dirname(__file__), "resources", "codelists")
+    # SR2025 default (or SR2026 fallback)
+    codelist_dir = os.path.join(app_dir, "sr2025", "resources", "codelists")
     file_path = os.path.join(codelist_dir, f"{list_name}.json")
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Codelist not found")
     with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+# Map of message keys / msgDefIdr -> SR2026 delta file name (without extension).
+# Single source of truth derived from the "pacs SR2026 Changes" comparison docs,
+# stored as machine-readable JSON in app/sr2026/version_deltas/.
+_VERSION_DELTA_ALIASES = {
+    "pacs002": "pacs002", "pacs.002.001.10": "pacs002",
+    "pacs003": "pacs003", "pacs.003.001.08": "pacs003",
+    "pacs004": "pacs004", "pacs.004.001.09": "pacs004",
+    "pacs008": "pacs008", "pacs.008.001.08": "pacs008",
+    "pacs009": "pacs009", "pacs.009.001.08": "pacs009",
+    "pacs009adv": "pacs009adv", "pacs009cov": "pacs009cov",
+    "pacs010": "pacs010", "pacs.010.001.03": "pacs010",
+}
+
+# Empty delta returned for SR2025 (baseline) or messages with no SR2026 changes.
+def _empty_delta(message: str, version: str) -> dict:
+    return {
+        "message": message,
+        "targetVersion": version,
+        "fixedValues": {},
+        "newMandatory": [],
+        "mandatoryRemoved": [],
+        "datatypeChanges": [],
+        "multiplicityChanges": [],
+        "dropdownChanges": [],
+        "newRules": [],
+        "removedRules": [],
+    }
+
+
+@app.get("/version-delta/{message}")
+def get_version_delta(message: str, raw_request: Request):
+    """Serve the SR-version field-level delta for a message.
+
+    The deltas are the single source of truth for everything that differs
+    between SR2025 and SR2026 (new/removed mandatory fields, datatype/length
+    changes, multiplicity, dropdown restrictions, fixed values and rules).
+
+    - x-sr-version = SR2026 → return the message delta JSON (vs SR2025 baseline).
+    - x-sr-version = SR2025 (or absent) → return an empty delta (baseline = no change).
+    """
+    version = raw_request.headers.get("x-sr-version") or "SR2025"
+    key = _VERSION_DELTA_ALIASES.get(message) or _VERSION_DELTA_ALIASES.get(message.lower())
+
+    if version != "SR2026" or not key:
+        return _empty_delta(message, version)
+
+    app_dir = os.path.dirname(os.path.abspath(__file__))
+    delta_path = os.path.join(app_dir, "sr2026", "version_deltas", f"{key}.json")
+    if not os.path.exists(delta_path):
+        return _empty_delta(message, version)
+    with open(delta_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 @app.get("/bics/search")

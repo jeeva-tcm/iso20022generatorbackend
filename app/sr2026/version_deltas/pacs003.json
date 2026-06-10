@@ -1,0 +1,66 @@
+{
+  "message": "pacs003",
+  "msgDefIdr": "pacs.003.001.08",
+  "title": "FIToFICustomerDirectDebit",
+  "baseVersion": "SR2025",
+  "targetVersion": "SR2026",
+  "source": "pacs SR2026 Changes/pacs003_sr2025_vs_sr2026_full_comparison.html",
+  "fixedValues": {
+    "bizSvc": "swift.cbprplus.03",
+    "msgDefIdr": "pacs.003.001.08"
+  },
+  "newMandatory": [
+    { "field": "InstdAmt", "path": "DDTxInf/InstructedAmount", "label": "Instructed Amount", "formControls": ["instdAmt"], "note": "Optional [0..1] in SR2025, mandatory [1..1] in SR2026" },
+    { "field": "SeqTp", "path": "DDTxInf/PmtTpInf/SequenceType", "label": "Sequence Type", "formControls": ["seqTp"], "note": "Optional in SR2025, mandatory for direct debit in SR2026" },
+    { "field": "MndtId", "path": "DDTx/MndtRltdInf/MandateIdentification", "label": "Mandate ID", "formControls": ["mndtId"], "note": "MndtRltdInf/MndtId mandatory in SR2026" },
+    { "field": "DtOfSgntr", "path": "DDTx/MndtRltdInf/DateOfSignature", "label": "Date of Signature", "formControls": ["dtOfSgntr"], "note": "MndtRltdInf/DtOfSgntr mandatory in SR2026" },
+    { "field": "CdtrNm", "path": "DDTxInf/Creditor/Name", "label": "Creditor Name", "formControls": ["cdtrName"], "note": "Creditor Nm mandatory in SR2026" },
+    { "field": "DbtrNm", "path": "DDTxInf/Debtor/Name", "label": "Debtor Name", "formControls": ["dbtrName"], "note": "Debtor Nm mandatory in SR2026" },
+    { "field": "DbtrCtry", "path": "DDTxInf/Debtor/PostalAddress/Country", "label": "Debtor Country", "formControls": ["dbtrCtry"] },
+    { "field": "DbtrTwnNm", "path": "DDTxInf/Debtor/PostalAddress/TownName", "label": "Debtor Town Name", "formControls": ["dbtrTwnNm"] },
+    { "field": "CdtrCtry", "path": "DDTxInf/Creditor/PostalAddress/Country", "label": "Creditor Country", "formControls": ["cdtrCtry"] },
+    { "field": "CdtrTwnNm", "path": "DDTxInf/Creditor/PostalAddress/TownName", "label": "Creditor Town Name", "formControls": ["cdtrTwnNm"] },
+    { "field": "DbtrAcctProxyTp", "path": "DDTxInf/DebtorAccount/Proxy/Type", "label": "Debtor Account Proxy Type", "formControls": ["dbtrAcctPrxyTp"] },
+    { "field": "CdtrAcctProxyTp", "path": "DDTxInf/CreditorAccount/Proxy/Type", "label": "Creditor Account Proxy Type", "formControls": ["cdtrAcctPrxyTp"] },
+    { "field": "DbtrAgtAcctProxyTp", "path": "DDTxInf/DebtorAgentAccount/Proxy/Type", "label": "Debtor Agent Account Proxy Type", "formControls": ["dbtrAgtAcctPrxyTp"] },
+    { "field": "CdtrAgtAcctProxyTp", "path": "DDTxInf/CreditorAgentAccount/Proxy/Type", "label": "Creditor Agent Account Proxy Type", "formControls": ["cdtrAgtAcctPrxyTp"] },
+    { "field": "SttlmAcctProxyTp", "path": "GrpHdr/SettlementInformation/SettlementAccount/Proxy/Type", "label": "Settlement Account Proxy Type", "formControls": ["sttlmAcctPrxyTp"] }
+  ],
+  "mandatoryRemoved": [],
+  "datatypeChanges": [
+    { "field": "BizMsgIdr", "path": "BAH/BusinessMessageIdentifier", "sr2025": "Max35Text", "sr2026": "CBPR_RestrictedFINXMax35Text", "maxLength": 35, "formControls": ["bizMsgId"] },
+    { "field": "IntrBkSttlmDt", "path": "DDTxInf/InterbankSettlementDate", "sr2025": "ISODate", "sr2026": "CBPR_Date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "formControls": ["intrBkSttlmDt"] },
+    { "field": "ReqdColltnDt", "path": "DDTxInf/RequestedCollectionDate", "sr2025": "ISODate", "sr2026": "CBPR_Date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "formControls": ["reqdColltnDt"] },
+    { "field": "DtOfSgntr", "path": "DDTx/MndtRltdInf/DateOfSignature", "sr2025": "ISODate", "sr2026": "CBPR_Date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    { "field": "FrstColltnDt", "path": "MndtRltdInf/FirstCollectionDate", "sr2025": "ISODate", "sr2026": "CBPR_Date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    { "field": "FnlColltnDt", "path": "MndtRltdInf/FinalCollectionDate", "sr2025": "ISODate", "sr2026": "CBPR_Date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    { "field": "OrgnlFnlColltnDt", "path": "AmdmntInfDtls/OriginalFinalCollectionDate", "sr2025": "ISODate", "sr2026": "CBPR_Date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    { "field": "PreNtfctnDt", "path": "DDTx/PreNotificationDate", "sr2025": "ISODate", "sr2026": "CBPR_Date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    { "field": "FrDt", "path": "DatePeriod/FromDate", "sr2025": "ISODate", "sr2026": "CBPR_Date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    { "field": "ToDt", "path": "DatePeriod/ToDate", "sr2025": "ISODate", "sr2026": "CBPR_Date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    { "field": "Dt", "path": "RegulatoryReporting/Details/Date", "sr2025": "ISODate", "sr2026": "CBPR_Date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    { "field": "RltdDt", "path": "RmtInf/Strd/RfrdDocInf/RelatedDate", "sr2025": "ISODate", "sr2026": "CBPR_Date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    { "field": "Yr", "path": "RmtInf/Strd/TaxRmt/TaxPrd/Year", "sr2025": "ISODate", "sr2026": "CBPR_Date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    { "field": "BldgNb", "path": "Debtor/PostalAddress/BuildingNumber", "sr2025": "CBPR_RestrictedFINXMax16Text", "sr2026": "CBPR_RestrictedFINXMax16Text_Extended", "maxLength": 16 }
+  ],
+  "multiplicityChanges": [
+    { "field": "AdrLine", "path": "Debtor/Creditor PostalAddress/AddressLine", "sr2025Max": 3, "sr2026Max": 2 }
+  ],
+  "dropdownChanges": [],
+  "newRules": [
+    "CBPR_BusinessMessageIdentifier_FormalRule",
+    "CBPR_From_Instructing_Agent_BIC_FormalRule",
+    "CBPR_To_Instructed_Agent_BIC_1_FormalRule",
+    "CBPR_To_Instructed_Agent_BIC_2_FormalRule",
+    "CBPR_Structured_RemittanceInformation_TextualRule"
+  ],
+  "removedRules": [
+    "CBPR_Name_Postal_Address_FormalRule",
+    "CBPR_GracePeriod_Hybrid_FormalRule",
+    "CBPR_GracePeriod_Structured_FormalRule",
+    "CBPR_GracePeriod_Unstructured_FormalRule",
+    "CBPR_Remittance_Rules_TextualRule",
+    "CBPR_Business_Service_TextualRule",
+    "CBPR_Business_Service_Usage_TextualRule"
+  ]
+}

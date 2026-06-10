@@ -19,8 +19,22 @@ class Pacs009Validator:
         return cls._rules
 
     @classmethod
+    def _is_adv(cls, root_element: etree._Element, message_type: str) -> bool:
+        mt = message_type.lower()
+        if "_adv" in mt or "pacs.009.adv" in mt or "pacs.009_adv" in mt:
+            return True
+        biz_svc = root_element.xpath("//*[local-name()='AppHdr']/*[local-name()='BizSvc']")
+        if biz_svc and (biz_svc[0].text or "").strip() == "swift.cbprplus.03":
+            return True
+        return bool(root_element.xpath("//*[local-name()='UndrlygFITxInf']"))
+
+    @classmethod
     def validate(cls, root_element: etree._Element, report: ValidationReport, message_type: str):
         if "pacs.009" not in message_type.lower():
+            return
+
+        # ADV has its own dedicated validator (Pacs009AdvValidator) — skip CORE base rules
+        if cls._is_adv(root_element, message_type):
             return
 
         rules = cls._load_rules()
@@ -45,7 +59,7 @@ class Pacs009Validator:
                                 path=f"//AppHdr/{field_path}",
                                 message=r["errorMessage"],
                                 line=nodes[0].sourceline or 1,
-                                fix=r["fixSuggestion"],
+                                fix=r.get("fixSuggestion", ""),
                             ))
                 elif r.get("type") == "MATCH":
                     field1 = r["field1"].split("/")[-1] # BizMsgIdr
@@ -65,7 +79,7 @@ class Pacs009Validator:
                                     path=f"//GrpHdr/{field2}",
                                     message=r["errorMessage"],
                                     line=field2_nodes[0].sourceline or 1,
-                                    fix=r["fixSuggestion"],
+                                    fix=r.get("fixSuggestion", ""),
                                 ))
 
         # 2. Group Header Rules
@@ -85,7 +99,7 @@ class Pacs009Validator:
                                 path=f"//GrpHdr/{field_path}",
                                 message=r["errorMessage"],
                                 line=nodes[0].sourceline or 1,
-                                fix=r["fixSuggestion"],
+                                fix=r.get("fixSuggestion", ""),
                             ))
                 elif r.get("type") == "ENUM":
                     field_parts = r["field"].split("/")
@@ -101,7 +115,7 @@ class Pacs009Validator:
                                 path=f"//GrpHdr/{'/'.join(field_parts[1:])}",
                                 message=r["errorMessage"],
                                 line=nodes[0].sourceline or 1,
-                                fix=r["fixSuggestion"],
+                                fix=r.get("fixSuggestion", ""),
                             ))
 
         # 3. Transaction Rules
@@ -120,7 +134,7 @@ class Pacs009Validator:
                         path=f"//CdtTrfTxInf/{'/'.join(field_parts[1:])}",
                         message=r["errorMessage"],
                         line=src,
-                        fix=r["fixSuggestion"],
+                        fix=r.get("fixSuggestion", ""),
                     ))
                     continue
                 
@@ -134,7 +148,7 @@ class Pacs009Validator:
                                 path=f"//CdtTrfTxInf/{'/'.join(field_parts[1:])}",
                                 message=r["errorMessage"],
                                 line=nodes[0].sourceline or 1,
-                                fix=r["fixSuggestion"],
+                                fix=r.get("fixSuggestion", ""),
                             ))
                     elif r.get("type") == "DATE":
                         # Check format
@@ -146,7 +160,7 @@ class Pacs009Validator:
                                     path=f"//CdtTrfTxInf/{'/'.join(field_parts[1:])}",
                                     message=r["errorMessage"],
                                     line=nodes[0].sourceline or 1,
-                                    fix=r["fixSuggestion"],
+                                    fix=r.get("fixSuggestion", ""),
                                 ))
                     elif r.get("type") == "AMOUNT":
                         try:
@@ -169,7 +183,7 @@ class Pacs009Validator:
                                 path=f"//CdtTrfTxInf/{'/'.join(field_parts[1:])}",
                                 message=r["errorMessage"],
                                 line=nodes[0].sourceline or 1,
-                                fix=r["fixSuggestion"],
+                                fix=r.get("fixSuggestion", ""),
                             ))
 
         # 4. Address Rules
@@ -185,7 +199,7 @@ class Pacs009Validator:
                             path=f"//{field}/{mand}",
                             message=r["errorMessage"],
                             line=node.sourceline or 1,
-                            fix=r["fixSuggestion"],
+                            fix=r.get("fixSuggestion", ""),
                         ))
 
         # 5. BIC Rules
@@ -208,7 +222,7 @@ class Pacs009Validator:
                             path="//" + "/".join(field_parts),
                             message=r["errorMessage"],
                             line=parent.sourceline or 1,
-                            fix=r["fixSuggestion"],
+                            fix=r.get("fixSuggestion", ""),
                         ))
                 else:
                     val = _text(child_nodes[0])
@@ -220,7 +234,7 @@ class Pacs009Validator:
                             path="//" + "/".join(field_parts),
                             message=r["errorMessage"],
                             line=child_nodes[0].sourceline or 1,
-                            fix=r["fixSuggestion"],
+                            fix=r.get("fixSuggestion", ""),
                         ))
 
         # 6. CBPR+ Rules
@@ -234,7 +248,7 @@ class Pacs009Validator:
                         path="//SplmtryData",
                         message=r["errorMessage"],
                         line=n.sourceline or 1,
-                        fix=r["fixSuggestion"],
+                        fix=r.get("fixSuggestion", ""),
                     ))
             elif r.get("type") == "SERVICE_LEVEL":
                 field_parts = r["field"].split("/")
@@ -248,5 +262,5 @@ class Pacs009Validator:
                             path="//" + "/".join(field_parts),
                             message=r["errorMessage"],
                             line=n.sourceline or 1,
-                            fix=r["fixSuggestion"],
+                            fix=r.get("fixSuggestion", ""),
                         ))

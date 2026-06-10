@@ -9,12 +9,16 @@
     {
       "ruleId": "HDR001",
       "field": "AppHdr/BizSvc",
-      "type": "FIXED_VALUE",
-      "expected": "swift.cbprplus.04",
+      "type": "ENUM",
+      "allowedValues": [
+        "swift.cbprplus.04",
+        "swift.cbprplus.adv.04",
+        "swift.cbprplus.cov.04"
+      ],
       "severity": "ERROR",
       "errorCode": "PACS009_HDR_001",
       "errorMessage": "Invalid Business Service.",
-      "fixSuggestion": "Set AppHdr/BizSvc to swift.cbprplus.04."
+      "fixSuggestion": "Set AppHdr/BizSvc to swift.cbprplus.04, swift.cbprplus.adv.04, or swift.cbprplus.cov.04."
     },
     {
       "ruleId": "HDR002",
@@ -83,7 +87,7 @@
       "ruleId": "GRP002",
       "field": "GrpHdr/SttlmInf/SttlmMtd",
       "type": "ENUM",
-      "allowedValues": ["INDA", "INGA"],
+      "allowedValues": ["INDA", "INGA", "COVE"],
       "severity": "ERROR",
       "errorCode": "PACS009_GRP_002",
       "errorMessage": "Invalid settlement method."

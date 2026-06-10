@@ -1,0 +1,39 @@
+{
+  "message": "pacs009adv",
+  "msgDefIdr": "pacs.009.001.08",
+  "title": "FinancialInstitutionCreditTransfer (ADV)",
+  "baseVersion": "SR2025",
+  "targetVersion": "SR2026",
+  "source": "pacs SR2026 Changes/pacs009_adv_sr2025_vs_sr2026_comparison.html",
+  "fixedValues": {
+    "bizSvc": "swift.cbprplus.adv.04",
+    "msgDefIdr": "pacs.009.001.08"
+  },
+  "newMandatory": [
+    { "field": "DbtrAcctProxyTp", "path": "CdtTrfTxInf/DebtorAccount/Proxy/Type", "label": "Debtor Account Proxy Type", "formControls": ["dbtrAcctPrxyTp"] },
+    { "field": "CdtrAcctProxyTp", "path": "CdtTrfTxInf/CreditorAccount/Proxy/Type", "label": "Creditor Account Proxy Type", "formControls": ["cdtrAcctPrxyTp"] },
+    { "field": "SttlmAcctProxyTp", "path": "GrpHdr/SettlementInformation/SettlementAccount/Proxy/Type", "label": "Settlement Account Proxy Type", "formControls": ["sttlmAcctPrxyTp"] },
+    { "field": "RltdDt", "path": "DocumentLineIdentification/RelatedDate", "label": "Related Date", "formControls": [] }
+  ],
+  "mandatoryRemoved": [],
+  "datatypeChanges": [
+    { "field": "BizMsgIdr", "path": "BAH/BusinessMessageIdentifier", "sr2025": "Max35Text", "sr2026": "CBPR_RestrictedFINXMax35Text", "maxLength": 35, "formControls": ["bizMsgId"] },
+    { "field": "IntrBkSttlmDt", "path": "CdtTrfTxInf/InterbankSettlementDate", "sr2025": "ISODate", "sr2026": "CBPR_Date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "formControls": ["intrBkSttlmDt"] }
+  ],
+  "multiplicityChanges": [],
+  "dropdownChanges": [
+    { "field": "SvcLvl", "path": "CdtTrfTxInf/PmtTpInf/ServiceLevel/Code", "sr2026Allowed": ["G004"], "rule": "CBPR_GPI_ServiceLevel_Code_FormalRule", "note": "GPI ServiceLevel Code in pacs.009 ADV must be 'G004'" }
+  ],
+  "newRules": [
+    "CBPR_BusinessMessageIdentifier_FormalRule",
+    "CBPR_From_Instructing_Agent_BIC_FormalRule",
+    "CBPR_To_Instructed_Agent_BIC_1_FormalRule",
+    "CBPR_To_Instructed_Agent_BIC_2_FormalRule",
+    "CBPR_GPI_ServiceLevel_Code_FormalRule",
+    "CBPR_Instruction_For_Creditor_Presence_Code_FormalRule"
+  ],
+  "removedRules": [
+    "CBPR_Business_Service_TextualRule",
+    "CBPR_Business_Service_Usage_TextualRule"
+  ]
+}
