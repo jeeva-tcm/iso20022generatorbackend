@@ -1,0 +1,809 @@
+{
+  "ruleEngineMeta": {
+    "version": "SR2026-1.0",
+    "executionMode": "STRICT",
+    "failFast": true,
+    "normalizeBIC": true,
+    "normalizeDate": true,
+    "normalizeUETR": "lowercase",
+    "trimWhitespace": true,
+    "fixLanguage": "user-friendly"
+  },
+  "messageType": "pacs.004",
+  "messageName": "PaymentReturnV09",
+  "standard": "CBPR+",
+  "release": "SR2026",
+  "version": "1.1.0",
+  "effectiveDate": "2026-11-15",
+  "description": "SR2026 CBPR+ pacs.004 Payment Return validation rules. Used to return funds from a previously settled pacs.008 or pacs.009 payment. One transaction per message. Replaces MT103 RETN and MT202 RETN.",
+  "replacedMT": "MT103 RETN / MT202 RETN / MT205 RETN",
+  "xsdVersion": "pacs.004.001.09",
+  "keyFacts": {
+    "purpose": "Return funds for a previously settled payment (pacs.008 or pacs.009)",
+    "singleTransactionPerMessage": true,
+    "rootElement": "Document/PmtRtr",
+    "correlationKey": "OrgnlUETR links return to original pacs.008 or pacs.009",
+    "returnChain": "Mandatory — identifies roles of parties in the return",
+    "returnReason": "Mandatory — must use ISO 20022 return reason codes (e.g. DUPL, CUST, TECH)"
+  },
+  "headerRules": {
+    "bizSvc": {
+      "mandatory": true,
+      "fixedValue": "swift.cbprplus.05",
+      "severity": "ERROR",
+      "code": "INVALID_BIZ_SVC",
+      "message": "Business Service identifier is wrong for pacs.004 Payment Return.",
+      "fix": "Change Business Service (BizSvc) to swift.cbprplus.05.",
+      "hint": "pacs.004 uses swift.cbprplus.05. Do not use pacs.008 (swift.cbprplus.02) or pacs.009 values.",
+      "variantComparison": {
+        "pacs.008_core": "swift.cbprplus.02",
+        "pacs.009_core": "swift.cbprplus.02",
+        "pacs.009_COV": "swift.cbprplus.cov.02",
+        "pacs.009_ADV": "swift.cbprplus.03",
+        "pacs.004": "swift.cbprplus.05"
+      }
+    },
+    "msgDefIdr": {
+      "mandatory": true,
+      "fixedValue": "pacs.004.001.09",
+      "severity": "ERROR",
+      "code": "INVALID_MSG_DEF_IDR",
+      "message": "Message Definition Identifier is incorrect.",
+      "fix": "Change Message Definition Identifier to pacs.004.001.09.",
+      "hint": null
+    },
+    "bizMsgIdr": {
+      "mandatory": true,
+      "type": "CBPR_RestrictedFINXMax35Text",
+      "maxLength": 35,
+      "minLength": 1,
+      "severity": "ERROR",
+      "code": "MISSING_BIZ_MSG_IDR",
+      "message": "Business Message ID is missing.",
+      "fix": "Enter a Business Message ID in AppHdr (maximum 35 characters).",
+      "hint": "Must match the Group Header Message ID."
+    },
+    "bizMsgIdrFormat": {
+      "severity": "ERROR",
+      "code": "INVALID_BIZ_MSG_IDR_FORMAT",
+      "message": "Business Message ID contains invalid characters or exceeds 35 characters.",
+      "fix": "Use only FIN-X characters and keep the value within 35 characters.",
+      "hint": "Allowed: letters, digits, / - ? : ( ) . , ' + space"
+    },
+    "creDt": {
+      "mandatory": true,
+      "severity": "ERROR",
+      "code": "MISSING_OR_INVALID_BAH_CREDT",
+      "message": "BAH Creation Date is missing or does not include a UTC timezone offset.",
+      "fix": "Enter a valid Creation Date-Time with a UTC offset. Example: 2026-11-15T09:30:00+00:00",
+      "hint": "Plain dates without a timezone offset are rejected."
+    },
+    "from": {
+      "mandatory": true,
+      "severity": "ERROR",
+      "code": "MISSING_BAH_FROM",
+      "message": "BAH From BIC is missing.",
+      "fix": "Enter the sending institution BIC in the AppHdr From field.",
+      "hint": "Must match the Instructing Agent BIC in the Group Header."
+    },
+    "to": {
+      "mandatory": true,
+      "severity": "ERROR",
+      "code": "MISSING_BAH_TO",
+      "message": "BAH To BIC is missing.",
+      "fix": "Enter the receiving institution BIC in the AppHdr To field.",
+      "hint": "Must match the Instructed Agent BIC in the Group Header."
+    },
+    "copyDuplicate": {
+      "presence": "FORBIDDEN",
+      "severity": "ERROR",
+      "code": "FORBIDDEN_CPY_DPLCT",
+      "message": "Copy/Duplicate indicator is not allowed in pacs.004.",
+      "fix": "Remove the Copy/Duplicate (CpyDplct) element from AppHdr.",
+      "hint": null
+    }
+  },
+  "crossFieldRules": {
+    "bizMsgIdrEqualsMsgId": {
+      "id": "SR2026_CF001",
+      "severity": "ERROR",
+      "code": "MESSAGE_ID_MISMATCH",
+      "message": "Business Message ID and Group Header Message ID do not match.",
+      "fix": "Ensure Business Message ID and Group Header Message ID are identical.",
+      "hint": "Both fields must contain the same unique reference value."
+    },
+    "fromBicMatchesInstgAgt": {
+      "id": "SR2026_CF002",
+      "severity": "ERROR",
+      "code": "FROM_BIC_MISMATCH",
+      "message": "BAH From BIC does not match the Instructing Agent BIC.",
+      "fix": "Use the same BIC for the BAH From field and the Group Header Instructing Agent.",
+      "hint": "8-character BICs are automatically padded to 11 by appending XXX."
+    },
+    "toBicMatchesInstdAgt": {
+      "id": "SR2026_CF003",
+      "severity": "ERROR",
+      "code": "TO_BIC_MISMATCH",
+      "message": "BAH To BIC does not match the Instructed Agent BIC.",
+      "fix": "Use the same BIC for the BAH To field and the Group Header Instructed Agent.",
+      "hint": null
+    }
+  },
+  "xmlRules": {
+    "documentNamespace": {
+      "mandatory": true,
+      "expectedValue": "urn:iso:std:iso:20022:tech:xsd:pacs.004.001.09",
+      "xpath": "Document/@xmlns",
+      "severity": "ERROR",
+      "code": "INVALID_DOC_NAMESPACE",
+      "message": "Document XML namespace is wrong or missing.",
+      "fix": "Use the correct pacs.004.001.09 document namespace.",
+      "hint": "Expected: urn:iso:std:iso:20022:tech:xsd:pacs.004.001.09"
+    },
+    "appHdrNamespace": {
+      "mandatory": true,
+      "expectedValue": "urn:iso:std:iso:20022:tech:xsd:head.001.001.03",
+      "xpath": "AppHdr/@xmlns",
+      "severity": "ERROR",
+      "code": "INVALID_APPHDR_NAMESPACE",
+      "message": "AppHdr XML namespace is wrong or missing.",
+      "fix": "Use the correct AppHdr namespace (head.001.001.03).",
+      "hint": "Expected: urn:iso:std:iso:20022:tech:xsd:head.001.001.03"
+    }
+  },
+  "mandatoryFields": {
+    "groupHeader": {
+      "description": "Mandatory fields in Group Header (Document/PmtRtr/GrpHdr)",
+      "fields": {
+        "MsgId": {
+          "path": "PmtRtr.GrpHdr.MsgId",
+          "mandatory": true,
+          "maxLength": 35,
+          "severity": "ERROR",
+          "code": "MISSING_MSG_ID",
+          "message": "Group Header Message ID is missing.",
+          "fix": "Enter a unique Message ID in the Group Header (maximum 35 characters).",
+          "hint": "Must match the Business Message ID in AppHdr."
+        },
+        "CreDtTm": {
+          "path": "PmtRtr.GrpHdr.CreDtTm",
+          "mandatory": true,
+          "severity": "ERROR",
+          "code": "MISSING_CREATION_DATE_TIME",
+          "message": "Group Header Creation Date-Time is missing or lacks a UTC offset.",
+          "fix": "Enter a valid Creation Date-Time with a UTC offset. Example: 2026-11-15T09:30:00+00:00",
+          "hint": null
+        },
+        "NbOfTxs": {
+          "path": "PmtRtr.GrpHdr.NbOfTxs",
+          "mandatory": true,
+          "fixedValue": "1",
+          "severity": "ERROR",
+          "code": "INVALID_NB_OF_TXS",
+          "message": "Number of Transactions must be 1. pacs.004 carries exactly one return per message.",
+          "fix": "Set Number of Transactions to 1.",
+          "hint": "CBPR+ allows only one transaction per pacs.004 message."
+        },
+        "SttlmInf_SttlmMtd": {
+          "path": "PmtRtr.GrpHdr.SttlmInf.SttlmMtd",
+          "mandatory": true,
+          "allowedValues": [
+            "INDA",
+            "INGA"
+          ],
+          "severity": "ERROR",
+          "code": "MISSING_OR_INVALID_STTLM_MTD",
+          "message": "Settlement Method is missing or contains an invalid value for pacs.004.",
+          "fix": "Set Settlement Method to INDA or INGA.",
+          "hint": "INDA = Instructed Agent settles. INGA = Instructing Agent settles. CLRG is not permitted in CBPR+."
+        },
+        "InstgAgt_BICFI": {
+          "path": "PmtRtr.GrpHdr.InstgAgt.FinInstnId.BICFI",
+          "mandatory": true,
+          "severity": "ERROR",
+          "code": "MISSING_GRP_HDR_INSTG_AGT",
+          "message": "Group Header Instructing Agent BIC is missing.",
+          "fix": "Enter the Instructing Agent BIC in the Group Header. Must match the BAH From BIC.",
+          "hint": null
+        },
+        "InstdAgt_BICFI": {
+          "path": "PmtRtr.GrpHdr.InstdAgt.FinInstnId.BICFI",
+          "mandatory": true,
+          "severity": "ERROR",
+          "code": "MISSING_GRP_HDR_INSTD_AGT",
+          "message": "Group Header Instructed Agent BIC is missing.",
+          "fix": "Enter the Instructed Agent BIC in the Group Header. Must match the BAH To BIC.",
+          "hint": null
+        }
+      }
+    },
+    "transactionInfo": {
+      "description": "Mandatory fields in Transaction Information (PmtRtr/TxInf)",
+      "fields": {
+        "RtrId": {
+          "path": "PmtRtr.TxInf.RtrId",
+          "mandatory": true,
+          "maxLength": 35,
+          "severity": "ERROR",
+          "code": "MISSING_RTR_ID",
+          "message": "Return Identification (RtrId) is missing.",
+          "fix": "Enter a unique Return ID to identify this return transaction (maximum 35 characters).",
+          "hint": "This is a new reference for the return message, not the original payment reference."
+        },
+        "OrgnlGrpInf": {
+          "path": "PmtRtr.TxInf.OrgnlGrpInf",
+          "mandatory": false,
+          "severity": "WARNING",
+          "code": "RECOMMENDED_ORIGINAL_GROUP_INFO",
+          "message": "Original Group Information is not provided.",
+          "fix": "Include the Original Group Information block with original Message ID and creation date to aid reconciliation.",
+          "hint": "Optional per XSD (minOccurs=0) but strongly recommended so the receiving bank can identify the original payment.",
+          "recommended": true,
+          "presence": "OPTIONAL"
+        },
+        "OrgnlGrpInf_OrgnlMsgId": {
+          "path": "PmtRtr.TxInf.OrgnlGrpInf.OrgnlMsgId",
+          "mandatory": false,
+          "severity": "ERROR",
+          "code": "MISSING_ORIGINAL_MSG_ID",
+          "message": "Original Message ID is missing from Original Group Information.",
+          "fix": "Enter the Message ID from the original pacs.008 or pacs.009 that is being returned.",
+          "hint": "This enables the receiving bank to identify and match the original payment.",
+          "presence": "CONDITIONAL",
+          "condition": "Mandatory when OrgnlGrpInf block is included"
+        },
+        "OrgnlGrpInf_OrgnlMsgNmId": {
+          "path": "PmtRtr.TxInf.OrgnlGrpInf.OrgnlMsgNmId",
+          "mandatory": false,
+          "allowedValues": [
+            "pacs.008.001.08",
+            "pacs.009.001.08",
+            "pacs.009.001.08COV"
+          ],
+          "severity": "ERROR",
+          "code": "MISSING_OR_INVALID_ORIGINAL_MSG_NM_ID",
+          "message": "Original Message Name Identifier is missing or invalid.",
+          "fix": "Set Original Message Name to pacs.008.001.08 (returning a customer payment) or pacs.009.001.08 (returning an FI payment).",
+          "hint": "pacs.008.001.08 for customer credit transfers; pacs.009.001.08 for FI credit transfers; pacs.009.001.08COV for cover payments.",
+          "presence": "CONDITIONAL",
+          "condition": "Mandatory when OrgnlGrpInf block is included"
+        },
+        "OrgnlInstrId": {
+          "path": "PmtRtr.TxInf.OrgnlInstrId",
+          "mandatory": false,
+          "maxLength": 35,
+          "severity": "WARNING",
+          "code": "RECOMMENDED_ORIGINAL_INSTR_ID",
+          "message": "Original Instruction ID is not provided.",
+          "fix": "Include the Original Instruction ID from the original pacs.008 or pacs.009 for matching and reconciliation.",
+          "hint": "Optional per XSD (minOccurs=0) but strongly recommended to enable matching with the original payment.",
+          "recommended": true,
+          "presence": "OPTIONAL"
+        },
+        "OrgnlEndToEndId": {
+          "path": "PmtRtr.TxInf.OrgnlEndToEndId",
+          "mandatory": true,
+          "maxLength": 35,
+          "severity": "ERROR",
+          "code": "MISSING_ORIGINAL_END_TO_END_ID",
+          "message": "Original End-to-End ID is missing.",
+          "fix": "Enter the End-to-End ID from the original pacs.008 or pacs.009 payment.",
+          "hint": "Required when the original payment was a pacs.008 or pacs.009 COV."
+        },
+        "OrgnlUETR": {
+          "path": "PmtRtr.TxInf.OrgnlUETR",
+          "mandatory": true,
+          "type": "UUIDv4Identifier",
+          "regex": "^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$",
+          "length": 36,
+          "severity": "ERROR",
+          "code": "MISSING_OR_INVALID_ORIGINAL_UETR",
+          "message": "Original UETR is missing or not a valid lowercase UUID v4.",
+          "fix": "Enter the UETR from the original pacs.008 or pacs.009 payment. Use lowercase UUID v4 format.",
+          "hint": "This is the primary correlation key linking the return to the original payment."
+        },
+        "RtrdIntrBkSttlmAmt": {
+          "path": "PmtRtr.TxInf.RtrdIntrBkSttlmAmt",
+          "mandatory": true,
+          "amountConstraints": {
+            "totalDigits": 14,
+            "fractionDigits": 5,
+            "minInclusive": 0,
+            "cbprBusinessRule": "Amount must be > 0"
+          },
+          "severity": "ERROR",
+          "code": "MISSING_RTRD_INTRBK_STTLM_AMT",
+          "message": "Returned Interbank Settlement Amount is missing.",
+          "fix": "Enter the amount being returned with a valid ISO 4217 currency code. Example: 10000.00 USD",
+          "hint": "Must be greater than zero. Maximum 14 total digits, 5 decimal places."
+        },
+        "RtrdIntrBkSttlmAmt_Ccy": {
+          "path": "PmtRtr.TxInf.RtrdIntrBkSttlmAmt@Ccy",
+          "mandatory": true,
+          "severity": "ERROR",
+          "code": "MISSING_RTRD_AMT_CCY",
+          "message": "Returned Settlement Amount currency code is missing.",
+          "fix": "Add a valid ISO 4217 currency code to the Returned Amount. Example: USD, EUR, GBP",
+          "hint": null
+        },
+        "IntrBkSttlmDt": {
+          "path": "PmtRtr.TxInf.IntrBkSttlmDt",
+          "mandatory": true,
+          "format": "YYYY-MM-DD",
+          "timezoneProhibited": true,
+          "severity": "ERROR",
+          "code": "MISSING_INTRBK_STTLM_DT",
+          "message": "Return Settlement Date is missing.",
+          "fix": "Enter a valid Settlement Date in YYYY-MM-DD format without any timezone. Example: 2026-11-15",
+          "hint": "This is the settlement date for the return, not the original payment date."
+        },
+        "RtrnChain": {
+          "path": "PmtRtr.TxInf.RtrChain",
+          "mandatory": true,
+          "severity": "ERROR",
+          "code": "MISSING_RETURN_CHAIN",
+          "message": "Return Chain block is missing.",
+          "fix": "Add the Return Chain block to identify the roles of parties in the return transaction.",
+          "hint": "The Return Chain reverses the original payment chain. It is mandatory in pacs.004."
+        },
+        "RtrChain_Assgnr": {
+          "path": "PmtRtr.TxInf.RtrChain.Assgnr",
+          "mandatory": true,
+          "severity": "ERROR",
+          "code": "MISSING_RETURN_CHAIN_ASSGNR",
+          "message": "Return Chain Assignor (the party sending the return) is missing.",
+          "fix": "Enter the Assignor — the institution initiating the return (BIC preferred).",
+          "hint": "The Assignor is typically the bank that originally received the payment and is now returning it."
+        },
+        "RtrChain_Assgne": {
+          "path": "PmtRtr.TxInf.RtrChain.Assgne",
+          "mandatory": true,
+          "severity": "ERROR",
+          "code": "MISSING_RETURN_CHAIN_ASSGNE",
+          "message": "Return Chain Assignee (the party receiving the return) is missing.",
+          "fix": "Enter the Assignee — the institution receiving the return (BIC preferred).",
+          "hint": null
+        },
+        "RtrRsnInf": {
+          "path": "PmtRtr.TxInf.RtrRsnInf",
+          "mandatory": true,
+          "severity": "ERROR",
+          "code": "MISSING_RETURN_REASON",
+          "message": "Return Reason Information is missing.",
+          "fix": "Add a Return Reason block with a valid ISO 20022 return reason code.",
+          "hint": "Free text reason codes are not allowed in CBPR+. Use official ISO codes."
+        },
+        "RtrRsnInf_Rsn_Cd": {
+          "path": "PmtRtr.TxInf.RtrRsnInf.Rsn.Cd",
+          "mandatory": true,
+          "severity": "ERROR",
+          "code": "MISSING_OR_INVALID_RETURN_REASON_CODE",
+          "message": "Return Reason code is missing or not a valid ISO 20022 code.",
+          "fix": "Enter a valid return reason code. Common codes: DUPL (duplicate), CUST (customer request), TECH (technical issue), FRAD (fraud), LEGL (legal decision), NARR (use AddtlInf for free text).",
+          "hint": "Free text in the reason code field is not permitted in CBPR+. Use ExternalReturnReason1Code values."
+        },
+        "RtrdInstdAmt": {
+          "path": "PmtRtr.TxInf.RtrdInstdAmt",
+          "mandatory": true,
+          "presence": "MANDATORY",
+          "amountConstraints": {
+            "totalDigits": 14,
+            "fractionDigits": 5,
+            "minInclusive": 0,
+            "cbprBusinessRule": "Amount must be > 0"
+          },
+          "severity": "ERROR",
+          "code": "MISSING_RTRD_INSTD_AMT",
+          "message": "Returned Instructed Amount is missing.",
+          "fix": "Enter the original instructed amount being returned with a valid ISO 4217 currency code. Example: 10000.00 USD",
+          "hint": "This is the amount originally instructed by the originator, which may differ from the interbank settlement amount if charges were applied."
+        },
+        "ChrgBr": {
+          "path": "PmtRtr.TxInf.ChrgBr",
+          "mandatory": true,
+          "presence": "MANDATORY",
+          "allowedValues": [
+            "CRED",
+            "SHAR"
+          ],
+          "severity": "ERROR",
+          "code": "MISSING_OR_INVALID_CHRG_BR",
+          "message": "Charge Bearer is missing or contains an invalid value for pacs.004.",
+          "fix": "Set Charge Bearer to CRED or SHAR.",
+          "hint": "CRED = charges borne by the creditor (receiver of return). SHAR = charges shared. DEBT and SLEV are not applicable in return messages."
+        },
+        "TxInf_InstgAgt": {
+          "path": "PmtRtr.TxInf.InstgAgt.FinInstnId.BICFI",
+          "mandatory": true,
+          "presence": "MANDATORY",
+          "severity": "ERROR",
+          "code": "MISSING_TX_INSTG_AGT",
+          "message": "Transaction Instructing Agent BIC is missing.",
+          "fix": "Enter the Instructing Agent BIC in the transaction block. This is the institution sending the return.",
+          "hint": "Must be a valid ISO 9362 BIC (8 or 11 characters)."
+        },
+        "TxInf_InstdAgt": {
+          "path": "PmtRtr.TxInf.InstdAgt.FinInstnId.BICFI",
+          "mandatory": true,
+          "presence": "MANDATORY",
+          "severity": "ERROR",
+          "code": "MISSING_TX_INSTD_AGT",
+          "message": "Transaction Instructed Agent BIC is missing.",
+          "fix": "Enter the Instructed Agent BIC in the transaction block. This is the institution receiving the return.",
+          "hint": "Must be a valid ISO 9362 BIC (8 or 11 characters)."
+        }
+      }
+    },
+    "originalTxRef": {
+      "description": "Original Transaction Reference — optional block but mandatory fields when included. Carries key data from the original payment for reconciliation.",
+      "presence": "OPTIONAL",
+      "note": "The Original Transaction Reference section is optional. When included, its contents must match the original payment data unchanged.",
+      "fields": {
+        "OrgnlTxRef_IntrBkSttlmDt": {
+          "path": "PmtRtr.TxInf.OrgnlTxRef.IntrBkSttlmDt",
+          "severity": "WARNING",
+          "code": "MISSING_ORIG_TX_REF_STTLM_DT",
+          "message": "Original Settlement Date is not included in Original Transaction Reference.",
+          "fix": "Provide the original Interbank Settlement Date when including Original Transaction Reference.",
+          "hint": "Recommended for reconciliation. Must match the original payment exactly."
+        },
+        "OrgnlTxRef_Amt": {
+          "path": "PmtRtr.TxInf.OrgnlTxRef.Amt",
+          "severity": "WARNING",
+          "code": "MISSING_ORIG_TX_REF_AMT",
+          "message": "Original Amount is not included in Original Transaction Reference.",
+          "fix": "Provide the original instructed or settlement amount for reconciliation.",
+          "hint": "Recommended when the beneficiary needs to reconcile the return against the original."
+        }
+      }
+    }
+  },
+  "returnReasonCodes": {
+    "description": "Valid ISO 20022 ExternalReturnReason1Code values for CBPR+ pacs.004.",
+    "source": "ISO 20022 External Code Set — ExternalReturnReason1Code",
+    "commonCodes": [
+      {
+        "code": "DUPL",
+        "description": "Duplicate payment — this transaction is a duplicate of an already processed payment."
+      },
+      {
+        "code": "CUST",
+        "description": "Customer request — the ordering customer has requested cancellation/return."
+      },
+      {
+        "code": "UPAY",
+        "description": "Underpayment — the amount received was less than expected."
+      },
+      {
+        "code": "OVPA",
+        "description": "Overpayment — the amount received was more than expected."
+      },
+      {
+        "code": "TECH",
+        "description": "Technical problem — return due to a technical issue at the returning bank."
+      },
+      {
+        "code": "FRAD",
+        "description": "Fraudulent origin — the original payment was fraudulent."
+      },
+      {
+        "code": "LEGL",
+        "description": "Legal decision — return ordered by a court or legal authority."
+      },
+      {
+        "code": "NOAS",
+        "description": "No account — the beneficiary account does not exist."
+      },
+      {
+        "code": "AGNT",
+        "description": "Agent decision — the agent has decided to return the payment."
+      },
+      {
+        "code": "NARR",
+        "description": "Narrative — use AddtlInf for free text reason when no specific code applies."
+      },
+      {
+        "code": "AC01",
+        "description": "Incorrect account number — account number format is invalid."
+      },
+      {
+        "code": "AC04",
+        "description": "Closed account — the account has been closed."
+      },
+      {
+        "code": "AC06",
+        "description": "Blocked account — the account is blocked."
+      },
+      {
+        "code": "AM09",
+        "description": "Wrong amount — the amount received does not match the instructed amount."
+      },
+      {
+        "code": "BE04",
+        "description": "Missing creditor address — creditor postal address is required but missing."
+      },
+      {
+        "code": "MD07",
+        "description": "End customer deceased."
+      },
+      {
+        "code": "MS02",
+        "description": "Reason not specified by customer."
+      },
+      {
+        "code": "MS03",
+        "description": "Reason not specified by agent."
+      }
+    ],
+    "forbidden": "Free text codes not in the ISO ExternalReturnReason1Code list are NOT allowed under CBPR+."
+  },
+  "formatRules": {
+    "uetr": {
+      "severity": "ERROR",
+      "code": "INVALID_UETR_FORMAT",
+      "message": "UETR is not a valid UUID v4 or contains uppercase letters.",
+      "fix": "Enter a valid lowercase UUID v4 value. Example: 4a1a0945-5772-409a-83ba-240e666e0267",
+      "hint": "XSD UUIDv4Identifier only accepts lowercase [a-f0-9]. Uppercase letters are rejected."
+    },
+    "date": {
+      "severity": "ERROR",
+      "code": "INVALID_DATE_TIMEZONE",
+      "message": "A date field contains a timezone offset, which is not allowed.",
+      "fix": "Enter all dates in YYYY-MM-DD format without any timezone suffix.",
+      "hint": "Wrong: 2026-11-15Z or 2026-11-15+05:30. Correct: 2026-11-15"
+    },
+    "amount": {
+      "severity": "ERROR",
+      "code": "INVALID_AMOUNT",
+      "message": "Amount is zero, negative, or exceeds the maximum allowed precision.",
+      "fix": "Enter a positive amount with a maximum of 14 total digits and 5 decimal places.",
+      "hint": "CBPR_Amount_SimpleType: totalDigits=14, fractionDigits=5."
+    },
+    "currency": {
+      "severity": "ERROR",
+      "code": "INVALID_CURRENCY_CODE",
+      "message": "Currency code is not a valid ISO 4217 active currency code.",
+      "fix": "Enter a valid 3-letter ISO 4217 active currency code. Example: USD, EUR, GBP",
+      "hint": null
+    },
+    "bic": {
+      "severity": "ERROR",
+      "code": "INVALID_BIC_FORMAT",
+      "message": "BIC format is invalid.",
+      "fix": "Enter a valid 8 or 11-character BIC. Example: BANKUS33 or BANKUS33XXX",
+      "hint": "Format: 4 institution + 2 country + 2 location + optional 3 branch code."
+    }
+  },
+  "addressRules": {
+    "globalPolicy": "structured_mandatory",
+    "description": "SR2026: TwnNm and Ctry are mandatory in all postal addresses. Fully unstructured addresses (AdrLine only) are rejected.",
+    "fields": {
+      "TwnNm": {
+        "mandatory": true,
+        "severity": "ERROR",
+        "code": "MISSING_TOWN_NAME",
+        "message": "Town/City is missing from a Postal Address.",
+        "fix": "Enter the Town or City in the postal address.",
+        "hint": "Required in all addresses since SR2026."
+      },
+      "Ctry": {
+        "mandatory": true,
+        "severity": "ERROR",
+        "code": "MISSING_OR_INVALID_COUNTRY",
+        "message": "Country is missing or contains an invalid code.",
+        "fix": "Enter a valid 2-letter ISO 3166-1 alpha-2 country code. Example: GB, US, DE",
+        "hint": null
+      },
+      "adrLineDeprecated": {
+        "severity": "ERROR",
+        "code": "DEPRECATED_UNSTRUCTURED_ADDRESS",
+        "message": "Unstructured address (AdrLine only) is no longer accepted in SR2026.",
+        "fix": "Replace unstructured address lines with structured fields: Street Name, Building Number, Postal Code, Town, Country.",
+        "hint": "Up to 2 AdrLine elements are still allowed alongside TwnNm and Ctry (hybrid format)."
+      }
+    }
+  },
+  "repositoryValidationRules": {
+    "description": "Cross-message rules that require the original payment message. Cannot be validated from the pacs.004 alone.",
+    "correlationKey": "OrgnlUETR = UETR of the original pacs.008 or pacs.009",
+    "rules": [
+      {
+        "id": "REPO_001",
+        "code": "ORIGINAL_PAYMENT_NOT_FOUND",
+        "severity": "ERROR",
+        "message": "The original payment referenced by OrgnlUETR was not found in the message repository.",
+        "fix": "Verify the Original UETR matches a settled pacs.008 or pacs.009 in the payment repository.",
+        "requires": ["MessageRepository", "UETRIndex"]
+      },
+      {
+        "id": "REPO_002",
+        "code": "ORIGINAL_INSTR_ID_MISMATCH",
+        "severity": "ERROR",
+        "message": "Original Instruction ID does not match the Instruction ID of the original payment.",
+        "fix": "Check the Original Instruction ID against the original pacs.008 or pacs.009 InstrId.",
+        "requires": ["CorrelationEngine"]
+      },
+      {
+        "id": "REPO_003",
+        "code": "ORIGINAL_E2E_ID_MISMATCH",
+        "severity": "ERROR",
+        "message": "Original End-to-End ID does not match the End-to-End ID of the original payment.",
+        "fix": "Check the Original End-to-End ID against the original pacs.008 or pacs.009 EndToEndId.",
+        "requires": ["CorrelationEngine"]
+      },
+      {
+        "id": "REPO_004",
+        "code": "RETURN_AMOUNT_EXCEEDS_ORIGINAL",
+        "severity": "ERROR",
+        "message": "Returned amount exceeds the original settlement amount.",
+        "fix": "Ensure the Returned Interbank Settlement Amount does not exceed the original IntrBkSttlmAmt.",
+        "requires": ["CorrelationEngine"]
+      },
+      {
+        "id": "REPO_005",
+        "code": "DUPLICATE_RETURN",
+        "severity": "ERROR",
+        "message": "A return for this Original UETR has already been processed.",
+        "fix": "Verify this is not a duplicate return. Check the payment repository for existing returns on this UETR.",
+        "requires": ["UETRIndex"]
+      },
+      {
+        "id": "REPO_006",
+        "code": "DUPLICATE_MSG_ID",
+        "severity": "ERROR",
+        "message": "This Message ID has already been used by this sender.",
+        "fix": "Use a new unique Message ID. Duplicate IDs within 90 days are rejected.",
+        "requires": ["MsgIdIndex"],
+        "deduplicationWindowDays": 90
+      }
+    ]
+  },
+  "validationLayers": {
+    "description": "3-layer validation. Stop if a layer fails.",
+    "failFastStrategy": "Layer 1 fail → skip Layers 2 and 3. Layer 2 fail → skip Layer 3.",
+    "Layer1_XSD": {
+      "description": "Schema validation.",
+      "schemas": [
+        "head.001.001.03.xsd (AppHdr)",
+        "pacs.004.001.09.xsd (Document)"
+      ],
+      "failAction": "REJECT — skip all business rule validation"
+    },
+    "Layer2_StandardXML": {
+      "description": "Business rules from a single XML instance.",
+      "categories": [
+        "headerRules",
+        "crossFieldRules",
+        "xmlRules",
+        "mandatoryFields",
+        "formatRules",
+        "addressRules"
+      ],
+      "failAction": "REJECT — skip Layer 3"
+    },
+    "Layer3_Repository": {
+      "description": "Cross-message rules requiring original payment lookup.",
+      "categories": [
+        "repositoryValidationRules"
+      ],
+      "failAction": "REJECT or ALERT per operational policy"
+    }
+  },
+  "validationSeverity": {
+    "INVALID_BIZ_SVC": "ERROR",
+    "INVALID_MSG_DEF_IDR": "ERROR",
+    "MISSING_BIZ_MSG_IDR": "ERROR",
+    "INVALID_BIZ_MSG_IDR_FORMAT": "ERROR",
+    "MISSING_OR_INVALID_BAH_CREDT": "ERROR",
+    "MISSING_BAH_FROM": "ERROR",
+    "MISSING_BAH_TO": "ERROR",
+    "FORBIDDEN_CPY_DPLCT": "ERROR",
+    "MESSAGE_ID_MISMATCH": "ERROR",
+    "FROM_BIC_MISMATCH": "ERROR",
+    "TO_BIC_MISMATCH": "ERROR",
+    "INVALID_DOC_NAMESPACE": "ERROR",
+    "INVALID_APPHDR_NAMESPACE": "ERROR",
+    "MISSING_MSG_ID": "ERROR",
+    "MISSING_CREATION_DATE_TIME": "ERROR",
+    "INVALID_NB_OF_TXS": "ERROR",
+    "MISSING_OR_INVALID_STTLM_MTD": "ERROR",
+    "MISSING_GRP_HDR_INSTG_AGT": "ERROR",
+    "MISSING_GRP_HDR_INSTD_AGT": "ERROR",
+    "MISSING_RTR_ID": "ERROR",
+    "MISSING_ORIGINAL_MSG_ID": "ERROR",
+    "MISSING_OR_INVALID_ORIGINAL_MSG_NM_ID": "ERROR",
+    "MISSING_ORIGINAL_END_TO_END_ID": "ERROR",
+    "MISSING_OR_INVALID_ORIGINAL_UETR": "ERROR",
+    "MISSING_RTRD_INTRBK_STTLM_AMT": "ERROR",
+    "MISSING_RTRD_AMT_CCY": "ERROR",
+    "MISSING_INTRBK_STTLM_DT": "ERROR",
+    "MISSING_RETURN_CHAIN": "ERROR",
+    "MISSING_RETURN_CHAIN_ASSGNR": "ERROR",
+    "MISSING_RETURN_CHAIN_ASSGNE": "ERROR",
+    "MISSING_RETURN_REASON": "ERROR",
+    "MISSING_OR_INVALID_RETURN_REASON_CODE": "ERROR",
+    "MISSING_ORIG_TX_REF_STTLM_DT": "WARNING",
+    "MISSING_ORIG_TX_REF_AMT": "WARNING",
+    "INVALID_UETR_FORMAT": "ERROR",
+    "INVALID_DATE_TIMEZONE": "ERROR",
+    "INVALID_AMOUNT": "ERROR",
+    "INVALID_CURRENCY_CODE": "ERROR",
+    "INVALID_BIC_FORMAT": "ERROR",
+    "MISSING_TOWN_NAME": "ERROR",
+    "MISSING_OR_INVALID_COUNTRY": "ERROR",
+    "DEPRECATED_UNSTRUCTURED_ADDRESS": "ERROR",
+    "ORIGINAL_PAYMENT_NOT_FOUND": "ERROR",
+    "ORIGINAL_INSTR_ID_MISMATCH": "ERROR",
+    "ORIGINAL_E2E_ID_MISMATCH": "ERROR",
+    "RETURN_AMOUNT_EXCEEDS_ORIGINAL": "ERROR",
+    "DUPLICATE_RETURN": "ERROR",
+    "DUPLICATE_MSG_ID": "ERROR",
+    "RECOMMENDED_ORIGINAL_GROUP_INFO": "WARNING",
+    "RECOMMENDED_ORIGINAL_INSTR_ID": "WARNING",
+    "MISSING_RTRD_INSTD_AMT": "ERROR",
+    "MISSING_OR_INVALID_CHRG_BR": "ERROR",
+    "MISSING_TX_INSTG_AGT": "ERROR",
+    "MISSING_TX_INSTD_AGT": "ERROR"
+  },
+  "xmlGenerationRules": {
+    "description": "Default values for generating SR2026-compliant pacs.004 XML.",
+    "defaults": {
+      "bizSvc": "swift.cbprplus.05",
+      "msgDefIdr": "pacs.004.001.09",
+      "sttlmMtd": "INGA",
+      "nbOfTxs": "1",
+      "uuIDVersion": "v4-lowercase"
+    }
+  },
+  "changesSinceSR2025": {
+    "description": "Key SR2026 changes affecting pacs.004 CBPR+",
+    "changes": [
+      {
+        "element": "PstlAdr.TwnNm + PstlAdr.Ctry",
+        "sr2025": "Optional structured elements",
+        "sr2026": "Mandatory in all postal addresses",
+        "impact": "Breaking — all postal addresses must include Town and Country"
+      },
+      {
+        "element": "PstlAdr.AdrLine",
+        "sr2025": "Allowed as unstructured-only",
+        "sr2026": "Fully deprecated as standalone — ERROR if AdrLine present without TwnNm + Ctry",
+        "impact": "Breaking — migrate addresses to structured or hybrid format"
+      },
+      {
+        "element": "UETR pattern",
+        "sr2025": "Case-insensitive accepted",
+        "sr2026": "Lowercase only — XSD UUIDv4Identifier pattern [a-f0-9]",
+        "impact": "Normalize to lowercase before submission"
+      },
+      {
+        "element": "GrpHdr.CreDtTm",
+        "sr2025": "Standard ISO 8601",
+        "sr2026": "CBPR_DateTime requires UTC offset",
+        "impact": "Must include UTC timezone offset e.g. +00:00"
+      },
+      {
+        "element": "Return Reason Code",
+        "sr2025": "Free text sometimes tolerated",
+        "sr2026": "Only ISO ExternalReturnReason1Code values permitted",
+        "impact": "Replace free text with valid ISO reason codes"
+      }
+    ]
+  },
+  "correctionLog": {
+    "version": "1.1.0",
+    "reviewSource": "CBPR+ SR2026 pacs.004.001.09 XSD verification",
+    "corrections": [
+      "Fix 1 — OrgnlGrpInf: mandatory=true → mandatory=false, recommended=true, severity WARNING. XSD: minOccurs=0.",
+      "Fix 1b — OrgnlGrpInf_OrgnlMsgId and OrgnlGrpInf_OrgnlMsgNmId: mandatory=false, presence=CONDITIONAL.",
+      "Fix 2 — OrgnlInstrId: mandatory=true → mandatory=false, recommended=true, severity WARNING. XSD: minOccurs=0.",
+      "Fix 3a — RtrdInstdAmt added: mandatory=true, totalDigits=14, fractionDigits=5.",
+      "Fix 3b — ChrgBr added: mandatory=true, allowedValues=[CRED, SHAR].",
+      "Fix 3c — TxInf_InstgAgt added: mandatory=true.",
+      "Fix 3d — TxInf_InstdAgt added: mandatory=true.",
+      "Fix 4 — OrgnlMsgNmId.allowedValues: added pacs.009.001.08COV for cover payment returns.",
+      "Fix 5 — Removed 1 duplicate NARR entry from returnReasonCodes.commonCodes.",
+      "Severity map updated: new codes added, demoted codes removed."
+    ]
+  }
+}

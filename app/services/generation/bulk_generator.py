@@ -1326,7 +1326,7 @@ def _gen_pacs004(selected: set, idx: int) -> str:
     charge_br = random.choice(["SHAR", "CRED"])
 
     tx = ""
-    rtrd_instd_amt_xml = ""
+    rtrd_instd_amt_xml = f'\t\t\t\t<RtrdInstdAmt Ccy="{xe(ccy)}">{amount}</RtrdInstdAmt>\n'
 
     # -- ChrgsInf (optional) — kept in the same currency zone --
     if "charges_information" in selected or charge_br == "CRED":
@@ -1336,8 +1336,6 @@ def _gen_pacs004(selected: set, idx: int) -> str:
                f"\t\t\t\t\t<Amt Ccy=\"{xe(ccy)}\">{chg_amt}</Amt>\n"
                f"\t\t\t\t\t<Agt>\n\t\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t\t<BICFI>{xe(chg_bic)}</BICFI>\n"
                f"\t\t\t\t\t\t</FinInstnId>\n\t\t\t\t\t</Agt>\n\t\t\t\t</ChrgsInf>\n")
-        # If ChargesInformation is present, ReturnedInstructedAmount must be present
-        rtrd_instd_amt_xml = f'\t\t\t\t<RtrdInstdAmt Ccy="{xe(ccy)}">{amount}</RtrdInstdAmt>\n'
 
     # -- InstgAgt / InstdAgt --
     if "instructing_agent" in selected:
@@ -1395,7 +1393,7 @@ def _gen_pacs004(selected: set, idx: int) -> str:
 {apphdr_fi(scenario.receiver_bic)}\t\t</To>
 \t\t<BizMsgIdr>{xe(biz_msg_id)}</BizMsgIdr>
 \t\t<MsgDefIdr>pacs.004.001.09</MsgDefIdr>
-\t\t<BizSvc>swift.cbprplus.02</BizSvc>
+\t\t<BizSvc>swift.cbprplus.05</BizSvc>
 \t\t<CreDt>{cre_dt}</CreDt>
 \t</AppHdr>
 \t<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.004.001.09">
