@@ -690,7 +690,6 @@ MESSAGE_BLOCKS: Dict[str, List[Dict]] = {
         {"id": "intermediary_agent_2_account","label": "Intermediary Agent 2 Account","mandatory": False, "requires": ["intermediary_agent_2"]},
         {"id": "intermediary_agent_3",       "label": "Intermediary Agent 3",        "mandatory": False, "requires": ["intermediary_agent_2"]},
         {"id": "intermediary_agent_3_account","label": "Intermediary Agent 3 Account","mandatory": False, "requires": ["intermediary_agent_3"]},
-        {"id": "underlying_fi_transaction",   "label": "Underlying FI Transaction (ADV)", "mandatory": True},
         {"id": "payment_type_information",   "label": "Payment Type Information",    "mandatory": False},
         {"id": "remittance_information",     "label": "Remittance Information",      "mandatory": False},
         {"id": "settlement_time_request",    "label": "Settlement Time Request",     "mandatory": False},
@@ -871,7 +870,6 @@ MESSAGE_BLOCKS: Dict[str, List[Dict]] = {
         {"id": "debtor_agent",              "label": "Debtor Agent",                "mandatory": True},
         {"id": "ultimate_creditor",         "label": "Ultimate Creditor",           "mandatory": False},
         {"id": "ultimate_debtor",           "label": "Ultimate Debtor",             "mandatory": False},
-        {"id": "payment_type_information",  "label": "Payment Type Information",    "mandatory": False},
         {"id": "remittance_information",    "label": "Remittance Information",      "mandatory": False},
     ],
 }
@@ -1127,8 +1125,10 @@ def _gen_pacs009(selected: set, idx: int, is_cov: bool = False, is_adv: bool = F
     uetr = scenario.uetr
     cre_dt = rng_datetime()
     sttlm_dt = rng_date(1)
-    if is_cov:
-        sttlm_mtd = "COVE"
+    if is_adv:
+        sttlm_mtd = "COVE"        # ADV XSD SettlementMethod1Code__1: only COVE
+    elif is_cov:
+        sttlm_mtd = random.choice(["INDA", "INGA"])  # COV XSD: only INDA or INGA
     else:
         sttlm_mtd = random.choice(SETTLEMENT_METHODS)
     amount = rng_amount(ccy)
@@ -1223,7 +1223,8 @@ def _gen_pacs009(selected: set, idx: int, is_cov: bool = False, is_adv: bool = F
     if "remittance_information" in selected:
         tx += f"\t\t\t\t<RmtInf>\n\t\t\t\t\t<Ustrd>{xe(rng_id('REF', 16))}</Ustrd>\n\t\t\t\t</RmtInf>\n"
 
-    # 17. UndrlygCstmrCdtTrf — COV only — uses the consistent customer-side scenario data
+    # 17. UndrlygCstmrCdtTrf — COV only — CreditTransferTransaction37__1 sequence:
+    #   Dbtr, DbtrAcct?, DbtrAgt, ..., CdtrAgt, Cdtr, CdtrAcct?, RmtInf?, InstdAmt (mandatory)
     if is_cov and "underlying_customer_credit_transfer" in selected:
         cov_dbtr_addr = _rng_pstl_adr_cov(5, scenario.debtor.country)
         cov_cdtr_addr = _rng_pstl_adr_cov(5, scenario.creditor.country)
@@ -1241,25 +1242,11 @@ def _gen_pacs009(selected: set, idx: int, is_cov: bool = False, is_adv: bool = F
 \t\t\t\t\t</Cdtr>
 \t\t\t\t\t<CdtrAcct><Id><IBAN>{xe(scenario.creditor.iban)}</IBAN></Id></CdtrAcct>
 \t\t\t\t\t<RmtInf><Ustrd>{xe(rng_id('COVREF', 10))}</Ustrd></RmtInf>
+\t\t\t\t\t<InstdAmt Ccy="{xe(ccy)}">{amount}</InstdAmt>
 \t\t\t\t</UndrlygCstmrCdtTrf>
 """
 
-    # 18. UndrlygFITxInf — ADV only
-    if is_adv and "underlying_fi_transaction" in selected:
-        tx += f"""\t\t\t\t<UndrlygFITxInf>
-\t\t\t\t\t<InstrId>{xe(rng_id('UINSTR', 11))}</InstrId>
-\t\t\t\t\t<EndToEndId>{xe(e2e_id)}</EndToEndId>
-\t\t\t\t\t<UETR>{xe(rng_uetr())}</UETR>
-\t\t\t\t\t<IntrBkSttlmAmt Ccy="{xe(ccy)}">{amount}</IntrBkSttlmAmt>
-\t\t\t\t\t<IntrBkSttlmDt>{sttlm_dt}</IntrBkSttlmDt>
-\t\t\t\t\t<Dbtr>
-\t\t\t\t\t\t<FinInstnId><BICFI>{xe(debtor_bic)}</BICFI></FinInstnId>
-\t\t\t\t\t</Dbtr>
-\t\t\t\t\t<Cdtr>
-\t\t\t\t\t\t<FinInstnId><BICFI>{xe(creditor_bic)}</BICFI></FinInstnId>
-\t\t\t\t\t</Cdtr>
-\t\t\t\t</UndrlygFITxInf>
-"""
+    # UndrlygFITxInf removed: element does not exist in pacs.009.001.08 ADV XSD
 
 
     # ── v12 namespace and root element ──
@@ -2558,11 +2545,6 @@ def _gen_pain008(selected: set, idx: int) -> str:
     # Reuse the sender BIC from the BAH so the routing chain stays consistent.
     fwdg_agt = agent_xml("FwdgAgt", scenario.sender_bic, 4)
 
-    pmt_tp = ""
-    if "payment_type_information" in selected:
-        svc = random.choice(SERVICE_LEVELS)
-        pmt_tp += f"\t\t\t\t<PmtTpInf><SvcLvl><Cd>{svc}</Cd></SvcLvl></PmtTpInf>\n"
-
     pmt_body = ""
     # Cdtr, CdtrAcct, CdtrAgt are MANDATORY in pain.008
     pmt_body += party_xml("Cdtr", creditor_party.name, creditor_party.country, 4)
@@ -2611,7 +2593,7 @@ def _gen_pain008(selected: set, idx: int) -> str:
 \t\t\t\t<PmtInfId>{xe(pmt_inf_id)}</PmtInfId>
 \t\t\t\t<PmtMtd>DD</PmtMtd>
 \t\t\t\t<ReqdColltnDt>{rng_date(2)}</ReqdColltnDt>
-{pmt_tp}{pmt_body}\t\t\t\t<DrctDbtTxInf>
+{pmt_body}\t\t\t\t<DrctDbtTxInf>
 \t\t\t\t\t<PmtId>
 \t\t\t\t\t\t<InstrId>{xe(instr_id)}</InstrId>
 \t\t\t\t\t\t<EndToEndId>{xe(e2e_id)}</EndToEndId>
@@ -2641,11 +2623,18 @@ def post_process_xml_for_sr2026(xml: str, message_type: str) -> str:
     - All others: swift.cbprplus.04 (default)
     """
     msg_lower = message_type.lower()
-    if "pacs.009" in msg_lower:
-        # SR2026 pacs.009 requires swift.cbprplus.04
+    if "pacs.009" in msg_lower and "adv" in msg_lower:
+        # ADV variant requires swift.cbprplus.adv.04
+        xml = xml.replace("<BizSvc>swift.cbprplus.adv.03</BizSvc>", "<BizSvc>swift.cbprplus.adv.04</BizSvc>")
+        xml = xml.replace("<BizSvc>swift.cbprplus.03</BizSvc>", "<BizSvc>swift.cbprplus.adv.04</BizSvc>")
+    elif "pacs.009" in msg_lower and "cov" in msg_lower:
+        # COV variant requires swift.cbprplus.cov.04
+        xml = xml.replace("<BizSvc>swift.cbprplus.cov.03</BizSvc>", "<BizSvc>swift.cbprplus.cov.04</BizSvc>")
+        xml = xml.replace("<BizSvc>swift.cbprplus.03</BizSvc>", "<BizSvc>swift.cbprplus.cov.04</BizSvc>")
+    elif "pacs.009" in msg_lower:
+        # Base pacs.009 requires swift.cbprplus.04
         xml = xml.replace("<BizSvc>swift.cbprplus.02</BizSvc>", "<BizSvc>swift.cbprplus.04</BizSvc>")
         xml = xml.replace("<BizSvc>swift.cbprplus.03</BizSvc>", "<BizSvc>swift.cbprplus.04</BizSvc>")
-        xml = xml.replace("<BizSvc>swift.cbprplus.cov.03</BizSvc>", "<BizSvc>swift.cbprplus.04</BizSvc>")
     elif "pacs.003" in msg_lower:
         xml = xml.replace("<BizSvc>swift.cbprplus.02</BizSvc>", "<BizSvc>swift.cbprplus.03</BizSvc>")
     else:

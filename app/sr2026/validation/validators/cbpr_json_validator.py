@@ -123,7 +123,7 @@ class CBPRJsonValidator:
 
     def _cbpr_schemas_dir(self) -> str:
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        return os.path.normpath(os.path.join(base_dir, "..", "..", "resources", "cbpr_json_schemas"))
+        return os.path.normpath(os.path.join(base_dir, "..", "..", "..", "sr2025", "resources", "cbpr_json_schemas"))
 
     def _find_cbpr_schema_for(self, message_type: str) -> Optional[str]:
         """Locate a JSON schema file matching the message type.

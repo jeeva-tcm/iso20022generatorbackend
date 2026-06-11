@@ -20,3 +20,4 @@ class ApiValidateResponse(BaseModel):
     errors: List[ApiIssue] = []
     warnings: List[ApiIssue] = []
     info: List[ApiIssue] = []
+    layers_skipped: List[int] = []

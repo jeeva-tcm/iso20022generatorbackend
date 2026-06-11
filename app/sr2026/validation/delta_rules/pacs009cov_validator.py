@@ -1,22 +1,19 @@
 """
-SR2026 pacs.009 ADV Validator
+SR2026 pacs.009 COV Validator
 ==============================
-Implements all SR2026 CBPR+ rules for the pacs.009 ADV (pre-advice) variant.
-ADV is identified by BizSvc='swift.cbprplus.03' AND/OR presence of UndrlygFITxInf.
+Implements all SR2026 CBPR+ rules for the pacs.009 COV (cover payment) variant.
+COV is identified by BizSvc='swift.cbprplus.cov.04' AND/OR presence of UndrlygCstmrCdtTrf.
 
 Rules implemented:
-  1.  Header Rules         (BizSvc=.03, MsgDefIdr, BizMsgIdr format, CreDt UTC, CpyDplct forbidden)
-  2.  Cross-Field Rules    (BizMsgIdr==MsgId, Fr==InstgAgt, To==InstdAgt,
-                            outer InstrId≠underlying, outer UETR≠underlying,
-                            outer Amt==underlying, outer Dt==underlying)
-  3.  Group Header         (NbOfTxs==1, SttlmMtd==COVE, CreDtTm UTC offset)
-  4.  Mandatory Transaction Fields (InstrId≤16, EndToEndId, UETR, IntrBkSttlmAmt,
-                            IntrBkSttlmDt, InstgAgt BICFI, InstdAgt BICFI, Dbtr, Cdtr)
-  5.  UndrlygFITxInf block (mandatory presence + all sub-fields)
-  6.  Forbidden Elements   (UndrlygCstmrCdtTrf)
-  7.  Agent ID Rules       (BICFI present → Nm/PstlAdr forbidden; absent → Nm+PstlAdr required)
-  8.  Address Rules        (TwnNm+Ctry mandatory, max 2 AdrLine for hybrid)
-  9.  UETR format          (lowercase UUID v4)
+  1.  Header Rules         (BizSvc=cov.04, MsgDefIdr, BizMsgIdr format, CreDt UTC, CpyDplct forbidden)
+  2.  Group Header         (NbOfTxs==1, SttlmMtd==INDA or INGA, CreDtTm UTC offset)
+  3.  Transaction          (InstrId<=16, EndToEndId, UETR lowercase UUID v4, IntrBkSttlmAmt,
+                            IntrBkSttlmDt, InstgAgt BICFI mandatory, InstdAgt BICFI mandatory)
+  4.  UndrlygCstmrCdtTrf   (mandatory; FATF Rec 16: Dbtr.Nm + Cdtr.Nm mandatory)
+  5.  Forbidden Elements   (UndrlygFITxInf forbidden)
+  6.  Cross-Field Rules    (BizMsgIdr==MsgId, Fr==InstgAgt, To==InstdAgt)
+  7.  Agent ID Rules       (BICFI present -> Nm/PstlAdr forbidden)
+  8.  Address Rules        (TwnNm+Ctry mandatory, max 2 AdrLine)
 """
 
 import re
@@ -24,16 +21,15 @@ from lxml import etree
 from app.sr2026.validation.validators.models import ValidationIssue, ValidationReport
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-_BIZSVC_ADV       = "swift.cbprplus.adv.04"
-_MSG_DEF_IDR      = "pacs.009.001.08"
-_UETR_RE          = re.compile(r'^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$')
-_UETR_RE_CI       = re.compile(r'^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$')
-_DATE_RE          = re.compile(r'^\d{4}-\d{2}-\d{2}$')
-_CREDT_UTC_RE     = re.compile(r'.+([+-])((0[0-9])|(1[0-4])):[0-5][0-9]$')
-_BICFI_RE         = re.compile(r'^[A-Z0-9]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$')
-_FINX_RE          = re.compile(r'^[0-9a-zA-Z/\-?:().,' + r"' +" + r']+$')
-_COUNTRY_RE       = re.compile(r'^[A-Z]{2}$')
-_AMOUNT_RE        = re.compile(r'^\d+(\.\d+)?$')
+_BIZSVC_COV   = "swift.cbprplus.cov.04"
+_MSG_DEF_IDR  = "pacs.009.001.08"
+_STTLM_COV    = {"INDA", "INGA"}
+_UETR_RE      = re.compile(r'^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$')
+_UETR_RE_CI   = re.compile(r'^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$')
+_DATE_RE      = re.compile(r'^\d{4}-\d{2}-\d{2}$')
+_CREDT_UTC_RE = re.compile(r'.+([+-])((0[0-9])|(1[0-4])):[0-5][0-9]$')
+_BICFI_RE     = re.compile(r'^[A-Z0-9]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$')
+_FINX_RE      = re.compile(r'^[0-9a-zA-Z/\-?:().,' + r"' +" + r']+$')
 
 
 def _t(node) -> str:
@@ -45,28 +41,29 @@ def _bic_norm(bic: str) -> str:
     return bic + "XXX" if len(bic) == 8 else bic
 
 
-class Pacs009AdvValidator:
-    """SR2026 CBPR+ pacs.009 ADV validation rules."""
+class Pacs009CovValidator:
+    """SR2026 CBPR+ pacs.009 COV validation rules."""
 
     @classmethod
-    def _is_adv(cls, root: etree._Element, message_type: str = "") -> bool:
+    def _is_cov(cls, root: etree._Element, message_type: str = "") -> bool:
         mt = message_type.lower()
-        if "_adv" in mt or "pacs.009.adv" in mt or "pacs.009_adv" in mt:
+        if "_cov" in mt or "pacs.009.cov" in mt or "pacs.009_cov" in mt:
             return True
         biz_svc = root.xpath("//*[local-name()='AppHdr']/*[local-name()='BizSvc']")
-        if biz_svc and _t(biz_svc[0]) == _BIZSVC_ADV:
+        if biz_svc and _t(biz_svc[0]) == _BIZSVC_COV:
             return True
-        return False
+        return bool(root.xpath("//*[local-name()='UndrlygCstmrCdtTrf']"))
 
     @classmethod
     def validate(cls, root: etree._Element, report: ValidationReport, message_type: str):
         if "pacs.009" not in message_type.lower():
             return
-        if not cls._is_adv(root, message_type):
+        if not cls._is_cov(root, message_type):
             return
         cls._validate_header(root, report)
         cls._validate_group_header(root, report)
         cls._validate_transaction(root, report)
+        cls._validate_underlying(root, report)
         cls._validate_cross_fields(root, report)
         cls._validate_forbidden(root, report)
 
@@ -80,24 +77,24 @@ class Pacs009AdvValidator:
         hdr = hdr_nodes[0]
         src = hdr.sourceline or 1
 
-        # BizSvc must be swift.cbprplus.03
+        # BizSvc must be swift.cbprplus.cov.04
         biz_svc = hdr.xpath("*[local-name()='BizSvc']")
         if biz_svc:
             val = _t(biz_svc[0])
-            if val != _BIZSVC_ADV:
+            if val != _BIZSVC_COV:
                 report.add_issue(ValidationIssue(
                     severity="ERROR", code="INVALID_BIZ_SVC",
                     path="//AppHdr/BizSvc",
-                    message=f"AppHdr <BizSvc> must be '{_BIZSVC_ADV}' for pacs.009 ADV in SR2026. Got '{val}'.",
+                    message=f"AppHdr <BizSvc> must be '{_BIZSVC_COV}' for pacs.009 COV in SR2026. Got '{val}'.",
                     line=biz_svc[0].sourceline or src,
-                    fix=f"Set <BizSvc>{_BIZSVC_ADV}</BizSvc> in AppHdr.",
+                    fix=f"Set <BizSvc>{_BIZSVC_COV}</BizSvc> in AppHdr.",
                 ))
         else:
             report.add_issue(ValidationIssue(
                 severity="ERROR", code="MISSING_BIZ_SVC", layer=2,
                 path="//AppHdr/BizSvc",
-                message=f"AppHdr <BizSvc> is missing. Must be '{_BIZSVC_ADV}' for pacs.009 ADV.",
-                line=src, fix=f"Add <BizSvc>{_BIZSVC_ADV}</BizSvc> to AppHdr.",
+                message=f"AppHdr <BizSvc> is missing. Must be '{_BIZSVC_COV}' for pacs.009 COV.",
+                line=src, fix=f"Add <BizSvc>{_BIZSVC_COV}</BizSvc> to AppHdr.",
             ))
 
         # MsgDefIdr must be pacs.009.001.08
@@ -108,7 +105,7 @@ class Pacs009AdvValidator:
                 report.add_issue(ValidationIssue(
                     severity="ERROR", code="INVALID_MSG_DEF_IDR",
                     path="//AppHdr/MsgDefIdr",
-                    message=f"AppHdr <MsgDefIdr> must be '{_MSG_DEF_IDR}' for pacs.009 ADV. Got '{val}'.",
+                    message=f"AppHdr <MsgDefIdr> must be '{_MSG_DEF_IDR}' for pacs.009 COV. Got '{val}'.",
                     line=msg_def[0].sourceline or src,
                     fix=f"Set <MsgDefIdr>{_MSG_DEF_IDR}</MsgDefIdr> in AppHdr.",
                 ))
@@ -128,12 +125,12 @@ class Pacs009AdvValidator:
                 report.add_issue(ValidationIssue(
                     severity="ERROR", code="INVALID_BIZ_MSG_IDR_FORMAT",
                     path="//AppHdr/BizMsgIdr",
-                    message="AppHdr <BizMsgIdr> must be 1–35 chars using FIN-X character set (0-9 a-z A-Z / - ? : ( ) . , ' + space).",
+                    message="AppHdr <BizMsgIdr> must be 1-35 chars using FIN-X character set.",
                     line=biz_msg[0].sourceline or src,
-                    fix="Remove unsupported characters; keep length 1–35.",
+                    fix="Remove unsupported characters; keep length 1-35.",
                 ))
 
-        # CreDt — must include UTC offset (CBPR_DateTime)
+        # CreDt — must include UTC offset
         cre_dt = hdr.xpath("*[local-name()='CreDt']")
         if cre_dt:
             val = _t(cre_dt[0])
@@ -146,13 +143,13 @@ class Pacs009AdvValidator:
                     fix="Set <CreDt>2026-11-15T09:30:00+00:00</CreDt>.",
                 ))
 
-        # CpyDplct FORBIDDEN in ADV
+        # CpyDplct FORBIDDEN in COV
         cpy = hdr.xpath("*[local-name()='CpyDplct']")
         if cpy:
             report.add_issue(ValidationIssue(
                 severity="ERROR", code="FORBIDDEN_CPY_DPLCT",
                 path="//AppHdr/CpyDplct",
-                message="AppHdr <CpyDplct> must not be present in pacs.009 ADV (BizSvc=swift.cbprplus.03).",
+                message="AppHdr <CpyDplct> must not be present in pacs.009 COV.",
                 line=cpy[0].sourceline or src,
                 fix="Remove <CpyDplct> from AppHdr.",
             ))
@@ -175,9 +172,9 @@ class Pacs009AdvValidator:
                 report.add_issue(ValidationIssue(
                     severity="ERROR", code="INVALID_NB_OF_TXS",
                     path="//GrpHdr/NbOfTxs",
-                    message=f"GrpHdr <NbOfTxs> must be '1' for pacs.009 ADV. Got '{val}'.",
+                    message=f"GrpHdr <NbOfTxs> must be '1' for pacs.009 COV. Got '{val}'.",
                     line=nb[0].sourceline or src,
-                    fix="Set <NbOfTxs>1</NbOfTxs>. pacs.009 ADV supports only one transaction per message.",
+                    fix="Set <NbOfTxs>1</NbOfTxs>. pacs.009 COV supports only one transaction per message.",
                 ))
         else:
             report.add_issue(ValidationIssue(
@@ -193,28 +190,28 @@ class Pacs009AdvValidator:
             report.add_issue(ValidationIssue(
                 severity="ERROR", code="INVALID_NB_OF_TXS",
                 path="//FICdtTrf",
-                message=f"pacs.009 ADV must have exactly 1 CdtTrfTxInf block. Found {tx_count}.",
+                message=f"pacs.009 COV must have exactly 1 CdtTrfTxInf block. Found {tx_count}.",
                 line=src, fix="Remove extra <CdtTrfTxInf> blocks — only one is permitted.",
             ))
 
-        # SttlmMtd must be COVE for ADV
+        # SttlmMtd must be INDA or INGA for COV (COVE is forbidden)
         sttlm = grp.xpath("*[local-name()='SttlmInf']/*[local-name()='SttlmMtd']")
         if sttlm:
             val = _t(sttlm[0])
-            if val != "COVE":
+            if val not in _STTLM_COV:
                 report.add_issue(ValidationIssue(
                     severity="ERROR", code="INVALID_STTLM_MTD",
                     path="//GrpHdr/SttlmInf/SttlmMtd",
-                    message=f"GrpHdr <SttlmMtd> must be 'COVE' for pacs.009 ADV. Got '{val}'.",
+                    message=f"GrpHdr <SttlmMtd> must be 'INDA' or 'INGA' for pacs.009 COV. Got '{val}'. COVE is not permitted in COV messages.",
                     line=sttlm[0].sourceline or src,
-                    fix="Set <SttlmMtd>COVE</SttlmMtd> inside <SttlmInf>.",
+                    fix="Set <SttlmMtd>INDA</SttlmMtd> or <SttlmMtd>INGA</SttlmMtd> inside <SttlmInf>.",
                 ))
         else:
             report.add_issue(ValidationIssue(
                 severity="ERROR", code="INVALID_STTLM_MTD", layer=2,
                 path="//GrpHdr/SttlmInf/SttlmMtd",
-                message="GrpHdr <SttlmMtd> is missing. Must be 'COVE' for pacs.009 ADV.",
-                line=src, fix="Add <SttlmInf><SttlmMtd>COVE</SttlmMtd></SttlmInf>.",
+                message="GrpHdr <SttlmMtd> is missing. Must be 'INDA' or 'INGA' for pacs.009 COV.",
+                line=src, fix="Add <SttlmInf><SttlmMtd>INDA</SttlmMtd></SttlmInf>.",
             ))
 
         # CreDtTm must have UTC offset
@@ -245,7 +242,7 @@ class Pacs009AdvValidator:
         for tx in tx_nodes:
             src = tx.sourceline or 1
 
-            # InstrId — mandatory, max 16 chars, FIN-X
+            # InstrId — mandatory, max 16 chars
             instr_id = tx.xpath("*[local-name()='PmtId']/*[local-name()='InstrId']")
             if instr_id:
                 val = _t(instr_id[0])
@@ -253,7 +250,7 @@ class Pacs009AdvValidator:
                     report.add_issue(ValidationIssue(
                         severity="ERROR", code="MISSING_INSTR_ID",
                         path="//CdtTrfTxInf/PmtId/InstrId",
-                        message=f"PmtId <InstrId> must be 1–16 characters (CBPR_RestrictedFINXMax16Text). Got {len(val)} chars.",
+                        message=f"PmtId <InstrId> must be 1-16 characters. Got {len(val)} chars.",
                         line=instr_id[0].sourceline or src,
                         fix="Shorten <InstrId> to max 16 characters.",
                     ))
@@ -261,18 +258,18 @@ class Pacs009AdvValidator:
                 report.add_issue(ValidationIssue(
                     severity="ERROR", code="MISSING_INSTR_ID", layer=2,
                     path="//CdtTrfTxInf/PmtId/InstrId",
-                    message="PmtId <InstrId> is missing. Mandatory for pacs.009 ADV.",
-                    line=src, fix="Add <InstrId> (1–16 chars) inside <PmtId>.",
+                    message="PmtId <InstrId> is missing. Mandatory for pacs.009 COV.",
+                    line=src, fix="Add <InstrId> (1-16 chars) inside <PmtId>.",
                 ))
 
-            # EndToEndId — mandatory, non-blank
+            # EndToEndId — mandatory
             e2e = tx.xpath("*[local-name()='PmtId']/*[local-name()='EndToEndId']")
             if e2e:
                 if not _t(e2e[0]):
                     report.add_issue(ValidationIssue(
                         severity="ERROR", code="MISSING_END_TO_END_ID",
                         path="//CdtTrfTxInf/PmtId/EndToEndId",
-                        message="PmtId <EndToEndId> is blank. Must be a non-empty string.",
+                        message="PmtId <EndToEndId> is blank.",
                         line=e2e[0].sourceline or src,
                         fix="Set a valid EndToEndId or use 'NOTPROVIDED'.",
                     ))
@@ -309,11 +306,11 @@ class Pacs009AdvValidator:
                 report.add_issue(ValidationIssue(
                     severity="ERROR", code="MISSING_OR_INVALID_UETR", layer=2,
                     path="//CdtTrfTxInf/PmtId/UETR",
-                    message="PmtId <UETR> is missing. Mandatory for pacs.009 ADV.",
+                    message="PmtId <UETR> is missing. Mandatory for pacs.009 COV.",
                     line=src, fix="Add a valid lowercase UUID v4 to <PmtId><UETR>.",
                 ))
 
-            # IntrBkSttlmAmt — mandatory, amount > 0, CBPR_Date currency
+            # IntrBkSttlmAmt — mandatory, amount > 0
             amt = tx.xpath("*[local-name()='IntrBkSttlmAmt']")
             if amt:
                 val = _t(amt[0])
@@ -339,7 +336,6 @@ class Pacs009AdvValidator:
                         fval = float(val)
                         if fval <= 0:
                             raise ValueError("must be positive")
-                        # CBPR_Amount: totalDigits=14, fractionDigits=5
                         clean = val.replace("-", "")
                         if "." in clean:
                             int_p, dec_p = clean.split(".", 1)
@@ -351,7 +347,7 @@ class Pacs009AdvValidator:
                         report.add_issue(ValidationIssue(
                             severity="ERROR", code="MISSING_INTRBK_STTLM_AMT",
                             path="//CdtTrfTxInf/IntrBkSttlmAmt",
-                            message=f"<IntrBkSttlmAmt> value '{val}' is invalid ({ve}). Must be positive, max 14 total digits, max 5 fraction digits.",
+                            message=f"<IntrBkSttlmAmt> value '{val}' is invalid ({ve}).",
                             line=amt[0].sourceline or src,
                             fix="Set a valid positive amount e.g. <IntrBkSttlmAmt Ccy=\"USD\">1000.00</IntrBkSttlmAmt>.",
                         ))
@@ -363,7 +359,7 @@ class Pacs009AdvValidator:
                     line=src, fix="Add <IntrBkSttlmAmt Ccy=\"USD\">1000.00</IntrBkSttlmAmt>.",
                 ))
 
-            # IntrBkSttlmDt — mandatory, CBPR_Date (no timezone)
+            # IntrBkSttlmDt — mandatory, CBPR_Date
             sttlm_dt = tx.xpath("*[local-name()='IntrBkSttlmDt']")
             if sttlm_dt:
                 val = _t(sttlm_dt[0])
@@ -389,35 +385,77 @@ class Pacs009AdvValidator:
             # InstdAgt — BICFI mandatory, Nm/PstlAdr FORBIDDEN
             cls._validate_agent_bicfi_mandatory(tx, "InstdAgt", "MISSING_INSTD_AGT_BIC", src, report)
 
-            # Dbtr — mandatory, BICFI/Nm+PstlAdr rule
-            dbtr = tx.xpath("*[local-name()='Dbtr']")
-            if not dbtr:
-                report.add_issue(ValidationIssue(
-                    severity="ERROR", code="MISSING_DBTR", layer=2,
-                    path="//CdtTrfTxInf/Dbtr",
-                    message="<Dbtr> is missing.",
-                    line=src, fix="Add <Dbtr><FinInstnId><BICFI>BANKUS33XXX</BICFI></FinInstnId></Dbtr>.",
-                ))
-            else:
-                cls._validate_agent_identification(dbtr[0], "Dbtr", report)
-
-            # Cdtr — mandatory, BICFI/Nm+PstlAdr rule
-            cdtr = tx.xpath("*[local-name()='Cdtr']")
-            if not cdtr:
-                report.add_issue(ValidationIssue(
-                    severity="ERROR", code="MISSING_CDTR", layer=2,
-                    path="//CdtTrfTxInf/Cdtr",
-                    message="<Cdtr> is missing.",
-                    line=src, fix="Add <Cdtr><FinInstnId><BICFI>BANKGB2LXXX</BICFI></FinInstnId></Cdtr>.",
-                ))
-            else:
-                cls._validate_agent_identification(cdtr[0], "Cdtr", report)
-
-            # Address rules on Dbtr/Cdtr PstlAdr
+            # Address rules on any agents with PstlAdr
             for party_tag in ["Dbtr", "Cdtr", "IntrmyAgt1", "IntrmyAgt2", "IntrmyAgt3"]:
                 party = tx.xpath(f"*[local-name()='{party_tag}']")
                 if party:
                     cls._validate_postal_address(party[0], party_tag, report)
+
+    # ── 4. UndrlygCstmrCdtTrf Rules ──────────────────────────────────────────
+
+    @classmethod
+    def _validate_underlying(cls, root: etree._Element, report: ValidationReport):
+        tx_nodes = root.xpath("//*[local-name()='CdtTrfTxInf']")
+        for tx in tx_nodes:
+            src = tx.sourceline or 1
+            undrlyg = tx.xpath("*[local-name()='UndrlygCstmrCdtTrf']")
+
+            if not undrlyg:
+                report.add_issue(ValidationIssue(
+                    severity="ERROR", code="MISSING_UNDRLYG_CSTMR_CDT_TRF", layer=2,
+                    path="//CdtTrfTxInf/UndrlygCstmrCdtTrf",
+                    message="<UndrlygCstmrCdtTrf> is missing. This block is mandatory for pacs.009 COV.",
+                    line=src,
+                    fix="Add <UndrlygCstmrCdtTrf> block containing Dbtr, DbtrAgt, CdtrAgt, Cdtr, and InstdAmt.",
+                ))
+                continue
+
+            u = undrlyg[0]
+            usrc = u.sourceline or src
+
+            # FATF Rec 16: Debtor Name mandatory in underlying
+            dbtr = u.xpath("*[local-name()='Dbtr']")
+            if dbtr:
+                nm = dbtr[0].xpath("*[local-name()='Nm']")
+                if not nm or not _t(nm[0]):
+                    report.add_issue(ValidationIssue(
+                        severity="ERROR", code="FATF_REC16_MISSING_DBTR_NM",
+                        path="//CdtTrfTxInf/UndrlygCstmrCdtTrf/Dbtr/Nm",
+                        message="<UndrlygCstmrCdtTrf><Dbtr><Nm> is mandatory (FATF Recommendation 16).",
+                        line=dbtr[0].sourceline or usrc,
+                        fix="Add <Nm> with the debtor's full name inside <UndrlygCstmrCdtTrf><Dbtr>.",
+                    ))
+            else:
+                report.add_issue(ValidationIssue(
+                    severity="ERROR", code="FATF_REC16_MISSING_DBTR_NM", layer=2,
+                    path="//CdtTrfTxInf/UndrlygCstmrCdtTrf/Dbtr",
+                    message="<UndrlygCstmrCdtTrf><Dbtr> is missing. Debtor information is mandatory for pacs.009 COV (FATF Rec 16).",
+                    line=usrc,
+                    fix="Add <Dbtr><Nm>...</Nm></Dbtr> inside <UndrlygCstmrCdtTrf>.",
+                ))
+
+            # FATF Rec 16: Creditor Name mandatory in underlying
+            cdtr = u.xpath("*[local-name()='Cdtr']")
+            if cdtr:
+                nm = cdtr[0].xpath("*[local-name()='Nm']")
+                if not nm or not _t(nm[0]):
+                    report.add_issue(ValidationIssue(
+                        severity="ERROR", code="FATF_REC16_MISSING_CDTR_NM",
+                        path="//CdtTrfTxInf/UndrlygCstmrCdtTrf/Cdtr/Nm",
+                        message="<UndrlygCstmrCdtTrf><Cdtr><Nm> is mandatory (FATF Recommendation 16).",
+                        line=cdtr[0].sourceline or usrc,
+                        fix="Add <Nm> with the creditor's full name inside <UndrlygCstmrCdtTrf><Cdtr>.",
+                    ))
+            else:
+                report.add_issue(ValidationIssue(
+                    severity="ERROR", code="FATF_REC16_MISSING_CDTR_NM", layer=2,
+                    path="//CdtTrfTxInf/UndrlygCstmrCdtTrf/Cdtr",
+                    message="<UndrlygCstmrCdtTrf><Cdtr> is missing. Creditor information is mandatory for pacs.009 COV (FATF Rec 16).",
+                    line=usrc,
+                    fix="Add <Cdtr><Nm>...</Nm></Cdtr> inside <UndrlygCstmrCdtTrf>.",
+                ))
+
+            # InstdAmt presence/format is enforced by the COV XSD (L2) — no duplicate L3 check here
 
     # ── 5. Cross-Field Rules ──────────────────────────────────────────────────
 
@@ -444,8 +482,8 @@ class Pacs009AdvValidator:
                 ))
 
         # Fr BIC == InstgAgt BIC
-        fr_bic  = hdr.xpath("*[local-name()='Fr']//*[local-name()='BICFI']")
-        instg   = tx.xpath("*[local-name()='InstgAgt']//*[local-name()='BICFI']")
+        fr_bic = hdr.xpath("*[local-name()='Fr']//*[local-name()='BICFI']")
+        instg  = tx.xpath("*[local-name()='InstgAgt']//*[local-name()='BICFI']")
         if fr_bic and instg:
             if _bic_norm(_t(fr_bic[0])) != _bic_norm(_t(instg[0])):
                 report.add_issue(ValidationIssue(
@@ -457,8 +495,8 @@ class Pacs009AdvValidator:
                 ))
 
         # To BIC == InstdAgt BIC
-        to_bic  = hdr.xpath("*[local-name()='To']//*[local-name()='BICFI']")
-        instd   = tx.xpath("*[local-name()='InstdAgt']//*[local-name()='BICFI']")
+        to_bic = hdr.xpath("*[local-name()='To']//*[local-name()='BICFI']")
+        instd  = tx.xpath("*[local-name()='InstdAgt']//*[local-name()='BICFI']")
         if to_bic and instd:
             if _bic_norm(_t(to_bic[0])) != _bic_norm(_t(instd[0])):
                 report.add_issue(ValidationIssue(
@@ -469,20 +507,18 @@ class Pacs009AdvValidator:
                     fix="Ensure AppHdr To BIC matches Instructed Agent BIC.",
                 ))
 
-        # Outer Amt and Dt removed (were underlying-dependent)
-
     # ── 6. Forbidden Elements ─────────────────────────────────────────────────
 
     @classmethod
     def _validate_forbidden(cls, root: etree._Element, report: ValidationReport):
-        # UndrlygCstmrCdtTrf is exclusive to COV — forbidden in ADV
-        for node in root.xpath("//*[local-name()='UndrlygCstmrCdtTrf']"):
+        # UndrlygFITxInf is exclusive to ADV — forbidden in COV
+        for node in root.xpath("//*[local-name()='UndrlygFITxInf']"):
             report.add_issue(ValidationIssue(
-                severity="ERROR", code="FORBIDDEN_UNDRLYG_CSTMR_CDT_TRF",
-                path="//CdtTrfTxInf/UndrlygCstmrCdtTrf",
-                message="<UndrlygCstmrCdtTrf> is present but forbidden in pacs.009 ADV. This element belongs to pacs.009 COV.",
+                severity="ERROR", code="FORBIDDEN_UNDRLYG_FI_TX_INF",
+                path="//CdtTrfTxInf/UndrlygFITxInf",
+                message="<UndrlygFITxInf> is present but forbidden in pacs.009 COV. This element belongs to pacs.009 ADV.",
                 line=node.sourceline or 1,
-                fix="Remove <UndrlygCstmrCdtTrf> for ADV messages.",
+                fix="Remove <UndrlygFITxInf> for COV messages. Use <UndrlygCstmrCdtTrf> instead.",
             ))
 
     # ── Helpers ───────────────────────────────────────────────────────────────
@@ -495,7 +531,7 @@ class Pacs009AdvValidator:
             report.add_issue(ValidationIssue(
                 severity="ERROR", code=code, layer=2,
                 path=f"//CdtTrfTxInf/{tag}/FinInstnId/BICFI",
-                message=f"<{tag}> is missing. BICFI is mandatory for {tag} in pacs.009 ADV.",
+                message=f"<{tag}> is missing. BICFI is mandatory for {tag} in pacs.009 COV.",
                 line=src, fix=f"Add <{tag}><FinInstnId><BICFI>BANKXX00XXX</BICFI></FinInstnId></{tag}>.",
             ))
             return
@@ -506,7 +542,7 @@ class Pacs009AdvValidator:
             report.add_issue(ValidationIssue(
                 severity="ERROR", code=code, layer=2,
                 path=f"//CdtTrfTxInf/{tag}/FinInstnId/BICFI",
-                message=f"<{tag}> BICFI is missing. BICFI is mandatory (FinancialInstitutionIdentification18__2).",
+                message=f"<{tag}> BICFI is missing. BICFI is mandatory for {tag} in pacs.009 COV.",
                 line=asrc, fix=f"Add <BICFI> inside <{tag}><FinInstnId>.",
             ))
         else:
@@ -519,7 +555,7 @@ class Pacs009AdvValidator:
                     line=bicfi[0].sourceline or asrc,
                     fix="Use a valid 8 or 11 character BIC (e.g. BANKUS33XXX).",
                 ))
-        # Nm/PstlAdr forbidden when BICFI present (FinancialInstitutionIdentification18__2)
+        # Nm/PstlAdr forbidden when BICFI present
         fi_id = a.xpath("*[local-name()='FinInstnId']")
         if fi_id and bicfi:
             for forbidden in ["Nm", "PstlAdr"]:
@@ -528,48 +564,14 @@ class Pacs009AdvValidator:
                     report.add_issue(ValidationIssue(
                         severity="ERROR", code="AGENT_IDENTIFICATION_RULE_VIOLATION",
                         path=f"//CdtTrfTxInf/{tag}/FinInstnId/{forbidden}",
-                        message=f"<{forbidden}> is forbidden inside <{tag}><FinInstnId> when BICFI is present (pacs.009 ADV FinancialInstitutionIdentification18__2).",
+                        message=f"<{forbidden}> is forbidden inside <{tag}><FinInstnId> when BICFI is present.",
                         line=found[0].sourceline or asrc,
                         fix=f"Remove <{forbidden}> from <{tag}><FinInstnId>. Use BICFI only for {tag}.",
                     ))
 
     @classmethod
-    def _validate_agent_identification(cls, agent: etree._Element, tag: str, report: ValidationReport):
-        """Dbtr/Cdtr/IntrmyAgt: BICFI present → no Nm/PstlAdr; absent → Nm+PstlAdr required."""
-        src = agent.sourceline or 1
-        fi_id = agent.xpath("*[local-name()='FinInstnId']")
-        if not fi_id:
-            return
-        fi = fi_id[0]
-        bicfi = fi.xpath("*[local-name()='BICFI']")
-        if bicfi and _t(bicfi[0]):
-            # BICFI present → Nm/PstlAdr forbidden
-            for forbidden in ["Nm", "PstlAdr"]:
-                found = fi.xpath(f"*[local-name()='{forbidden}']")
-                if found:
-                    report.add_issue(ValidationIssue(
-                        severity="ERROR", code="AGENT_IDENTIFICATION_RULE_VIOLATION",
-                        path=f"//{tag}/FinInstnId/{forbidden}",
-                        message=f"<{forbidden}> is not allowed inside <{tag}><FinInstnId> when BICFI is present (CBPR+ Principle 1).",
-                        line=found[0].sourceline or src,
-                        fix=f"Remove <{forbidden}> from <{tag}><FinInstnId>.",
-                    ))
-        else:
-            # BICFI absent → Nm and PstlAdr required
-            for required in ["Nm", "PstlAdr"]:
-                found = fi.xpath(f"*[local-name()='{required}']")
-                if not found:
-                    report.add_issue(ValidationIssue(
-                        severity="ERROR", code="AGENT_IDENTIFICATION_RULE_VIOLATION",
-                        path=f"//{tag}/FinInstnId/{required}",
-                        message=f"<{required}> is required inside <{tag}><FinInstnId> when BICFI is absent (CBPR+ Principle 1).",
-                        line=src,
-                        fix=f"Add <{required}> to <{tag}><FinInstnId>, or add <BICFI> instead.",
-                    ))
-
-    @classmethod
     def _validate_postal_address(cls, party: etree._Element, tag: str, report: ValidationReport):
-        """TwnNm + Ctry mandatory; max 2 AdrLine for hybrid."""
+        """TwnNm + Ctry mandatory; max 2 AdrLine."""
         pstl_adr = party.xpath("*[local-name()='FinInstnId']/*[local-name()='PstlAdr']")
         if not pstl_adr:
             return
@@ -587,13 +589,12 @@ class Pacs009AdvValidator:
                     fix=f"Add <{field}> to <{tag}><FinInstnId><PstlAdr>.",
                 ))
 
-        # Max 2 AdrLine
         adr_lines = adr.xpath("*[local-name()='AdrLine']")
         if len(adr_lines) > 2:
             report.add_issue(ValidationIssue(
                 severity="ERROR", code="DEPRECATED_UNSTRUCTURED_ADDRESS",
                 path=f"//{tag}/FinInstnId/PstlAdr/AdrLine",
-                message=f"<PstlAdr> inside <{tag}> has {len(adr_lines)} <AdrLine> elements. Maximum allowed is 2 (hybrid address).",
+                message=f"<PstlAdr> inside <{tag}> has {len(adr_lines)} <AdrLine> elements. Maximum allowed is 2.",
                 line=adr_lines[2].sourceline or src,
                 fix="Remove excess <AdrLine> elements. Hybrid addresses allow max 2 AdrLine alongside TwnNm+Ctry.",
             ))

@@ -75,11 +75,12 @@ class Pacs003Validator:
 
     @classmethod
     def _issue(cls, report: ValidationReport, rule_id: str, path: str, line: int,
-               message: str = None, fix: str = None, severity: str = None):
+               message: str = None, fix: str = None, severity: str = None, layer: int = 3):
         meta = cls._m(rule_id)
         report.add_issue(ValidationIssue(
             severity=severity or meta.get("severity", "ERROR"),
             code=rule_id,
+            layer=layer,
             path=path,
             message=message or meta.get("description", rule_id),
             line=line or 1,
@@ -129,7 +130,8 @@ class Pacs003Validator:
         if not grp_hdr_nodes:
             cls._issue(report, "SR2026-GRP-001", path="//GrpHdr", line=1,
                        message="Group Header (GrpHdr) is mandatory but missing.",
-                       fix="Add a <GrpHdr> block with MsgId, CreDtTm, NbOfTxs and SttlmInf.")
+                       fix="Add a <GrpHdr> block with MsgId, CreDtTm, NbOfTxs and SttlmInf.",
+                       layer=2)
             return
         grp = grp_hdr_nodes[0]
         grp_line = grp.sourceline or 1
@@ -140,7 +142,8 @@ class Pacs003Validator:
         if msg_id is None or not cls._text(msg_id):
             cls._issue(report, "SR2026-GRP-001", path="//GrpHdr/MsgId", line=grp_line,
                        message="Message Identification (MsgId) is mandatory.",
-                       fix="Provide a unique MsgId (1-35 chars).")
+                       fix="Provide a unique MsgId (1-35 chars).",
+                       layer=2)
         else:
             val = cls._text(msg_id)
             if len(val) > m.get("maxLength", 35) or len(val) < m.get("minLength", 1):
@@ -159,7 +162,8 @@ class Pacs003Validator:
         if cre is None or not cls._text(cre):
             cls._issue(report, "SR2026-GRP-002", path="//GrpHdr/CreDtTm", line=grp_line,
                        message="Creation Date and Time (CreDtTm) is mandatory.",
-                       fix="Provide CreDtTm in ISO 8601 format (YYYY-MM-DDThh:mm:ss).")
+                       fix="Provide CreDtTm in ISO 8601 format (YYYY-MM-DDThh:mm:ss).",
+                       layer=2)
         else:
             val = cls._text(cre)
             if not re.match(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}', val):
@@ -174,7 +178,8 @@ class Pacs003Validator:
         if nb is None or not cls._text(nb):
             cls._issue(report, "SR2026-GRP-003", path="//GrpHdr/NbOfTxs", line=grp_line,
                        message="Number of Transactions (NbOfTxs) is mandatory.",
-                       fix=f"Set NbOfTxs to {actual}.")
+                       fix=f"Set NbOfTxs to {actual}.",
+                       layer=2)
         else:
             val = cls._text(nb)
             try:
@@ -221,7 +226,8 @@ class Pacs003Validator:
         if sttlm is None or not cls._text(sttlm):
             cls._issue(report, "SR2026-GRP-005", path="//GrpHdr/SttlmInf/SttlmMtd", line=grp_line,
                        message="Settlement Method (SttlmInf/SttlmMtd) is mandatory.",
-                       fix=f"Provide one of: {', '.join(allowed)}.")
+                       fix=f"Provide one of: {', '.join(allowed)}.",
+                       layer=2)
         elif cls._text(sttlm) not in allowed:
             cls._issue(report, "SR2026-GRP-005", path="//GrpHdr/SttlmInf/SttlmMtd",
                        line=sttlm.sourceline or grp_line,
@@ -238,7 +244,8 @@ class Pacs003Validator:
         if e2e is None or not cls._text(e2e):
             cls._issue(report, "SR2026-TXN-001", path="//DrctDbtTxInf/PmtId/EndToEndId", line=tx_line,
                        message="End-to-End Identification is mandatory.",
-                       fix="Provide EndToEndId, or 'NOTPROVIDED' when unavailable.")
+                       fix="Provide EndToEndId, or 'NOTPROVIDED' when unavailable.",
+                       layer=2)
         elif len(cls._text(e2e)) > 35:
             cls._issue(report, "SR2026-TXN-001", path="//DrctDbtTxInf/PmtId/EndToEndId",
                        line=e2e.sourceline or tx_line,
@@ -251,7 +258,8 @@ class Pacs003Validator:
         if uetr is None or not cls._text(uetr):
             cls._issue(report, "SR2026-TXN-002", path="//DrctDbtTxInf/PmtId/UETR", line=tx_line,
                        message="UETR is mandatory.",
-                       fix="Provide a valid RFC 4122 UUID v4 UETR.")
+                       fix="Provide a valid RFC 4122 UUID v4 UETR.",
+                       layer=2)
         elif not re.match(uetr_re, cls._text(uetr), re.I):
             cls._issue(report, "SR2026-TXN-002", path="//DrctDbtTxInf/PmtId/UETR",
                        line=uetr.sourceline or tx_line,
@@ -263,7 +271,8 @@ class Pacs003Validator:
         if amt is None or not cls._text(amt):
             cls._issue(report, "SR2026-TXN-003", path="//DrctDbtTxInf/IntrBkSttlmAmt", line=tx_line,
                        message="Interbank Settlement Amount is mandatory.",
-                       fix="Provide a positive IntrBkSttlmAmt with a valid Ccy attribute.")
+                       fix="Provide a positive IntrBkSttlmAmt with a valid Ccy attribute.",
+                       layer=2)
         else:
             try:
                 if float(cls._text(amt)) <= 0:
@@ -288,7 +297,8 @@ class Pacs003Validator:
         if dt is None or not cls._text(dt):
             cls._issue(report, "SR2026-TXN-004", path="//DrctDbtTxInf/IntrBkSttlmDt", line=tx_line,
                        message="Interbank Settlement Date is mandatory.",
-                       fix="Provide IntrBkSttlmDt in YYYY-MM-DD format.")
+                       fix="Provide IntrBkSttlmDt in YYYY-MM-DD format.",
+                       layer=2)
         elif not re.match(r'^\d{4}-\d{2}-\d{2}$', cls._text(dt)):
             cls._issue(report, "SR2026-TXN-004", path="//DrctDbtTxInf/IntrBkSttlmDt",
                        line=dt.sourceline or tx_line,
@@ -321,7 +331,8 @@ class Pacs003Validator:
                 cls._issue(report, "SR2026-TXN-007", path="//DrctDbtTxInf/DrctDbtTx/MndtRltdInf/MndtId",
                            line=mndt_line,
                            message="Mandate Identification (MndtId) is mandatory.",
-                           fix="Provide a non-empty MndtId (max 35 chars).")
+                           fix="Provide a non-empty MndtId (max 35 chars).",
+                           layer=2)
             elif len(cls._text(mndt_id)) > 35:
                 cls._issue(report, "SR2026-TXN-007", path="//DrctDbtTxInf/DrctDbtTx/MndtRltdInf/MndtId",
                            line=mndt_id.sourceline or mndt_line,
@@ -332,7 +343,8 @@ class Pacs003Validator:
                 cls._issue(report, "SR2026-TXN-007", path="//DrctDbtTxInf/DrctDbtTx/MndtRltdInf/DtOfSgntr",
                            line=mndt_line,
                            message="Date of Signature (DtOfSgntr) is mandatory in Mandate Related Information.",
-                           fix="Provide DtOfSgntr in YYYY-MM-DD format.")
+                           fix="Provide DtOfSgntr in YYYY-MM-DD format.",
+                           layer=2)
             elif not re.match(r'^\d{4}-\d{2}-\d{2}$', cls._text(sgntr)):
                 cls._issue(report, "SR2026-TXN-007", path="//DrctDbtTxInf/DrctDbtTx/MndtRltdInf/DtOfSgntr",
                            line=sgntr.sourceline or mndt_line,
@@ -382,7 +394,8 @@ class Pacs003Validator:
         if chrg is None or not cls._text(chrg):
             cls._issue(report, "SR2026-TXN-019", path="//DrctDbtTxInf/ChrgBr", line=tx_line,
                        message="Charges Bearer (ChrgBr) is mandatory.",
-                       fix=f"Provide one of: {', '.join(chrg_allowed)}.")
+                       fix=f"Provide one of: {', '.join(chrg_allowed)}.",
+                       layer=2)
         elif cls._text(chrg) not in chrg_allowed:
             cls._issue(report, "SR2026-TXN-019", path="//DrctDbtTxInf/ChrgBr",
                        line=chrg.sourceline or tx_line,
@@ -397,7 +410,8 @@ class Pacs003Validator:
         if agt is None or not cls._text(agt):
             cls._issue(report, rule_id, path=path, line=tx_line,
                        message=f"{label} BIC (BICFI) is mandatory.",
-                       fix=f"Provide a valid 8 or 11 character {label} BIC.")
+                       fix=f"Provide a valid 8 or 11 character {label} BIC.",
+                       layer=2)
         elif not re.match(r'^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$', cls._text(agt)):
             cls._issue(report, rule_id, path=path, line=agt.sourceline or tx_line,
                        message=f"{label} BIC '{cls._text(agt)}' is not a valid 8 or 11 character BIC.",
@@ -418,7 +432,8 @@ class Pacs003Validator:
         if nm is None or not cls._text(nm):
             cls._issue(report, rule_id, path=path, line=tx_line,
                        message=f"{label} Name (Nm) is mandatory.",
-                       fix=f"Provide the {label} name (max 140 chars).")
+                       fix=f"Provide the {label} name (max 140 chars).",
+                       layer=2)
         elif len(cls._text(nm)) > 140:
             cls._issue(report, rule_id, path=path, line=nm.sourceline or tx_line,
                        message=f"{label} Name exceeds the maximum length of 140 characters.",
@@ -431,7 +446,8 @@ class Pacs003Validator:
         if acct_id is None:
             cls._issue(report, rule_id, path=path, line=tx_line,
                        message=f"{label} Account Identification (Id) is mandatory.",
-                       fix="Provide the account Id (IBAN preferred, or Othr/Id).")
+                       fix="Provide the account Id (IBAN preferred, or Othr/Id).",
+                       layer=2)
             return
         iban = cls._first(acct_id, "IBAN")
         if iban is not None and cls._text(iban):

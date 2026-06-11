@@ -38,12 +38,18 @@ class NVREngine:
             ns = etree.QName(doc_ns[0]).namespace or ""
             is_pacs009 = "pacs.009" in ns
             
-            # Find if there is Prtry = COV or ADV or underlying customer credit transfer
+            # Find if there is Prtry = COV or underlying customer credit transfer
             has_underlying = bool(root_element.xpath("//*[local-name()='UndrlygCstmrCdtTrf']"))
             prtry_nodes = root_element.xpath("//*[local-name()='Prtry']")
             is_cov_prtry = any((p.text or "").strip().upper() == "COV" for p in prtry_nodes)
-            
-            if is_pacs009:
+
+            # SR2026 COV messages use BizSvc='swift.cbprplus.cov.04' for identification
+            # — the <Prtry>COV</Prtry> convention only applies to pre-SR2026 messages
+            biz_svc_nodes = root_element.xpath("//*[local-name()='AppHdr']/*[local-name()='BizSvc']")
+            biz_svc_val = (biz_svc_nodes[0].text or "").strip() if biz_svc_nodes else ""
+            is_sr2026_cov_bizsvc = "cov" in biz_svc_val.lower()
+
+            if is_pacs009 and not is_sr2026_cov_bizsvc:
                 if (is_cov_prtry or has_underlying) and not (is_cov_prtry and has_underlying):
                     report.add_issue(ValidationIssue(
                         severity="ERROR",

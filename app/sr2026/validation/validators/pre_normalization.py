@@ -8,7 +8,7 @@ import json
 from app.sr2026.validation.validators.layer2 import Layer2Validator
 
 _base_dir = os.path.dirname(os.path.abspath(__file__))
-_codelists_path = os.path.normpath(os.path.join(_base_dir, "../../app/resources/codelists"))
+_codelists_path = os.path.normpath(os.path.join(_base_dir, "..", "..", "..", "sr2025", "resources", "codelists"))
 
 CODELISTS = {}
 if os.path.exists(_codelists_path):
@@ -1925,10 +1925,10 @@ class PreNormalizationValidator:
                 rm_ln = elem.sourceline or 1
 
                 if message_type == 'pacs.009':
-                    report.add_issue(ValidationIssue("ERROR", 3, "PACS009-RMT-001", str(rm_ln), "Remittance information is not permitted in standard pacs.009. Use pacs.009 COV variant."))
+                    report.add_issue(ValidationIssue("ERROR", 3, "PACS009-RMT-001", str(rm_ln), "Remittance information is not permitted in standard pacs.009. Use pacs.009 COV variant.", "Use the pacs.009 COV variant to include remittance information, or remove the <RmtInf> block."))
 
                 if message_type in ['pacs.002', 'pain.002']:
-                    report.add_issue(ValidationIssue("ERROR", 3, f"{message_type.upper().replace('.', '')}-RMT-001", str(rm_ln), f"Remittance information is not permitted in {message_type} status report messages."))
+                    report.add_issue(ValidationIssue("ERROR", 3, f"{message_type.upper().replace('.', '')}-RMT-001", str(rm_ln), f"Remittance information is not permitted in {message_type} status report messages.", f"Remove the <RmtInf> block from the {message_type} message."))
 
                 has_strd = False
                 has_ustrd = False
@@ -1941,21 +1941,21 @@ class PreNormalizationValidator:
                         val = child.text or ""
 
                         if len(val) > 140:
-                            report.add_issue(ValidationIssue("ERROR", 3, "GLOBAL-RMT-UST-LEN", str(c_ln), f"Unstructured remittance exceeds 140 characters ({len(val)} chars)."))
+                            report.add_issue(ValidationIssue("ERROR", 3, "GLOBAL-RMT-UST-LEN", str(c_ln), f"Unstructured remittance exceeds 140 characters ({len(val)} chars).", "Shorten the <Ustrd> remittance text to 140 characters or fewer."))
                         if _CONTROL_CHAR_RE.search(val):
-                            report.add_issue(ValidationIssue("WARNING", 3, "GLOBAL-RMT-FINX", str(c_ln), "Remittance field contains characters outside the permitted FIN-X extended character set."))
+                            report.add_issue(ValidationIssue("WARNING", 3, "GLOBAL-RMT-FINX", str(c_ln), "Remittance field contains characters outside the permitted FIN-X extended character set.", "Replace invalid characters with FIN-X permitted characters (letters, digits, and allowed special characters)."))
 
                     elif c_tag == 'Strd':
                         has_strd = True
                         # AddtlRmtInf validation
                         addtls = child.findall(f"{ns_prefix}AddtlRmtInf")
                         if len(addtls) > 3:
-                            report.add_issue(ValidationIssue("ERROR", 3, "GLOBAL-RMT-ADDTL-OCCUR", str(c_ln), "AdditionalRemittanceInformation may only occur a maximum of 3 times per Strd block."))
+                            report.add_issue(ValidationIssue("ERROR", 3, "GLOBAL-RMT-ADDTL-OCCUR", str(c_ln), "AdditionalRemittanceInformation may only occur a maximum of 3 times per Strd block.", "Reduce the number of <AddtlRmtInf> elements to 3 or fewer within the <Strd> block."))
 
                         for ad in addtls:
                             ad_val = ad.text or ""
                             if len(ad_val) > 140:
-                                report.add_issue(ValidationIssue("ERROR", 3, "GLOBAL-RMT-ADDTL-LEN", str(ad.sourceline or c_ln), "AdditionalRemittanceInformation must not exceed 140 characters."))
+                                report.add_issue(ValidationIssue("ERROR", 3, "GLOBAL-RMT-ADDTL-LEN", str(ad.sourceline or c_ln), "AdditionalRemittanceInformation must not exceed 140 characters.", "Shorten the <AddtlRmtInf> value to 140 characters or fewer."))
 
                         # SCOR Creditor Reference Validation
                         cdtr_ref_inf = child.find(f"{ns_prefix}CdtrRefInf")
@@ -1969,24 +1969,24 @@ class PreNormalizationValidator:
                                         ref = cdtr_ref_inf.find(f"{ns_prefix}Ref")
                                         if ref is not None and ref.text:
                                             if not is_iso11649(ref.text):
-                                                report.add_issue(ValidationIssue("ERROR", 3, "GLOBAL-RMT-SCOR", str(ref.sourceline or c_ln), "Creditor reference type SCOR must conform to ISO 11649 format."))
+                                                report.add_issue(ValidationIssue("ERROR", 3, "GLOBAL-RMT-SCOR", str(ref.sourceline or c_ln), "Creditor reference type SCOR must conform to ISO 11649 format.", "Correct the creditor reference to use a valid ISO 11649 (RF Creditor Reference) value."))
 
                         # Extended fields length validation
                         invcr = child.find(f"{ns_prefix}Invcr")
                         if invcr is not None:
                             nm = invcr.find(f"{ns_prefix}Nm")
                             if nm is not None and nm.text and len(nm.text) > 140:
-                                report.add_issue(ValidationIssue("ERROR", 3, "GLOBAL-RMT-INVCR-LEN", str(nm.sourceline or c_ln), "Invoicer Name must not exceed 140 characters."))
+                                report.add_issue(ValidationIssue("ERROR", 3, "GLOBAL-RMT-INVCR-LEN", str(nm.sourceline or c_ln), "Invoicer Name must not exceed 140 characters.", "Shorten the Invoicer <Nm> value to 140 characters or fewer."))
                         invcee = child.find(f"{ns_prefix}Invcee")
                         if invcee is not None:
                             nm = invcee.find(f"{ns_prefix}Nm")
                             if nm is not None and nm.text and len(nm.text) > 140:
-                                report.add_issue(ValidationIssue("ERROR", 3, "GLOBAL-RMT-INVCEE-LEN", str(nm.sourceline or c_ln), "Invoicee Name must not exceed 140 characters."))
+                                report.add_issue(ValidationIssue("ERROR", 3, "GLOBAL-RMT-INVCEE-LEN", str(nm.sourceline or c_ln), "Invoicee Name must not exceed 140 characters.", "Shorten the Invoicee <Nm> value to 140 characters or fewer."))
                         rfrd_doc = child.find(f"{ns_prefix}RfrdDocInf")
                         if rfrd_doc is not None:
                             nb = rfrd_doc.find(f"{ns_prefix}Nb")
                             if nb is not None and nb.text and len(nb.text) > 35:
-                                report.add_issue(ValidationIssue("ERROR", 3, "GLOBAL-RMT-RFRDDOC-LEN", str(nb.sourceline or c_ln), "Referred Document Number must not exceed 35 characters."))
+                                report.add_issue(ValidationIssue("ERROR", 3, "GLOBAL-RMT-RFRDDOC-LEN", str(nb.sourceline or c_ln), "Referred Document Number must not exceed 35 characters.", "Shorten the <Nb> (referred document number) to 35 characters or fewer."))
 
                 if has_strd and has_ustrd:
                     report.add_issue(ValidationIssue("ERROR", 3, "GLOBAL-RMT-001", str(rm_ln), "Structured and Unstructured remittance are mutually exclusive in all CBPR+ messages.", "Remove either Strd or Ustrd from the RmtInf block."))
@@ -2001,7 +2001,7 @@ class PreNormalizationValidator:
                     is_after_2027 = datetime.now() > mandate_date
                     if has_ustrd and not has_strd:
                          severity = "ERROR" if is_after_2027 else "WARNING"
-                         report.add_issue(ValidationIssue(severity, 3, "GLOBAL-RMT-004", str(rm_ln), f"Structured remittance is mandatory in payment messages from November 2027. Currently using Unstructured (Ustrd)."))
+                         report.add_issue(ValidationIssue(severity, 3, "GLOBAL-RMT-004", str(rm_ln), f"Structured remittance is mandatory in payment messages from November 2027. Currently using Unstructured (Ustrd).", "Replace <Ustrd> with a <Strd> structured remittance block before the November 2027 mandate."))
 
             # --- CBPR+ Purpose & Category Purpose Validation (SR2025) ---
             if tag_local in ['Purp', 'CtgyPurp']:
@@ -2016,15 +2016,15 @@ class PreNormalizationValidator:
                         break
 
                 if cd_elem is None:
-                    report.add_issue(ValidationIssue("ERROR", 3, f"SR2025_{tag_local.upper()}_NO_CD", str(ln), f"{type_name} must contain a code <Cd>."))
+                    report.add_issue(ValidationIssue("ERROR", 3, f"SR2025_{tag_local.upper()}_NO_CD", str(ln), f"{type_name} must contain a code <Cd>.", f"Add a <Cd> element inside the <{tag_local}> block with a valid ISO 20022 {type_name} code."))
                 elif not cd_elem.text or not cd_elem.text.strip():
-                    report.add_issue(ValidationIssue("ERROR", 3, f"SR2025_{tag_local.upper()}_EMPTY_CD", str(cd_elem.sourceline or ln), f"{type_name} code <Cd> cannot be empty."))
+                    report.add_issue(ValidationIssue("ERROR", 3, f"SR2025_{tag_local.upper()}_EMPTY_CD", str(cd_elem.sourceline or ln), f"{type_name} code <Cd> cannot be empty.", f"Provide a valid code value inside <Cd> in the <{tag_local}> block."))
                 else:
                     val = cd_elem.text.strip()
                     if code_list_key in CODELISTS:
                         valid_codes = CODELISTS[code_list_key].get("codes", [])
                         if val not in valid_codes:
-                            report.add_issue(ValidationIssue("ERROR", 3, f"SR2025_{tag_local.upper()}_INVALID_CODE", str(cd_elem.sourceline or ln), f"Invalid {type_name} code: '{val}'."))
+                            report.add_issue(ValidationIssue("ERROR", 3, f"SR2025_{tag_local.upper()}_INVALID_CODE", str(cd_elem.sourceline or ln), f"Invalid {type_name} code: '{val}'.", f"Replace '{val}' with a valid {type_name} code. Check the ISO 20022 code list for allowed values."))
 
 
     @staticmethod

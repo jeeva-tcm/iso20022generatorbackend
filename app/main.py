@@ -219,7 +219,7 @@ async def api_validate(request: ApiValidateRequest, raw_request: Request):
             import re as _re_bizsvc
             try:
                 _xml_src = xml_content if 'xml_content' in locals() else (request.xml_content if hasattr(request, 'xml_content') else getattr(request, 'xml', ''))
-                bizsvc_match = _re_bizsvc.search(r'<BizSvc[^>]*>([^<]+)</BizSvc>', _xml_src)
+                bizsvc_match = _re_bizsvc.search(r'<(?:\w+:)?BizSvc[^>]*>([^<]+)</(?:\w+:)?BizSvc>', _xml_src)
                 if bizsvc_match:
                     bizsvc = bizsvc_match.group(1).strip().lower()
                     if actual_msg_type == "pacs.009.001.08":
@@ -265,7 +265,7 @@ async def validate_message(
             import re as _re_bizsvc
             try:
                 _xml_src = xml_content if 'xml_content' in locals() else (request.xml_content if hasattr(request, 'xml_content') else getattr(request, 'xml', ''))
-                bizsvc_match = _re_bizsvc.search(r'<BizSvc[^>]*>([^<]+)</BizSvc>', _xml_src)
+                bizsvc_match = _re_bizsvc.search(r'<(?:\w+:)?BizSvc[^>]*>([^<]+)</(?:\w+:)?BizSvc>', _xml_src)
                 if bizsvc_match:
                     bizsvc = bizsvc_match.group(1).strip().lower()
                     if actual_msg_type == "pacs.009.001.08":
@@ -290,9 +290,12 @@ async def validate_message(
             "warnings": len(api_resp.warnings),
             "total_time_ms": 100,
             "layer_status": {
-                "1": {"status": "FAIL" if any(getattr(e, "layer", 3) == 1 for e in api_resp.errors) else ("WARN" if any(getattr(w, "layer", 3) == 1 for w in api_resp.warnings) else "PASS"), "time": 10},
-                "2": {"status": "FAIL" if any(getattr(e, "layer", 3) == 2 for e in api_resp.errors) else ("WARN" if any(getattr(w, "layer", 3) == 2 for w in api_resp.warnings) else "PASS"), "time": 40},
-                "3": {"status": "FAIL" if any(getattr(e, "layer", 3) == 3 for e in api_resp.errors) else ("WARN" if any(getattr(w, "layer", 3) == 3 for w in api_resp.warnings) else "PASS"), "time": 50}
+                str(k): (
+                    {"status": "SKIPPED", "time": t}
+                    if k in api_resp.layers_skipped
+                    else {"status": "FAIL" if any(getattr(e, "layer", 3) == k for e in api_resp.errors) else ("WARN" if any(getattr(w, "layer", 3) == k for w in api_resp.warnings) else "PASS"), "time": t}
+                )
+                for k, t in [(1, 10), (2, 40), (3, 50)]
             },
             "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
             "details": [
@@ -377,7 +380,7 @@ async def validate_file(
             import re as _re_bizsvc
             try:
                 _xml_src = xml_content if 'xml_content' in locals() else (request.xml_content if hasattr(request, 'xml_content') else getattr(request, 'xml', ''))
-                bizsvc_match = _re_bizsvc.search(r'<BizSvc[^>]*>([^<]+)</BizSvc>', _xml_src)
+                bizsvc_match = _re_bizsvc.search(r'<(?:\w+:)?BizSvc[^>]*>([^<]+)</(?:\w+:)?BizSvc>', _xml_src)
                 if bizsvc_match:
                     bizsvc = bizsvc_match.group(1).strip().lower()
                     if actual_msg_type == "pacs.009.001.08":
@@ -403,9 +406,12 @@ async def validate_file(
             "warnings": len(api_resp.warnings),
             "total_time_ms": 100,
             "layer_status": {
-                "1": {"status": "FAIL" if any(getattr(e, "layer", 3) == 1 for e in api_resp.errors) else ("WARN" if any(getattr(w, "layer", 3) == 1 for w in api_resp.warnings) else "PASS"), "time": 10},
-                "2": {"status": "FAIL" if any(getattr(e, "layer", 3) == 2 for e in api_resp.errors) else ("WARN" if any(getattr(w, "layer", 3) == 2 for w in api_resp.warnings) else "PASS"), "time": 40},
-                "3": {"status": "FAIL" if any(getattr(e, "layer", 3) == 3 for e in api_resp.errors) else ("WARN" if any(getattr(w, "layer", 3) == 3 for w in api_resp.warnings) else "PASS"), "time": 50}
+                str(k): (
+                    {"status": "SKIPPED", "time": t}
+                    if k in api_resp.layers_skipped
+                    else {"status": "FAIL" if any(getattr(e, "layer", 3) == k for e in api_resp.errors) else ("WARN" if any(getattr(w, "layer", 3) == k for w in api_resp.warnings) else "PASS"), "time": t}
+                )
+                for k, t in [(1, 10), (2, 40), (3, 50)]
             },
             "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
             "details": [
@@ -482,9 +488,12 @@ async def convert_mt_to_mx(request: schemas.MTConversionRequest, raw_request: Re
                     "warnings": len(api_resp.warnings),
                     "total_time_ms": 100,
                     "layer_status": {
-                "1": {"status": "FAIL" if any(getattr(e, "layer", 3) == 1 for e in api_resp.errors) else ("WARN" if any(getattr(w, "layer", 3) == 1 for w in api_resp.warnings) else "PASS"), "time": 10},
-                "2": {"status": "FAIL" if any(getattr(e, "layer", 3) == 2 for e in api_resp.errors) else ("WARN" if any(getattr(w, "layer", 3) == 2 for w in api_resp.warnings) else "PASS"), "time": 40},
-                "3": {"status": "FAIL" if any(getattr(e, "layer", 3) == 3 for e in api_resp.errors) else ("WARN" if any(getattr(w, "layer", 3) == 3 for w in api_resp.warnings) else "PASS"), "time": 50}
+                        str(k): (
+                            {"status": "SKIPPED", "time": t}
+                            if k in api_resp.layers_skipped
+                            else {"status": "FAIL" if any(getattr(e, "layer", 3) == k for e in api_resp.errors) else ("WARN" if any(getattr(w, "layer", 3) == k for w in api_resp.warnings) else "PASS"), "time": t}
+                        )
+                        for k, t in [(1, 10), (2, 40), (3, 50)]
                     },
                     "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
                     "details": [

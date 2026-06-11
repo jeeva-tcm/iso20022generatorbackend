@@ -57,6 +57,7 @@ class HistorySummary(BaseModel):
     total_warnings: int
     execution_time_ms: float
     origin: Optional[str] = "Pasted"
+    version: Optional[str] = "SR2025"
 
     @field_validator('timestamp', mode='before')
     @classmethod

@@ -24,17 +24,31 @@ class Pacs009Validator:
         if "_adv" in mt or "pacs.009.adv" in mt or "pacs.009_adv" in mt:
             return True
         biz_svc = root_element.xpath("//*[local-name()='AppHdr']/*[local-name()='BizSvc']")
-        if biz_svc and (biz_svc[0].text or "").strip() == "swift.cbprplus.03":
-            return True
+        if biz_svc:
+            val = (biz_svc[0].text or "").strip()
+            if val in ("swift.cbprplus.adv.04", "swift.cbprplus.03"):
+                return True
         return bool(root_element.xpath("//*[local-name()='UndrlygFITxInf']"))
+
+    @classmethod
+    def _is_cov(cls, root_element: etree._Element, message_type: str) -> bool:
+        mt = message_type.lower()
+        if "_cov" in mt or "pacs.009.cov" in mt or "pacs.009_cov" in mt:
+            return True
+        biz_svc = root_element.xpath("//*[local-name()='AppHdr']/*[local-name()='BizSvc']")
+        if biz_svc and (biz_svc[0].text or "").strip() in ("swift.cbprplus.cov.04", "swift.cbprplus.cov.02"):
+            return True
+        return bool(root_element.xpath("//*[local-name()='UndrlygCstmrCdtTrf']"))
 
     @classmethod
     def validate(cls, root_element: etree._Element, report: ValidationReport, message_type: str):
         if "pacs.009" not in message_type.lower():
             return
 
-        # ADV has its own dedicated validator (Pacs009AdvValidator) — skip CORE base rules
+        # ADV and COV have dedicated validators — skip CORE base rules for them
         if cls._is_adv(root_element, message_type):
+            return
+        if cls._is_cov(root_element, message_type):
             return
 
         rules = cls._load_rules()
