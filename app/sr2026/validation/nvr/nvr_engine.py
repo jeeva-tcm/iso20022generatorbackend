@@ -86,8 +86,8 @@ class NVREngine:
                             line=dt.sourceline or 1,
                             fix="Change birth date to a valid past date."
                         ))
-                elif name in ["IntrBkSttlmDt", "ReqdExctnDt"]:
-                    # Settlement/Execution dates must not be in the past
+                elif name in ["ReqdExctnDt"]:
+                    # Required execution dates must not be in the past
                     if parsed_date < today:
                         report.add_issue(ValidationIssue(
                             severity="ERROR",

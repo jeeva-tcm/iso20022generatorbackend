@@ -49,6 +49,16 @@ class NewMandatoryFieldsValidator:
         # ── Detect message type from XML body ─────────────────────────
         is_pacs008 = bool(root_element.xpath("//*[local-name()='FIToFICstmrCdtTrf']"))
         is_pacs003 = bool(root_element.xpath("//*[local-name()='FIToFICstmrDrctDbt']"))
+        is_pacs009 = bool(root_element.xpath("//*[local-name()='FICdtTrf']"))
+        is_pacs004 = bool(root_element.xpath("//*[local-name()='PmtRtr']"))
+
+        # NbOfTxs / SttlmInf / SttlmMtd are mandatory only in the interbank
+        # *payment* messages whose GroupHeader actually carries them
+        # (pacs.008/003/009/004). camt.05x reports and pacs.002 status reports
+        # have a GroupHeader but no NbOfTxs/SttlmInf — applying the pacs.008
+        # ruleset to them produces false positives, so gate those fields.
+        has_grp_settlement = is_pacs008 or is_pacs003 or is_pacs009 or is_pacs004
+        _PAYMENT_ONLY_GRP_FIELDS = {"NbOfTxs", "SttlmInf", "SttlmMtd"}
 
         # ─────────────────────────────────────────────────────────────
         # 1. MANDATORY GROUP HEADER FIELDS
@@ -57,6 +67,10 @@ class NewMandatoryFieldsValidator:
         for grp in grp_headers:
             src = grp.sourceline or 1
             for field_name, cfg in mf_grp.items():
+                # Skip payment-only GrpHdr fields for non-payment messages
+                # (camt.05x, pacs.002) that legitimately don't carry them.
+                if field_name in _PAYMENT_ONLY_GRP_FIELDS and not has_grp_settlement:
+                    continue
                 sev  = cfg.get("severity", "ERROR")
                 code = cfg.get("code", f"MISSING_{field_name.upper()}")
                 msg  = _msg(cfg, f"Group Header is missing mandatory <{field_name}>.")
@@ -465,25 +479,31 @@ class NewMandatoryFieldsValidator:
 
         # ─────────────────────────────────────────────────────────────
         # 6. SERVICE LEVEL — GPI disallowed codes
-        # ─────────────────────────────────────────────────────────────
-        disallowed_gpi = set(rule_registry.get_gpi_disallowed_codes())
-        svc_sev  = svc_rules.get("severity", "ERROR")
-        svc_code = svc_rules.get("code", "INVALID_GPI_SERVICE_LEVEL")
-        svc_msg  = (svc_rules.get("errorMessage")
-                    or "GPI Service Level code is not allowed in SR2026.")
-        svc_fix  = svc_rules.get("fix", "Use G001 only.")
+        # The disallowed set loaded here is the pacs.008 set (only G001 allowed).
+        # It is only correct for pacs.008 — pacs.009 CORE/ADV require G004 and
+        # pacs.009 COV requires G001, with different disallowed sets. The GPI
+        # rule for all pacs.009 variants is handled by CBPRFormalRulesValidator
+        # (cbpr_formal_rules.py), so restrict this pacs.008-scoped check to
+        # pacs.008 to avoid flagging the legitimate G004 code on pacs.009.
+        if is_pacs008:
+            disallowed_gpi = set(rule_registry.get_gpi_disallowed_codes())
+            svc_sev  = svc_rules.get("severity", "ERROR")
+            svc_code = svc_rules.get("code", "INVALID_GPI_SERVICE_LEVEL")
+            svc_msg  = (svc_rules.get("errorMessage")
+                        or "GPI Service Level code is not allowed in SR2026.")
+            svc_fix  = svc_rules.get("fix", "Use G001 only.")
 
-        for cd_node in root_element.xpath(
-            "//*[local-name()='PmtTpInf']/*[local-name()='SvcLvl']/*[local-name()='Cd']"
-        ):
-            if _text(cd_node) in disallowed_gpi:
-                report.add_issue(ValidationIssue(
-                    severity=svc_sev, code=svc_code,
-                    path="//PmtTpInf/SvcLvl/Cd",
-                    message=f"{svc_msg} Code '{_text(cd_node)}' is disallowed.",
-                    line=cd_node.sourceline or 1,
-                    fix=svc_fix,
-                ))
+            for cd_node in root_element.xpath(
+                "//*[local-name()='PmtTpInf']/*[local-name()='SvcLvl']/*[local-name()='Cd']"
+            ):
+                if _text(cd_node) in disallowed_gpi:
+                    report.add_issue(ValidationIssue(
+                        severity=svc_sev, code=svc_code,
+                        path="//PmtTpInf/SvcLvl/Cd",
+                        message=f"{svc_msg} Code '{_text(cd_node)}' is disallowed.",
+                        line=cd_node.sourceline or 1,
+                        fix=svc_fix,
+                    ))
 
         # ─────────────────────────────────────────────────────────────
         # 7. DATE RULES — CBPR_Date (no timezone offset)

@@ -1,0 +1,282 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); color: var(--color-text-primary); font-size: 13px; }
+.wrap { padding: 0.5rem 0 2rem; }
+h2 { font-size: 18px; font-weight: 500; margin-bottom: 3px; }
+.meta { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 1rem; }
+.src-note { background: #EAF3DE; border-left: 3px solid #3B6D11; padding: 7px 12px; border-radius: 0 6px 6px 0; font-size: 12px; color: #27500A; margin-bottom: 1rem; }
+.legend { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 1rem; }
+.pill { font-size: 11px; padding: 3px 10px; border-radius: 99px; display: inline-block; white-space: nowrap; }
+.new  { background: #EAF3DE; color: #3B6D11; }
+.mod  { background: #FAEEDA; color: #854F0B; }
+.del  { background: #FCEBEB; color: #A32D2D; }
+.tight { background: #E6F1FB; color: #185FA5; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead tr { background: var(--color-background-secondary); }
+th { text-align: left; padding: 7px 9px; font-weight: 500; font-size: 11px; color: var(--color-text-secondary); border-bottom: 0.5px solid var(--color-border-tertiary); white-space: nowrap; }
+td { padding: 7px 9px; border-bottom: 0.5px solid var(--color-border-tertiary); vertical-align: top; line-height: 1.5; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--color-background-secondary); }
+.tag { font-family: var(--font-mono); font-size: 11px; background: var(--color-background-secondary); padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
+.sec { font-size: 10px; color: var(--color-text-tertiary); margin-top: 2px; }
+.section-header td { background: var(--color-background-secondary); font-weight: 500; font-size: 11px; color: var(--color-text-secondary); padding: 5px 9px; letter-spacing: 0.04em; text-transform: uppercase; border-top: 0.5px solid var(--color-border-tertiary); }
+.summary-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 1.5rem; }
+.scard { background: var(--color-background-secondary); border-radius: 8px; padding: 10px 14px; }
+.scard .num { font-size: 22px; font-weight: 500; }
+.scard .lbl { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; }
+</style>
+<div class="wrap">
+  <h2>camt.053.001.08 — SR2025 vs SR2026 differences</h2>
+  <p class="meta">CBPR+ BankToCustomerStatement · Source: uploaded PDFs (SR2025 dated 21 March 2025 · SR2026 dated 20 February 2026)</p>
+  <div class="src-note">✔ All entries below are sourced directly from the extracted text of the two uploaded PDFs. No external knowledge used.</div>
+
+  <div class="legend">
+    <span class="pill new">● New in SR2026</span>
+    <span class="pill mod">● Changed in SR2026</span>
+    <span class="pill del">● Removed in SR2026</span>
+    <span class="pill tight">● Constraint tightened</span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>XML Tag / Field</th>
+        <th>Section</th>
+        <th>Change</th>
+        <th>SR2025 rule</th>
+        <th>SR2026 rule</th>
+        <th>Validator impact</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <!-- HEADER LEVEL -->
+      <tr class="section-header"><td colspan="7">A — Header (BusinessApplicationHeaderV02)</td></tr>
+
+      <tr>
+        <td>1</td>
+        <td><span class="tag">BizSvc</span><div class="sec">BusinessService</div></td>
+        <td>Header</td>
+        <td><span class="pill mod">Changed</span></td>
+        <td>Optional [0..1]; value "swift.cbprplus.03" (textual rule)</td>
+        <td><strong>Mandatory [1..1]</strong>; fixed value changed to <strong>"swift.cbprplus.04"</strong>. CBPR_Business_Service_TextualRule removed; replaced with single-value constraint.</td>
+        <td>Change expected value from .03 to .04; add mandatory check</td>
+      </tr>
+
+      <tr>
+        <td>2</td>
+        <td><span class="tag">BizMsgIdr</span><div class="sec">BusinessMessageIdentifier</div></td>
+        <td>Header</td>
+        <td><span class="pill tight">Tightened</span></td>
+        <td>Textual rule: must contain MsgId from Group Header (CBPR_Business_Message_Identifier_TextualRule)</td>
+        <td>Replaced with new <strong>CBPR_BusinessMessageIdentifier_FormalRule</strong>: value must be <em>exactly equal</em> to GrpHdr/MsgId. Now a machine-enforceable formal rule.</td>
+        <td>Add formal equality check: BizMsgIdr == GrpHdr/MsgId</td>
+      </tr>
+
+      <tr>
+        <td>3</td>
+        <td><span class="tag">CharSet</span><div class="sec">CharacterSet</div></td>
+        <td>Header</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>CBPR_Character_Set_Usage_TextualRule present (refer to UHB)</td>
+        <td>CBPR_Character_Set_Usage_TextualRule <strong>removed</strong>; no replacement usage guideline on this element</td>
+        <td>Remove enforcement of CharSet usage rule</td>
+      </tr>
+
+      <tr>
+        <td>4</td>
+        <td><span class="tag">Sgntr</span><div class="sec">Signature</div></td>
+        <td>Header</td>
+        <td><span class="pill mod">Changed</span></td>
+        <td>Removed element; comment: "available at SWIFTNet Header level"</td>
+        <td>Still removed; but the explanatory comment is dropped in SR2026</td>
+        <td>No functional change; element remains removed</td>
+      </tr>
+
+      <!-- STATEMENT LEVEL -->
+      <tr class="section-header"><td colspan="7">B — Statement / GroupHeader level</td></tr>
+
+      <tr>
+        <td>5</td>
+        <td><span class="tag">MsgPgntn</span><div class="sec">MessagePagination</div></td>
+        <td>GroupHeader</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>[0..1] with usage guideline marker (!); CBPR_Message_Pagination_TextualRule present</td>
+        <td>Still [0..1] but <strong>usage guideline marker removed</strong>; CBPR_Message_Pagination_TextualRule <strong>removed</strong></td>
+        <td>Remove enforcement of single-statement-per-paginated-message rule at GroupHeader</td>
+      </tr>
+
+      <tr>
+        <td>6</td>
+        <td><span class="tag">StmtPgntn</span><div class="sec">StatementPagination</div></td>
+        <td>Statement</td>
+        <td><span class="pill tight">Tightened</span></td>
+        <td>Made mandatory [1..1] in SR2025 (both versions have "minimum occurrence changed to 1")</td>
+        <td>Still mandatory [1..1]; <strong>new CBPR_PageNumber_FormalRule added</strong>: PageNumber must be &gt; 0 (cannot be '0','00','000','0000','00000')</td>
+        <td>Add formal rule: validate PageNumber &gt; 0</td>
+      </tr>
+
+      <tr>
+        <td>7</td>
+        <td><span class="tag">ElctrncSeqNb</span><div class="sec">ElectronicSequenceNumber</div></td>
+        <td>Statement</td>
+        <td><span class="pill mod">Changed</span></td>
+        <td>Optional [0..1]; CBPR_Electronic_Sequence_Number_TextualRule (descriptive only)</td>
+        <td><strong>Mandatory [1..1]</strong> — minimum occurrence changed to 1. TextualRule removed.</td>
+        <td>Add mandatory check for ElctrncSeqNb in every Statement</td>
+      </tr>
+
+      <tr>
+        <td>8</td>
+        <td><span class="tag">ElctrncSeqNb</span> / <span class="tag">LglSeqNb</span><div class="sec">Seq Number OR rule</div></td>
+        <td>Statement</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>CBPR_Electronique_Or_Legal_Sequence_Number_FormalRule: either ElctrncSeqNb OR LglSeqNb must be present</td>
+        <td>Rule <strong>removed</strong> — ElctrncSeqNb is now always mandatory so the OR condition is no longer needed</td>
+        <td>Remove OR-rule; replace with mandatory ElctrncSeqNb check (row 7)</td>
+      </tr>
+
+      <tr>
+        <td>9</td>
+        <td><span class="tag">AddtlInf</span><div class="sec">AdditionalInformation (GrpHdr)</div></td>
+        <td>GroupHeader</td>
+        <td><span class="pill new">New</span></td>
+        <td>No usage guideline on this field</td>
+        <td><strong>CBPR_Additional_Information_TextualRule added</strong>: used for end-of-cycle statement type codes — /EODY/ (daily), /EOWK/ (weekly), /EOMH/ (monthly), /EOYR/ (yearly)</td>
+        <td>Add parser for cycle-type code in AddtlInf; validate format if present</td>
+      </tr>
+
+      <!-- ENTRY LEVEL -->
+      <tr class="section-header"><td colspan="7">C — Entry (Ntry) level</td></tr>
+
+      <tr>
+        <td>10</td>
+        <td><span class="tag">BkTxCd</span><div class="sec">BankTransactionCode</div></td>
+        <td>Entry</td>
+        <td><span class="pill mod">Changed</span></td>
+        <td>Mandatory [1..1]; usage guideline marker (!) present; CBPR_Domain_Proprietary_Recommendation_TextualRule: Domain/Code preferred</td>
+        <td>Still mandatory [1..1]; usage guideline marker <strong>removed</strong>; CBPR_Domain_Proprietary_Recommendation_TextualRule <strong>removed</strong></td>
+        <td>Remove enforcement of Domain/Code preference; BkTxCd remains mandatory</td>
+      </tr>
+
+      <tr>
+        <td>11</td>
+        <td><span class="tag">Chrgs</span><div class="sec">Charges</div></td>
+        <td>Entry &amp; TxDtls</td>
+        <td><span class="pill new">New</span></td>
+        <td>No CBPR charges textual rule on Entry-level charges</td>
+        <td><strong>CBPR_Charges_TextualRule added</strong>: "Total Charges And Tax Amount must equal the sum of the individual record amounts." Applied at both Entry and TransactionDetails level.</td>
+        <td>Add sum validation: Charges/TtlChrgsAndTaxAmt == Σ Chrgs/Rcrd/Amt</td>
+      </tr>
+
+      <!-- TRANSACTION DETAILS LEVEL -->
+      <tr class="section-header"><td colspan="7">D — Transaction Details (TxDtls) level</td></tr>
+
+      <tr>
+        <td>12</td>
+        <td><span class="tag">Refs/InstrId</span><div class="sec">InstructionIdentification</div></td>
+        <td>TxDtls / References</td>
+        <td><span class="pill new">New</span></td>
+        <td>No slash format constraint on this field</td>
+        <td><strong>CBPR_Original_Instruction_Identification_FormalRule added</strong>: must not start/end with '/' and must not contain '//'</td>
+        <td>Add regex check on InstrId: no leading/trailing slash, no double slash</td>
+      </tr>
+
+      <tr>
+        <td>13</td>
+        <td><span class="tag">RmtInf</span><div class="sec">RemittanceInformation</div></td>
+        <td>TxDtls</td>
+        <td><span class="pill new">New</span></td>
+        <td>No structured remittance usage rule</td>
+        <td><strong>CBPR_Remittance_Rules_TextualRule added</strong>: (1) Structured remittance must be bilaterally/multilaterally agreed; (2) total business data across all Strd occurrences (excl. tags) must not exceed 9,000 chars</td>
+        <td>Add 9,000-char check across all Strd occurrences in a transaction</td>
+      </tr>
+
+      <tr>
+        <td>14</td>
+        <td><span class="tag">Dbtr</span> / <span class="tag">Cdtr</span> textual rules<div class="sec">RelatedParties</div></td>
+        <td>TxDtls / RelatedParties</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>CBPR_Debtor_TextualRule, CBPR_Creditor_TextualRule, CBPR_Debtor_Account_TextualRule, CBPR_Creditor_Account_TextualRule, CBPR_Debtor_Agent_TextualRule present</td>
+        <td>All five textual rules <strong>removed</strong>; underlying field constraints unchanged</td>
+        <td>Remove those specific textual-rule validation messages; field-level rules still apply</td>
+      </tr>
+
+      <!-- DATATYPE CHANGES -->
+      <tr class="section-header"><td colspan="7">E — Datatype changes</td></tr>
+
+      <tr>
+        <td>15</td>
+        <td>Date fields (ActualDate, ValidationDate, availability dates)</td>
+        <td>Multiple</td>
+        <td><span class="pill new">New</span></td>
+        <td>No CBPR_Date datatype; date fields used plain ISO date type</td>
+        <td>New <strong>CBPR_Date datatype</strong> (page 497) introduced; applied to ActualDate in Balance/Availability, Entry/Availability, TxsSummry/Availability, and CardTransaction/ValidationDate</td>
+        <td>Update date-field validators to use CBPR_Date pattern (page 497 in SR2026 spec)</td>
+      </tr>
+
+      <tr>
+        <td>16</td>
+        <td>Extended text fields</td>
+        <td>Multiple</td>
+        <td><span class="pill mod">Changed</span></td>
+        <td>CBPR_RestrictedFINXMax35Text_Extended (page 505), CBPR_RestrictedFINXMax140Text_Extended (page 501), CBPR_RestrictedFINXMax16Text_Extended (page 502), CBPR_RestrictedFINXMax70Text (page 507)</td>
+        <td>Types renumbered: CBPR_RestrictedFINXMax35Text_Extended → <strong>page 503</strong>; CBPR_RestrictedFINXMax140Text_Extended → <strong>page 499</strong>. Also CBPR_RestrictedFINXMax70Text removed and merged.</td>
+        <td>Update page-reference lookups in validator; datatype definitions same, only pagination differs</td>
+      </tr>
+
+      <tr>
+        <td>17</td>
+        <td>Standard text fields (e.g., EntryReference, Identification fields)</td>
+        <td>Multiple</td>
+        <td><span class="pill mod">Changed</span></td>
+        <td>CBPR_RestrictedFINXMax35Text on <strong>page 504</strong></td>
+        <td>CBPR_RestrictedFINXMax35Text on <strong>page 502</strong> — same definition, page renumbered due to doc restructure</td>
+        <td>Update page references only; no logic change</td>
+      </tr>
+
+      <!-- REMOVED ELEMENTS -->
+      <tr class="section-header"><td colspan="7">F — Removed elements</td></tr>
+
+      <tr>
+        <td>18</td>
+        <td><span class="tag">PrefrdMtd</span><div class="sec">PreferredMethod (ContactDetails)</div></td>
+        <td>Multiple RelatedParties</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>Present in ContactDetails under Creditor, Debtor, UltimateCreditor, UltimateDebtor, TradingParty, Proprietary/Party, InitiatingParty, Invoicee, Invoicer</td>
+        <td><strong>Removed</strong> from all ContactDetails occurrences across all party types</td>
+        <td>Remove PreferredMethod from all ContactDetails parsing; reject if present</td>
+      </tr>
+
+      <tr>
+        <td>19</td>
+        <td><span class="tag">MktPrctc</span> / rules<div class="sec">MarketPractice textual rule</div></td>
+        <td>Header</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>CBPR_Market_Practice_TextualRule present (advisory)</td>
+        <td>Rule <strong>removed</strong>; MarketPractice element still present as [0..1]</td>
+        <td>Remove textual-rule validation message for MarketPractice</td>
+      </tr>
+
+      <tr>
+        <td>20</td>
+        <td><span class="tag">CBPR_Interest_TextualRule</span></td>
+        <td>Statement/Interest</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>Present as advisory rule on Interest element</td>
+        <td>Rule <strong>removed</strong>; Interest element constraints unchanged</td>
+        <td>Remove Interest textual-rule validation message</td>
+      </tr>
+
+    </tbody>
+  </table>
+
+  <div class="summary-box">
+    <div class="scard"><div class="num" style="color:#3B6D11">4</div><div class="lbl">New rules / elements</div></div>
+    <div class="scard"><div class="num" style="color:#854F0B">6</div><div class="lbl">Changed fields or rules</div></div>
+    <div class="scard"><div class="num" style="color:#A32D2D">8</div><div class="lbl">Removed rules / elements</div></div>
+    <div class="scard"><div class="num" style="color:#185FA5">2</div><div class="lbl">Constraints tightened</div></div>
+  </div>
+</div>

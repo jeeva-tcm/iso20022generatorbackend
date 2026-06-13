@@ -1,0 +1,190 @@
+
+<h2 class="sr-only">pain.008 CustomerDirectDebitInitiation SR2025 vs SR2026 full comparison table</h2>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:1rem 0;font-family:var(--font-sans)}
+.sec{font-size:12px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--color-text-secondary);margin:1.5rem 0 .5rem;padding-bottom:5px;border-bottom:.5px solid var(--color-border-tertiary)}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:.5rem}
+th{text-align:left;padding:7px 10px;font-size:11.5px;font-weight:500;color:var(--color-text-secondary);border-bottom:.5px solid var(--color-border-secondary);background:var(--color-background-secondary)}
+td{padding:7px 10px;border-bottom:.5px solid var(--color-border-tertiary);vertical-align:top;color:var(--color-text-primary);line-height:1.5}
+tr:last-child td{border-bottom:none}
+.tag{display:inline-block;font-size:11px;font-weight:500;padding:2px 7px;border-radius:4px;white-space:nowrap}
+.new{background:var(--color-background-success);color:var(--color-text-success)}
+.rem{background:var(--color-background-danger);color:var(--color-text-danger)}
+.chg{background:var(--color-background-warning);color:var(--color-text-warning)}
+.mand{background:var(--color-background-info);color:var(--color-text-info)}
+.mono{font-family:var(--font-mono);font-size:11.5px;background:var(--color-background-secondary);padding:1px 5px;border-radius:3px;border:.5px solid var(--color-border-tertiary)}
+.note{font-size:11.5px;color:var(--color-text-secondary);font-style:italic}
+</style>
+<div class="wrap">
+
+<div class="sec">1 · Document title &amp; name change</div>
+<table>
+<tr><th>Item</th><th>SR2025</th><th>SR2026</th><th style="width:90px">Change</th></tr>
+<tr><td>Document / UG name</td><td><em>CBPRPlus-pain.008.001.08_CustomerDirectDebitInitiation</em></td><td><em>CBPRPlus-pain.008.001.08_FIToFICustomerDirectDebitInitiation</em></td><td><span class="tag chg">Renamed</span></td></tr>
+<tr><td>Publication date</td><td>21 March 2025</td><td>20 February 2026</td><td><span class="tag chg">Updated</span></td></tr>
+</table>
+
+<div class="sec">2 · Fixed values &amp; service version</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th style="width:200px">Element / Path</th><th>SR2025</th><th>SR2026</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">&lt;BizSvc&gt;</span></td><td>BAH / BusinessService</td><td>Type: <span class="mono">UsageIdentifierPatternText</span><br>Fixed value via <span class="mono">CBPR_Business_Service_Usage_TextualRule</span>: "swift.cbprplus.02"<br>Both TextualRules present</td><td>Type: <span class="mono">Max35Text</span> (standard)<br>Fixed value: <span class="mono">swift.cbprplus.03</span><br>Both textual rules removed</td><td><span class="tag chg">Changed</span></td></tr>
+<tr><td><span class="mono">&lt;MsgDefIdr&gt;</span></td><td>BAH / MessageDefinitionIdentifier</td><td><span class="mono">CBPR_Message_Definition_Identifier_TextualRule</span> present; no fixed value</td><td>Textual rule removed; new fixed value: <span class="mono">pain.008.001.08</span></td><td><span class="tag chg">Changed</span></td></tr>
+<tr><td><span class="mono">&lt;BizMsgIdr&gt;</span></td><td>BAH / BusinessMessageIdentifier</td><td>Type: <span class="mono">Max35Text</span><br><span class="mono">CBPR_Business_Message_Identifier_TextualRule</span> + Comment: "must contain MsgId from GroupHeader"</td><td>Type: <span class="mono">CBPR_RestrictedFINXMax35Text</span><br>Textual rule + comment removed</td><td><span class="tag chg">Changed</span></td></tr>
+</table>
+
+<div class="sec">3 · Datatype changes — BAH / Header fields</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th>Element / Path</th><th>SR2025 Type</th><th>SR2026 Type</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">&lt;BizMsgIdr&gt;</span></td><td>BAH / BusinessMessageIdentifier</td><td><span class="mono">Max35Text</span></td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;BizMsgIdr&gt;</span></td><td>BAH / Related / BusinessMessageIdentifier</td><td>No CBPR restriction</td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">&lt;BizSvc&gt;</span></td><td>BAH / Related / BusinessService</td><td>No CBPR restriction</td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">&lt;MsgDefIdr&gt;</span></td><td>BAH / Related / MessageDefinitionIdentifier</td><td>No CBPR restriction</td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">&lt;Prty&gt;</span></td><td>BAH / Related / Priority</td><td>No CBPR restriction</td><td><span class="mono">Priority2Code</span></td><td><span class="tag new">New</span></td></tr>
+</table>
+
+<div class="sec">4 · Datatype changes — pain.008 message fields (all ISODate → CBPR_Date)</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th>Element name</th><th>Path</th><th>SR2025</th><th>SR2026</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">&lt;ReqdColltnDt&gt;</span></td><td>RequestedCollectionDate</td><td>PmtInf</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;DtOfSgntr&gt;</span></td><td>DateOfSignature</td><td>DrctDbtTx / MndtRltdInf</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;FrstColltnDt&gt;</span></td><td>FirstCollectionDate</td><td>DrctDbtTx / MndtRltdInf</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;FnlColltnDt&gt;</span></td><td>FinalCollectionDate</td><td>DrctDbtTx / MndtRltdInf</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;OrgnlFnlColltnDt&gt;</span></td><td>OriginalFinalCollectionDate</td><td>AmdmntInfDtls</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;PreNtfctnDt&gt;</span></td><td>PreNotificationDate</td><td>DrctDbtTx</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;FrDt&gt;</span></td><td>FromDate</td><td>RmtInf / Strd / DatePeriod</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;ToDt&gt;</span></td><td>ToDate</td><td>RmtInf / Strd / DatePeriod</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;RltdDt&gt;</span></td><td>RelatedDate</td><td>RmtInf / Strd / RfrdDocInf</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;Yr&gt;</span></td><td>Year</td><td>RmtInf / Strd / TaxRmt / TaxPrd</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;Dt&gt;</span></td><td>Date</td><td>DrctDbtTxInf / Tax</td><td><span class="mono">ISODate</span></td><td><span class="mono">CBPR_Date</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;CreDtTm&gt;</span></td><td>CreationDateTime</td><td>GroupHeader</td><td><span class="mono">ISODateTime</span> (no CBPR restriction)</td><td><span class="mono">CBPR_DateTime</span></td><td><span class="tag chg">Restricted</span></td></tr>
+<tr><td><span class="mono">&lt;EndToEndId&gt;</span></td><td>EndToEndIdentification</td><td>DrctDbtTxInf / PmtId</td><td><span class="mono">Max35Text</span></td><td><span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="tag chg">Restricted</span></td></tr>
+</table>
+
+<div class="sec">5 · Newly mandatory elements in SR2026</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th>Element / Path</th><th>SR2025</th><th>SR2026</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">&lt;Tp&gt;</span></td><td>PmtInf / CreditorAccount / Proxy / Type</td><td>Optional</td><td>Mandatory [1..1]</td><td><span class="tag mand">Mandatory</span></td></tr>
+<tr><td><span class="mono">&lt;Tp&gt;</span></td><td>PmtInf / CreditorAgentAccount / Proxy / Type</td><td>Optional</td><td>Mandatory [1..1]</td><td><span class="tag mand">Mandatory</span></td></tr>
+<tr><td><span class="mono">&lt;Tp&gt;</span></td><td>PmtInf / ChargesAccount / Proxy / Type</td><td>Optional</td><td>Mandatory [1..1]</td><td><span class="tag mand">Mandatory</span></td></tr>
+<tr><td><span class="mono">&lt;Ctry&gt;</span></td><td>PmtInf / Creditor / PostalAddress / Country</td><td>Optional</td><td>Mandatory [1..1]</td><td><span class="tag mand">Mandatory</span></td></tr>
+<tr><td><span class="mono">&lt;TwnNm&gt;</span></td><td>PmtInf / Creditor / PostalAddress / TownName</td><td>Optional</td><td>Mandatory [1..1]</td><td><span class="tag mand">Mandatory</span></td></tr>
+</table>
+
+<div class="sec">6 · Multiplicity change</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th>Element / Path</th><th>SR2025 Max</th><th>SR2026 Max</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">&lt;AdrLine&gt;</span></td><td>PmtInf / Creditor / PostalAddress / AddressLine</td><td>3</td><td>2</td><td><span class="tag chg">Reduced</span></td></tr>
+</table>
+<p style="font-size:12px;color:var(--color-text-secondary);margin:.5rem 0 0;">Note: PmtInf max=1 limit is retained in SR2026. The Comment "Only a single batch is allowed unless bilaterally agreed" was removed but the formal restriction remains.</p>
+
+<div class="sec">7 · New CBPR+ rules added in SR2026</div>
+<table>
+<tr><th>Rule name</th><th>Type</th><th>Description</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">CBPR_BusinessMessageIdentifier_FormalRule</span></td><td>Formal</td><td>BAH BusinessMessageIdentifier must equal GroupHeader/MessageIdentification</td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">CBPR_MessageIdentification_PaymentInformationIdentification_FormalRule</span></td><td>Formal</td><td>PmtInf/PaymentInformationIdentification must equal GroupHeader/MessageIdentification — <em>pain.008-specific, replaces the Comment that said the same thing</em></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">CBPR_Message_Identification_TextualRule</span></td><td>Textual</td><td>"Forwarding Agent should respect the Message ID provided by the Initiating Party of the pain.008 and pain.002" — <em>replaces CGI_Message_Identification_TextualRule</em></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">CBPR_Instruction_Identification_TextualRule</span></td><td>Textual</td><td>"If provided, this Id is returned to the ordering party in account statement reporting" — <em>replaces CGI_Instruction_Identification_TextualRule</em></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">CBPR_Account_Currency_TextualRule</span></td><td>Textual</td><td>"Recommended" for CreditorAccount/Currency — <em>replaces CGI_Account_Currency_TextualRule</em></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">CBPR_Agent_Name_Postal_Address_FormalRule</span></td><td>Formal</td><td>For CreditorAgent / FI Identification: Name and Address must always be present together</td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">CBPR_Party_Name_Postal_Address_FormalRule</span></td><td>Formal</td><td>If Postal Address is present then Name is mandatory — applied to Creditor, Debtor, UltimateCreditor, UltimateDebtor, Garnishee, Invoicee, GarnishmentAdministrator</td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">CBPR_Ultimate_Creditor_TextualRule</span></td><td>Textual</td><td>"If an ultimate creditor is involved in the payment, being different from the creditor, it must be provided" — <em>replaces CGI_Ultimate_Creditor_TextualRule</em></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">CBPR_Ultimate_Debtor_TextualRule</span></td><td>Textual</td><td>"If an ultimate debtor is involved in the payment, being different from the debtor, it must be provided" — <em>replaces CGI_Ultimate_Debtor_TextualRule</em></td><td><span class="tag new">New</span></td></tr>
+<tr><td><span class="mono">CBPR_Structured_RemittanceInformation_TextualRule</span></td><td>Textual</td><td>"Structured can be repeated, however total business data (excl. tags) must not exceed 9,000 characters" — <em>replaces CBPR_Structured_Remittance_Information_TextualRule (dropped bilateral-agreement requirement)</em></td><td><span class="tag new">New</span></td></tr>
+</table>
+
+<div class="sec">8 · CBPR+ rules removed in SR2026</div>
+<table>
+<tr><th>Rule name</th><th>What it did in SR2025</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">CBPR_DirectDebitTransactionInformation_TextualRule</span></td><td>"Recommend to have only one single direct debit transaction for CBPR+ unless bilaterally agreed"</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_Payment_Type_Information_TextualRule</span></td><td>"Required on Transaction Level, unless bilaterally determined"</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_Forwarding_Agent_TextualRule</span></td><td>"If Creditor Agent is not the receiver, Initiating Party must populate Forward Agent BIC"</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_NumberOfTransactions_TextualRule</span></td><td>"Recommend only one single direct debit transaction unless bilaterally agreed"</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_Reference_TextualRule</span></td><td>"If Creditor Reference Information is used (bilateral agreement), Reference must be included"</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_Instruction_For_Creditor_Agent_TextualRule</span></td><td>"Depending on local payment instrument and bilaterally determined bank service"</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_Party_Name_TextualRule</span></td><td>"If Postal Address is provided, then Name is mandatory"</td><td><span class="tag rem">Removed</span> <span class="note">(replaced by formal rule CBPR_Party_Name_Postal_Address_FormalRule)</span></td></tr>
+<tr><td><span class="mono">CBPR_Debtor_Name_TextualRule</span></td><td>"It is recommended to provide the Postal Address"</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_Agent_Name_TextualRule</span></td><td>"To be provided unless BICFI or Member ID provided as FI identification"</td><td><span class="tag rem">Removed</span> <span class="note">(replaced by formal rule)</span></td></tr>
+<tr><td><span class="mono">CBPR_BIC_TextualRule</span></td><td>"Should be provided as the preferred option" for BICFI</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_Structured_Remittance_Information_TextualRule</span></td><td>"Use of Structured Remittance must be bilaterally agreed; max 9,000 chars"</td><td><span class="tag rem">Removed</span> <span class="note">(bilateral requirement dropped, 9k cap retained via new rule)</span></td></tr>
+<tr><td><span class="mono">CBPR_Party_Postal_Address_TextualRule</span></td><td>"If provided, Structured Address including at least Town Name and Country must be provided"</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_Issuer_TextualRule</span></td><td>"Value of 'ISO' reserved for ISO 11649 international creditor's reference (if used must be bilaterally agreed)"</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_Clearing_System_Id_TextualRule</span></td><td>"Required if Clearing System Identification is provided"</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_GracePeriod_Hybrid_FormalRule</span></td><td>If AddressLine + other postal elements present: TownName &amp; Country mandatory; max 2 AddressLines</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_GracePeriod_Structured_FormalRule</span></td><td>If PostalAddress without AddressLine, TownName &amp; Country must be present</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_GracePeriod_Unstructured_FormalRule</span></td><td>If only AddressLine present, each line ≤ 35 characters</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_Business_Service_TextualRule</span></td><td>Explained use of BizSvc for differentiated SWIFT processing</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_Business_Service_Usage_TextualRule</span></td><td>Specified BizSvc value</td><td><span class="tag rem">Removed</span> <span class="note">(replaced by fixed value)</span></td></tr>
+<tr><td><span class="mono">CBPR_CharacterSet_Usage_TextualRule</span></td><td>Pointed to CBPR+ UHB for CharacterSet usage</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_Market_Practice_TextualRule</span></td><td>Usage guidance text for &lt;MktPrctc&gt;</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CBPR_Purpose_Guideline</span></td><td>Guidance on using Purpose element</td><td><span class="tag rem">Removed</span></td></tr>
+</table>
+
+<div class="sec">9 · ALL CGI rules removed in SR2026 (pain.008-specific — not present in other messages)</div>
+<table>
+<tr><th>Rule name</th><th>Content in SR2025</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">CGI_Message_Identification_TextualRule</span></td><td>"Forwarding Agent should respect the Message ID provided by the Initiating Party of the pain.008 and pain.002"</td><td><span class="tag rem">Removed</span> <span class="note">(→ CBPR_Message_Identification_TextualRule)</span></td></tr>
+<tr><td><span class="mono">CGI_ISO_Date_Time_TextualRule</span></td><td>"Preferred representation is Local time with UTC offset (YYYY-MM-DDThh:mm:ss.sss+/-hh:mm)" for CreationDateTime</td><td><span class="tag rem">Removed</span> <span class="note">(→ CBPR_DateTime type restriction)</span></td></tr>
+<tr><td><span class="mono">CGI_Instruction_Identification_TextualRule</span></td><td>"If provided, this Id is returned to the ordering party in account statement reporting"</td><td><span class="tag rem">Removed</span> <span class="note">(→ CBPR_Instruction_Identification_TextualRule)</span></td></tr>
+<tr><td><span class="mono">CGI_Instruction_Priority_TextualRule</span></td><td>"Based on whether priority processing vs. normal processing is offered by the bank"</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CGI_SequenceType_TextualRule</span></td><td>"Dependent upon direct debit schema"</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CGI_Account_Currency_TextualRule</span></td><td>"Recommended" for CreditorAccount/Currency</td><td><span class="tag rem">Removed</span> <span class="note">(→ CBPR_Account_Currency_TextualRule)</span></td></tr>
+<tr><td><span class="mono">CGI_ISO_Code_TextualRule</span></td><td>"Unless country-specifics require a non-ISO code, preference is to provide Code" for CategoryPurpose</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CGI_Ultimate_Creditor_TextualRule</span></td><td>"If an ultimate creditor is involved, being different from the creditor, it must be provided"</td><td><span class="tag rem">Removed</span> <span class="note">(→ CBPR_Ultimate_Creditor_TextualRule)</span></td></tr>
+<tr><td><span class="mono">CGI_Ultimate_Debtor_TextualRule</span></td><td>"If an ultimate debtor is involved, it must be provided"</td><td><span class="tag rem">Removed</span> <span class="note">(→ CBPR_Ultimate_Debtor_TextualRule)</span></td></tr>
+<tr><td><span class="mono">CGI_Initiating_Party_Id_TextualRule</span></td><td>"Multiple IDs allowed for overpopulation; can be used for dedicated bank services"</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CGI_Creditor_Scheme_Identification_TextualRule</span></td><td>"To be used if supported by Direct Debit Scheme; required on Transaction Level unless bilaterally determined"</td><td><span class="tag rem">Removed</span></td></tr>
+<tr><td><span class="mono">CGI_Remittance_Location_Details_Postal_Address_TextualRule</span></td><td>"Optional, not recommended to provide unstructured address data (max 1 occurrence, 70 chars)"</td><td><span class="tag rem">Removed</span></td></tr>
+</table>
+
+<div class="sec">10 · Usage guideline text removed (tags lost "!" indicator)</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th>Element</th><th>SR2025 guideline content</th><th>SR2026</th></tr>
+<tr><td><span class="mono">&lt;CharSet&gt;</span></td><td>BAH / CharacterSet</td><td><span class="mono">CBPR_CharacterSet_Usage_TextualRule</span>: pointed to CBPR+ UHB</td><td><span class="tag rem">No guideline</span></td></tr>
+<tr><td><span class="mono">&lt;Fr&gt;</span></td><td>BAH / From</td><td>Inline usage guideline details present</td><td><span class="tag rem">No guideline</span></td></tr>
+<tr><td><span class="mono">&lt;To&gt;</span></td><td>BAH / To</td><td>Inline usage guideline / Comment present</td><td><span class="tag rem">No guideline</span></td></tr>
+<tr><td><span class="mono">&lt;MktPrctc&gt;</span></td><td>BAH / MarketPractice</td><td><span class="mono">CBPR_Market_Practice_TextualRule</span></td><td><span class="tag rem">No guideline</span></td></tr>
+<tr><td><span class="mono">&lt;Sgntr&gt;</span></td><td>BAH / Signature</td><td>Removed + Comment: "Available at SWIFTNet Header level"</td><td><span class="tag rem">Comment removed</span> (still removed)</td></tr>
+<tr><td><span class="mono">&lt;BICFI&gt;</span></td><td>FwdgAgt / FinInstnId / BICFI</td><td><span class="mono">CBPR_BIC_TextualRule</span>: "Should be provided as preferred option"</td><td><span class="tag rem">Rule removed</span></td></tr>
+<tr><td><span class="mono">&lt;FwdgAgt&gt;</span></td><td>GroupHeader / ForwardingAgent</td><td><span class="mono">CBPR_Forwarding_Agent_TextualRule</span>: "If Creditor Agent is not receiver, must populate Forward Agent BIC"</td><td><span class="tag rem">Rule removed</span></td></tr>
+<tr><td><span class="mono">&lt;NbOfTxs&gt;</span></td><td>GroupHeader / NumberOfTransactions</td><td><span class="mono">CBPR_NumberOfTransactions_TextualRule</span>: "Recommend only one single direct debit unless bilaterally agreed"</td><td><span class="tag rem">Rule removed</span></td></tr>
+<tr><td><span class="mono">&lt;PmtInfId&gt;</span></td><td>PmtInf / PaymentInformationIdentification</td><td>Comment: "This value is the same as the Message ID of the Group Header"</td><td><span class="tag rem">Comment removed</span> <span class="note">(→ formal rule enforces same requirement)</span></td></tr>
+<tr><td><span class="mono">&lt;PmtTpInf&gt;</span></td><td>PmtInf / PaymentTypeInformation</td><td><span class="mono">CBPR_Payment_Type_Information_TextualRule</span>: "Required on Transaction Level unless bilaterally determined"</td><td><span class="tag rem">Rule removed</span></td></tr>
+<tr><td><span class="mono">&lt;InstrPrty&gt;</span></td><td>PmtTpInf / InstructionPriority</td><td><span class="mono">CGI_Instruction_Priority_TextualRule</span>: "Based on whether priority processing offered by bank"</td><td><span class="tag rem">Rule removed</span></td></tr>
+<tr><td><span class="mono">&lt;SeqTp&gt;</span></td><td>PmtTpInf / SequenceType</td><td><span class="mono">CGI_SequenceType_TextualRule</span>: "Dependent upon direct debit schema"</td><td><span class="tag rem">Rule removed</span></td></tr>
+<tr><td><span class="mono">&lt;DrctDbtTxInf&gt;</span></td><td>PmtInf / DirectDebitTransactionInformation</td><td><span class="mono">CBPR_DirectDebitTransactionInformation_TextualRule</span>: "Recommend single DDT unless bilaterally agreed"</td><td><span class="tag rem">Rule removed</span></td></tr>
+<tr><td><span class="mono">&lt;InstrForCdtrAgt&gt;</span></td><td>DrctDbtTxInf / InstructionForCreditorAgent</td><td><span class="mono">CBPR_Instruction_For_Creditor_Agent_TextualRule</span></td><td><span class="tag rem">Rule removed</span></td></tr>
+<tr><td><span class="mono">&lt;Purp&gt;</span></td><td>DrctDbtTxInf / Purpose</td><td><span class="mono">CBPR_Purpose_Guideline</span></td><td><span class="tag rem">Guideline removed</span></td></tr>
+<tr><td><span class="mono">&lt;Ref&gt;</span></td><td>RmtInf / Strd / CdtrRefInf / Reference</td><td><span class="mono">CBPR_Reference_TextualRule</span>: "If Creditor Reference Information used, Reference must be included"</td><td><span class="tag rem">Rule removed</span></td></tr>
+<tr><td><span class="mono">&lt;Tax&gt;</span></td><td>DrctDbtTxInf / Tax</td><td>Comment: "Applicable when tax information used by Clearing or local regulatory authority"</td><td><span class="tag rem">Comment removed</span></td></tr>
+<tr><td><span class="mono">&lt;TaxRmt&gt;</span></td><td>RmtInf / Strd / TaxRemittance</td><td>Inline usage guideline on TaxRemittance sub-section</td><td><span class="tag rem">Guideline removed</span></td></tr>
+</table>
+
+<div class="sec">11 · Usage guideline text added (tags gained "!" indicator)</div>
+<table>
+<tr><th style="width:130px">XML Tag</th><th>Element</th><th>New guideline in SR2026</th><th style="width:90px">Change</th></tr>
+<tr><td><span class="mono">&lt;Cdtr&gt;</span></td><td>PmtInf / Creditor</td><td><span class="mono">CBPR_Party_Name_Postal_Address_FormalRule</span>: If Postal Address present then Name is mandatory</td><td><span class="tag new">Added</span></td></tr>
+<tr><td><span class="mono">&lt;Dbtr&gt;</span></td><td>DrctDbtTxInf / Debtor</td><td><span class="mono">CBPR_Party_Name_Postal_Address_FormalRule</span>: If Postal Address present then Name is mandatory</td><td><span class="tag new">Added</span></td></tr>
+<tr><td><span class="mono">&lt;EndToEndId&gt;</span></td><td>DrctDbtTxInf / PmtId / EndToEndIdentification</td><td>Type changed to <span class="mono">CBPR_RestrictedFINXMax35Text</span></td><td><span class="tag new">Added</span></td></tr>
+<tr><td><span class="mono">&lt;Grnshee&gt;</span></td><td>RmtInf / Strd / GrnshmtRmt / Garnishee</td><td><span class="mono">CBPR_Party_Name_Postal_Address_FormalRule</span>: If Postal Address present then Name is mandatory</td><td><span class="tag new">Added</span></td></tr>
+<tr><td><span class="mono">&lt;GrnshmtAdmstr&gt;</span></td><td>RmtInf / Strd / GrnshmtRmt / GarnishmentAdministrator</td><td><span class="mono">CBPR_Party_Name_Postal_Address_FormalRule</span></td><td><span class="tag new">Added</span></td></tr>
+<tr><td><span class="mono">&lt;Invcee&gt;</span></td><td>RmtInf / Strd / Invoicee</td><td><span class="mono">CBPR_Party_Name_Postal_Address_FormalRule</span>: If Postal Address present then Name is mandatory</td><td><span class="tag new">Added</span></td></tr>
+<tr><td><span class="mono">&lt;Invcr&gt;</span></td><td>RmtInf / Strd / Invoicer</td><td>Uses <span class="mono">PartyIdentification135__1</span> datatype which has inner "!" sub-elements</td><td><span class="tag new">Added</span></td></tr>
+<tr><td><span class="mono">&lt;PstlAdr&gt;</span></td><td>Various party / PostalAddress (selected occurrences)</td><td>Additional guideline at page 120 for structured address Country/TownName requirements</td><td><span class="tag new">Added</span></td></tr>
+</table>
+
+<div class="sec">12 · Document-level statistics</div>
+<table>
+<tr><th>Item</th><th>SR2025</th><th>SR2026</th></tr>
+<tr><td>Document name</td><td>CustomerDirectDebitInitiation</td><td>FIToFICustomerDirectDebitInitiation (renamed)</td></tr>
+<tr><td>Release</td><td>CBPRPlus SR2025 — live November 2025; 31 UGs</td><td>CBPRPlus SR2026 — live November 2026; 30 UGs</td></tr>
+<tr><td>Total document pages</td><td>243</td><td>237</td></tr>
+<tr><td>Fixed values in Restriction Summary</td><td>n.a. (no fixed values)</td><td>2 (pages 12, 12 — MsgDefIdr, BizSvc)</td></tr>
+<tr><td>Comments section</td><td>Present (many pages: 11, 11, 12, 16, 19, 36, 37…)</td><td>n.a. — all comments removed</td></tr>
+<tr><td>CGI rules</td><td>12 CGI rules present (CGI_ prefix)</td><td>0 — all CGI rules removed, key ones replaced by CBPR_ equivalents</td></tr>
+<tr><td>Total CBPR rules removed</td><td>—</td><td>22 rules removed</td></tr>
+<tr><td>Total CBPR rules added</td><td>—</td><td>10 rules added</td></tr>
+<tr><td>BizSvc service identifier</td><td>swift.cbprplus.02</td><td>swift.cbprplus.03</td></tr>
+</table>
+
+</div>

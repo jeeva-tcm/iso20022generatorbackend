@@ -1,0 +1,364 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); color: var(--color-text-primary); font-size: 13px; }
+.wrap { padding: 0.5rem 0 2rem; }
+h2 { font-size: 18px; font-weight: 500; margin-bottom: 3px; }
+.meta { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 0.75rem; }
+.src-note { background: #EAF3DE; border-left: 3px solid #3B6D11; padding: 7px 12px; border-radius: 0 6px 6px 0; font-size: 12px; color: #27500A; margin-bottom: 1rem; }
+.legend { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; }
+.pill { font-size: 11px; padding: 3px 9px; border-radius: 99px; display: inline-block; white-space: nowrap; }
+.new  { background: #EAF3DE; color: #3B6D11; }
+.mod  { background: #FAEEDA; color: #854F0B; }
+.del  { background: #FCEBEB; color: #A32D2D; }
+.tight{ background: #E6F1FB; color: #185FA5; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead tr { background: var(--color-background-secondary); }
+th { text-align: left; padding: 7px 8px; font-weight: 500; font-size: 11px; color: var(--color-text-secondary); border-bottom: 0.5px solid var(--color-border-tertiary); white-space: nowrap; }
+td { padding: 7px 8px; border-bottom: 0.5px solid var(--color-border-tertiary); vertical-align: top; line-height: 1.5; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--color-background-secondary); }
+.tag { font-family: var(--font-mono); font-size: 11px; background: var(--color-background-secondary); padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
+.sec { font-size: 10px; color: var(--color-text-tertiary); margin-top: 2px; }
+.sh { background: var(--color-background-secondary); font-weight: 500; font-size: 11px; color: var(--color-text-secondary); padding: 5px 8px; letter-spacing: 0.04em; text-transform: uppercase; border-top: 0.5px solid var(--color-border-tertiary); }
+.summary-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px; margin-top: 1.5rem; }
+.scard { background: var(--color-background-secondary); border-radius: 8px; padding: 10px 14px; }
+.scard .num { font-size: 22px; font-weight: 500; }
+.scard .lbl { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; }
+</style>
+<div class="wrap">
+  <h2>camt.054.001.08 — SR2025 vs SR2026 differences</h2>
+  <p class="meta">CBPR+ BankToCustomerDebitCreditNotification · SR2025 dated 21 March 2025 · SR2026 dated 20 February 2026</p>
+  <div class="src-note">✔ All entries sourced directly from extracted text of the two uploaded PDFs. No external knowledge used.</div>
+  <div class="legend">
+    <span class="pill new">● New in SR2026</span>
+    <span class="pill mod">● Changed in SR2026</span>
+    <span class="pill del">● Removed in SR2026</span>
+    <span class="pill tight">● Constraint tightened</span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>XML Tag / Field</th>
+        <th>Section</th>
+        <th>Change</th>
+        <th>SR2025 rule</th>
+        <th>SR2026 rule</th>
+        <th>Validator impact</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <!-- ── A. HEADER ── -->
+      <tr><td class="sh" colspan="7">A — Header (BusinessApplicationHeaderV02)</td></tr>
+
+      <tr>
+        <td>1</td>
+        <td><span class="tag">BizSvc</span><div class="sec">BusinessService</div></td>
+        <td>Header</td>
+        <td><span class="pill mod">Changed</span></td>
+        <td>Optional [0..1]; value "swift.cbprplus.03" via CBPR_Business_Service_Usage_TextualRule</td>
+        <td><strong>Mandatory [1..1]</strong>; fixed value changed to <strong>"swift.cbprplus.04"</strong>. CBPR_Business_Service_TextualRule &amp; Usage_TextualRule both removed; replaced with single-value constraint.</td>
+        <td>Change expected value .03 → .04; add mandatory check; remove old textual-rule validation message</td>
+      </tr>
+
+      <tr>
+        <td>2</td>
+        <td><span class="tag">BizMsgIdr</span><div class="sec">BusinessMessageIdentifier</div></td>
+        <td>Header</td>
+        <td><span class="pill tight">Tightened</span></td>
+        <td>Textual rule only: must contain GrpHdr/MsgId (advisory)</td>
+        <td>New <strong>CBPR_BusinessMessageIdentifier_FormalRule</strong>: value must be <em>exactly equal</em> to GrpHdr/MsgId. Machine-enforceable.</td>
+        <td>Add formal equality check: BizMsgIdr == GrpHdr/MsgId</td>
+      </tr>
+
+      <tr>
+        <td>3</td>
+        <td><span class="tag">CharSet</span><div class="sec">CharacterSet</div></td>
+        <td>Header</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>CBPR_Character_Set_Usage_TextualRule present (refer to UHB)</td>
+        <td>CBPR_Character_Set_Usage_TextualRule <strong>removed</strong>; no replacement</td>
+        <td>Remove CharSet usage-rule validation message</td>
+      </tr>
+
+      <tr>
+        <td>4</td>
+        <td><span class="tag">Fr</span> / <span class="tag">To</span> / <span class="tag">Rltd/Fr</span> / <span class="tag">Rltd/To</span><div class="sec">FinInstId/ClrSysMmbId/ClrSysId</div></td>
+        <td>Header</td>
+        <td><span class="pill new">New</span></td>
+        <td>Not mandatory</td>
+        <td><strong>ClearingSystemIdentification inside ClearingSystemMemberIdentification is now mandatory [1..1]</strong> for From, To, Related/From, Related/To headers</td>
+        <td>Add mandatory check for ClrSysId under all four header agent paths</td>
+      </tr>
+
+      <!-- ── B. NOTIFICATION LEVEL ── -->
+      <tr><td class="sh" colspan="7">B — Notification level</td></tr>
+
+      <tr>
+        <td>5</td>
+        <td><span class="tag">Ntry</span><div class="sec">Entry</div></td>
+        <td>Notification</td>
+        <td><span class="pill new">New</span></td>
+        <td>Present in both SR2025 and SR2026 as mandatory min=1 (already tightened in SR2025)</td>
+        <td>Confirmed mandatory [1..1] min; <strong>new CBPR_BookingDate_ValueDate_FormalRule added</strong>: when Status = BOOK, at least one of BookingDate or ValueDate must be present</td>
+        <td>Add conditional rule: if Sts/Cd = 'BOOK' then BookgDt OR ValDt must exist</td>
+      </tr>
+
+      <tr>
+        <td>6</td>
+        <td><span class="tag">Acct/Ccy</span><div class="sec">Account/Currency</div></td>
+        <td>Notification</td>
+        <td><span class="pill new">New</span></td>
+        <td>Optional [0..1]; no mandatory constraint</td>
+        <td><strong>Mandatory [1..1]</strong> — minimum occurrence changed to 1</td>
+        <td>Add mandatory check for Account/Currency in every Notification</td>
+      </tr>
+
+      <tr>
+        <td>7</td>
+        <td><span class="tag">TxsSummry</span><div class="sec">TransactionsSummary</div></td>
+        <td>Notification</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>CBPR_Transaction_Summary_Guideline: "Total Credit/Debit should be provided if summary available; when paginated, only note on first page"</td>
+        <td>Guideline <strong>removed</strong>; TxsSummry element and sub-elements still present as optional</td>
+        <td>Remove Transaction_Summary_Guideline validation message; element still optional and parseable</td>
+      </tr>
+
+      <!-- ── C. ENTRY LEVEL ── -->
+      <tr><td class="sh" colspan="7">C — Entry (Ntry) level — usage guideline marker (!) removals</td></tr>
+
+      <tr>
+        <td>8</td>
+        <td><span class="tag">BookgDt</span><div class="sec">BookingDate</div></td>
+        <td>Entry</td>
+        <td><span class="pill mod">Changed</span></td>
+        <td>[0..1] with usage guideline marker (!); CBPR_Booking_Date_TextualRule (descriptive guidance)</td>
+        <td>[0..1] — usage guideline marker (!) and CBPR_Booking_Date_TextualRule <strong>removed</strong>; conditional presence now enforced via CBPR_BookingDate_ValueDate_FormalRule (row 5)</td>
+        <td>Remove textual-rule message; add formal rule check (row 5)</td>
+      </tr>
+
+      <tr>
+        <td>9</td>
+        <td><span class="tag">ValDt</span><div class="sec">ValueDate</div></td>
+        <td>Entry</td>
+        <td><span class="pill mod">Changed</span></td>
+        <td>[0..1] with usage guideline marker (!); CBPR_Value_Date_TextualRule: "mandatory when Status=BOOK; bilateral when pending/information"</td>
+        <td>[0..1] — usage guideline marker (!) and CBPR_Value_Date_TextualRule <strong>removed</strong>; conditional rule now in CBPR_BookingDate_ValueDate_FormalRule</td>
+        <td>Remove textual-rule message; rely on formal rule (row 5)</td>
+      </tr>
+
+      <tr>
+        <td>10</td>
+        <td><span class="tag">AcctSvcrRef</span><div class="sec">AccountServicerReference</div></td>
+        <td>Entry</td>
+        <td><span class="pill mod">Changed</span></td>
+        <td>[0..1] with usage guideline marker (!); CBPR_Account_Servicer_Reference_Guideline: "same reference as reported in camt.053"</td>
+        <td>[0..1] — usage guideline marker (!) and CBPR_Account_Servicer_Reference_Guideline <strong>removed</strong></td>
+        <td>Remove guideline validation message; field still optional</td>
+      </tr>
+
+      <tr>
+        <td>11</td>
+        <td><span class="tag">Avlbty</span><div class="sec">Availability</div></td>
+        <td>Entry</td>
+        <td><span class="pill mod">Changed</span></td>
+        <td>[0..*] with usage guideline marker (!); CBPR_Date_Guideline: "Recommendation: use ActualDate"</td>
+        <td>[0..*] — usage guideline marker (!) and CBPR_Date_Guideline <strong>removed</strong></td>
+        <td>Remove date-guideline validation message; field still optional</td>
+      </tr>
+
+      <tr>
+        <td>12</td>
+        <td><span class="tag">BkTxCd</span><div class="sec">BankTransactionCode (Entry)</div></td>
+        <td>Entry</td>
+        <td><span class="pill mod">Changed</span></td>
+        <td>[1..1] with usage guideline marker (!); CBPR_Bank_Transaction_Code_TextualRule: "must be provided at entry level; Domain/Code preferred" + CBPR_Domain_Proprietary_Recommendation_TextualRule</td>
+        <td>[1..1] — usage guideline marker (!) and both BkTxCd textual rules <strong>removed</strong>; field remains mandatory</td>
+        <td>Remove both textual-rule validation messages; mandatory check remains</td>
+      </tr>
+
+      <tr>
+        <td>13</td>
+        <td><span class="tag">Chrgs/Brer</span><div class="sec">Charges/Bearer</div></td>
+        <td>Entry</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>CBPR_Bearer_Guideline: "recommended to always be provided when charges are reported"</td>
+        <td>CBPR_Bearer_Guideline <strong>removed</strong>; Bearer element itself still present</td>
+        <td>Remove bearer-guideline validation message</td>
+      </tr>
+
+      <!-- ── D. TRANSACTION DETAILS ── -->
+      <tr><td class="sh" colspan="7">D — Transaction Details (TxDtls) — new mandatory fields</td></tr>
+
+      <tr>
+        <td>14</td>
+        <td><span class="tag">TxDtls/CdtDbtInd</span><div class="sec">TransactionDetails/CreditDebitIndicator</div></td>
+        <td>TxDtls</td>
+        <td><span class="pill new">New</span></td>
+        <td>Optional; no mandatory constraint at TxDtls level</td>
+        <td><strong>Mandatory [1..1]</strong> — minimum occurrence changed to 1 at TransactionDetails level</td>
+        <td>Add mandatory check for CreditDebitIndicator inside each TxDtls</td>
+      </tr>
+
+      <tr>
+        <td>15</td>
+        <td><span class="tag">TxDtls/RltdDts</span><div class="sec">TransactionDetails/RelatedDates</div></td>
+        <td>TxDtls</td>
+        <td><span class="pill new">New</span></td>
+        <td>Optional; no mandatory constraint</td>
+        <td><strong>Mandatory [1..1]</strong> — minimum occurrence changed to 1</td>
+        <td>Add mandatory check: RelatedDates must be present in every TxDtls</td>
+      </tr>
+
+      <tr>
+        <td>16</td>
+        <td><span class="tag">Refs/InstrId</span><div class="sec">References/InstructionIdentification</div></td>
+        <td>TxDtls / References</td>
+        <td><span class="pill new">New</span></td>
+        <td>Optional; no mandatory constraint; slash format rule existed but no minimum</td>
+        <td><strong>Mandatory [1..1]</strong> — minimum occurrence changed to 1; CBPR_Original_Instruction_Identification_FormalRule also applies: no leading/trailing '/', no '//'</td>
+        <td>Add mandatory check + regex: no leading/trailing slash, no double slash in InstrId</td>
+      </tr>
+
+      <tr>
+        <td>17</td>
+        <td>All RelatedAgents <span class="tag">ClrSysMmbId/ClrSysId</span><div class="sec">SettlementPlace, IntermediaryAgent1–3, InstructingAgent, IssuingAgent, CreditorAgent, DebtorAgent</div></td>
+        <td>TxDtls / RelatedAgents</td>
+        <td><span class="pill new">New</span></td>
+        <td>ClearingSystemIdentification was optional</td>
+        <td><strong>ClearingSystemIdentification mandatory [1..1]</strong> across all RelatedAgents when ClearingSystemMemberIdentification is present</td>
+        <td>Add mandatory ClrSysId check inside every ClearingSystemMemberIdentification across all agent paths</td>
+      </tr>
+
+      <tr>
+        <td>18</td>
+        <td><span class="tag">RltdPties/Dbtr/Pty/Id/OrgId/Othr/SchmeNm</span><div class="sec">Debtor OrganisationId Other SchemeName</div></td>
+        <td>TxDtls / RelatedParties</td>
+        <td><span class="pill new">New</span></td>
+        <td>SchemeName was optional</td>
+        <td><strong>SchemeName mandatory [1..1]</strong> when Other is used under OrganisationIdentification for Debtor</td>
+        <td>Add mandatory SchemeName check in Debtor OrgId/Other block</td>
+      </tr>
+
+      <tr>
+        <td>19</td>
+        <td><span class="tag">RltdPties/Dbtr/Pty/Id/PrvtId/Othr/SchmeNm</span><div class="sec">Debtor PrivateId Other SchemeName</div></td>
+        <td>TxDtls / RelatedParties</td>
+        <td><span class="pill new">New</span></td>
+        <td>SchemeName was optional</td>
+        <td><strong>SchemeName mandatory [1..1]</strong> when Other is used under PrivateIdentification for Debtor</td>
+        <td>Add mandatory SchemeName check in Debtor PrvtId/Other block</td>
+      </tr>
+
+      <tr>
+        <td>20</td>
+        <td>RelatedParties UltimateDebtor/Creditor Agent <span class="tag">ClrSysMmbId/ClrSysId</span></td>
+        <td>TxDtls / RelatedParties</td>
+        <td><span class="pill new">New</span></td>
+        <td>Not mandatory</td>
+        <td><strong>ClearingSystemIdentification mandatory [1..1]</strong> for UltimateDebtor/Agent and TradingParty/Agent when ClearingSystemMemberIdentification is present</td>
+        <td>Add mandatory ClrSysId check for UltimateDebtor agent and TradingParty agent paths</td>
+      </tr>
+
+      <tr>
+        <td>21</td>
+        <td>Debtor/Creditor party textual rules<div class="sec">CBPR_Debtor, Creditor, UltimateDebtor, UltimateCreditor, DebtorAccount, CreditorAccount, InitiatingParty rules</div></td>
+        <td>TxDtls / RelatedParties</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>7 textual rules present: CBPR_Debtor_TextualRule, CBPR_Creditor_TextualRule, CBPR_Debtor_Account_TextualRule, CBPR_Creditor_Account_TextualRule, CBPR_Debtor_Agent_TextualRule (via camt.054 scope), CBPR_Ultimate_Debtor_TextualRule, CBPR_Ultimate_Creditor_TextualRule, CBPR_Initiating_Party_TextualRule</td>
+        <td>All 8 textual rules <strong>removed</strong>; underlying field structure unchanged</td>
+        <td>Remove all these textual-rule validation messages; field constraints themselves unchanged</td>
+      </tr>
+
+      <!-- ── E. PAGINATION ── -->
+      <tr><td class="sh" colspan="7">E — Pagination</td></tr>
+
+      <tr>
+        <td>22</td>
+        <td><span class="tag">NtfctnPgntn/PgNb</span><div class="sec">NotificationPagination/PageNumber</div></td>
+        <td>Notification</td>
+        <td><span class="pill new">New</span></td>
+        <td>No format constraint on PageNumber value</td>
+        <td><strong>CBPR_PageNumber_FormalRule added</strong>: PageNumber must be &gt; 0 (cannot be '0', '00', '000', '0000', '00000')</td>
+        <td>Add formal validation: reject PageNumber = 0 or zero-padded zeros</td>
+      </tr>
+
+      <!-- ── F. DATATYPE CHANGES ── -->
+      <tr><td class="sh" colspan="7">F — Datatype changes</td></tr>
+
+      <tr>
+        <td>23</td>
+        <td>Date fields: <span class="tag">ActualDate</span>, <span class="tag">CardTx/ValidationDate</span>, <span class="tag">CurrencyExchange dates</span></td>
+        <td>Multiple</td>
+        <td><span class="pill new">New</span></td>
+        <td>Plain ISO date type; no CBPR_Date datatype in SR2025</td>
+        <td>New <strong>CBPR_Date datatype</strong> (page 521) introduced and applied to: ActualDate fields in Availability (Entry, TxDtls, TxsSummry), CardTransaction/ValidationDate, all CurrencyExchange date sub-fields</td>
+        <td>Update date-field validators to use CBPR_Date pattern (page 521)</td>
+      </tr>
+
+      <tr>
+        <td>24</td>
+        <td>Standard text fields (e.g., <span class="tag">NtryRef</span>, agent identifications)</td>
+        <td>Multiple</td>
+        <td><span class="pill mod">Changed</span></td>
+        <td>CBPR_RestrictedFINXMax35Text on <strong>page 536</strong>; CBPR_RestrictedFINXMax140Text_Extended on <strong>page 533</strong>; CBPR_RestrictedFINXMax500Text on <strong>page 538</strong></td>
+        <td>Same types but renumbered: page 527, page 524, page 529 respectively — due to doc restructure</td>
+        <td>Update page-reference lookups only; no logic change to type constraints</td>
+      </tr>
+
+      <!-- ── G. REMOVED ELEMENTS ── -->
+      <tr><td class="sh" colspan="7">G — Removed elements and guidelines</td></tr>
+
+      <tr>
+        <td>25</td>
+        <td><span class="tag">PrefrdMtd</span><div class="sec">PreferredMethod (ContactDetails)</div></td>
+        <td>Multiple parties</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>Present in ContactDetails for Account/Owner, UltimateDebtor, Invoicer, Invoicee, and other party ContactDetails</td>
+        <td><strong>Removed</strong> from all ContactDetails occurrences across all party types</td>
+        <td>Remove PrefrdMtd from parsing; add error if present in message</td>
+      </tr>
+
+      <tr>
+        <td>26</td>
+        <td><span class="tag">Chrgs/Rcrd/Agt/FinInstnId/Othr</span><div class="sec">Charges Record Agent FinInstnId Other</div></td>
+        <td>Entry / Charges</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>Present — Other identification allowed under Charges Record Agent</td>
+        <td><strong>Removed</strong> — FinancialInstitutionIdentification/Other block under Charges/Record/Agent is no longer permitted</td>
+        <td>Remove parsing of Chrgs/Rcrd/Agt/FinInstnId/Othr; reject if present</td>
+      </tr>
+
+      <tr>
+        <td>27</td>
+        <td><span class="tag">MktPrctc</span> textual rule<div class="sec">MarketPractice</div></td>
+        <td>Header</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>CBPR_Market_Practice_TextualRule present (advisory)</td>
+        <td>Rule <strong>removed</strong>; MarketPractice element [0..1] still present</td>
+        <td>Remove MarketPractice textual-rule validation message</td>
+      </tr>
+
+      <tr>
+        <td>28</td>
+        <td><span class="tag">Amt</span> textual rule<div class="sec">Entry/Amount</div></td>
+        <td>Entry</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>CBPR_Amount_TextualRule: "Amount in currency of account reported; can be zero; synonym 32A"</td>
+        <td>CBPR_Amount_TextualRule <strong>removed</strong>; Amount remains mandatory [1..1]</td>
+        <td>Remove amount textual-rule message; mandatory check unchanged</td>
+      </tr>
+
+    </tbody>
+  </table>
+
+  <div class="summary-box">
+    <div class="scard"><div class="num" style="color:#3B6D11">10</div><div class="lbl">New rules / mandatory fields</div></div>
+    <div class="scard"><div class="num" style="color:#854F0B">6</div><div class="lbl">Changed fields or rules</div></div>
+    <div class="scard"><div class="num" style="color:#A32D2D">10</div><div class="lbl">Removed rules / elements</div></div>
+    <div class="scard"><div class="num" style="color:#185FA5">2</div><div class="lbl">Constraints tightened</div></div>
+  </div>
+</div>

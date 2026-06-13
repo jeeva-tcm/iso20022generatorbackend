@@ -84,7 +84,9 @@ class Layer2Validator:
     @staticmethod
     def _get_schema(xsd_path: str) -> etree.XMLSchema:
         if xsd_path not in Layer2Validator._schema_cache:
-            xsd_doc = etree.parse(xsd_path)
+            with open(xsd_path, "rb") as _f:
+                _raw = _f.read().lstrip()
+            xsd_doc = etree.fromstring(_raw)
             schema = etree.XMLSchema(xsd_doc)
             Layer2Validator._schema_cache[xsd_path] = schema
         return Layer2Validator._schema_cache[xsd_path]

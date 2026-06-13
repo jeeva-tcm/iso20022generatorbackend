@@ -1149,7 +1149,14 @@ def _gen_pacs009(selected: set, idx: int, is_cov: bool = False, is_adv: bool = F
 
     # 1. PmtTpInf (optional)
     if "payment_type_information" in selected or is_adv:
-        svc = random.choice(SERVICE_LEVELS)
+        # GPI ServiceLevel rule (CBPR_GPI_ServiceLevel_Code): for pacs.009 the only
+        # permitted GPI code is G004 for CORE/ADV and G001 for COV. G001 is FORBIDDEN
+        # for CORE/ADV, so the shared SERVICE_LEVELS list (which contains G001) is not
+        # safe here. Pick a variant-appropriate code.
+        if is_cov:
+            svc = random.choice(["G001", "SDVA", "URGP", "NURG"])
+        else:  # CORE and ADV
+            svc = random.choice(["G004", "SDVA", "URGP", "NURG"])
         tx += "\t\t\t\t<PmtTpInf>\n"
         if "payment_type_information" in selected:
             tx += f"\t\t\t\t\t<SvcLvl>\n\t\t\t\t\t\t<Cd>{svc}</Cd>\n\t\t\t\t\t</SvcLvl>\n"
@@ -1315,7 +1322,7 @@ def _gen_pacs004(selected: set, idx: int) -> str:
     msg_id = rng_id("MSG", 16)
     biz_msg_id = msg_id  # CBPR_COM_R2: BizMsgIdr must equal GrpHdr/MsgId
     rtr_id = rng_id("RTR", 16)
-    orig_instr_id = rng_id("ORGINSTR", 11)
+    orig_instr_id = rng_id("ORI", 10)
     orig_e2e = rng_id("ORIE2E", 10)
     orig_tx = rng_id("ORITX", 10)
     orig_uetr = rng_uetr()
@@ -1393,7 +1400,7 @@ def _gen_pacs004(selected: set, idx: int) -> str:
 {apphdr_fi(scenario.receiver_bic)}\t\t</To>
 \t\t<BizMsgIdr>{xe(biz_msg_id)}</BizMsgIdr>
 \t\t<MsgDefIdr>pacs.004.001.09</MsgDefIdr>
-\t\t<BizSvc>swift.cbprplus.05</BizSvc>
+\t\t<BizSvc>swift.cbprplus.04</BizSvc>
 \t\t<CreDt>{cre_dt}</CreDt>
 \t</AppHdr>
 \t<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.004.001.09">
@@ -1702,7 +1709,7 @@ def _gen_pacs010(selected: set, idx: int) -> str:
 
     msg_id = rng_id("MSG", 16)
     biz_msg_id = msg_id  # CBPR_COM_R2: BizMsgIdr must equal GrpHdr/MsgId
-    cdt_id = rng_id("CDT", 16)
+    cdt_id = rng_id("CDT", 13)  # CdtId max length is 16 ("CDT" prefix + 13 = 16)
     instr_id = rng_id("INSTR", 11)
     e2e_id = rng_id("E2E", 16)
     tx_id = rng_id("TX", 16)
@@ -1937,6 +1944,7 @@ def _gen_camt052(selected: set, idx: int) -> str:
 \t\t\t\t\t<PgNb>1</PgNb>
 \t\t\t\t\t<LastPgInd>true</LastPgInd>
 \t\t\t\t</RptPgntn>
+\t\t\t\t<ElctrncSeqNb>1</ElctrncSeqNb>
 \t\t\t\t<CreDtTm>{cre_dt}</CreDtTm>
 {rpt}\t\t\t</Rpt>
 \t\t</BkToCstmrAcctRpt>
@@ -2262,6 +2270,7 @@ def _gen_camt056(selected: set, idx: int) -> str:
 \t\t\t\t\t\t<OrgnlMsgId>{xe(org_msg_id)}</OrgnlMsgId>
 \t\t\t\t\t\t<OrgnlMsgNmId>pacs.008.001.08</OrgnlMsgNmId>
 \t\t\t\t\t</OrgnlGrpInf>
+\t\t\t\t\t<OrgnlInstrId>{xe(rng_id("OII", 10))}</OrgnlInstrId>
 \t\t\t\t\t<OrgnlEndToEndId>{xe(e2e_id)}</OrgnlEndToEndId>
 \t\t\t\t\t<OrgnlUETR>{xe(uetr)}</OrgnlUETR>
 \t\t\t\t\t<OrgnlIntrBkSttlmAmt Ccy="{xe(ccy)}">{amt}</OrgnlIntrBkSttlmAmt>
@@ -2278,10 +2287,21 @@ def _gen_camt056(selected: set, idx: int) -> str:
     if "original_transaction" in selected:
         body += f"""\t\t\t\t<TxInf>
 \t\t\t\t\t<CxlId>{xe(rng_id("ORIGCXL", 10))}</CxlId>
+\t\t\t\t\t<Case>
+\t\t\t\t\t\t<Id>{xe(rng_id("CASE2", 10))}</Id>
+\t\t\t\t\t\t<Cretr>
+\t\t\t\t\t\t\t<Agt>
+\t\t\t\t\t\t\t\t<FinInstnId>
+\t\t\t\t\t\t\t\t\t<BICFI>{xe(from_bic)}</BICFI>
+\t\t\t\t\t\t\t\t</FinInstnId>
+\t\t\t\t\t\t\t</Agt>
+\t\t\t\t\t\t</Cretr>
+\t\t\t\t\t</Case>
 \t\t\t\t\t<OrgnlGrpInf>
 \t\t\t\t\t\t<OrgnlMsgId>{xe(rng_id("ORIGMSG2", 10))}</OrgnlMsgId>
 \t\t\t\t\t\t<OrgnlMsgNmId>pacs.008.001.08</OrgnlMsgNmId>
 \t\t\t\t\t</OrgnlGrpInf>
+\t\t\t\t\t<OrgnlInstrId>{xe(rng_id("OII2", 10))}</OrgnlInstrId>
 \t\t\t\t\t<OrgnlEndToEndId>{xe(rng_id("ORIE2E2", 10))}</OrgnlEndToEndId>
 \t\t\t\t\t<OrgnlUETR>{rng_uetr()}</OrgnlUETR>
 \t\t\t\t\t<OrgnlIntrBkSttlmAmt Ccy="{xe(ccy)}">{rng_amount(ccy)}</OrgnlIntrBkSttlmAmt>

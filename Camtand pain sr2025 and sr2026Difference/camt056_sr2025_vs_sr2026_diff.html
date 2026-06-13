@@ -1,0 +1,267 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); color: var(--color-text-primary); font-size: 13px; }
+.wrap { padding: 0.5rem 0 2rem; }
+h2 { font-size: 18px; font-weight: 500; margin-bottom: 3px; }
+.meta { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 0.75rem; }
+.src-note { background: #EAF3DE; border-left: 3px solid #3B6D11; padding: 7px 12px; border-radius: 0 6px 6px 0; font-size: 12px; color: #27500A; margin-bottom: 1rem; }
+.legend { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; }
+.pill { font-size: 11px; padding: 3px 9px; border-radius: 99px; display: inline-block; white-space: nowrap; }
+.new   { background: #EAF3DE; color: #3B6D11; }
+.mod   { background: #FAEEDA; color: #854F0B; }
+.del   { background: #FCEBEB; color: #A32D2D; }
+.tight { background: #E6F1FB; color: #185FA5; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead tr { background: var(--color-background-secondary); }
+th { text-align: left; padding: 7px 8px; font-weight: 500; font-size: 11px; color: var(--color-text-secondary); border-bottom: 0.5px solid var(--color-border-tertiary); white-space: nowrap; }
+td { padding: 7px 8px; border-bottom: 0.5px solid var(--color-border-tertiary); vertical-align: top; line-height: 1.5; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--color-background-secondary); }
+.tag { font-family: var(--font-mono); font-size: 11px; background: var(--color-background-secondary); padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
+.sh { background: var(--color-background-secondary); font-weight: 500; font-size: 11px; color: var(--color-text-secondary); padding: 5px 8px; letter-spacing: 0.04em; text-transform: uppercase; border-top: 0.5px solid var(--color-border-tertiary); }
+.summary-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px; margin-top: 1.5rem; }
+.scard { background: var(--color-background-secondary); border-radius: 8px; padding: 10px 14px; }
+.scard .num { font-size: 22px; font-weight: 500; }
+.scard .lbl { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; }
+</style>
+<div class="wrap">
+  <h2>camt.056.001.08 — SR2025 vs SR2026 differences</h2>
+  <p class="meta">CBPR+ FIToFIPaymentCancellationRequest · SR2025 dated 21 March 2025 · SR2026 dated 20 February 2026</p>
+  <div class="src-note">✔ All entries sourced directly from extracted text of the two uploaded PDFs. No external knowledge used.</div>
+  <div class="legend">
+    <span class="pill new">● New in SR2026</span>
+    <span class="pill mod">● Changed in SR2026</span>
+    <span class="pill del">● Removed in SR2026</span>
+    <span class="pill tight">● Constraint tightened</span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>XML Tag / Field</th>
+        <th>Section</th>
+        <th>Change</th>
+        <th>SR2025 rule</th>
+        <th>SR2026 rule</th>
+        <th>Validator impact</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <!-- A. HEADER -->
+      <tr><td class="sh" colspan="7">A — Header (BusinessApplicationHeaderV02)</td></tr>
+
+      <tr>
+        <td>1</td>
+        <td><span class="tag">BizSvc</span><div class="sec">BusinessService</div></td>
+        <td>Header</td>
+        <td><span class="pill mod">Changed</span></td>
+        <td>Optional [0..1]; value <strong>"swift.cbprplus.03"</strong> via CBPR_Business_Service_Usage_TextualRule</td>
+        <td><strong>Mandatory [1..1]</strong>; fixed value changed to <strong>"swift.cbprplus.04"</strong>. Both Business_Service textual rules removed; replaced with single-value constraint.</td>
+        <td>Update expected value .03 → .04; add mandatory check; remove old textual-rule messages</td>
+      </tr>
+
+      <tr>
+        <td>2</td>
+        <td><span class="tag">MsgDefIdr</span><div class="sec">MessageDefinitionIdentifier</div></td>
+        <td>Header</td>
+        <td><span class="pill mod">Changed</span></td>
+        <td>Textual rule only (CBPR_Message_Definition_Identifier_TextualRule — advisory). Fixed values: n.a. in SR2025.</td>
+        <td>New <strong>fixed single value constraint: "camt.056.001.08"</strong> — MsgDefIdr must contain exactly this value. Fixed values now listed in restriction summary.</td>
+        <td>Add fixed-value check: MsgDefIdr must equal "camt.056.001.08"</td>
+      </tr>
+
+      <tr>
+        <td>3</td>
+        <td><span class="tag">CharSet</span><div class="sec">CharacterSet</div></td>
+        <td>Header</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>CBPR_Character_Set_Usage_TextualRule present (refer to UHB)</td>
+        <td>CBPR_Character_Set_Usage_TextualRule <strong>removed</strong>; no replacement</td>
+        <td>Remove CharSet usage-rule validation message</td>
+      </tr>
+
+      <tr>
+        <td>4</td>
+        <td><span class="tag">MktPrctc</span><div class="sec">MarketPractice</div></td>
+        <td>Header</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>CBPR_Market_Practice_TextualRule present (advisory)</td>
+        <td>CBPR_Market_Practice_TextualRule <strong>removed</strong>; MarketPractice element still present [0..1]</td>
+        <td>Remove MarketPractice textual-rule validation message</td>
+      </tr>
+
+      <tr>
+        <td>5</td>
+        <td><span class="tag">Fr/To/Rltd/Fr/Rltd/To</span> — <span class="tag">FinInstnId/Name</span> + <span class="tag">PostalAddress</span><div class="sec">Header FI identification sub-fields</div></td>
+        <td>Header</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>Name and PostalAddress permitted under FinancialInstitutionIdentification in all header FI paths</td>
+        <td><strong>Name and PostalAddress removed</strong> from FinancialInstitutionIdentification for all four header paths (From, To, Related/From, Related/To) and for Assigner/Assignee Agent paths</td>
+        <td>Remove Name + PostalAddress parsing from all header FI identification; reject if present</td>
+      </tr>
+
+      <tr>
+        <td>6</td>
+        <td><span class="tag">Fr/To/Rltd</span> — <span class="tag">ClrSysId/Proprietary</span><div class="sec">ClearingSystemIdentification/Proprietary</div></td>
+        <td>Header + Assignment agents</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>Proprietary sub-element allowed under ClearingSystemIdentification</td>
+        <td><strong>Proprietary removed</strong> from ClearingSystemIdentification across all header FI paths, Assigner/Agent, Assignee/Agent, and TxInf/Case/Creator/Agent paths — only Code allowed</td>
+        <td>Remove Proprietary from ClrSysId parsing; reject if present; enforce Code-only</td>
+      </tr>
+
+      <!-- B. ASSIGNMENT LEVEL -->
+      <tr><td class="sh" colspan="7">B — Assignment level</td></tr>
+
+      <tr>
+        <td>7</td>
+        <td><span class="tag">Assgnr/Pty/Nm</span>, <span class="tag">PstlAdr</span>, <span class="tag">CtryOfRes</span>, <span class="tag">CtctDtls</span><div class="sec">Assigner Party sub-fields</div></td>
+        <td>Assignment / Assigner</td>
+        <td><span class="pill mod">Changed</span></td>
+        <td>Entire <strong>Assigner/Party block removed</strong> as a whole in SR2025 (single removal directive)</td>
+        <td>Assigner/Party block still removed, but in SR2026 individual sub-fields are <strong>also explicitly removed</strong>: Name, PostalAddress, CountryOfResidence, ContactDetails, PrivateIdentification. Only <strong>Identification/OrganisationIdentification</strong> path is usable.</td>
+        <td>Add explicit rejection for Name, PstlAdr, CtryOfRes, CtctDtls, PrvtId under Assigner/Party even if accessed via datatype references</td>
+      </tr>
+
+      <!-- C. TRANSACTION INFORMATION — NEW MANDATORY FIELDS -->
+      <tr><td class="sh" colspan="7">C — TransactionInformation (TxInf) — new mandatory fields in SR2026</td></tr>
+
+      <tr>
+        <td>8</td>
+        <td><span class="tag">TxInf/OrgnlInstrId</span><div class="sec">OriginalInstructionIdentification</div></td>
+        <td>TxInf</td>
+        <td><span class="pill new">New</span></td>
+        <td>Optional [0..1]; CBPR_Original_Instruction_Identification_TextualRule and FormalRule (no-slash rule) applied but field not mandatory</td>
+        <td><strong>Mandatory [1..1]</strong> — minimum occurrence changed to 1. No-slash FormalRule (CBPR_Original_Instruction_Identification_FormalRule) still applies.</td>
+        <td>Add mandatory check for OriginalInstructionIdentification in every TxInf; slash-format validation also applies</td>
+      </tr>
+
+      <tr>
+        <td>9</td>
+        <td><span class="tag">TxInf/CxlRsnInf/Rsn/Prtry</span><div class="sec">CancellationReason/Proprietary</div></td>
+        <td>TxInf / CancellationReason</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>Proprietary allowed as alternative reason (Code or Proprietary choice)</td>
+        <td>Proprietary sub-element of Reason <strong>removed</strong> — only Code allowed for cancellation reason</td>
+        <td>Remove Proprietary from Reason parsing; reject if present; only Code is valid</td>
+      </tr>
+
+      <tr>
+        <td>10</td>
+        <td><span class="tag">TxInf/CxlRsnInf/AddtlInf</span><div class="sec">CancellationReason/AdditionalInformation conditional rule</div></td>
+        <td>TxInf / CancellationReason</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>CBPR_Reason_Code_NARR_Additional_Information_FormalRule: if Reason/Code = NARR then AdditionalInformation is mandatory</td>
+        <td>CBPR_Reason_Code_NARR_Additional_Information_FormalRule <strong>removed</strong>. AdditionalInformation is no longer conditionally mandatory for NARR code. (Max 2 occurrences remains from SR2025.)</td>
+        <td>Remove the NARR→AdditionalInformation conditional mandatory rule from validator</td>
+      </tr>
+
+      <!-- D. POSTAL ADDRESS — GRACEFUL PERIOD RULES REPLACED -->
+      <tr><td class="sh" colspan="7">D — Postal Address — GracePeriod formal rules removed; TownName + Country now always mandatory</td></tr>
+
+      <tr>
+        <td>11</td>
+        <td><span class="tag">PstlAdr/TwnNm</span> + <span class="tag">Ctry</span><div class="sec">TownName + Country — Case/Creator/Party PostalAddress, Case/Creator/Agent PostalAddress, CancellationReason/Originator PostalAddress</div></td>
+        <td>TxInf — all PostalAddress blocks</td>
+        <td><span class="pill mod">Changed</span></td>
+        <td>Conditional: CBPR_GracePeriod_Structured_FormalRule (TownName+Country mandatory only if AddressLine absent); CBPR_GracePeriod_Hybrid_FormalRule (TownName+Country mandatory if any structured element present with AddressLine); CBPR_GracePeriod_Unstructured_FormalRule (AddressLine max 35 chars if only unstructured)</td>
+        <td>All three GracePeriod formal rules <strong>removed</strong>. TownName and Country are now <strong>always mandatory [1..1]</strong> when PostalAddress is present — unconditional, regardless of AddressLine usage. Only CBPR_Duplication_Postal_Address_TextualRule remains (structured data must not be repeated in AddressLine).</td>
+        <td>Remove 3 conditional GracePeriod rules; add unconditional mandatory TwnNm + Ctry check in all three PostalAddress contexts (Creator/Party, Creator/Agent, Originator)</td>
+      </tr>
+
+      <tr>
+        <td>12</td>
+        <td><span class="tag">PstlAdr/AdrLine</span><div class="sec">AddressLine max occurrence — Creator/Party, Creator/Agent, Originator</div></td>
+        <td>TxInf — PostalAddress blocks</td>
+        <td><span class="pill tight">Tightened</span></td>
+        <td>Max occurrence = <strong>3</strong> for AddressLine in all three PostalAddress blocks</td>
+        <td>Max occurrence reduced to <strong>2</strong> for AddressLine in all three PostalAddress blocks: Case/Creator/Party, Case/Creator/Agent/FinancialInstitutionIdentification, and CancellationReason/Originator</td>
+        <td>Update max-occurrence check: AddressLine max = 2 in all PostalAddress blocks within TxInf</td>
+      </tr>
+
+      <!-- E. IDENTIFICATION CHANGES -->
+      <tr><td class="sh" colspan="7">E — Party identification — new mandatory SchemeName + Proprietary removals</td></tr>
+
+      <tr>
+        <td>13</td>
+        <td><span class="tag">OrgId/Othr/SchmeNm</span><div class="sec">OrganisationIdentification/Other/SchemeName — Creator/Party and Originator</div></td>
+        <td>TxInf — Party identification</td>
+        <td><span class="pill new">New</span></td>
+        <td>SchemeName optional when Other is used</td>
+        <td><strong>SchemeName mandatory [1..1]</strong> when Other is used — applies to both Case/Creator/Party and CancellationReasonInformation/Originator paths under OrganisationIdentification/Other</td>
+        <td>Add mandatory SchemeName check inside OrgId/Other block for Creator/Party and Originator</td>
+      </tr>
+
+      <tr>
+        <td>14</td>
+        <td><span class="tag">PrvtId/Othr/SchmeNm</span><div class="sec">PrivateIdentification/Other/SchemeName — Creator/Party and Originator</div></td>
+        <td>TxInf — Party identification</td>
+        <td><span class="pill new">New</span></td>
+        <td>SchemeName optional when Other is used</td>
+        <td><strong>SchemeName mandatory [1..1]</strong> when Other is used — applies to both Case/Creator/Party and CancellationReasonInformation/Originator paths under PrivateIdentification/Other</td>
+        <td>Add mandatory SchemeName check inside PrvtId/Other block for Creator/Party and Originator</td>
+      </tr>
+
+      <tr>
+        <td>15</td>
+        <td><span class="tag">OrgId/Othr/SchmeNm/Proprietary</span> + <span class="tag">PrvtId/Othr/SchmeNm/Proprietary</span><div class="sec">SchemeName/Proprietary — Creator/Party and Originator</div></td>
+        <td>TxInf — Party identification</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>Proprietary sub-element allowed under SchemeName for both OrgId and PrvtId Other blocks</td>
+        <td><strong>Proprietary removed</strong> from SchemeName for OrgId/Other and PrvtId/Other in both Creator/Party and Originator paths — only Code allowed under SchemeName</td>
+        <td>Remove Proprietary from SchemeName parsing; reject if present; enforce Code-only under SchemeName</td>
+      </tr>
+
+      <!-- F. DATATYPE CHANGES -->
+      <tr><td class="sh" colspan="7">F — Datatype changes</td></tr>
+
+      <tr>
+        <td>16</td>
+        <td>Date fields: <span class="tag">PrvtId/BirthDate</span>, <span class="tag">OriginalInterbankSettlementDate</span>, <span class="tag">OriginalGroupInfo/OriginalCreationDateTime</span>, header <span class="tag">CreationDate</span> fields</td>
+        <td>Multiple</td>
+        <td><span class="pill new">New</span></td>
+        <td>Plain ISO date type used; no CBPR_Date datatype in SR2025</td>
+        <td>New <strong>CBPR_Date datatype</strong> (page 209 in SR2026) applied to: Creator/Party BirthDate, Originator BirthDate, OriginalInterbankSettlementDate, OriginalGroupInfo/OriginalCreationDateTime, header CreationDate, Related/CreationDate</td>
+        <td>Update date-field validators to use CBPR_Date pattern (see page 209 of SR2026 spec)</td>
+      </tr>
+
+      <tr>
+        <td>17</td>
+        <td>Standard text fields (e.g., <span class="tag">OrgnlInstrId</span>, <span class="tag">OrgnlEndToEndId</span>, identification fields)</td>
+        <td>Multiple</td>
+        <td><span class="pill mod">Changed</span></td>
+        <td>CBPR_RestrictedFINXMax35Text on <strong>page 216</strong>; CBPR_RestrictedFINXMax105Text on <strong>page 214</strong>; CBPR_RestrictedFINXMax70Text_Extended on <strong>page 216</strong></td>
+        <td>Same types renumbered: page 213, page 211, page 213 respectively — doc restructure only, no logic change</td>
+        <td>Update page-reference lookups only; no logic change to type constraints</td>
+      </tr>
+
+      <!-- G. RULES RETAINED BUT WORDING UPDATED -->
+      <tr><td class="sh" colspan="7">G — Rules retained with minor wording updates</td></tr>
+
+      <tr>
+        <td>18</td>
+        <td><span class="tag">TxInf/OrgnlInstrId</span> no-slash rule<div class="sec">CBPR_Original_Instruction_Identification_FormalRule</div></td>
+        <td>TxInf</td>
+        <td><span class="pill mod">Changed</span></td>
+        <td>Wording: "This <strong>field</strong> must not start or end with a slash '/' and must not contain two consecutive slashes '//'"</td>
+        <td>Wording updated: "This <strong>element</strong> must not start or end with a slash '/' and must not contain two consecutive slashes '//'". Logic unchanged.</td>
+        <td>No validator logic change; wording reference only</td>
+      </tr>
+
+    </tbody>
+  </table>
+
+  <div class="summary-box">
+    <div class="scard"><div class="num" style="color:#3B6D11">4</div><div class="lbl">New rules / mandatory fields</div></div>
+    <div class="scard"><div class="num" style="color:#854F0B">5</div><div class="lbl">Changed fields or rules</div></div>
+    <div class="scard"><div class="num" style="color:#A32D2D">7</div><div class="lbl">Removed rules / elements</div></div>
+    <div class="scard"><div class="num" style="color:#185FA5">2</div><div class="lbl">Constraints tightened</div></div>
+  </div>
+</div>
+
+<style>
+.sec { font-size: 10px; color: var(--color-text-tertiary); margin-top: 2px; }
+</style>

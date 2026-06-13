@@ -12,11 +12,10 @@ Rules implemented:
   3.  Group Header         (NbOfTxs==1, SttlmMtd==COVE, CreDtTm UTC offset)
   4.  Mandatory Transaction Fields (InstrId≤16, EndToEndId, UETR, IntrBkSttlmAmt,
                             IntrBkSttlmDt, InstgAgt BICFI, InstdAgt BICFI, Dbtr, Cdtr)
-  5.  UndrlygFITxInf block (mandatory presence + all sub-fields)
-  6.  Forbidden Elements   (UndrlygCstmrCdtTrf)
-  7.  Agent ID Rules       (BICFI present → Nm/PstlAdr forbidden; absent → Nm+PstlAdr required)
-  8.  Address Rules        (TwnNm+Ctry mandatory, max 2 AdrLine for hybrid)
-  9.  UETR format          (lowercase UUID v4)
+  5.  Forbidden Elements   (UndrlygCstmrCdtTrf)
+  6.  Agent ID Rules       (BICFI present → Nm/PstlAdr forbidden; absent → Nm+PstlAdr required)
+  7.  Address Rules        (TwnNm+Ctry mandatory, max 2 AdrLine for hybrid)
+  8.  UETR format          (lowercase UUID v4)
 """
 
 import re

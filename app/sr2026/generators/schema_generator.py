@@ -19,8 +19,11 @@ class SchemaGenerator:
             return None
             
         try:
-            tree = etree.parse(xsd_path)
-            root = tree.getroot()
+            # Some SR2026 XSDs (e.g. pacs.002) have leading whitespace before the
+            # XML declaration, which etree.parse() rejects. Read + lstrip first.
+            with open(xsd_path, "rb") as _f:
+                _raw = _f.read().lstrip()
+            root = etree.fromstring(_raw)
             target_ns = root.get('targetNamespace')
             root_elements = root.xpath(f"//xs:element[@name='Document' or @name='BusMsg']", namespaces={'xs': XS})
             if not root_elements:

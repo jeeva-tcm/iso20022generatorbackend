@@ -1,0 +1,1157 @@
+{
+  "source_file": "CBPRPlus_SR2026_(Combined)_CBPRPlus-camt_025_001_08_Receipt_20260525_1658.pdf",
+  "extracted_with": "pdfplumber (layout-aware) + markitdown pipeline",
+  "message_summary": {
+    "message_type": "camt.025.001.08",
+    "message_name": "Receipt V08",
+    "business_application_header": "head.001.001.02",
+    "standard": "ISO 20022",
+    "usage_guideline": "CBPR+ (Cross-Border Payments and Reporting Plus)",
+    "version": "SR2026",
+    "purpose": "Receipt V08",
+    "principles": [],
+    "spec_pages": {
+      "element_pages": 5,
+      "rule_pages": 2,
+      "total_pages": 14
+    }
+  },
+  "counts": {
+    "elements": 73,
+    "format_constraints": 44,
+    "business_rules": 7
+  },
+  "element_structure": [
+    {
+      "level": 0,
+      "name": "Full Message",
+      "xml_tag": "",
+      "path": "",
+      "multiplicity": "[1..1]",
+      "datatype": null,
+      "rules": [
+        "R1"
+      ]
+    },
+    {
+      "level": 1,
+      "name": "Business Application Header V02 (head.001.001.02)",
+      "xml_tag": "AppHdr",
+      "path": "AppHdr",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 2,
+      "name": "Character Set",
+      "xml_tag": "CharSet",
+      "path": "AppHdr/CharSet",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 2,
+      "name": "From",
+      "xml_tag": "Fr",
+      "path": "AppHdr/Fr",
+      "multiplicity": "[1..1]",
+      "datatype": "Choice",
+      "is_choice": true
+    },
+    {
+      "level": 3,
+      "name": "Financial Institution Identification",
+      "xml_tag": "FIId",
+      "path": "AppHdr/Fr/FIId",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 4,
+      "name": "Financial Institution Identification",
+      "xml_tag": "FinInstnId",
+      "path": "AppHdr/Fr/FIId/FinInstnId",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 5,
+      "name": "BICFI",
+      "xml_tag": "BICFI",
+      "path": "AppHdr/Fr/FIId/FinInstnId/BICFI",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 5,
+      "name": "Clearing System Member Identification",
+      "xml_tag": "ClrSysMmbId",
+      "path": "AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId",
+      "multiplicity": "[0..1]",
+      "datatype": null
+    },
+    {
+      "level": 6,
+      "name": "Clearing System Identification",
+      "xml_tag": "ClrSysId",
+      "path": "AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId",
+      "multiplicity": "[0..1]",
+      "datatype": "Choice",
+      "is_choice": true
+    },
+    {
+      "level": 7,
+      "name": "Code",
+      "xml_tag": "Cd",
+      "path": "AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,5}"
+    },
+    {
+      "level": 6,
+      "name": "Member Identification",
+      "xml_tag": "MmbId",
+      "path": "AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 5,
+      "name": "LEI",
+      "xml_tag": "LEI",
+      "path": "AppHdr/Fr/FIId/FinInstnId/LEI",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 2,
+      "name": "To",
+      "xml_tag": "To",
+      "path": "AppHdr/To",
+      "multiplicity": "[1..1]",
+      "datatype": "Choice",
+      "is_choice": true
+    },
+    {
+      "level": 3,
+      "name": "Financial Institution Identification",
+      "xml_tag": "FIId",
+      "path": "AppHdr/To/FIId",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 4,
+      "name": "Financial Institution Identification",
+      "xml_tag": "FinInstnId",
+      "path": "AppHdr/To/FIId/FinInstnId",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 5,
+      "name": "BICFI",
+      "xml_tag": "BICFI",
+      "path": "AppHdr/To/FIId/FinInstnId/BICFI",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 5,
+      "name": "Clearing System Member Identification",
+      "xml_tag": "ClrSysMmbId",
+      "path": "AppHdr/To/FIId/FinInstnId/ClrSysMmbId",
+      "multiplicity": "[0..1]",
+      "datatype": null
+    },
+    {
+      "level": 6,
+      "name": "Clearing System Identification",
+      "xml_tag": "ClrSysId",
+      "path": "AppHdr/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId",
+      "multiplicity": "[0..1]",
+      "datatype": "Choice",
+      "is_choice": true
+    },
+    {
+      "level": 7,
+      "name": "Code",
+      "xml_tag": "Cd",
+      "path": "AppHdr/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,5}"
+    },
+    {
+      "level": 6,
+      "name": "Member Identification",
+      "xml_tag": "MmbId",
+      "path": "AppHdr/To/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 5,
+      "name": "LEI",
+      "xml_tag": "LEI",
+      "path": "AppHdr/To/FIId/FinInstnId/LEI",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 2,
+      "name": "Business Message Identifier",
+      "xml_tag": "BizMsgIdr",
+      "path": "AppHdr/BizMsgIdr",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}",
+      "rules": [
+        "R1"
+      ]
+    },
+    {
+      "level": 2,
+      "name": "Message Definition Identifier",
+      "xml_tag": "MsgDefIdr",
+      "path": "AppHdr/MsgDefIdr",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 2,
+      "name": "Business Service",
+      "xml_tag": "BizSvc",
+      "path": "AppHdr/BizSvc",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 2,
+      "name": "Market Practice",
+      "xml_tag": "MktPrctc",
+      "path": "AppHdr/MktPrctc",
+      "multiplicity": "[0..1]",
+      "datatype": null
+    },
+    {
+      "level": 3,
+      "name": "Registry",
+      "xml_tag": "Regy",
+      "path": "AppHdr/MktPrctc/Regy",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,350}"
+    },
+    {
+      "level": 3,
+      "name": "Identification",
+      "xml_tag": "Id",
+      "path": "AppHdr/MktPrctc/Id",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,2048}"
+    },
+    {
+      "level": 2,
+      "name": "Creation Date",
+      "xml_tag": "CreDt",
+      "path": "AppHdr/CreDt",
+      "multiplicity": "[1..1]",
+      "datatype": "dateTime"
+    },
+    {
+      "level": 2,
+      "name": "Copy Duplicate",
+      "xml_tag": "CpyDplct",
+      "path": "AppHdr/CpyDplct",
+      "multiplicity": "[0..1]",
+      "datatype": "text",
+      "allowed_codes": [
+        {
+          "code": "CODU",
+          "name": "Copy Duplicate"
+        },
+        {
+          "code": "COPY",
+          "name": "Copy"
+        },
+        {
+          "code": "DUPL",
+          "name": "Duplicate"
+        }
+      ]
+    },
+    {
+      "level": 2,
+      "name": "Possible Duplicate",
+      "xml_tag": "PssblDplct",
+      "path": "AppHdr/PssblDplct",
+      "multiplicity": "[0..1]",
+      "datatype": "boolean"
+    },
+    {
+      "level": 2,
+      "name": "Priority",
+      "xml_tag": "Prty",
+      "path": "AppHdr/Prty",
+      "multiplicity": "[0..1]",
+      "datatype": "text",
+      "allowed_codes": [
+        {
+          "code": "HIGH",
+          "name": "High"
+        },
+        {
+          "code": "NORM",
+          "name": "Normal"
+        }
+      ]
+    },
+    {
+      "level": 2,
+      "name": "Related",
+      "xml_tag": "Rltd",
+      "path": "AppHdr/Rltd",
+      "multiplicity": "[0..*]",
+      "datatype": null,
+      "rules": [
+        "R2"
+      ]
+    },
+    {
+      "level": 3,
+      "name": "Character Set",
+      "xml_tag": "CharSet",
+      "path": "AppHdr/Rltd/CharSet",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 3,
+      "name": "From",
+      "xml_tag": "Fr",
+      "path": "AppHdr/Rltd/Fr",
+      "multiplicity": "[1..1]",
+      "datatype": "Choice",
+      "is_choice": true
+    },
+    {
+      "level": 4,
+      "name": "Financial Institution Identification",
+      "xml_tag": "FIId",
+      "path": "AppHdr/Rltd/Fr/FIId",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 5,
+      "name": "Financial Institution Identification",
+      "xml_tag": "FinInstnId",
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 6,
+      "name": "BICFI",
+      "xml_tag": "BICFI",
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/BICFI",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 6,
+      "name": "Clearing System Member Identification",
+      "xml_tag": "ClrSysMmbId",
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId",
+      "multiplicity": "[0..1]",
+      "datatype": null
+    },
+    {
+      "level": 7,
+      "name": "Clearing System Identification",
+      "xml_tag": "ClrSysId",
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId",
+      "multiplicity": "[0..1]",
+      "datatype": "Choice",
+      "is_choice": true
+    },
+    {
+      "level": 8,
+      "name": "Code",
+      "xml_tag": "Cd",
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,5}"
+    },
+    {
+      "level": 7,
+      "name": "Member Identification",
+      "xml_tag": "MmbId",
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 6,
+      "name": "LEI",
+      "xml_tag": "LEI",
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/LEI",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 3,
+      "name": "To",
+      "xml_tag": "To",
+      "path": "AppHdr/Rltd/To",
+      "multiplicity": "[1..1]",
+      "datatype": "Choice",
+      "is_choice": true
+    },
+    {
+      "level": 4,
+      "name": "Financial Institution Identification",
+      "xml_tag": "FIId",
+      "path": "AppHdr/Rltd/To/FIId",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 5,
+      "name": "Financial Institution Identification",
+      "xml_tag": "FinInstnId",
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 6,
+      "name": "BICFI",
+      "xml_tag": "BICFI",
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId/BICFI",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 6,
+      "name": "Clearing System Member Identification",
+      "xml_tag": "ClrSysMmbId",
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId",
+      "multiplicity": "[0..1]",
+      "datatype": null
+    },
+    {
+      "level": 7,
+      "name": "Clearing System Identification",
+      "xml_tag": "ClrSysId",
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId",
+      "multiplicity": "[0..1]",
+      "datatype": "Choice",
+      "is_choice": true
+    },
+    {
+      "level": 8,
+      "name": "Code",
+      "xml_tag": "Cd",
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,5}"
+    },
+    {
+      "level": 7,
+      "name": "Member Identification",
+      "xml_tag": "MmbId",
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 6,
+      "name": "LEI",
+      "xml_tag": "LEI",
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId/LEI",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 3,
+      "name": "Business Message Identifier",
+      "xml_tag": "BizMsgIdr",
+      "path": "AppHdr/Rltd/BizMsgIdr",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}",
+      "rules": [
+        "R3"
+      ]
+    },
+    {
+      "level": 3,
+      "name": "Message Definition Identifier",
+      "xml_tag": "MsgDefIdr",
+      "path": "AppHdr/Rltd/MsgDefIdr",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}",
+      "rules": [
+        "R4"
+      ]
+    },
+    {
+      "level": 3,
+      "name": "Business Service",
+      "xml_tag": "BizSvc",
+      "path": "AppHdr/Rltd/BizSvc",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,35}",
+      "rules": [
+        "R5"
+      ]
+    },
+    {
+      "level": 3,
+      "name": "Creation Date",
+      "xml_tag": "CreDt",
+      "path": "AppHdr/Rltd/CreDt",
+      "multiplicity": "[1..1]",
+      "datatype": "dateTime"
+    },
+    {
+      "level": 3,
+      "name": "Copy Duplicate",
+      "xml_tag": "CpyDplct",
+      "path": "AppHdr/Rltd/CpyDplct",
+      "multiplicity": "[0..1]",
+      "datatype": "text",
+      "allowed_codes": [
+        {
+          "code": "CODU",
+          "name": "Copy Duplicate"
+        },
+        {
+          "code": "COPY",
+          "name": "Copy"
+        },
+        {
+          "code": "DUPL",
+          "name": "Duplicate"
+        }
+      ]
+    },
+    {
+      "level": 3,
+      "name": "Priority",
+      "xml_tag": "Prty",
+      "path": "AppHdr/Rltd/Prty",
+      "multiplicity": "[0..1]",
+      "datatype": "text",
+      "allowed_codes": [
+        {
+          "code": "HIGH",
+          "name": "High"
+        },
+        {
+          "code": "NORM",
+          "name": "Normal"
+        }
+      ]
+    },
+    {
+      "level": 1,
+      "name": "Document",
+      "xml_tag": "",
+      "path": "Document",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 2,
+      "name": "Receipt V08 (camt.025.001.08)",
+      "xml_tag": "Rct",
+      "path": "Document/Rct",
+      "multiplicity": "",
+      "datatype": null
+    },
+    {
+      "level": 3,
+      "name": "Message Header",
+      "xml_tag": "MsgHdr",
+      "path": "Document/Rct/MsgHdr",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 4,
+      "name": "Message Identification",
+      "xml_tag": "MsgId",
+      "path": "Document/Rct/MsgHdr/MsgId",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}",
+      "rules": [
+        "R1"
+      ]
+    },
+    {
+      "level": 4,
+      "name": "Creation Date Time",
+      "xml_tag": "CreDtTm",
+      "path": "Document/Rct/MsgHdr/CreDtTm",
+      "multiplicity": "[0..1]",
+      "datatype": "dateTime"
+    },
+    {
+      "level": 3,
+      "name": "Receipt Details",
+      "xml_tag": "RctDtls",
+      "path": "Document/Rct/RctDtls",
+      "multiplicity": "[1..*]",
+      "datatype": null
+    },
+    {
+      "level": 4,
+      "name": "Original Message Identification",
+      "xml_tag": "OrgnlMsgId",
+      "path": "Document/Rct/RctDtls/OrgnlMsgId",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 5,
+      "name": "Message Identification",
+      "xml_tag": "MsgId",
+      "path": "Document/Rct/RctDtls/OrgnlMsgId/MsgId",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 5,
+      "name": "Message Name Identification",
+      "xml_tag": "MsgNmId",
+      "path": "Document/Rct/RctDtls/OrgnlMsgId/MsgNmId",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,35}",
+      "rules": [
+        "R6"
+      ]
+    },
+    {
+      "level": 4,
+      "name": "Request Handling",
+      "xml_tag": "ReqHdlg",
+      "path": "Document/Rct/RctDtls/ReqHdlg",
+      "multiplicity": "[0..*]",
+      "datatype": null,
+      "rules": [
+        "R7"
+      ]
+    },
+    {
+      "level": 5,
+      "name": "Status",
+      "xml_tag": "Sts",
+      "path": "Document/Rct/RctDtls/ReqHdlg/Sts",
+      "multiplicity": "[1..1]",
+      "datatype": "Choice",
+      "is_choice": true
+    },
+    {
+      "level": 6,
+      "name": "Code",
+      "xml_tag": "Cd",
+      "path": "Document/Rct/RctDtls/ReqHdlg/Sts/Cd",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,4}",
+      "rules": [
+        "R7"
+      ]
+    },
+    {
+      "level": 5,
+      "name": "Status Reason",
+      "xml_tag": "StsRsn",
+      "path": "Document/Rct/RctDtls/ReqHdlg/StsRsn",
+      "multiplicity": "[0..1]",
+      "datatype": null
+    },
+    {
+      "level": 6,
+      "name": "Reason",
+      "xml_tag": "Rsn",
+      "path": "Document/Rct/RctDtls/ReqHdlg/StsRsn/Rsn",
+      "multiplicity": "[0..1]",
+      "datatype": "Choice",
+      "is_choice": true,
+      "rules": [
+        "R7"
+      ]
+    },
+    {
+      "level": 7,
+      "name": "Code",
+      "xml_tag": "Cd",
+      "path": "Document/Rct/RctDtls/ReqHdlg/StsRsn/Rsn/Cd",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,4}"
+    },
+    {
+      "level": 6,
+      "name": "Additional Information",
+      "xml_tag": "AddtlInf",
+      "path": "Document/Rct/RctDtls/ReqHdlg/StsRsn/AddtlInf",
+      "multiplicity": "[0..*]",
+      "datatype": "text{1,105}"
+    }
+  ],
+  "format_constraints": [
+    {
+      "path": "AppHdr/Fr/FIId/FinInstnId/BICFI",
+      "name": "BICFI",
+      "datatype": "text",
+      "pattern": "[A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId",
+      "name": "Clearing System Identification",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "name": "Code",
+      "datatype": "text{1,5}",
+      "min_length": 1,
+      "max_length": 5
+    },
+    {
+      "path": "AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "name": "Member Identification",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,28}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 28,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "AppHdr/Fr/FIId/FinInstnId/LEI",
+      "name": "LEI",
+      "datatype": "text",
+      "pattern": "[A-Z0-9]{18,18}[0-9]{2,2}"
+    },
+    {
+      "path": "AppHdr/To/FIId/FinInstnId/BICFI",
+      "name": "BICFI",
+      "datatype": "text",
+      "pattern": "[A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "AppHdr/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId",
+      "name": "Clearing System Identification",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "AppHdr/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "name": "Code",
+      "datatype": "text{1,5}",
+      "min_length": 1,
+      "max_length": 5
+    },
+    {
+      "path": "AppHdr/To/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "name": "Member Identification",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,28}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 28,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "AppHdr/To/FIId/FinInstnId/LEI",
+      "name": "LEI",
+      "datatype": "text",
+      "pattern": "[A-Z0-9]{18,18}[0-9]{2,2}"
+    },
+    {
+      "path": "AppHdr/BizMsgIdr",
+      "name": "Business Message Identifier",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "AppHdr/MsgDefIdr",
+      "name": "Message Definition Identifier",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "choice_multiplicity": "FV"
+    },
+    {
+      "path": "AppHdr/BizSvc",
+      "name": "Business Service",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "choice_multiplicity": "FV [1..1]"
+    },
+    {
+      "path": "AppHdr/MktPrctc/Regy",
+      "name": "Registry",
+      "datatype": "text{1,350}",
+      "min_length": 1,
+      "max_length": 350
+    },
+    {
+      "path": "AppHdr/MktPrctc/Id",
+      "name": "Identification",
+      "datatype": "text{1,2048}",
+      "min_length": 1,
+      "max_length": 2048
+    },
+    {
+      "path": "AppHdr/CreDt",
+      "name": "Creation Date",
+      "datatype": "dateTime",
+      "cbpr_restricted_type": "dateTime",
+      "cbpr_pattern": ".*(\\+|-)((0[0-9])|(1[0-4])):[0-5][0-9]"
+    },
+    {
+      "path": "AppHdr/CpyDplct",
+      "name": "Copy Duplicate",
+      "datatype": "text",
+      "allowed_codes": [
+        {
+          "code": "CODU",
+          "name": "Copy Duplicate"
+        },
+        {
+          "code": "COPY",
+          "name": "Copy"
+        },
+        {
+          "code": "DUPL",
+          "name": "Duplicate"
+        }
+      ]
+    },
+    {
+      "path": "AppHdr/PssblDplct",
+      "name": "Possible Duplicate",
+      "datatype": "boolean"
+    },
+    {
+      "path": "AppHdr/Prty",
+      "name": "Priority",
+      "datatype": "text",
+      "cbpr_restricted_type": "One of the following code values must be used:",
+      "cbpr_pattern": "HIGH (High)NORM (Normal)",
+      "allowed_codes": [
+        {
+          "code": "HIGH",
+          "name": "High"
+        },
+        {
+          "code": "NORM",
+          "name": "Normal"
+        }
+      ]
+    },
+    {
+      "path": "AppHdr/Rltd",
+      "name": "Related",
+      "choice_multiplicity": "[0..1]"
+    },
+    {
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/BICFI",
+      "name": "BICFI",
+      "datatype": "text",
+      "pattern": "[A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId",
+      "name": "Clearing System Identification",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "name": "Code",
+      "datatype": "text{1,5}",
+      "min_length": 1,
+      "max_length": 5
+    },
+    {
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "name": "Member Identification",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,28}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 28,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/LEI",
+      "name": "LEI",
+      "datatype": "text",
+      "pattern": "[A-Z0-9]{18,18}[0-9]{2,2}"
+    },
+    {
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId/BICFI",
+      "name": "BICFI",
+      "datatype": "text",
+      "pattern": "[A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId",
+      "name": "Clearing System Identification",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "name": "Code",
+      "datatype": "text{1,5}",
+      "min_length": 1,
+      "max_length": 5
+    },
+    {
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "name": "Member Identification",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,28}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 28,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId/LEI",
+      "name": "LEI",
+      "datatype": "text",
+      "pattern": "[A-Z0-9]{18,18}[0-9]{2,2}"
+    },
+    {
+      "path": "AppHdr/Rltd/BizMsgIdr",
+      "name": "Business Message Identifier",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "AppHdr/Rltd/MsgDefIdr",
+      "name": "Message Definition Identifier",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "AppHdr/Rltd/BizSvc",
+      "name": "Business Service",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "AppHdr/Rltd/CreDt",
+      "name": "Creation Date",
+      "datatype": "dateTime",
+      "cbpr_restricted_type": "dateTime",
+      "cbpr_pattern": ".*(\\+|-)((0[0-9])|(1[0-4])):[0-5][0-9]"
+    },
+    {
+      "path": "AppHdr/Rltd/CpyDplct",
+      "name": "Copy Duplicate",
+      "datatype": "text",
+      "allowed_codes": [
+        {
+          "code": "CODU",
+          "name": "Copy Duplicate"
+        },
+        {
+          "code": "COPY",
+          "name": "Copy"
+        },
+        {
+          "code": "DUPL",
+          "name": "Duplicate"
+        }
+      ]
+    },
+    {
+      "path": "AppHdr/Rltd/Prty",
+      "name": "Priority",
+      "datatype": "text",
+      "cbpr_restricted_type": "One of the following code values must be used:",
+      "cbpr_pattern": "HIGH (High)NORM (Normal)",
+      "allowed_codes": [
+        {
+          "code": "HIGH",
+          "name": "High"
+        },
+        {
+          "code": "NORM",
+          "name": "Normal"
+        }
+      ]
+    },
+    {
+      "path": "Document/Rct/MsgHdr/MsgId",
+      "name": "Message Identification",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "Document/Rct/MsgHdr/CreDtTm",
+      "name": "Creation Date Time",
+      "datatype": "dateTime",
+      "cbpr_restricted_type": "dateTime",
+      "cbpr_pattern": ".*(\\+|-)((0[0-9])|(1[0-4])):[0-5][0-9]",
+      "choice_multiplicity": "[1..1] T/C"
+    },
+    {
+      "path": "Document/Rct/RctDtls/OrgnlMsgId/MsgId",
+      "name": "Message Identification",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "Document/Rct/RctDtls/OrgnlMsgId/MsgNmId",
+      "name": "Message Name Identification",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+",
+      "choice_multiplicity": "[1..1] T/C"
+    },
+    {
+      "path": "Document/Rct/RctDtls/ReqHdlg",
+      "name": "Request Handling",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "Document/Rct/RctDtls/ReqHdlg/Sts/Cd",
+      "name": "Code",
+      "datatype": "text{1,4}",
+      "min_length": 1,
+      "max_length": 4
+    },
+    {
+      "path": "Document/Rct/RctDtls/ReqHdlg/StsRsn/Rsn/Cd",
+      "name": "Code",
+      "datatype": "text{1,4}",
+      "min_length": 1,
+      "max_length": 4
+    },
+    {
+      "path": "Document/Rct/RctDtls/ReqHdlg/StsRsn/AddtlInf",
+      "name": "Additional Information",
+      "datatype": "text{1,105}",
+      "min_length": 1,
+      "max_length": 105,
+      "cbpr_restricted_type": "text{1,105}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 105,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+",
+      "choice_multiplicity": "[0..2] T/C"
+    }
+  ],
+  "business_rules": [
+    {
+      "id": "R1",
+      "name": "CBPR_BusinessMessageIdentifier_FormalRule",
+      "kind": "FormalRule",
+      "description": "The Business Message Identifier must match the Message Identification in the Message Header.",
+      "formal_definition": "For each [Full Message], every occurrence of [FullMessage/BusinessApplicationHeaderV02/BusinessMessageIdentifier] value must be equal to every occurrence of [FullMessage/Document/ReceiptV08/MessageHeader/MessageIdentification] value",
+      "referenced_paths": [
+        "[FullMessage/BusinessApplicationHeaderV02/BusinessMessageIdentifier]",
+        "[FullMessage/Document/ReceiptV08/MessageHeader/MessageIdentification]"
+      ]
+    },
+    {
+      "id": "R2",
+      "name": "CBPR_Related_Business_Application_Header_TextualRule",
+      "kind": "TextualRule",
+      "description": "If used, the Related BAH must transport the exact same information as in the BAH of the related message.",
+      "formal_definition": null,
+      "referenced_paths": []
+    },
+    {
+      "id": "R3",
+      "name": "CBPR_Business_Message_Identifier_TextualRule",
+      "kind": "TextualRule",
+      "description": "The Business Message Identifier is the unique identifier of the Business Message instance that is being transported with this header, as defined by the sending application or system. Must contain the Message Identification element from the Group Header of the underlying message, where available (as is typically the case with pacs, pain, and camt messages, for example). If Message Identification is not available in the underlying message, then this field must contain the unique identifier of the Business Message instance.",
+      "formal_definition": null,
+      "referenced_paths": []
+    },
+    {
+      "id": "R4",
+      "name": "CBPR_Message_Definition_Identifier_TextualRule",
+      "kind": "TextualRule",
+      "description": "The Message Definition Identifier of the Business Message instance that is being transported with this header. In general, it must be formatted exactly as it appears in the namespace of the Business Message instance.",
+      "formal_definition": null,
+      "referenced_paths": []
+    },
+    {
+      "id": "R5",
+      "name": "CBPR_Related_BAH_Business_Service_TextualRule",
+      "kind": "TextualRule",
+      "description": "If related BAH is present, it should transport the element Business Service.",
+      "formal_definition": null,
+      "referenced_paths": []
+    },
+    {
+      "id": "R6",
+      "name": "CBPR_Message_Name_Identification_FormalRule",
+      "kind": "FormalRule",
+      "description": "This element must be populated with either camt.106.001.xx, camt.057.001.xx or camt.058.001.xx",
+      "formal_definition": "For each [FullMessage/Document/ReceiptV08/ReceiptDetails/OriginalMessageIdentification/MessageNameIdentification], the value of every occurrence of [MessageNameIdentification] must comply with the following XML pattern : 'camt\\.106\\.001\\.[0-9]{2}|camt\\.05[78]\\.001\\.[0-9]{2}'",
+      "referenced_paths": [
+        "[FullMessage/Document/ReceiptV08/ReceiptDetails/OriginalMessageIdentification/MessageNameIdentification]"
+      ]
+    },
+    {
+      "id": "R7",
+      "name": "CBPR_Request_Handling_Status_Reject_Reason_FormalRule",
+      "kind": "FormalRule",
+      "description": "If the Request Handling Status is RJCT, then a Status Reason must be provided",
+      "formal_definition": "For each [FullMessage/Document/ReceiptV08/ReceiptDetails/RequestHandling], if every occurrence of [RequestHandling/Status/Code] has value included in the following list 'RJCT' , then at least one occurrence of the following element(s) [RequestHandling/StatusReason/Reason] must be present",
+      "referenced_paths": [
+        "[FullMessage/Document/ReceiptV08/ReceiptDetails/RequestHandling]",
+        "[RequestHandling/Status/Code]",
+        "[RequestHandling/StatusReason/Reason]"
+      ]
+    }
+  ]
+}

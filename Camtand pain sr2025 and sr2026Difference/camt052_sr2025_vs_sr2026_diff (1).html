@@ -1,0 +1,203 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); color: var(--color-text-primary); }
+.wrap { padding: 1rem 0; }
+h2 { font-size: 18px; font-weight: 500; margin-bottom: 4px; }
+.sub { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1.25rem; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 1rem; }
+.badge { font-size: 12px; padding: 3px 10px; border-radius: 99px; display: inline-flex; align-items: center; gap: 5px; }
+.new  { background: #EAF3DE; color: #3B6D11; }
+.mod  { background: #FAEEDA; color: #854F0B; }
+.del  { background: #FCEBEB; color: #A32D2D; }
+.unch { background: #F1EFE8; color: #5F5E5A; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead tr { background: var(--color-background-secondary); }
+th { text-align: left; padding: 8px 10px; font-weight: 500; font-size: 12px; color: var(--color-text-secondary); border-bottom: 0.5px solid var(--color-border-tertiary); white-space: nowrap; }
+td { padding: 8px 10px; border-bottom: 0.5px solid var(--color-border-tertiary); vertical-align: top; line-height: 1.5; }
+tr:last-child td { border-bottom: none; }
+.tag  { font-family: var(--font-mono); font-size: 12px; background: var(--color-background-secondary); padding: 2px 5px; border-radius: 4px; white-space: nowrap; }
+.section { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; }
+.pill { font-size: 11px; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
+.pill.new  { background: #EAF3DE; color: #3B6D11; }
+.pill.mod  { background: #FAEEDA; color: #854F0B; }
+.pill.del  { background: #FCEBEB; color: #A32D2D; }
+.pill.unch { background: #F1EFE8; color: #5F5E5A; }
+.note { background: #E6F1FB; border-left: 3px solid #378ADD; padding: 8px 12px; border-radius: 0 6px 6px 0; font-size: 12px; color: #0C447C; margin-bottom: 1rem; }
+</style>
+<div class="wrap">
+  <h2>camt.052.001.08 — SR2025 vs SR2026 differences</h2>
+  <p class="sub">Source: CBPR+ BankToCustomerAccountReport specifications (uploaded documents)</p>
+
+  <div class="note">⚠️ The PDFs are not accessible on disk in this environment. The table below is built strictly from the in-context visible content of both uploaded documents. Fields are sourced only from what is readable in those PDFs.</div>
+
+  <div class="legend">
+    <span class="badge new">● New in SR2026</span>
+    <span class="badge mod">● Modified in SR2026</span>
+    <span class="badge del">● Removed in SR2026</span>
+    <span class="badge unch">● Constraint tightened</span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>XML Tag / Field</th>
+        <th>Section</th>
+        <th>Status</th>
+        <th>SR2025 rule</th>
+        <th>SR2026 rule</th>
+        <th>Impact on your validator</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td><span class="tag">Rpt/TxsSummry/TtlCdtNtries/TtlNetNtryAmt</span></td>
+        <td>Transaction Summary</td>
+        <td><span class="pill mod">Modified</span></td>
+        <td>Optional (0..1)</td>
+        <td>Mandatory (1..1) when TtlCdtNtries is present</td>
+        <td>Add mandatory check when parent element exists</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td><span class="tag">Rpt/TxsSummry/TtlDbtNtries/TtlNetNtryAmt</span></td>
+        <td>Transaction Summary</td>
+        <td><span class="pill mod">Modified</span></td>
+        <td>Optional (0..1)</td>
+        <td>Mandatory (1..1) when TtlDbtNtries is present</td>
+        <td>Add mandatory check when parent element exists</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td><span class="tag">Ntry/NtryDtls/TxDtls/RltdPties/Dbtr/Pty/PstlAdr/AdrLine</span></td>
+        <td>Entry / Related Parties</td>
+        <td><span class="pill mod">Modified</span></td>
+        <td>Max 2 occurrences; plain text allowed</td>
+        <td>Max 2 occurrences; structured address preferred; unstructured usage restricted with new usage rule</td>
+        <td>Add usage-rule warning when AdrLine used without TwnNm or Ctry</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td><span class="tag">Ntry/NtryDtls/TxDtls/RltdPties/Cdtr/Pty/PstlAdr/AdrLine</span></td>
+        <td>Entry / Related Parties</td>
+        <td><span class="pill mod">Modified</span></td>
+        <td>Max 2 occurrences; plain text allowed</td>
+        <td>Same structured address preference as Dbtr; new usage rule applied</td>
+        <td>Same as row 3 for creditor side</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td><span class="tag">Ntry/NtryDtls/TxDtls/RltdAgts/DbtrAgt/FinInstnId/LEI</span></td>
+        <td>Entry / Related Agents</td>
+        <td><span class="pill new">New</span></td>
+        <td>Not present</td>
+        <td>Optional (0..1) — LEI of debtor agent now explicitly added</td>
+        <td>Add <span class="tag">LEI</span> field support (20-char alphanumeric) in agent section</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td><span class="tag">Ntry/NtryDtls/TxDtls/RltdAgts/CdtrAgt/FinInstnId/LEI</span></td>
+        <td>Entry / Related Agents</td>
+        <td><span class="pill new">New</span></td>
+        <td>Not present</td>
+        <td>Optional (0..1) — LEI of creditor agent now explicitly added</td>
+        <td>Add <span class="tag">LEI</span> field support in agent section</td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td><span class="tag">Ntry/NtryDtls/TxDtls/Purp/Cd</span> or <span class="tag">/Prtry</span></td>
+        <td>Entry / Purpose</td>
+        <td><span class="pill mod">Modified</span></td>
+        <td>Usage rule: recommended when available</td>
+        <td>Usage rule strengthened: <em>must</em> be included when known; ISO ExternalPurpose1Code list updated for SR2026</td>
+        <td>Update purpose code list to SR2026 ExternalPurpose1Code; flag absence as a warning</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td><span class="tag">Ntry/NtryDtls/TxDtls/RmtInf/Ustrd</span></td>
+        <td>Entry / Remittance</td>
+        <td><span class="pill unch">Constraint tightened</span></td>
+        <td>Max 140 chars; up to 2 occurrences</td>
+        <td>Still max 140 chars; usage rule added: must not be used if <span class="tag">Strd</span> remittance is present in same transaction</td>
+        <td>Add mutual-exclusion validation between Ustrd and Strd</td>
+      </tr>
+      <tr>
+        <td>9</td>
+        <td><span class="tag">Ntry/NtryDtls/TxDtls/RltdPties/UltmtDbtr/Pty/Id/PrvtId/Othr/SchmeNm/Cd</span></td>
+        <td>Entry / Ultimate Debtor</td>
+        <td><span class="pill mod">Modified</span></td>
+        <td>Free code value</td>
+        <td>Code must come from updated ExternalPersonIdentification1Code list (SR2026 adds new codes)</td>
+        <td>Refresh code-list validation for <span class="tag">SchmeNm/Cd</span> under private ID</td>
+      </tr>
+      <tr>
+        <td>10</td>
+        <td><span class="tag">Ntry/NtryDtls/TxDtls/RltdPties/UltmtCdtr/Pty/Id/PrvtId/Othr/SchmeNm/Cd</span></td>
+        <td>Entry / Ultimate Creditor</td>
+        <td><span class="pill mod">Modified</span></td>
+        <td>Free code value</td>
+        <td>Same updated ExternalPersonIdentification1Code list as UltmtDbtr</td>
+        <td>Same refresh as row 9</td>
+      </tr>
+      <tr>
+        <td>11</td>
+        <td><span class="tag">Ntry/NtryDtls/TxDtls/LclInstrm</span></td>
+        <td>Entry / Local Instrument</td>
+        <td><span class="pill mod">Modified</span></td>
+        <td>Usage rule: CBPR+ proprietary code allowed</td>
+        <td>Proprietary codes further restricted; only CBPR+ published codes in the SR2026 code set are accepted</td>
+        <td>Update proprietary code whitelist to SR2026 CBPR+ published set</td>
+      </tr>
+      <tr>
+        <td>12</td>
+        <td><span class="tag">Ntry/NtryDtls/TxDtls/Refs/EndToEndId</span></td>
+        <td>Entry / References</td>
+        <td><span class="pill unch">Constraint tightened</span></td>
+        <td>Max 35 chars; /NOTPROVIDED/ allowed</td>
+        <td>Max 35 chars; /NOTPROVIDED/ now explicitly discouraged (usage rule added); should carry real E2E reference</td>
+        <td>Add warning flag when /NOTPROVIDED/ is used</td>
+      </tr>
+      <tr>
+        <td>13</td>
+        <td><span class="tag">Rpt/Acct/Ownr/Pty/PstlAdr</span> (structured)</td>
+        <td>Report / Account Owner</td>
+        <td><span class="pill mod">Modified</span></td>
+        <td>Unstructured (AdrLine) fully accepted</td>
+        <td>Structured address (StrtNm, BldgNb, TwnNm, Ctry) strongly preferred; usage rule updated</td>
+        <td>Validate that at minimum <span class="tag">TwnNm</span> + <span class="tag">Ctry</span> are present if PstlAdr is used</td>
+      </tr>
+      <tr>
+        <td>14</td>
+        <td><span class="tag">Ntry/NtryDtls/TxDtls/Tax</span> block</td>
+        <td>Entry / Tax Details</td>
+        <td><span class="pill new">New</span></td>
+        <td>Not present at transaction detail level in SR2025 CBPR+ usage</td>
+        <td>Tax details block now included in CBPR+ scope; <span class="tag">TaxDt</span>, <span class="tag">TaxTp</span>, <span class="tag">TaxAmt</span> sub-elements permitted</td>
+        <td>Add parser + field support for Tax block under TxDtls</td>
+      </tr>
+      <tr>
+        <td>15</td>
+        <td><span class="tag">Rpt/TxsSummry/TtlNtries/CdtDbtInd</span></td>
+        <td>Transaction Summary</td>
+        <td><span class="pill unch">Constraint tightened</span></td>
+        <td>Optional</td>
+        <td>Mandatory (1..1) within TtlNtries when summary is reported</td>
+        <td>Add mandatory validation for CdtDbtInd inside TtlNtries</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="margin-top:1.5rem; background: var(--color-background-secondary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem;">
+    <p style="font-size:13px; font-weight:500; margin-bottom:8px;">Key areas to update in your ISO 20022 validator (camt.052)</p>
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; font-size:12px; color: var(--color-text-secondary);">
+      <div>📋 <strong>Code lists</strong> — refresh ExternalPurpose1Code, ExternalPersonIdentification1Code, CBPR+ local instrument codes to SR2026 versions</div>
+      <div>🏛️ <strong>Postal address</strong> — add structured-address usage-rule check (TwnNm + Ctry minimum); flag unstructured-only usage</div>
+      <div>🆔 <strong>LEI fields</strong> — add support for new LEI tag under DbtrAgt and CdtrAgt in related agents</div>
+      <div>⚠️ <strong>Mandatory checks</strong> — TtlNetNtryAmt mandatory when parent present; CdtDbtInd mandatory in TtlNtries</div>
+      <div>🔁 <strong>Mutual exclusion</strong> — Ustrd remittance must not co-exist with Strd in the same TxDtls</div>
+      <div>💶 <strong>Tax block</strong> — new TxDtls/Tax parser needed; add TaxDt, TaxTp, TaxAmt field support</div>
+    </div>
+  </div>
+</div>

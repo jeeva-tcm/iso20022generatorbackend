@@ -80,6 +80,14 @@
             "currency_attribute": "Ccy"
         },
         {
+            "mt_tag": "50K",
+            "name": "Debtor (Name/Address)",
+            "type": "account_name_address",
+            "mx_path_account": "FIToFICstmrCdtTrf/CdtTrfTxInf/DbtrAcct/Id/Othr/Id",
+            "mx_path_name": "FIToFICstmrCdtTrf/CdtTrfTxInf/Dbtr/Nm",
+            "mx_path_address": "FIToFICstmrCdtTrf/CdtTrfTxInf/Dbtr/PstlAdr/AdrLine"
+        },
+        {
             "mt_tag": "50A",
             "name": "Debtor (Account/BIC)",
             "type": "account_bic",
@@ -98,6 +106,14 @@
             "type": "bic",
             "fallback": true,
             "mx_path": "FIToFICstmrCdtTrf/CdtTrfTxInf/DbtrAgt/FinInstnId/BICFI"
+        },
+        {
+            "mt_tag": "59",
+            "name": "Creditor (Name/Address)",
+            "type": "account_name_address",
+            "mx_path_account": "FIToFICstmrCdtTrf/CdtTrfTxInf/CdtrAcct/Id/Othr/Id",
+            "mx_path_name": "FIToFICstmrCdtTrf/CdtTrfTxInf/Cdtr/Nm",
+            "mx_path_address": "FIToFICstmrCdtTrf/CdtTrfTxInf/Cdtr/PstlAdr/AdrLine"
         },
         {
             "mt_tag": "59A",

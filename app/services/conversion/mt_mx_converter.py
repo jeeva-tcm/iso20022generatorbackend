@@ -1241,8 +1241,23 @@ class MT2MXConverter:
         head_sub(app_hdr, "BizMsgIdr", parsed_fields.get("20", "AUTO-B01"))
         head_sub(app_hdr, "MsgDefIdr", mapping["target_mx"])
         biz_svc_val = mapping.get("biz_svc", "swift.cbprplus.02")
-        if version == "SR2026" and mapping["target_mx"] == "pacs.008.001.08":
-            biz_svc_val = "swift.cbprplus.04"
+        if version == "SR2026":
+            # SR2026 fixed BizSvc values per pacs message (per SR2026 change docs).
+            _target = mapping["target_mx"]
+            if _target == "pacs.008.001.08":
+                biz_svc_val = "swift.cbprplus.04"
+            elif _target == "pacs.009.001.08":
+                _cur = biz_svc_val.lower()
+                if "cov" in _cur:
+                    biz_svc_val = "swift.cbprplus.cov.04"
+                elif "adv" in _cur:
+                    biz_svc_val = "swift.cbprplus.adv.04"
+                else:
+                    biz_svc_val = "swift.cbprplus.04"
+            elif _target == "pacs.003.001.08":
+                biz_svc_val = "swift.cbprplus.03"   # pacs.003 SR2026 stays .03
+            elif _target in ("pacs.002.001.10", "pacs.004.001.09", "pacs.010.001.03"):
+                biz_svc_val = "swift.cbprplus.04"
         head_sub(app_hdr, "BizSvc", biz_svc_val)
         head_sub(app_hdr, "CreDt", self._cbpr_datetime())
         
@@ -1652,13 +1667,27 @@ class MT2MXConverter:
             self.set_element_text(mx_root, f"{base}/RmtInf/Ustrd", clean_70, namespaces)
             v_logs.append(f"[MT202COV] :70: mapped → RmtInf/Ustrd '{clean_70}'")
 
-        # ---- :71A: → ChrgBr inside CdtTrfTxInf (BUG 4 FIX) ----
+        # ---- :71A: ChargeBearer is NOT mapped for MT202COV ----
+        # pacs.009 (FinancialInstitutionCreditTransfer, incl. COV) has NO <ChrgBr>
+        # element in its schema (it is a pacs.008 customer-payment concept). Emitting
+        # ChrgBr here produces a schema-invalid pacs.009 message, so :71A: from the
+        # underlying customer transaction is intentionally not mapped to the cover.
         val_71a = seq_b_fields.get("71A", "")
         if val_71a:
-            charge_map = {"SHA": "SHAR", "OUR": "DEBT", "BEN": "CRED"}
-            chrgbr = charge_map.get(val_71a.strip().upper(), "SHAR")
-            self.set_element_text(mx_root, "FICdtTrf/CdtTrfTxInf/ChrgBr", chrgbr, namespaces)
-            v_logs.append(f"[MT202COV] :71A:{val_71a} → ChrgBr '{chrgbr}'")
+            v_logs.append(f"[MT202COV] :71A:{val_71a} ignored — pacs.009 has no ChrgBr element")
+
+        # ---- InstdAmt: mandatory in UndrlygCstmrCdtTrf (CreditTransferTransaction37).
+        # The underlying customer credit transfer requires an InstructedAmount. MT202COV
+        # Sequence B carries no separate amount, so use the cover IntrBkSttlmAmt
+        # (same value & currency as the underlying instructed amount).
+        intr_amt_el = (mx_root.find(f".//{{{xmlns}}}IntrBkSttlmAmt")
+                       if xmlns else mx_root.find(".//IntrBkSttlmAmt"))
+        if intr_amt_el is not None and intr_amt_el.text:
+            instd = self._get_or_create_node(mx_root, f"{base}/InstdAmt", namespaces)
+            instd.text = intr_amt_el.text
+            instd.set("Ccy", intr_amt_el.get("Ccy", "USD"))
+            v_logs.append(f"[MT202COV] UndrlygCstmrCdtTrf/InstdAmt set = "
+                          f"{intr_amt_el.text} {intr_amt_el.get('Ccy','')}")
 
     def _extract_composite_field(self, val: str, component: str) -> str:
         """
@@ -1887,7 +1916,7 @@ class MT2MXConverter:
             "FICdtTrf": ["GrpHdr", "CdtTrfTxInf", "SplmtryData"],
             "GrpHdr": ["MsgId", "CreDtTm", "NbOfTxs", "CtrlSum", "SttlmInf", "InstgAgt", "InstdAgt"],
             "SttlmInf": ["SttlmMtd", "SttlmAcct", "SttlmDt", "ClrSys", "InstgRmbrsmntAgt", "InstgRmbrsmntAgtAcct", "InstdRmbrsmntAgt", "InstdRmbrsmntAgtAcct", "ThrdRmbrsmntAgt", "ThrdRmbrsmntAgtAcct"],
-            "UndrlygCstmrCdtTrf": ["LclInstrm", "Purp", "InstgAgt", "InstdAgt", "InitgPty", "Dbtr", "DbtrAcct", "DbtrAgt", "DbtrAgtAcct", "IntrmyAgt1", "IntrmyAgt1Acct", "IntrmyAgt2", "IntrmyAgt2Acct", "IntrmyAgt3", "IntrmyAgt3Acct", "CdtrAgt", "CdtrAgtAcct", "Cdtr", "CdtrAcct", "UltmtCdtr", "RmtInf", "SplmtryData"],
+            "UndrlygCstmrCdtTrf": ["LclInstrm", "Purp", "InstgAgt", "InstdAgt", "InitgPty", "Dbtr", "DbtrAcct", "DbtrAgt", "DbtrAgtAcct", "IntrmyAgt1", "IntrmyAgt1Acct", "IntrmyAgt2", "IntrmyAgt2Acct", "IntrmyAgt3", "IntrmyAgt3Acct", "CdtrAgt", "CdtrAgtAcct", "Cdtr", "CdtrAcct", "UltmtCdtr", "InstrForCdtrAgt", "InstrForNxtAgt", "RmtInf", "InstdAmt", "SplmtryData"],
             "PmtId": ["InstrId", "EndToEndId", "TxId", "UETR", "ClrSysRef"],
             "PmtTpInf": ["InstrPrty", "SvcLvl", "LclInstrm", "CtgyPurp"],
             "FinInstnId": ["BICFI", "ClrSysMmbId", "LEI", "Nm", "PstlAdr", "Othr"],
@@ -2239,15 +2268,15 @@ class MT2MXConverter:
                 dbtr_tag = f"{{{xmlns}}}Dbtr" if xmlns else "Dbtr"
                 dbtr = ET.SubElement(tx_inf, dbtr_tag)
                 
-            has_dbtr_anybic = (dbtr.find(f".//{{{xmlns}}}AnyBIC") is not None) if xmlns else (dbtr.find(".//AnyBIC") is not None)
-            
-            if not has_dbtr_anybic:
-                nm = self._find_child(dbtr, "Nm")
-                if nm is None:
-                    nm_tag = f"{{{xmlns}}}Nm" if xmlns else "Nm"
-                    nm = ET.SubElement(dbtr, nm_tag)
-                if not nm.text:
-                    nm.text = "NOTPROVIDED"
+            # FATF Recommendation 16: Debtor Name is ALWAYS mandatory in pacs.008,
+            # even when an AnyBIC org-id is present (e.g. MT 50A BIC-only ordering
+            # customer). Inject NOTPROVIDED when the MT carried no name.
+            nm = self._find_child(dbtr, "Nm")
+            if nm is None:
+                nm_tag = f"{{{xmlns}}}Nm" if xmlns else "Nm"
+                nm = ET.SubElement(dbtr, nm_tag)
+            if not nm.text:
+                nm.text = "NOTPROVIDED"
             
             # Heal Cdtr/Nm
             cdtr = self._find_child(tx_inf, "Cdtr")
@@ -2255,15 +2284,14 @@ class MT2MXConverter:
                 cdtr_tag = f"{{{xmlns}}}Cdtr" if xmlns else "Cdtr"
                 cdtr = ET.SubElement(tx_inf, cdtr_tag)
                 
-            has_cdtr_anybic = (cdtr.find(f".//{{{xmlns}}}AnyBIC") is not None) if xmlns else (cdtr.find(".//AnyBIC") is not None)
-            
-            if not has_cdtr_anybic:
-                cdtr_nm = self._find_child(cdtr, "Nm")
-                if cdtr_nm is None:
-                    nm_tag = f"{{{xmlns}}}Nm" if xmlns else "Nm"
-                    cdtr_nm = ET.SubElement(cdtr, nm_tag)
-                if not cdtr_nm.text:
-                    cdtr_nm.text = "NOTPROVIDED"
+            # FATF Recommendation 16: Creditor Name is ALWAYS mandatory in pacs.008,
+            # even when an AnyBIC org-id is present (e.g. MT 59A BIC-only beneficiary).
+            cdtr_nm = self._find_child(cdtr, "Nm")
+            if cdtr_nm is None:
+                nm_tag = f"{{{xmlns}}}Nm" if xmlns else "Nm"
+                cdtr_nm = ET.SubElement(cdtr, nm_tag)
+            if not cdtr_nm.text:
+                cdtr_nm.text = "NOTPROVIDED"
                     
             # SR2026: Instructed Amount is mandatory
             if version == "SR2026":
@@ -2304,15 +2332,15 @@ class MT2MXConverter:
                 dbtr_tag = f"{{{xmlns}}}Dbtr" if xmlns else "Dbtr"
                 dbtr = ET.SubElement(tx_inf, dbtr_tag)
                 
-            has_dbtr_anybic = (dbtr.find(f".//{{{xmlns}}}AnyBIC") is not None) if xmlns else (dbtr.find(".//AnyBIC") is not None)
-            
-            if not has_dbtr_anybic:
-                nm = self._find_child(dbtr, "Nm")
-                if nm is None:
-                    nm_tag = f"{{{xmlns}}}Nm" if xmlns else "Nm"
-                    nm = ET.SubElement(dbtr, nm_tag)
-                if not nm.text:
-                    nm.text = "NOTPROVIDED"
+            # FATF Recommendation 16: Debtor Name is ALWAYS mandatory in pacs.008,
+            # even when an AnyBIC org-id is present (e.g. MT 50A BIC-only ordering
+            # customer). Inject NOTPROVIDED when the MT carried no name.
+            nm = self._find_child(dbtr, "Nm")
+            if nm is None:
+                nm_tag = f"{{{xmlns}}}Nm" if xmlns else "Nm"
+                nm = ET.SubElement(dbtr, nm_tag)
+            if not nm.text:
+                nm.text = "NOTPROVIDED"
             
             # Heal Cdtr/Nm
             cdtr = self._find_child(tx_inf, "Cdtr")
@@ -2320,15 +2348,14 @@ class MT2MXConverter:
                 cdtr_tag = f"{{{xmlns}}}Cdtr" if xmlns else "Cdtr"
                 cdtr = ET.SubElement(tx_inf, cdtr_tag)
                 
-            has_cdtr_anybic = (cdtr.find(f".//{{{xmlns}}}AnyBIC") is not None) if xmlns else (cdtr.find(".//AnyBIC") is not None)
-            
-            if not has_cdtr_anybic:
-                cdtr_nm = self._find_child(cdtr, "Nm")
-                if cdtr_nm is None:
-                    nm_tag = f"{{{xmlns}}}Nm" if xmlns else "Nm"
-                    cdtr_nm = ET.SubElement(cdtr, nm_tag)
-                if not cdtr_nm.text:
-                    cdtr_nm.text = "NOTPROVIDED"
+            # FATF Recommendation 16: Creditor Name is ALWAYS mandatory in pacs.008,
+            # even when an AnyBIC org-id is present (e.g. MT 59A BIC-only beneficiary).
+            cdtr_nm = self._find_child(cdtr, "Nm")
+            if cdtr_nm is None:
+                nm_tag = f"{{{xmlns}}}Nm" if xmlns else "Nm"
+                cdtr_nm = ET.SubElement(cdtr, nm_tag)
+            if not cdtr_nm.text:
+                cdtr_nm.text = "NOTPROVIDED"
                     
             # SR2026: Instructed Amount is mandatory
             if version == "SR2026":
@@ -2360,7 +2387,22 @@ class MT2MXConverter:
         xmlns = namespaces.get("xmlns", "")
         if "pacs.009" not in xmlns:
             return
-            
+
+        # SR2026: UndrlygCstmrCdtTrf (cover underlying customer credit transfer,
+        # CreditTransferTransaction37) requires a mandatory <InstdAmt>. The MT202COV
+        # Sequence B carries no separate amount, so populate it from the cover
+        # IntrBkSttlmAmt (same value & currency). Runs for every population path.
+        tag_prefix = f"{{{xmlns}}}" if xmlns else ""
+        cover_amt = root.find(f".//{{{xmlns}}}IntrBkSttlmAmt" if xmlns else ".//IntrBkSttlmAmt")
+        for undrlyg in root.iter(f"{tag_prefix}UndrlygCstmrCdtTrf" if xmlns else "UndrlygCstmrCdtTrf"):
+            if self._find_child(undrlyg, "InstdAmt") is not None:
+                continue
+            if cover_amt is None or not cover_amt.text:
+                continue
+            instd = ET.SubElement(undrlyg, f"{tag_prefix}InstdAmt")
+            instd.text = cover_amt.text
+            instd.set("Ccy", cover_amt.get("Ccy", "USD"))
+
         # Check if Settlement Method is COVE in SttlmInf
         sttlm_inf = root.find(f".//{{{xmlns}}}SttlmInf" if xmlns else ".//SttlmInf")
         if sttlm_inf is None:

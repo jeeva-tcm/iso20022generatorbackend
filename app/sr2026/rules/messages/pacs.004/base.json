@@ -29,18 +29,18 @@
   "headerRules": {
     "bizSvc": {
       "mandatory": true,
-      "fixedValue": "swift.cbprplus.05",
+      "fixedValue": "swift.cbprplus.04",
       "severity": "ERROR",
       "code": "INVALID_BIZ_SVC",
       "message": "Business Service identifier is wrong for pacs.004 Payment Return.",
-      "fix": "Change Business Service (BizSvc) to swift.cbprplus.05.",
-      "hint": "pacs.004 uses swift.cbprplus.05. Do not use pacs.008 (swift.cbprplus.02) or pacs.009 values.",
+      "fix": "Change Business Service (BizSvc) to swift.cbprplus.04.",
+      "hint": "pacs.004 uses swift.cbprplus.04. Do not use pacs.008 (swift.cbprplus.02) or pacs.009 values.",
       "variantComparison": {
         "pacs.008_core": "swift.cbprplus.02",
         "pacs.009_core": "swift.cbprplus.02",
         "pacs.009_COV": "swift.cbprplus.cov.02",
         "pacs.009_ADV": "swift.cbprplus.03",
-        "pacs.004": "swift.cbprplus.05"
+        "pacs.004": "swift.cbprplus.04"
       }
     },
     "msgDefIdr": {
@@ -748,7 +748,7 @@
   "xmlGenerationRules": {
     "description": "Default values for generating SR2026-compliant pacs.004 XML.",
     "defaults": {
-      "bizSvc": "swift.cbprplus.05",
+      "bizSvc": "swift.cbprplus.04",
       "msgDefIdr": "pacs.004.001.09",
       "sttlmMtd": "INGA",
       "nbOfTxs": "1",

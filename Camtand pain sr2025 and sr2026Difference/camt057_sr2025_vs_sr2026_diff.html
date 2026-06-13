@@ -1,0 +1,371 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); color: var(--color-text-primary); font-size: 13px; }
+.wrap { padding: 0.5rem 0 2rem; }
+h2 { font-size: 18px; font-weight: 500; margin-bottom: 3px; }
+.meta { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 0.75rem; }
+.src-note { background: #EAF3DE; border-left: 3px solid #3B6D11; padding: 7px 12px; border-radius: 0 6px 6px 0; font-size: 12px; color: #27500A; margin-bottom: 1rem; }
+.legend { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; }
+.pill { font-size: 11px; padding: 3px 9px; border-radius: 99px; display: inline-block; white-space: nowrap; }
+.new  { background: #EAF3DE; color: #3B6D11; }
+.mod  { background: #FAEEDA; color: #854F0B; }
+.del  { background: #FCEBEB; color: #A32D2D; }
+.tight { background: #E6F1FB; color: #185FA5; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead tr { background: var(--color-background-secondary); }
+th { text-align: left; padding: 7px 8px; font-weight: 500; font-size: 11px; color: var(--color-text-secondary); border-bottom: 0.5px solid var(--color-border-tertiary); white-space: nowrap; }
+td { padding: 7px 8px; border-bottom: 0.5px solid var(--color-border-tertiary); vertical-align: top; line-height: 1.5; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--color-background-secondary); }
+.tag { font-family: var(--font-mono); font-size: 11px; background: var(--color-background-secondary); padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
+.sec { font-size: 10px; color: var(--color-text-tertiary); margin-top: 2px; }
+.sh { background: var(--color-background-secondary); font-weight: 500; font-size: 11px; color: var(--color-text-secondary); padding: 5px 8px; letter-spacing: 0.04em; text-transform: uppercase; border-top: 0.5px solid var(--color-border-tertiary); }
+.summary-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px; margin-top: 1.5rem; }
+.scard { background: var(--color-background-secondary); border-radius: 8px; padding: 10px 14px; }
+.scard .num { font-size: 22px; font-weight: 500; }
+.scard .lbl { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; }
+</style>
+<div class="wrap">
+  <h2>camt.057.001.06 — SR2025 vs SR2026 differences</h2>
+  <p class="meta">CBPR+ NotificationToReceive · SR2025 dated 21 March 2025 · SR2026 dated 20 February 2026</p>
+  <div class="src-note">✔ All entries sourced directly from extracted text of the two uploaded PDFs. No external knowledge used.</div>
+  <div class="legend">
+    <span class="pill new">● New in SR2026</span>
+    <span class="pill mod">● Changed in SR2026</span>
+    <span class="pill del">● Removed in SR2026</span>
+    <span class="pill tight">● Constraint tightened</span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>XML Tag / Field</th>
+        <th>Section</th>
+        <th>Change</th>
+        <th>SR2025 rule</th>
+        <th>SR2026 rule</th>
+        <th>Validator impact</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <!-- A. HEADER -->
+      <tr><td class="sh" colspan="7">A — Header (BusinessApplicationHeaderV02)</td></tr>
+
+      <tr>
+        <td>1</td>
+        <td><span class="tag">BizSvc</span><div class="sec">BusinessService</div></td>
+        <td>Header</td>
+        <td><span class="pill mod">Changed</span></td>
+        <td>Optional [0..1]; value <strong>"swift.cbprplus.03"</strong> via CBPR_Business_Service_Usage_TextualRule</td>
+        <td><strong>Mandatory [1..1]</strong>; fixed value changed to <strong>"swift.cbprplus.04"</strong>. Both Business_Service textual rules removed; replaced with single-value constraint. Fixed values section now active in restriction summary.</td>
+        <td>Update expected value .03 → .04; add mandatory check; remove old textual-rule messages</td>
+      </tr>
+
+      <tr>
+        <td>2</td>
+        <td><span class="tag">MsgDefIdr</span><div class="sec">MessageDefinitionIdentifier</div></td>
+        <td>Header</td>
+        <td><span class="pill mod">Changed</span></td>
+        <td>Textual rule only (advisory). Fixed values: n.a. in SR2025.</td>
+        <td>New <strong>fixed single value: "camt.057.001.06"</strong> — MsgDefIdr must contain exactly this value. Fixed values now listed in restriction summary (page 12).</td>
+        <td>Add fixed-value check: MsgDefIdr must equal "camt.057.001.06"</td>
+      </tr>
+
+      <tr>
+        <td>3</td>
+        <td><span class="tag">BizMsgIdr</span><div class="sec">BusinessMessageIdentifier</div></td>
+        <td>Header (root)</td>
+        <td><span class="pill new">New</span></td>
+        <td>CBPR_Business_Message_Identifier_TextualRule only (advisory — must contain MsgId from GroupHeader)</td>
+        <td>New <strong>CBPR_BusinessMessageIdentifier_FormalRule</strong>: BizMsgIdr must be <em>exactly equal</em> to GroupHeader/MessageIdentification. Machine-enforceable formal rule added at root node level.</td>
+        <td>Add formal equality check: BizMsgIdr == GroupHeader/MsgId</td>
+      </tr>
+
+      <tr>
+        <td>4</td>
+        <td><span class="tag">CharSet</span><div class="sec">CharacterSet</div></td>
+        <td>Header</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>CBPR_Character_Set_Usage_TextualRule present (refer to UHB)</td>
+        <td>CBPR_Character_Set_Usage_TextualRule <strong>removed</strong>; no replacement</td>
+        <td>Remove CharSet usage-rule validation message</td>
+      </tr>
+
+      <tr>
+        <td>5</td>
+        <td><span class="tag">MktPrctc</span><div class="sec">MarketPractice</div></td>
+        <td>Header</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>CBPR_Market_Practice_TextualRule present (advisory)</td>
+        <td>CBPR_Market_Practice_TextualRule <strong>removed</strong>; MarketPractice element still present [0..1]</td>
+        <td>Remove MarketPractice textual-rule validation message</td>
+      </tr>
+
+      <tr>
+        <td>6</td>
+        <td><span class="tag">Fr/To/Rltd/Fr/Rltd/To</span> — <span class="tag">FinInstnId/Name</span><div class="sec">Header FI Name</div></td>
+        <td>Header — all FI paths</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>Name allowed under FinancialInstitutionIdentification in all header FI paths</td>
+        <td><strong>Name removed</strong> from FinancialInstitutionIdentification for From, To, Related/From, Related/To header paths</td>
+        <td>Remove Name parsing from all header FI identification; reject if present</td>
+      </tr>
+
+      <tr>
+        <td>7</td>
+        <td><span class="tag">Fr/To/Rltd/Fr/Rltd/To</span> — <span class="tag">FinInstnId/PstlAdr</span><div class="sec">Header FI PostalAddress</div></td>
+        <td>Header — all FI paths</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>PostalAddress allowed under FinancialInstitutionIdentification in header FI paths</td>
+        <td><strong>PostalAddress removed</strong> from FinancialInstitutionIdentification for From, To, Related/From, Related/To header paths</td>
+        <td>Remove PostalAddress from header FI identification; reject if present</td>
+      </tr>
+
+      <tr>
+        <td>8</td>
+        <td><span class="tag">Fr/To/Rltd/Fr/Rltd/To</span> — <span class="tag">FinInstnId/Othr</span><div class="sec">Header FI Other</div></td>
+        <td>Header — all FI paths</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>Other sub-element allowed under FinancialInstitutionIdentification in header FI paths</td>
+        <td><strong>Other removed</strong> from FinancialInstitutionIdentification for all four header paths</td>
+        <td>Remove Other from header FI identification; reject if present</td>
+      </tr>
+
+      <tr>
+        <td>9</td>
+        <td><span class="tag">Fr/To/Rltd/Fr/Rltd/To</span> — <span class="tag">FinInstnId/BrnchId</span><div class="sec">Header FI BranchIdentification</div></td>
+        <td>Header — all FI paths</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>BranchIdentification allowed under FinancialInstitutionIdentification in header FI paths</td>
+        <td><strong>BranchIdentification removed</strong> from all four header FI paths (From, To, Related/From, Related/To)</td>
+        <td>Remove BranchIdentification from header FI identification; reject if present</td>
+      </tr>
+
+      <tr>
+        <td>10</td>
+        <td><span class="tag">ClrSysId/Proprietary</span><div class="sec">ClearingSystemIdentification/Proprietary — all agent paths</div></td>
+        <td>Header + all Notification agents</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>Proprietary sub-element allowed under ClearingSystemIdentification</td>
+        <td><strong>Proprietary removed</strong> from ClearingSystemIdentification across all header paths, GroupHeader/MessageSender/Agent, and all Notification agent paths (DebtorAgent, AccountServicer, AccountOwner/Agent, Debtor/Agent, IntermediaryAgent, Item variants) — only Code allowed</td>
+        <td>Remove Proprietary from ClrSysId parsing everywhere; reject if present; enforce Code-only</td>
+      </tr>
+
+      <tr>
+        <td>11</td>
+        <td><span class="tag">Related/BizSvc</span><div class="sec">Related BAH BusinessService</div></td>
+        <td>Header / Related BAH</td>
+        <td><span class="pill new">New</span></td>
+        <td>CBPR_Related_BAH_Business_Service_TextualRule present (advisory: "if related BAH present, should transport BusinessService")</td>
+        <td>New separate <strong>CBPR_RelatedBAHBusinessService_TextualRule</strong> added specifically on Related/BusinessService field. Same recommendation but now explicitly scoped to the Related/BusinessService element path.</td>
+        <td>Ensure validation message is applied to Related/BusinessService field specifically</td>
+      </tr>
+
+      <!-- B. GROUPHEADER / MESSAGESENDER -->
+      <tr><td class="sh" colspan="7">B — GroupHeader / MessageSender — new mandatory fields in SR2026</td></tr>
+
+      <tr>
+        <td>12</td>
+        <td><span class="tag">GrpHdr/MsgSndr/Agt/FinInstnId/ClrSysMmbId/ClrSysId</span><div class="sec">MessageSender Agent ClearingSystemId</div></td>
+        <td>GroupHeader</td>
+        <td><span class="pill new">New</span></td>
+        <td>ClearingSystemIdentification optional when ClearingSystemMemberIdentification present</td>
+        <td><strong>ClearingSystemIdentification mandatory [1..1]</strong> when ClearingSystemMemberIdentification is used for MessageSender/Agent</td>
+        <td>Add mandatory ClrSysId check inside ClrSysMmbId for MessageSender/Agent</td>
+      </tr>
+
+      <tr>
+        <td>13</td>
+        <td><span class="tag">GrpHdr/MsgSndr/Pty/PstlAdr/TwnNm</span> + <span class="tag">Ctry</span><div class="sec">MessageSender Party PostalAddress TownName + Country</div></td>
+        <td>GroupHeader</td>
+        <td><span class="pill new">New</span></td>
+        <td>Conditional: GracePeriod formal rules applied</td>
+        <td><strong>TownName mandatory [1..1]</strong> and <strong>Country mandatory [1..1]</strong> when PostalAddress is present (unconditional — GracePeriod rules removed)</td>
+        <td>Add mandatory TwnNm + Ctry check for MessageSender/Party/PostalAddress</td>
+      </tr>
+
+      <tr>
+        <td>14</td>
+        <td><span class="tag">GrpHdr/MsgSndr/Agt/FinInstnId/PstlAdr/TwnNm</span> + <span class="tag">Ctry</span><div class="sec">MessageSender Agent FI PostalAddress TownName + Country</div></td>
+        <td>GroupHeader</td>
+        <td><span class="pill new">New</span></td>
+        <td>Conditional: GracePeriod formal rules applied</td>
+        <td><strong>TownName mandatory [1..1]</strong> and <strong>Country mandatory [1..1]</strong> for MessageSender/Agent/FinancialInstitutionIdentification/PostalAddress (unconditional)</td>
+        <td>Add mandatory TwnNm + Ctry check for MessageSender/Agent/FI PostalAddress</td>
+      </tr>
+
+      <tr>
+        <td>15</td>
+        <td><span class="tag">GrpHdr/MsgSndr/Pty/Id/OrgId/Othr/SchmeNm</span><div class="sec">MessageSender Party OrgId Other SchemeName</div></td>
+        <td>GroupHeader</td>
+        <td><span class="pill new">New</span></td>
+        <td>SchemeName optional when Other is used</td>
+        <td><strong>SchemeName mandatory [1..1]</strong> when Other is used under OrganisationIdentification for MessageSender/Party</td>
+        <td>Add mandatory SchemeName in MsgSndr/Party OrgId/Other block</td>
+      </tr>
+
+      <tr>
+        <td>16</td>
+        <td><span class="tag">GrpHdr/MsgSndr/Pty/Id/PrvtId/Othr/SchmeNm</span><div class="sec">MessageSender Party PrvtId Other SchemeName</div></td>
+        <td>GroupHeader</td>
+        <td><span class="pill new">New</span></td>
+        <td>SchemeName optional when Other is used</td>
+        <td><strong>SchemeName mandatory [1..1]</strong> when Other is used under PrivateIdentification for MessageSender/Party</td>
+        <td>Add mandatory SchemeName in MsgSndr/Party PrvtId/Other block</td>
+      </tr>
+
+      <tr>
+        <td>17</td>
+        <td><span class="tag">GrpHdr/MsgSndr/Agt/FinInstnId/Othr</span><div class="sec">MessageSender Agent FI Other</div></td>
+        <td>GroupHeader</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>Other allowed under MessageSender/Agent/FinancialInstitutionIdentification</td>
+        <td><strong>Other removed</strong> from MessageSender/Agent/FinancialInstitutionIdentification</td>
+        <td>Remove Other from MsgSndr Agent FI identification; reject if present</td>
+      </tr>
+
+      <!-- C. NOTIFICATION — POSTAL ADDRESS CHANGES -->
+      <tr><td class="sh" colspan="7">C — Notification — PostalAddress: GracePeriod rules replaced, TownName + Country now always mandatory</td></tr>
+
+      <tr>
+        <td>18</td>
+        <td><span class="tag">PstlAdr/TwnNm</span> + <span class="tag">Ctry</span><div class="sec">ALL PostalAddress blocks: AccountOwner/Party, AccountOwner/Agent, AccountServicer, Debtor/Party, Debtor/Agent, DebtorAgent, IntermediaryAgent + all Item equivalents</div></td>
+        <td>Notification — all party and agent PostalAddress</td>
+        <td><span class="pill mod">Changed</span></td>
+        <td>3 conditional GracePeriod formal rules per block: Structured (TwnNm+Ctry if no AddressLine), Hybrid (TwnNm+Ctry if AddressLine + other elements), Unstructured (max 35 chars per AdrLine if only unstructured). Applied to all PostalAddress blocks in GroupHeader and Notification.</td>
+        <td>All 3 GracePeriod formal rules <strong>removed</strong> from every PostalAddress block. TownName and Country are now <strong>always mandatory [1..1]</strong> when PostalAddress is present — unconditional. CBPR_Duplication_Postal_Address_TextualRule remains (no repeat in AdrLine).</td>
+        <td>Remove all GracePeriod conditional rules; add unconditional mandatory TwnNm + Ctry check for every PostalAddress block across all agents and parties in GroupHeader and Notification</td>
+      </tr>
+
+      <tr>
+        <td>19</td>
+        <td><span class="tag">PstlAdr/AdrLine</span><div class="sec">AddressLine max occurrence — all PostalAddress blocks</div></td>
+        <td>Notification + GroupHeader — all PostalAddress</td>
+        <td><span class="pill tight">Tightened</span></td>
+        <td>Max occurrence = <strong>3</strong> for AddressLine in all PostalAddress blocks</td>
+        <td>Max occurrence reduced to <strong>2</strong> across all PostalAddress blocks (GroupHeader/MessageSender/Party, MessageSender/Agent, all Notification party and agent paths)</td>
+        <td>Update max-occurrence check: AddressLine max = 2 in all PostalAddress blocks</td>
+      </tr>
+
+      <!-- D. NOTIFICATION — NEW MANDATORY FIELDS -->
+      <tr><td class="sh" colspan="7">D — Notification — new mandatory fields in SR2026</td></tr>
+
+      <tr>
+        <td>20</td>
+        <td><span class="tag">Ntfctn/Acct/Prxy/Tp</span>, <span class="tag">Ntfctn/RltdAcct/Prxy/Tp</span>, <span class="tag">Ntfctn/Item/RltdAcct/Prxy/Tp</span><div class="sec">Account Proxy Type</div></td>
+        <td>Notification / Account</td>
+        <td><span class="pill new">New</span></td>
+        <td>Proxy/Type optional when Proxy block is present</td>
+        <td><strong>Proxy/Type mandatory [1..1]</strong> when Proxy is used — applies to Notification/Account/Proxy, Notification/RelatedAccount/Proxy, and Notification/Item/RelatedAccount/Proxy</td>
+        <td>Add mandatory Type check inside every Proxy block across Account, RelatedAccount, and Item/RelatedAccount</td>
+      </tr>
+
+      <tr>
+        <td>21</td>
+        <td>All agent <span class="tag">ClrSysMmbId/ClrSysId</span><div class="sec">ClearingSystemId — AccountOwner/Agent, AccountServicer, DebtorAgent, Debtor/Agent, IntermediaryAgent + all Item variants</div></td>
+        <td>Notification — all agent FI paths</td>
+        <td><span class="pill new">New</span></td>
+        <td>ClearingSystemIdentification optional when ClearingSystemMemberIdentification present</td>
+        <td><strong>ClearingSystemIdentification mandatory [1..1]</strong> when ClearingSystemMemberIdentification is used — applies to all agent FI paths in GroupHeader and Notification (same as header agents)</td>
+        <td>Add mandatory ClrSysId check inside ClrSysMmbId for all notification agent FI paths</td>
+      </tr>
+
+      <tr>
+        <td>22</td>
+        <td>All agent <span class="tag">FinInstnId/Othr</span><div class="sec">FI Other — AccountServicer, AccountOwner/Agent, Debtor/Agent, DebtorAgent, IntermediaryAgent + Item variants</div></td>
+        <td>Notification — all agent FI paths</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>Other allowed under FinancialInstitutionIdentification for all notification agent paths</td>
+        <td><strong>Other removed</strong> from FinancialInstitutionIdentification for all notification agent paths (AccountServicer, AccountOwner/Agent, Debtor/Agent, DebtorAgent, IntermediaryAgent and Item variants)</td>
+        <td>Remove Other from all notification FI identification paths; reject if present</td>
+      </tr>
+
+      <!-- E. PARTY IDENTIFICATION — SCHEMENAME + PROPRIETARY -->
+      <tr><td class="sh" colspan="7">E — Party identification — new mandatory SchemeName + Proprietary removals</td></tr>
+
+      <tr>
+        <td>23</td>
+        <td><span class="tag">OrgId/Othr/SchmeNm</span><div class="sec">OrgId Other SchemeName — AccountOwner/Party, Debtor/Party, Item/Debtor/Party</div></td>
+        <td>Notification — party identification</td>
+        <td><span class="pill new">New</span></td>
+        <td>SchemeName optional when Other used under OrganisationIdentification</td>
+        <td><strong>SchemeName mandatory [1..1]</strong> when Other used — applies to AccountOwner/Party, Debtor/Party, and Item/Debtor/Party OrgId/Other paths</td>
+        <td>Add mandatory SchemeName check in OrgId/Other for all party paths</td>
+      </tr>
+
+      <tr>
+        <td>24</td>
+        <td><span class="tag">PrvtId/Othr/SchmeNm</span><div class="sec">PrvtId Other SchemeName — AccountOwner/Party, Debtor/Party, Item/Debtor/Party</div></td>
+        <td>Notification — party identification</td>
+        <td><span class="pill new">New</span></td>
+        <td>SchemeName optional when Other used under PrivateIdentification</td>
+        <td><strong>SchemeName mandatory [1..1]</strong> when Other used — applies to AccountOwner/Party, Debtor/Party, and Item/Debtor/Party PrvtId/Other paths</td>
+        <td>Add mandatory SchemeName check in PrvtId/Other for all party paths</td>
+      </tr>
+
+      <tr>
+        <td>25</td>
+        <td><span class="tag">OrgId/Othr/SchmeNm/Proprietary</span><div class="sec">OrgId Other SchemeName Proprietary — all party paths</div></td>
+        <td>Notification + GroupHeader — party identification</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>Proprietary allowed under OrgId/Other/SchemeName</td>
+        <td><strong>Proprietary removed</strong> from OrgId/Other/SchemeName for MessageSender/Party, AccountOwner/Party, Debtor/Party, and Item/Debtor/Party — only Code allowed under SchemeName</td>
+        <td>Remove Proprietary from OrgId/SchemeName; reject if present; Code-only allowed</td>
+      </tr>
+
+      <tr>
+        <td>26</td>
+        <td><span class="tag">AccountOwner/Party</span><div class="sec">CBPR_Name_Any_BIC_FormalRule removed</div></td>
+        <td>Notification / AccountOwner</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>CBPR_Name_Any_BIC_FormalRule: if AnyBIC is absent then AccountOwner/Party/Name is mandatory</td>
+        <td>Rule <strong>removed</strong> — Name is no longer conditionally mandatory when AnyBIC is absent for AccountOwner/Party</td>
+        <td>Remove the AnyBIC-absent → Name mandatory conditional check for AccountOwner/Party</td>
+      </tr>
+
+      <tr>
+        <td>27</td>
+        <td><span class="tag">Notification/Item</span><div class="sec">CBPR_Notification_Item_TextualRule removed</div></td>
+        <td>Notification</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>CBPR_Notification_Item_TextualRule: "Single notification item should be sent unless bilaterally agreed"</td>
+        <td>Rule <strong>removed</strong> — no longer recommended to limit to single Item</td>
+        <td>Remove single-item advisory validation message</td>
+      </tr>
+
+      <tr>
+        <td>28</td>
+        <td><span class="tag">Notification/Debtor/Party</span><div class="sec">CBPR_Debtor_Option_3_Jurisdictions_only_TextualRule removed</div></td>
+        <td>Notification / Debtor</td>
+        <td><span class="pill del">Removed</span></td>
+        <td>CBPR_Debtor_Option_3_Jurisdictions_only_TextualRule: for EEA/EU jurisdictional transactions, Debtor/Name mandatory with Account or Identification; listed 31 EEA countries</td>
+        <td>Rule <strong>removed</strong> — jurisdictional Name mandatory requirement for EEA countries no longer applies</td>
+        <td>Remove EEA jurisdictional mandatory Name rule for Debtor/Party</td>
+      </tr>
+
+      <!-- F. DATATYPE CHANGES -->
+      <tr><td class="sh" colspan="7">F — Datatype changes</td></tr>
+
+      <tr>
+        <td>29</td>
+        <td>Date fields: <span class="tag">ExpectedValueDate</span>, <span class="tag">Item/ExpectedValueDate</span>, BirthDate fields (MessageSender/Party, AccountOwner/Party, Debtor/Party, Item/Debtor/Party), <span class="tag">GroupHeader/CreationDateTime</span>, header <span class="tag">CreationDate</span> fields</td>
+        <td>Multiple</td>
+        <td><span class="pill new">New</span></td>
+        <td>Plain ISO date/datetime types; no CBPR_Date datatype in SR2025</td>
+        <td>New <strong>CBPR_Date datatype</strong> (page 220 in SR2026) applied to all date fields: ExpectedValueDate (Notification + Item), all party BirthDate fields, header CreationDate, Related/CreationDate, GroupHeader/CreationDateTime</td>
+        <td>Update date-field validators to use CBPR_Date pattern (see page 220 of SR2026 spec)</td>
+      </tr>
+
+    </tbody>
+  </table>
+
+  <div class="summary-box">
+    <div class="scard"><div class="num" style="color:#3B6D11">11</div><div class="lbl">New rules / mandatory fields</div></div>
+    <div class="scard"><div class="num" style="color:#854F0B">4</div><div class="lbl">Changed fields or rules</div></div>
+    <div class="scard"><div class="num" style="color:#A32D2D">12</div><div class="lbl">Removed rules / elements</div></div>
+    <div class="scard"><div class="num" style="color:#185FA5">2</div><div class="lbl">Constraints tightened</div></div>
+  </div>
+</div>

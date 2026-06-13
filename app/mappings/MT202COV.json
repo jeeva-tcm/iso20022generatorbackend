@@ -195,13 +195,6 @@
             "mx_path": "FICdtTrf/CdtTrfTxInf/UndrlygCstmrCdtTrf/RmtInf/Ustrd"
         },
         {
-            "mt_tag": "71A",
-            "name": "Details of Charges",
-            "mandatory": false,
-            "type": "text",
-            "mx_path": "FICdtTrf/CdtTrfTxInf/ChrgBr"
-        },
-        {
             "mt_tag": "_uetr",
             "name": "Unique End-to-End Transaction Reference",
             "mandatory": true,

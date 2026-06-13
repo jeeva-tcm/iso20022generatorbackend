@@ -13,6 +13,14 @@ from app.sr2026.validation.delta_rules.pacs009_validator import Pacs009Validator
 from app.sr2026.validation.delta_rules.pacs009adv_validator import Pacs009AdvValidator
 from app.sr2026.validation.delta_rules.pacs009cov_validator import Pacs009CovValidator
 from app.sr2026.validation.delta_rules.pacs003_validator import Pacs003Validator
+from app.sr2026.validation.delta_rules.pacs004_validator import Pacs004Validator
+from app.sr2026.validation.delta_rules.pacs002_validator import Pacs002Validator
+from app.sr2026.validation.delta_rules.cbpr_formal_rules import CBPRFormalRulesValidator
+from app.sr2026.validation.delta_rules.camt_general_validator import CamtGeneralValidator
+from app.sr2026.validation.delta_rules.camt_statement_validator import CamtStatementValidator
+from app.sr2026.validation.delta_rules.camt_charges_validator import CamtChargesValidator
+from app.sr2026.validation.delta_rules.pain_validator import PainValidator
+from app.sr2026.validation.delta_rules.pacs008stp_validator import Pacs008StpValidator
 from app.sr2026.validation.delta_rules.warning_engine import WarningEngine
 from app.schemas.api_validation import ApiValidateResponse, ApiIssue
 
@@ -207,6 +215,54 @@ class SR2026Validator:
                 Pacs003Validator.validate(root_element, report, message_type)
             except Exception as e:
                 print(f"[SR2026] Pacs003Validator error: {e}")
+
+            # Step 9.7: Pacs.004 (Payment Return) specific rules
+            try:
+                Pacs004Validator.validate(root_element, report, message_type)
+            except Exception as e:
+                print(f"[SR2026] Pacs004Validator error: {e}")
+
+            # Step 9.8: Pacs.002 (Payment Status Report) specific rules
+            try:
+                Pacs002Validator.validate(root_element, report, message_type)
+            except Exception as e:
+                print(f"[SR2026] Pacs002Validator error: {e}")
+
+            # Step 9.9: Cross-cutting CBPR+ formal rules (all message types)
+            try:
+                CBPRFormalRulesValidator.validate(root_element, report, message_type)
+            except Exception as e:
+                print(f"[SR2026] CBPRFormalRulesValidator error: {e}")
+
+            # Step 9.10: CAMT general rules (CopyDuplicate, PageNumber, RJCT/RJCR, NARR, slash IDs)
+            try:
+                CamtGeneralValidator.validate(root_element, report, message_type)
+            except Exception as e:
+                print(f"[SR2026] CamtGeneralValidator error: {e}")
+
+            # Step 9.11: CAMT.053 statement page/balance complex rules
+            try:
+                CamtStatementValidator.validate(root_element, report, message_type)
+            except Exception as e:
+                print(f"[SR2026] CamtStatementValidator error: {e}")
+
+            # Step 9.12: CAMT.105/106 charges sum/count/currency rules
+            try:
+                CamtChargesValidator.validate(root_element, report, message_type)
+            except Exception as e:
+                print(f"[SR2026] CamtChargesValidator error: {e}")
+
+            # Step 9.13: PAIN message rules (MsgId=PmtInfoId, NbOfTxs, Originator)
+            try:
+                PainValidator.validate(root_element, report, message_type)
+            except Exception as e:
+                print(f"[SR2026] PainValidator error: {e}")
+
+            # Step 9.14: pacs.008 STP SEPA/country-pair IBAN rules
+            try:
+                Pacs008StpValidator.validate(root_element, report, message_type)
+            except Exception as e:
+                print(f"[SR2026] Pacs008StpValidator error: {e}")
 
             # Step 10: Warning Engine
             try:

@@ -41,7 +41,7 @@
             "name": "Original Message Name ID",
             "mandatory": true,
             "type": "static",
-            "value": "pacs.008",
+            "value": "pacs.008.001.08",
             "mx_path": "FIToFIPmtStsRpt/TxInfAndSts/OrgnlGrpInf/OrgnlMsgNmId"
         },
         {

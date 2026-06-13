@@ -477,7 +477,20 @@ async def convert_mt_to_mx(request: schemas.MTConversionRequest, raw_request: Re
                         if not match.startswith("head."):
                             actual_msg_type = match
                             break
-                            
+
+                # pacs.009 CORE / COV / ADV share the same namespace, so the namespace
+                # alone cannot distinguish them — but they use different XSDs and rules.
+                # Refine the variant from BizSvc / message structure so the correct
+                # (COV/ADV) schema is selected for validation. Without this, a COV
+                # message validates against the CORE XSD (which lacks UndrlygCstmrCdtTrf).
+                if actual_msg_type == "pacs.009.001.08":
+                    biz_svc_m = re.search(r'<BizSvc>([^<]+)</BizSvc>', mx_message)
+                    biz_svc_l = (biz_svc_m.group(1).lower() if biz_svc_m else "")
+                    if "cov" in biz_svc_l or "UndrlygCstmrCdtTrf" in mx_message:
+                        actual_msg_type = "pacs.009.001.08_COV"
+                    elif "adv" in biz_svc_l or "UndrlygFITxInf" in mx_message:
+                        actual_msg_type = "pacs.009.001.08_ADV"
+
                 api_resp = await val2026.validate(mx_message, actual_msg_type)
                 report_dict = {
                     "validation_id": f"VAL{int(time.time()*1000)}",

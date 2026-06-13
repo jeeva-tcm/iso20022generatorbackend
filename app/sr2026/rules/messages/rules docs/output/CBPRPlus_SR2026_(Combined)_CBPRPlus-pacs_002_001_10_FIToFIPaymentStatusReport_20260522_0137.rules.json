@@ -1,0 +1,2346 @@
+{
+  "source_file": "CBPRPlus_SR2026_(Combined)_CBPRPlus-pacs_002_001_10_FIToFIPaymentStatusReport_20260522_0137.pdf",
+  "extracted_with": "pdfplumber (layout-aware) + markitdown pipeline",
+  "message_summary": {
+    "message_type": "pacs.002.001.10",
+    "message_name": "FI To FI Payment Status Report V10",
+    "business_application_header": "head.001.001.02",
+    "standard": "ISO 20022",
+    "usage_guideline": "CBPR+ (Cross-Border Payments and Reporting Plus)",
+    "version": "SR2026",
+    "purpose": "FI To FI Payment Status Report V10",
+    "principles": [
+      "1. AGENTS IDENTIFICATION - Textual Rules: -> If BICFI is present, then (Name & Postal Address) is NOT allowed (ClearingSystemMemberIdentification and LEI may complement) – However, in case of conflicting information, the BICFI will always take precedence. -> If BICFI is absent, (Name & Postal Address) OR [(Name & Postal Address) and ClearingSystemMemberIdentification] must be present. Exception: If BICFI is absent, whenever Debtor Agent, Creditor Agent and all agents in between are located within the same country, the clearing code only may be used. Note: \"Instructing/ Instructed Agents\" must be identified with a BICFI - Clearing System Members Identification and LEI are optional.",
+      "2. The pacs.002 will provide the Status of 1 single transaction only. Its usage to provide notification of a rejected (negative) status is required by all agents, whereas the usage to provide a positive status will always be governed by a bilateral agreement between the agents.",
+      "3. Character Set: All proprietary and Text fields EXCLUDING Name and Address for all actors and Related Remittance Information and Remittance are limited to the FIN-X-Character set. All Name and Address for all actors, Related Remittance Information and Remittance Information (structured and unstructured), Email Address where included as part of a proxy element are extended to support the following additional characters: !#$&%*=^_’{|}~\";<>@[\\] < is replaced with &lt; > is replaced with &gt;",
+      "4. CBPR_Agent_PointToPointOnSWIFT: If the transaction is exchanged on the SWIFT network (ie if the instructing agent/sender and instruted agent/receiver of the message are on SWIFT), then BICFI is mandatory and other elements are optional, eg LEI"
+    ],
+    "spec_pages": {
+      "element_pages": 10,
+      "rule_pages": 5,
+      "total_pages": 24
+    }
+  },
+  "counts": {
+    "elements": 136,
+    "format_constraints": 100,
+    "business_rules": 21
+  },
+  "element_structure": [
+    {
+      "level": 0,
+      "name": "Full Message",
+      "xml_tag": "",
+      "path": "",
+      "multiplicity": "[1..1]",
+      "datatype": null,
+      "rules": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ]
+    },
+    {
+      "level": 1,
+      "name": "Business Application Header V02 (head.001.001.02)",
+      "xml_tag": "AppHdr",
+      "path": "AppHdr",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 2,
+      "name": "Character Set",
+      "xml_tag": "CharSet",
+      "path": "AppHdr/CharSet",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 2,
+      "name": "From",
+      "xml_tag": "Fr",
+      "path": "AppHdr/Fr",
+      "multiplicity": "[1..1]",
+      "datatype": "Choice",
+      "is_choice": true
+    },
+    {
+      "level": 3,
+      "name": "Financial Institution Identification",
+      "xml_tag": "FIId",
+      "path": "AppHdr/Fr/FIId",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 4,
+      "name": "Financial Institution Identification",
+      "xml_tag": "FinInstnId",
+      "path": "AppHdr/Fr/FIId/FinInstnId",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 5,
+      "name": "BICFI",
+      "xml_tag": "BICFI",
+      "path": "AppHdr/Fr/FIId/FinInstnId/BICFI",
+      "multiplicity": "[0..1]",
+      "datatype": "text",
+      "rules": [
+        "R4"
+      ]
+    },
+    {
+      "level": 5,
+      "name": "Clearing System Member Identification",
+      "xml_tag": "ClrSysMmbId",
+      "path": "AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId",
+      "multiplicity": "[0..1]",
+      "datatype": null
+    },
+    {
+      "level": 6,
+      "name": "Clearing System Identification",
+      "xml_tag": "ClrSysId",
+      "path": "AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId",
+      "multiplicity": "[0..1]",
+      "datatype": "Choice",
+      "is_choice": true
+    },
+    {
+      "level": 7,
+      "name": "Code",
+      "xml_tag": "Cd",
+      "path": "AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,5}"
+    },
+    {
+      "level": 6,
+      "name": "Member Identification",
+      "xml_tag": "MmbId",
+      "path": "AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 5,
+      "name": "LEI",
+      "xml_tag": "LEI",
+      "path": "AppHdr/Fr/FIId/FinInstnId/LEI",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 2,
+      "name": "To",
+      "xml_tag": "To",
+      "path": "AppHdr/To",
+      "multiplicity": "[1..1]",
+      "datatype": "Choice",
+      "is_choice": true
+    },
+    {
+      "level": 3,
+      "name": "Financial Institution Identification",
+      "xml_tag": "FIId",
+      "path": "AppHdr/To/FIId",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 4,
+      "name": "Financial Institution Identification",
+      "xml_tag": "FinInstnId",
+      "path": "AppHdr/To/FIId/FinInstnId",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 5,
+      "name": "BICFI",
+      "xml_tag": "BICFI",
+      "path": "AppHdr/To/FIId/FinInstnId/BICFI",
+      "multiplicity": "[0..1]",
+      "datatype": "text",
+      "rules": [
+        "R1",
+        "R2"
+      ]
+    },
+    {
+      "level": 5,
+      "name": "Clearing System Member Identification",
+      "xml_tag": "ClrSysMmbId",
+      "path": "AppHdr/To/FIId/FinInstnId/ClrSysMmbId",
+      "multiplicity": "[0..1]",
+      "datatype": null
+    },
+    {
+      "level": 6,
+      "name": "Clearing System Identification",
+      "xml_tag": "ClrSysId",
+      "path": "AppHdr/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId",
+      "multiplicity": "[0..1]",
+      "datatype": "Choice",
+      "is_choice": true
+    },
+    {
+      "level": 7,
+      "name": "Code",
+      "xml_tag": "Cd",
+      "path": "AppHdr/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,5}"
+    },
+    {
+      "level": 6,
+      "name": "Member Identification",
+      "xml_tag": "MmbId",
+      "path": "AppHdr/To/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 5,
+      "name": "LEI",
+      "xml_tag": "LEI",
+      "path": "AppHdr/To/FIId/FinInstnId/LEI",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 2,
+      "name": "Business Message Identifier",
+      "xml_tag": "BizMsgIdr",
+      "path": "AppHdr/BizMsgIdr",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}",
+      "rules": [
+        "R3"
+      ]
+    },
+    {
+      "level": 2,
+      "name": "Message Definition Identifier",
+      "xml_tag": "MsgDefIdr",
+      "path": "AppHdr/MsgDefIdr",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 2,
+      "name": "Business Service",
+      "xml_tag": "BizSvc",
+      "path": "AppHdr/BizSvc",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 2,
+      "name": "Market Practice",
+      "xml_tag": "MktPrctc",
+      "path": "AppHdr/MktPrctc",
+      "multiplicity": "[0..1]",
+      "datatype": null
+    },
+    {
+      "level": 3,
+      "name": "Registry",
+      "xml_tag": "Regy",
+      "path": "AppHdr/MktPrctc/Regy",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,350}"
+    },
+    {
+      "level": 3,
+      "name": "Identification",
+      "xml_tag": "Id",
+      "path": "AppHdr/MktPrctc/Id",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,2048}"
+    },
+    {
+      "level": 2,
+      "name": "Creation Date",
+      "xml_tag": "CreDt",
+      "path": "AppHdr/CreDt",
+      "multiplicity": "[1..1]",
+      "datatype": "dateTime"
+    },
+    {
+      "level": 2,
+      "name": "Copy Duplicate",
+      "xml_tag": "CpyDplct",
+      "path": "AppHdr/CpyDplct",
+      "multiplicity": "[0..1]",
+      "datatype": "text",
+      "rules": [
+        "R1",
+        "R2"
+      ],
+      "allowed_codes": [
+        {
+          "code": "CODU",
+          "name": "Copy Duplicate"
+        },
+        {
+          "code": "COPY",
+          "name": "Copy"
+        },
+        {
+          "code": "DUPL",
+          "name": "Duplicate"
+        }
+      ]
+    },
+    {
+      "level": 2,
+      "name": "Possible Duplicate",
+      "xml_tag": "PssblDplct",
+      "path": "AppHdr/PssblDplct",
+      "multiplicity": "[0..1]",
+      "datatype": "boolean"
+    },
+    {
+      "level": 2,
+      "name": "Priority",
+      "xml_tag": "Prty",
+      "path": "AppHdr/Prty",
+      "multiplicity": "[0..1]",
+      "datatype": "text",
+      "allowed_codes": [
+        {
+          "code": "HIGH",
+          "name": "High"
+        },
+        {
+          "code": "NORM",
+          "name": "Normal"
+        }
+      ]
+    },
+    {
+      "level": 2,
+      "name": "Related",
+      "xml_tag": "Rltd",
+      "path": "AppHdr/Rltd",
+      "multiplicity": "[0..*]",
+      "datatype": null,
+      "rules": [
+        "R5"
+      ]
+    },
+    {
+      "level": 3,
+      "name": "Character Set",
+      "xml_tag": "CharSet",
+      "path": "AppHdr/Rltd/CharSet",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 3,
+      "name": "From",
+      "xml_tag": "Fr",
+      "path": "AppHdr/Rltd/Fr",
+      "multiplicity": "[1..1]",
+      "datatype": "Choice",
+      "is_choice": true
+    },
+    {
+      "level": 4,
+      "name": "Financial Institution Identification",
+      "xml_tag": "FIId",
+      "path": "AppHdr/Rltd/Fr/FIId",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 5,
+      "name": "Financial Institution Identification",
+      "xml_tag": "FinInstnId",
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 6,
+      "name": "BICFI",
+      "xml_tag": "BICFI",
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/BICFI",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 6,
+      "name": "Clearing System Member Identification",
+      "xml_tag": "ClrSysMmbId",
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId",
+      "multiplicity": "[0..1]",
+      "datatype": null
+    },
+    {
+      "level": 7,
+      "name": "Clearing System Identification",
+      "xml_tag": "ClrSysId",
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId",
+      "multiplicity": "[0..1]",
+      "datatype": "Choice",
+      "is_choice": true
+    },
+    {
+      "level": 8,
+      "name": "Code",
+      "xml_tag": "Cd",
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,5}"
+    },
+    {
+      "level": 7,
+      "name": "Member Identification",
+      "xml_tag": "MmbId",
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 6,
+      "name": "LEI",
+      "xml_tag": "LEI",
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/LEI",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 3,
+      "name": "To",
+      "xml_tag": "To",
+      "path": "AppHdr/Rltd/To",
+      "multiplicity": "[1..1]",
+      "datatype": "Choice",
+      "is_choice": true
+    },
+    {
+      "level": 4,
+      "name": "Financial Institution Identification",
+      "xml_tag": "FIId",
+      "path": "AppHdr/Rltd/To/FIId",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 5,
+      "name": "Financial Institution Identification",
+      "xml_tag": "FinInstnId",
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 6,
+      "name": "BICFI",
+      "xml_tag": "BICFI",
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId/BICFI",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 6,
+      "name": "Clearing System Member Identification",
+      "xml_tag": "ClrSysMmbId",
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId",
+      "multiplicity": "[0..1]",
+      "datatype": null
+    },
+    {
+      "level": 7,
+      "name": "Clearing System Identification",
+      "xml_tag": "ClrSysId",
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId",
+      "multiplicity": "[0..1]",
+      "datatype": "Choice",
+      "is_choice": true
+    },
+    {
+      "level": 8,
+      "name": "Code",
+      "xml_tag": "Cd",
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,5}"
+    },
+    {
+      "level": 7,
+      "name": "Member Identification",
+      "xml_tag": "MmbId",
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 6,
+      "name": "LEI",
+      "xml_tag": "LEI",
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId/LEI",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 3,
+      "name": "Business Message Identifier",
+      "xml_tag": "BizMsgIdr",
+      "path": "AppHdr/Rltd/BizMsgIdr",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}",
+      "rules": [
+        "R6"
+      ]
+    },
+    {
+      "level": 3,
+      "name": "Message Definition Identifier",
+      "xml_tag": "MsgDefIdr",
+      "path": "AppHdr/Rltd/MsgDefIdr",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}",
+      "rules": [
+        "R7"
+      ]
+    },
+    {
+      "level": 3,
+      "name": "Business Service",
+      "xml_tag": "BizSvc",
+      "path": "AppHdr/Rltd/BizSvc",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,35}",
+      "rules": [
+        "R8"
+      ]
+    },
+    {
+      "level": 3,
+      "name": "Creation Date",
+      "xml_tag": "CreDt",
+      "path": "AppHdr/Rltd/CreDt",
+      "multiplicity": "[1..1]",
+      "datatype": "dateTime"
+    },
+    {
+      "level": 3,
+      "name": "Copy Duplicate",
+      "xml_tag": "CpyDplct",
+      "path": "AppHdr/Rltd/CpyDplct",
+      "multiplicity": "[0..1]",
+      "datatype": "text",
+      "allowed_codes": [
+        {
+          "code": "CODU",
+          "name": "Copy Duplicate"
+        },
+        {
+          "code": "COPY",
+          "name": "Copy"
+        },
+        {
+          "code": "DUPL",
+          "name": "Duplicate"
+        }
+      ]
+    },
+    {
+      "level": 3,
+      "name": "Priority",
+      "xml_tag": "Prty",
+      "path": "AppHdr/Rltd/Prty",
+      "multiplicity": "[0..1]",
+      "datatype": "text",
+      "allowed_codes": [
+        {
+          "code": "HIGH",
+          "name": "High"
+        },
+        {
+          "code": "NORM",
+          "name": "Normal"
+        }
+      ]
+    },
+    {
+      "level": 1,
+      "name": "Document",
+      "xml_tag": "",
+      "path": "Document",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 2,
+      "name": "FI To FI Payment Status Report V10 (pacs.002.001.10)",
+      "xml_tag": "FIToFIPmtStsRpt",
+      "path": "Document/FIToFIPmtStsRpt",
+      "multiplicity": "",
+      "datatype": null
+    },
+    {
+      "level": 3,
+      "name": "Group Header",
+      "xml_tag": "GrpHdr",
+      "path": "Document/FIToFIPmtStsRpt/GrpHdr",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 4,
+      "name": "Message Identification",
+      "xml_tag": "MsgId",
+      "path": "Document/FIToFIPmtStsRpt/GrpHdr/MsgId",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}",
+      "rules": [
+        "R3"
+      ]
+    },
+    {
+      "level": 4,
+      "name": "Creation Date Time",
+      "xml_tag": "CreDtTm",
+      "path": "Document/FIToFIPmtStsRpt/GrpHdr/CreDtTm",
+      "multiplicity": "[1..1]",
+      "datatype": "dateTime"
+    },
+    {
+      "level": 3,
+      "name": "Transaction Information And Status",
+      "xml_tag": "TxInfAndSts",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts",
+      "multiplicity": "[0..*]",
+      "datatype": null,
+      "rules": [
+        "R9",
+        "R10"
+      ]
+    },
+    {
+      "level": 4,
+      "name": "Original Group Information",
+      "xml_tag": "OrgnlGrpInf",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlGrpInf",
+      "multiplicity": "[0..1]",
+      "datatype": null
+    },
+    {
+      "level": 5,
+      "name": "Original Message Identification",
+      "xml_tag": "OrgnlMsgId",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlGrpInf/OrgnlMsgId",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}",
+      "rules": [
+        "R11"
+      ]
+    },
+    {
+      "level": 5,
+      "name": "Original Message Name Identification",
+      "xml_tag": "OrgnlMsgNmId",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlGrpInf/OrgnlMsgNmId",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}",
+      "rules": [
+        "R12"
+      ]
+    },
+    {
+      "level": 5,
+      "name": "Original Creation Date Time",
+      "xml_tag": "OrgnlCreDtTm",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlGrpInf/OrgnlCreDtTm",
+      "multiplicity": "[0..1]",
+      "datatype": "dateTime"
+    },
+    {
+      "level": 4,
+      "name": "Original Instruction Identification",
+      "xml_tag": "OrgnlInstrId",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlInstrId",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,35}",
+      "rules": [
+        "R13",
+        "R14"
+      ]
+    },
+    {
+      "level": 4,
+      "name": "Original End To End Identification",
+      "xml_tag": "OrgnlEndToEndId",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlEndToEndId",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,35}",
+      "rules": [
+        "R15"
+      ]
+    },
+    {
+      "level": 4,
+      "name": "Original Transaction Identification",
+      "xml_tag": "OrgnlTxId",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlTxId",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,35}",
+      "rules": [
+        "R16"
+      ]
+    },
+    {
+      "level": 4,
+      "name": "Original UETR",
+      "xml_tag": "OrgnlUETR",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlUETR",
+      "multiplicity": "[0..1]",
+      "datatype": "text",
+      "rules": [
+        "R17"
+      ]
+    },
+    {
+      "level": 4,
+      "name": "Transaction Status",
+      "xml_tag": "TxSts",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/TxSts",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,4}",
+      "rules": [
+        "R9",
+        "R10"
+      ]
+    },
+    {
+      "level": 4,
+      "name": "Status Reason Information",
+      "xml_tag": "StsRsnInf",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf",
+      "multiplicity": "[0..*]",
+      "datatype": null
+    },
+    {
+      "level": 5,
+      "name": "Originator",
+      "xml_tag": "Orgtr",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr",
+      "multiplicity": "[0..1]",
+      "datatype": null,
+      "rules": [
+        "R18",
+        "R19",
+        "R20"
+      ]
+    },
+    {
+      "level": 6,
+      "name": "Name",
+      "xml_tag": "Nm",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Nm",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,140}",
+      "rules": [
+        "R19",
+        "R20"
+      ]
+    },
+    {
+      "level": 6,
+      "name": "Postal Address",
+      "xml_tag": "PstlAdr",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr",
+      "multiplicity": "[0..1]",
+      "datatype": null,
+      "rules": [
+        "R19",
+        "R21"
+      ]
+    },
+    {
+      "level": 7,
+      "name": "Department",
+      "xml_tag": "Dept",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Dept",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,70}"
+    },
+    {
+      "level": 7,
+      "name": "Sub Department",
+      "xml_tag": "SubDept",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/SubDept",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,70}"
+    },
+    {
+      "level": 7,
+      "name": "Street Name",
+      "xml_tag": "StrtNm",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/StrtNm",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,70}"
+    },
+    {
+      "level": 7,
+      "name": "Building Number",
+      "xml_tag": "BldgNb",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/BldgNb",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,16}"
+    },
+    {
+      "level": 7,
+      "name": "Building Name",
+      "xml_tag": "BldgNm",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/BldgNm",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 7,
+      "name": "Floor",
+      "xml_tag": "Flr",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Flr",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,70}"
+    },
+    {
+      "level": 7,
+      "name": "Post Box",
+      "xml_tag": "PstBx",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/PstBx",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,16}"
+    },
+    {
+      "level": 7,
+      "name": "Room",
+      "xml_tag": "Room",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Room",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,70}"
+    },
+    {
+      "level": 7,
+      "name": "Post Code",
+      "xml_tag": "PstCd",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/PstCd",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,16}"
+    },
+    {
+      "level": 7,
+      "name": "Town Name",
+      "xml_tag": "TwnNm",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/TwnNm",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 7,
+      "name": "Town Location Name",
+      "xml_tag": "TwnLctnNm",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/TwnLctnNm",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 7,
+      "name": "District Name",
+      "xml_tag": "DstrctNm",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/DstrctNm",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 7,
+      "name": "Country Sub Division",
+      "xml_tag": "CtrySubDvsn",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/CtrySubDvsn",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 7,
+      "name": "Country",
+      "xml_tag": "Ctry",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Ctry",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 7,
+      "name": "Address Line",
+      "xml_tag": "AdrLine",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/AdrLine",
+      "multiplicity": "[0..7]",
+      "datatype": "text{1,70}"
+    },
+    {
+      "level": 6,
+      "name": "Identification",
+      "xml_tag": "Id",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id",
+      "multiplicity": "[0..1]",
+      "datatype": "Choice",
+      "is_choice": true
+    },
+    {
+      "level": 7,
+      "name": "Organisation Identification",
+      "xml_tag": "OrgId",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 8,
+      "name": "Any BIC",
+      "xml_tag": "AnyBIC",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/AnyBIC",
+      "multiplicity": "[0..1]",
+      "datatype": "text",
+      "rules": [
+        "R20"
+      ]
+    },
+    {
+      "level": 8,
+      "name": "LEI",
+      "xml_tag": "LEI",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/LEI",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 8,
+      "name": "Other",
+      "xml_tag": "Othr",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr",
+      "multiplicity": "[0..*]",
+      "datatype": null
+    },
+    {
+      "level": 9,
+      "name": "Identification",
+      "xml_tag": "Id",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr/Id",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 9,
+      "name": "Scheme Name",
+      "xml_tag": "SchmeNm",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr/SchmeNm",
+      "multiplicity": "[0..1]",
+      "datatype": "Choice",
+      "is_choice": true
+    },
+    {
+      "level": 10,
+      "name": "Code",
+      "xml_tag": "Cd",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr/SchmeNm/Cd",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,4}"
+    },
+    {
+      "level": 9,
+      "name": "Issuer",
+      "xml_tag": "Issr",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr/Issr",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 7,
+      "name": "Private Identification",
+      "xml_tag": "PrvtId",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 8,
+      "name": "Date And Place Of Birth",
+      "xml_tag": "DtAndPlcOfBirth",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth",
+      "multiplicity": "[0..1]",
+      "datatype": null
+    },
+    {
+      "level": 9,
+      "name": "Birth Date",
+      "xml_tag": "BirthDt",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/BirthDt",
+      "multiplicity": "[1..1]",
+      "datatype": "date"
+    },
+    {
+      "level": 9,
+      "name": "Province Of Birth",
+      "xml_tag": "PrvcOfBirth",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/PrvcOfBirth",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 9,
+      "name": "City Of Birth",
+      "xml_tag": "CityOfBirth",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/CityOfBirth",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 9,
+      "name": "Country Of Birth",
+      "xml_tag": "CtryOfBirth",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/CtryOfBirth",
+      "multiplicity": "[1..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 8,
+      "name": "Other",
+      "xml_tag": "Othr",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr",
+      "multiplicity": "[0..*]",
+      "datatype": null
+    },
+    {
+      "level": 9,
+      "name": "Identification",
+      "xml_tag": "Id",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr/Id",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 9,
+      "name": "Scheme Name",
+      "xml_tag": "SchmeNm",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr/SchmeNm",
+      "multiplicity": "[0..1]",
+      "datatype": "Choice",
+      "is_choice": true
+    },
+    {
+      "level": 10,
+      "name": "Code",
+      "xml_tag": "Cd",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr/SchmeNm/Cd",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,4}"
+    },
+    {
+      "level": 9,
+      "name": "Issuer",
+      "xml_tag": "Issr",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr/Issr",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 6,
+      "name": "Country Of Residence",
+      "xml_tag": "CtryOfRes",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/CtryOfRes",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 5,
+      "name": "Reason",
+      "xml_tag": "Rsn",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Rsn",
+      "multiplicity": "[0..1]",
+      "datatype": "Choice",
+      "is_choice": true,
+      "rules": [
+        "R9"
+      ]
+    },
+    {
+      "level": 6,
+      "name": "Code",
+      "xml_tag": "Cd",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Rsn/Cd",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,4}"
+    },
+    {
+      "level": 6,
+      "name": "Proprietary",
+      "xml_tag": "Prtry",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Rsn/Prtry",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 5,
+      "name": "Additional Information",
+      "xml_tag": "AddtlInf",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/AddtlInf",
+      "multiplicity": "[0..*]",
+      "datatype": "text{1,105}"
+    },
+    {
+      "level": 4,
+      "name": "Effective Interbank Settlement Date",
+      "xml_tag": "FctvIntrBkSttlmDt",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/FctvIntrBkSttlmDt",
+      "multiplicity": "[0..1]",
+      "datatype": "Choice",
+      "is_choice": true,
+      "rules": [
+        "R10"
+      ]
+    },
+    {
+      "level": 5,
+      "name": "Date",
+      "xml_tag": "Dt",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/FctvIntrBkSttlmDt/Dt",
+      "multiplicity": "[1..1]",
+      "datatype": "date"
+    },
+    {
+      "level": 5,
+      "name": "Date Time",
+      "xml_tag": "DtTm",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/FctvIntrBkSttlmDt/DtTm",
+      "multiplicity": "[1..1]",
+      "datatype": "dateTime"
+    },
+    {
+      "level": 4,
+      "name": "Clearing System Reference",
+      "xml_tag": "ClrSysRef",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/ClrSysRef",
+      "multiplicity": "[0..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 4,
+      "name": "Instructing Agent",
+      "xml_tag": "InstgAgt",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstgAgt",
+      "multiplicity": "[0..1]",
+      "datatype": null
+    },
+    {
+      "level": 5,
+      "name": "Financial Institution Identification",
+      "xml_tag": "FinInstnId",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstgAgt/FinInstnId",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 6,
+      "name": "BICFI",
+      "xml_tag": "BICFI",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstgAgt/FinInstnId/BICFI",
+      "multiplicity": "[0..1]",
+      "datatype": "text",
+      "rules": [
+        "R4"
+      ]
+    },
+    {
+      "level": 6,
+      "name": "Clearing System Member Identification",
+      "xml_tag": "ClrSysMmbId",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstgAgt/FinInstnId/ClrSysMmbId",
+      "multiplicity": "[0..1]",
+      "datatype": null
+    },
+    {
+      "level": 7,
+      "name": "Clearing System Identification",
+      "xml_tag": "ClrSysId",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstgAgt/FinInstnId/ClrSysMmbId/ClrSysId",
+      "multiplicity": "[0..1]",
+      "datatype": "Choice",
+      "is_choice": true
+    },
+    {
+      "level": 8,
+      "name": "Code",
+      "xml_tag": "Cd",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstgAgt/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,5}"
+    },
+    {
+      "level": 7,
+      "name": "Member Identification",
+      "xml_tag": "MmbId",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstgAgt/FinInstnId/ClrSysMmbId/MmbId",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 6,
+      "name": "LEI",
+      "xml_tag": "LEI",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstgAgt/FinInstnId/LEI",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    },
+    {
+      "level": 4,
+      "name": "Instructed Agent",
+      "xml_tag": "InstdAgt",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstdAgt",
+      "multiplicity": "[0..1]",
+      "datatype": null
+    },
+    {
+      "level": 5,
+      "name": "Financial Institution Identification",
+      "xml_tag": "FinInstnId",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstdAgt/FinInstnId",
+      "multiplicity": "[1..1]",
+      "datatype": null
+    },
+    {
+      "level": 6,
+      "name": "BICFI",
+      "xml_tag": "BICFI",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstdAgt/FinInstnId/BICFI",
+      "multiplicity": "[0..1]",
+      "datatype": "text",
+      "rules": [
+        "R1",
+        "R2"
+      ]
+    },
+    {
+      "level": 6,
+      "name": "Clearing System Member Identification",
+      "xml_tag": "ClrSysMmbId",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstdAgt/FinInstnId/ClrSysMmbId",
+      "multiplicity": "[0..1]",
+      "datatype": null
+    },
+    {
+      "level": 7,
+      "name": "Clearing System Identification",
+      "xml_tag": "ClrSysId",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstdAgt/FinInstnId/ClrSysMmbId/ClrSysId",
+      "multiplicity": "[0..1]",
+      "datatype": "Choice",
+      "is_choice": true
+    },
+    {
+      "level": 8,
+      "name": "Code",
+      "xml_tag": "Cd",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstdAgt/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,5}"
+    },
+    {
+      "level": 7,
+      "name": "Member Identification",
+      "xml_tag": "MmbId",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstdAgt/FinInstnId/ClrSysMmbId/MmbId",
+      "multiplicity": "[1..1]",
+      "datatype": "text{1,35}"
+    },
+    {
+      "level": 6,
+      "name": "LEI",
+      "xml_tag": "LEI",
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstdAgt/FinInstnId/LEI",
+      "multiplicity": "[0..1]",
+      "datatype": "text"
+    }
+  ],
+  "format_constraints": [
+    {
+      "path": "AppHdr/Fr/FIId/FinInstnId/BICFI",
+      "name": "BICFI",
+      "datatype": "text",
+      "pattern": "[A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId",
+      "name": "Clearing System Identification",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "name": "Code",
+      "datatype": "text{1,5}",
+      "min_length": 1,
+      "max_length": 5
+    },
+    {
+      "path": "AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "name": "Member Identification",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,28}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 28,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "AppHdr/Fr/FIId/FinInstnId/LEI",
+      "name": "LEI",
+      "datatype": "text",
+      "pattern": "[A-Z0-9]{18,18}[0-9]{2,2}"
+    },
+    {
+      "path": "AppHdr/To/FIId/FinInstnId/BICFI",
+      "name": "BICFI",
+      "datatype": "text",
+      "pattern": "[A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "AppHdr/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId",
+      "name": "Clearing System Identification",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "AppHdr/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "name": "Code",
+      "datatype": "text{1,5}",
+      "min_length": 1,
+      "max_length": 5
+    },
+    {
+      "path": "AppHdr/To/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "name": "Member Identification",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,28}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 28,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "AppHdr/To/FIId/FinInstnId/LEI",
+      "name": "LEI",
+      "datatype": "text",
+      "pattern": "[A-Z0-9]{18,18}[0-9]{2,2}"
+    },
+    {
+      "path": "AppHdr/BizMsgIdr",
+      "name": "Business Message Identifier",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "AppHdr/MsgDefIdr",
+      "name": "Message Definition Identifier",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "choice_multiplicity": "FV"
+    },
+    {
+      "path": "AppHdr/BizSvc",
+      "name": "Business Service",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "choice_multiplicity": "FV [1..1]"
+    },
+    {
+      "path": "AppHdr/MktPrctc/Regy",
+      "name": "Registry",
+      "datatype": "text{1,350}",
+      "min_length": 1,
+      "max_length": 350
+    },
+    {
+      "path": "AppHdr/MktPrctc/Id",
+      "name": "Identification",
+      "datatype": "text{1,2048}",
+      "min_length": 1,
+      "max_length": 2048
+    },
+    {
+      "path": "AppHdr/CreDt",
+      "name": "Creation Date",
+      "datatype": "dateTime",
+      "cbpr_restricted_type": "dateTime",
+      "cbpr_pattern": ".*(\\+|-)((0[0-9])|(1[0-4])):[0-5][0-9]"
+    },
+    {
+      "path": "AppHdr/CpyDplct",
+      "name": "Copy Duplicate",
+      "datatype": "text",
+      "allowed_codes": [
+        {
+          "code": "CODU",
+          "name": "Copy Duplicate"
+        },
+        {
+          "code": "COPY",
+          "name": "Copy"
+        },
+        {
+          "code": "DUPL",
+          "name": "Duplicate"
+        }
+      ]
+    },
+    {
+      "path": "AppHdr/PssblDplct",
+      "name": "Possible Duplicate",
+      "datatype": "boolean"
+    },
+    {
+      "path": "AppHdr/Prty",
+      "name": "Priority",
+      "datatype": "text",
+      "cbpr_restricted_type": "One of the following code values must be used:",
+      "cbpr_pattern": "HIGH (High)NORM (Normal)",
+      "allowed_codes": [
+        {
+          "code": "HIGH",
+          "name": "High"
+        },
+        {
+          "code": "NORM",
+          "name": "Normal"
+        }
+      ]
+    },
+    {
+      "path": "AppHdr/Rltd",
+      "name": "Related",
+      "choice_multiplicity": "[0..1]"
+    },
+    {
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/BICFI",
+      "name": "BICFI",
+      "datatype": "text",
+      "pattern": "[A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId",
+      "name": "Clearing System Identification",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "name": "Code",
+      "datatype": "text{1,5}",
+      "min_length": 1,
+      "max_length": 5
+    },
+    {
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "name": "Member Identification",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,28}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 28,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/LEI",
+      "name": "LEI",
+      "datatype": "text",
+      "pattern": "[A-Z0-9]{18,18}[0-9]{2,2}"
+    },
+    {
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId/BICFI",
+      "name": "BICFI",
+      "datatype": "text",
+      "pattern": "[A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId",
+      "name": "Clearing System Identification",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "name": "Code",
+      "datatype": "text{1,5}",
+      "min_length": 1,
+      "max_length": 5
+    },
+    {
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "name": "Member Identification",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,28}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 28,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "AppHdr/Rltd/To/FIId/FinInstnId/LEI",
+      "name": "LEI",
+      "datatype": "text",
+      "pattern": "[A-Z0-9]{18,18}[0-9]{2,2}"
+    },
+    {
+      "path": "AppHdr/Rltd/BizMsgIdr",
+      "name": "Business Message Identifier",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "AppHdr/Rltd/MsgDefIdr",
+      "name": "Message Definition Identifier",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "AppHdr/Rltd/BizSvc",
+      "name": "Business Service",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "AppHdr/Rltd/CreDt",
+      "name": "Creation Date",
+      "datatype": "dateTime",
+      "cbpr_restricted_type": "dateTime",
+      "cbpr_pattern": ".*(\\+|-)((0[0-9])|(1[0-4])):[0-5][0-9]"
+    },
+    {
+      "path": "AppHdr/Rltd/CpyDplct",
+      "name": "Copy Duplicate",
+      "datatype": "text",
+      "allowed_codes": [
+        {
+          "code": "CODU",
+          "name": "Copy Duplicate"
+        },
+        {
+          "code": "COPY",
+          "name": "Copy"
+        },
+        {
+          "code": "DUPL",
+          "name": "Duplicate"
+        }
+      ]
+    },
+    {
+      "path": "AppHdr/Rltd/Prty",
+      "name": "Priority",
+      "datatype": "text",
+      "cbpr_restricted_type": "One of the following code values must be used:",
+      "cbpr_pattern": "HIGH (High)NORM (Normal)",
+      "allowed_codes": [
+        {
+          "code": "HIGH",
+          "name": "High"
+        },
+        {
+          "code": "NORM",
+          "name": "Normal"
+        }
+      ]
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/GrpHdr/MsgId",
+      "name": "Message Identification",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/GrpHdr/CreDtTm",
+      "name": "Creation Date Time",
+      "datatype": "dateTime",
+      "cbpr_restricted_type": "dateTime",
+      "cbpr_pattern": ".*(\\+|-)((0[0-9])|(1[0-4])):[0-5][0-9]"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts",
+      "name": "Transaction Information And Status",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlGrpInf",
+      "name": "Original Group Information",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlGrpInf/OrgnlMsgId",
+      "name": "Original Message Identification",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlGrpInf/OrgnlMsgNmId",
+      "name": "Original Message Name Identification",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlGrpInf/OrgnlCreDtTm",
+      "name": "Original Creation Date Time",
+      "datatype": "dateTime",
+      "cbpr_restricted_type": "dateTime",
+      "cbpr_pattern": ".*(\\+|-)((0[0-9])|(1[0-4])):[0-5][0-9]"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlInstrId",
+      "name": "Original Instruction Identification",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,16}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 16,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlEndToEndId",
+      "name": "Original End To End Identification",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+",
+      "choice_multiplicity": "[1..1] T/C"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlTxId",
+      "name": "Original Transaction Identification",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlUETR",
+      "name": "Original UETR",
+      "datatype": "text",
+      "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/TxSts",
+      "name": "Transaction Status",
+      "datatype": "text{1,4}",
+      "min_length": 1,
+      "max_length": 4,
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf",
+      "name": "Status Reason Information",
+      "choice_multiplicity": "[0..1]"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Nm",
+      "name": "Name",
+      "datatype": "text{1,140}",
+      "min_length": 1,
+      "max_length": 140,
+      "cbpr_restricted_type": "text{1,140}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 140,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ !#$%&\\*=^_`\\{\\|\\}~\";<>@\\[\\\\\\]]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Dept",
+      "name": "Department",
+      "datatype": "text{1,70}",
+      "min_length": 1,
+      "max_length": 70,
+      "cbpr_restricted_type": "text{1,70}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 70,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ !#$%&\\*=^_`\\{\\|\\}~\";<>@\\[\\\\\\]]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/SubDept",
+      "name": "Sub Department",
+      "datatype": "text{1,70}",
+      "min_length": 1,
+      "max_length": 70,
+      "cbpr_restricted_type": "text{1,70}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 70,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ !#$%&\\*=^_`\\{\\|\\}~\";<>@\\[\\\\\\]]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/StrtNm",
+      "name": "Street Name",
+      "datatype": "text{1,70}",
+      "min_length": 1,
+      "max_length": 70,
+      "cbpr_restricted_type": "text{1,70}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 70,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ !#$%&\\*=^_`\\{\\|\\}~\";<>@\\[\\\\\\]]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/BldgNb",
+      "name": "Building Number",
+      "datatype": "text{1,16}",
+      "min_length": 1,
+      "max_length": 16,
+      "cbpr_restricted_type": "text{1,16}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 16,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ !#$%&\\*=^_`\\{\\|\\}~\";<>@\\[\\\\\\]]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/BldgNm",
+      "name": "Building Name",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ !#$%&\\*=^_`\\{\\|\\}~\";<>@\\[\\\\\\]]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Flr",
+      "name": "Floor",
+      "datatype": "text{1,70}",
+      "min_length": 1,
+      "max_length": 70,
+      "cbpr_restricted_type": "text{1,70}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 70,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ !#$%&\\*=^_`\\{\\|\\}~\";<>@\\[\\\\\\]]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/PstBx",
+      "name": "Post Box",
+      "datatype": "text{1,16}",
+      "min_length": 1,
+      "max_length": 16,
+      "cbpr_restricted_type": "text{1,16}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 16,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ !#$%&\\*=^_`\\{\\|\\}~\";<>@\\[\\\\\\]]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Room",
+      "name": "Room",
+      "datatype": "text{1,70}",
+      "min_length": 1,
+      "max_length": 70,
+      "cbpr_restricted_type": "text{1,70}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 70,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ !#$%&\\*=^_`\\{\\|\\}~\";<>@\\[\\\\\\]]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/PstCd",
+      "name": "Post Code",
+      "datatype": "text{1,16}",
+      "min_length": 1,
+      "max_length": 16,
+      "cbpr_restricted_type": "text{1,16}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 16,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ !#$%&\\*=^_`\\{\\|\\}~\";<>@\\[\\\\\\]]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/TwnNm",
+      "name": "Town Name",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ !#$%&\\*=^_`\\{\\|\\}~\";<>@\\[\\\\\\]]+",
+      "choice_multiplicity": "[1..1] T/C"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/TwnLctnNm",
+      "name": "Town Location Name",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ !#$%&\\*=^_`\\{\\|\\}~\";<>@\\[\\\\\\]]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/DstrctNm",
+      "name": "District Name",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ !#$%&\\*=^_`\\{\\|\\}~\";<>@\\[\\\\\\]]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/CtrySubDvsn",
+      "name": "Country Sub Division",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ !#$%&\\*=^_`\\{\\|\\}~\";<>@\\[\\\\\\]]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Ctry",
+      "name": "Country",
+      "datatype": "text",
+      "pattern": "[A-Z]{2,2}",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/AdrLine",
+      "name": "Address Line",
+      "datatype": "text{1,70}",
+      "min_length": 1,
+      "max_length": 70,
+      "cbpr_restricted_type": "text{1,70}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 70,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ !#$%&\\*=^_`\\{\\|\\}~\";<>@\\[\\\\\\]]+",
+      "choice_multiplicity": "[0..2] T/C"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/AnyBIC",
+      "name": "Any BIC",
+      "datatype": "text",
+      "pattern": "[A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/LEI",
+      "name": "LEI",
+      "datatype": "text",
+      "pattern": "[A-Z0-9]{18,18}[0-9]{2,2}"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr",
+      "name": "Other",
+      "choice_multiplicity": "[0..2]"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr/Id",
+      "name": "Identification",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr/SchmeNm",
+      "name": "Scheme Name",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr/SchmeNm/Cd",
+      "name": "Code",
+      "datatype": "text{1,4}",
+      "min_length": 1,
+      "max_length": 4
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr/Issr",
+      "name": "Issuer",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/BirthDt",
+      "name": "Birth Date",
+      "datatype": "date",
+      "cbpr_restricted_type": "date",
+      "cbpr_pattern": "[0-9]{4}-[0-9]{2}-[0-9]{2}"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/PrvcOfBirth",
+      "name": "Province Of Birth",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ !#$%&\\*=^_`\\{\\|\\}~\";<>@\\[\\\\\\]]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/CityOfBirth",
+      "name": "City Of Birth",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ !#$%&\\*=^_`\\{\\|\\}~\";<>@\\[\\\\\\]]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/CtryOfBirth",
+      "name": "Country Of Birth",
+      "datatype": "text",
+      "pattern": "[A-Z]{2,2}"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr",
+      "name": "Other",
+      "choice_multiplicity": "[0..2]"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr/Id",
+      "name": "Identification",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr/SchmeNm",
+      "name": "Scheme Name",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr/SchmeNm/Cd",
+      "name": "Code",
+      "datatype": "text{1,4}",
+      "min_length": 1,
+      "max_length": 4
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr/Issr",
+      "name": "Issuer",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr/CtryOfRes",
+      "name": "Country Of Residence",
+      "datatype": "text",
+      "pattern": "[A-Z]{2,2}"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Rsn/Cd",
+      "name": "Code",
+      "datatype": "text{1,4}",
+      "min_length": 1,
+      "max_length": 4
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Rsn/Prtry",
+      "name": "Proprietary",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/AddtlInf",
+      "name": "Additional Information",
+      "datatype": "text{1,105}",
+      "min_length": 1,
+      "max_length": 105,
+      "cbpr_restricted_type": "text{1,105}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 105,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+",
+      "choice_multiplicity": "[0..2] T/C"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/FctvIntrBkSttlmDt/Dt",
+      "name": "Date",
+      "datatype": "date",
+      "cbpr_restricted_type": "date",
+      "cbpr_pattern": "[0-9]{4}-[0-9]{2}-[0-9]{2}"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/FctvIntrBkSttlmDt/DtTm",
+      "name": "Date Time",
+      "datatype": "dateTime",
+      "cbpr_restricted_type": "dateTime",
+      "cbpr_pattern": ".*(\\+|-)((0[0-9])|(1[0-4])):[0-5][0-9]"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/ClrSysRef",
+      "name": "Clearing System Reference",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,35}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 35,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstgAgt",
+      "name": "Instructing Agent",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstgAgt/FinInstnId/BICFI",
+      "name": "BICFI",
+      "datatype": "text",
+      "pattern": "[A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstgAgt/FinInstnId/ClrSysMmbId/ClrSysId",
+      "name": "Clearing System Identification",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstgAgt/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "name": "Code",
+      "datatype": "text{1,5}",
+      "min_length": 1,
+      "max_length": 5
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstgAgt/FinInstnId/ClrSysMmbId/MmbId",
+      "name": "Member Identification",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,28}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 28,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstgAgt/FinInstnId/LEI",
+      "name": "LEI",
+      "datatype": "text",
+      "pattern": "[A-Z0-9]{18,18}[0-9]{2,2}"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstdAgt",
+      "name": "Instructed Agent",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstdAgt/FinInstnId/BICFI",
+      "name": "BICFI",
+      "datatype": "text",
+      "pattern": "[A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstdAgt/FinInstnId/ClrSysMmbId/ClrSysId",
+      "name": "Clearing System Identification",
+      "choice_multiplicity": "[1..1]"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstdAgt/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "name": "Code",
+      "datatype": "text{1,5}",
+      "min_length": 1,
+      "max_length": 5
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstdAgt/FinInstnId/ClrSysMmbId/MmbId",
+      "name": "Member Identification",
+      "datatype": "text{1,35}",
+      "min_length": 1,
+      "max_length": 35,
+      "cbpr_restricted_type": "text{1,28}",
+      "cbpr_min_length": 1,
+      "cbpr_max_length": 28,
+      "cbpr_pattern": "[0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+    },
+    {
+      "path": "Document/FIToFIPmtStsRpt/TxInfAndSts/InstdAgt/FinInstnId/LEI",
+      "name": "LEI",
+      "datatype": "text",
+      "pattern": "[A-Z0-9]{18,18}[0-9]{2,2}"
+    }
+  ],
+  "business_rules": [
+    {
+      "id": "R1",
+      "name": "CBPR_To_Instructed_Agent_BIC_1_FormalRule",
+      "kind": "FormalRule",
+      "description": "BAH \"To\" BIC must match \"Instructed Agent\" BIC, except where BAH CopyDuplicate = COPY or = CODU",
+      "formal_definition": "For each [Full Message], if every occurrence of [FullMessage/BusinessApplicationHeaderV02/CopyDuplicate] has value not included in the following list 'COPY' or 'CODU' , then every occurrence of [FullMessage/BusinessApplicationHeaderV02/To/FinancialInstitutionIdentification/FinancialInstitutionIdentification/BICFI] must have the same value than every occurrence of [FullMessage/Document/FIToFIPaymentStatusReportV10/TransactionInformationAndStatus/InstructedAgent/FinancialInstitutionIdentification/BICFI]",
+      "referenced_paths": [
+        "[FullMessage/BusinessApplicationHeaderV02/CopyDuplicate]",
+        "[FullMessage/BusinessApplicationHeaderV02/To/FinancialInstitutionIdentification/FinancialInstitutionIdentification/BICFI]",
+        "[FullMessage/Document/FIToFIPaymentStatusReportV10/TransactionInformationAndStatus/InstructedAgent/FinancialInstitutionIdentification/BICFI]"
+      ]
+    },
+    {
+      "id": "R2",
+      "name": "CBPR_To_Instructed_Agent_BIC_2_FormalRule",
+      "kind": "FormalRule",
+      "description": "BAH \"To\" BIC must match \"Instructed Agent\" BIC if CopyDuplicate is absent.",
+      "formal_definition": "For each [Full Message], if the following element(s) [FullMessage/BusinessApplicationHeaderV02/CopyDuplicate] is (are) absent , then every occurrence of [FullMessage/BusinessApplicationHeaderV02/To/FinancialInstitutionIdentification/FinancialInstitutionIdentification/BICFI] must have the same value than every occurrence of [FullMessage/Document/FIToFIPaymentStatusReportV10/TransactionInformationAndStatus/InstructedAgent/FinancialInstitutionIdentification/BICFI]",
+      "referenced_paths": [
+        "[FullMessage/BusinessApplicationHeaderV02/CopyDuplicate]",
+        "[FullMessage/BusinessApplicationHeaderV02/To/FinancialInstitutionIdentification/FinancialInstitutionIdentification/BICFI]",
+        "[FullMessage/Document/FIToFIPaymentStatusReportV10/TransactionInformationAndStatus/InstructedAgent/FinancialInstitutionIdentification/BICFI]"
+      ]
+    },
+    {
+      "id": "R3",
+      "name": "CBPR_BusinessMessageIdentifier_FormalRule",
+      "kind": "FormalRule",
+      "description": "The Business Message Identifier must match the Message Identification in the Group Header.",
+      "formal_definition": "For each [Full Message], every occurrence of [FullMessage/BusinessApplicationHeaderV02/BusinessMessageIdentifier] value must be equal to every occurrence of [FullMessage/Document/FIToFIPaymentStatusReportV10/GroupHeader/MessageIdentification] value",
+      "referenced_paths": [
+        "[FullMessage/BusinessApplicationHeaderV02/BusinessMessageIdentifier]",
+        "[FullMessage/Document/FIToFIPaymentStatusReportV10/GroupHeader/MessageIdentification]"
+      ]
+    },
+    {
+      "id": "R4",
+      "name": "CBPR_From_Instructing_Agent_BIC_FormalRule",
+      "kind": "FormalRule",
+      "description": "BAH \"From\" BIC must match \"Instructing Agent\" BIC",
+      "formal_definition": "For each [Full Message], every occurrence of [FullMessage/BusinessApplicationHeaderV02/From/FinancialInstitutionIdentification/FinancialInstitutionIdentification/BICFI] value must be equal to every occurrence of [FullMessage/Document/FIToFIPaymentStatusReportV10/TransactionInformationAndStatus/InstructingAgent/FinancialInstitutionIdentification/BICFI] value",
+      "referenced_paths": [
+        "[FullMessage/BusinessApplicationHeaderV02/From/FinancialInstitutionIdentification/FinancialInstitutionIdentification/BICFI]",
+        "[FullMessage/Document/FIToFIPaymentStatusReportV10/TransactionInformationAndStatus/InstructingAgent/FinancialInstitutionIdentification/BICFI]"
+      ]
+    },
+    {
+      "id": "R5",
+      "name": "CBPR_Related_Business_Application_Header_TextualRule",
+      "kind": "TextualRule",
+      "description": "If used, the Related BAH must transport the exact same information as in the BAH of the related message.",
+      "formal_definition": null,
+      "referenced_paths": []
+    },
+    {
+      "id": "R6",
+      "name": "CBPR_Business_Message_Identifier_TextualRule",
+      "kind": "TextualRule",
+      "description": "The Business Message Identifier is the unique identifier of the Business Message instance that is being transported with this header, as defined by the sending application or system. Must contain the Message Identification element from the Group Header of the underlying message, where available (as is typically the case with pacs, pain, and camt messages, for example). If Message Identification is not available in the underlying message, then this element must contain the unique identifier of the Business Message instance.",
+      "formal_definition": null,
+      "referenced_paths": []
+    },
+    {
+      "id": "R7",
+      "name": "CBPR_Message_Definition_Identifier_TextualRule",
+      "kind": "TextualRule",
+      "description": "The Message Definition Identifier of the Business Message instance that is being transported with this header. In general, it must be formatted exactly as it appears in the namespace of the Business Message instance.",
+      "formal_definition": null,
+      "referenced_paths": []
+    },
+    {
+      "id": "R8",
+      "name": "CBPR_Related_BAH_Business_Service_TextualRule",
+      "kind": "TextualRule",
+      "description": "If related BAH is present, it should transport the element Business Service.",
+      "formal_definition": null,
+      "referenced_paths": []
+    },
+    {
+      "id": "R9",
+      "name": "CBPR_Transaction_Status_Reject_Reason_FormalRule",
+      "kind": "FormalRule",
+      "description": "If TransactionStatus/Code equals RJCT, then “Status Reason Information/Reason” is mandatory.",
+      "formal_definition": "For each [FullMessage/Document/FIToFIPaymentStatusReportV10/TransactionInformationAndStatus], if every occurrence of [TransactionInformationAndStatus/TransactionStatus] has value included in the following list 'RJCT' , then at least one occurrence of the following element(s) [TransactionInformationAndStatus/StatusReasonInformation/Reason] must be present",
+      "referenced_paths": [
+        "[FullMessage/Document/FIToFIPaymentStatusReportV10/TransactionInformationAndStatus]",
+        "[TransactionInformationAndStatus/StatusReasonInformation/Reason]",
+        "[TransactionInformationAndStatus/TransactionStatus]"
+      ]
+    },
+    {
+      "id": "R10",
+      "name": "CBPR_Transaction_Status_Reject_Effective_Sett_Date_FormalRule",
+      "kind": "FormalRule",
+      "description": "If TransactionStatus is “RJCT’ then Effective Interbank Settlement Date is not allowed.",
+      "formal_definition": "For each [FullMessage/Document/FIToFIPaymentStatusReportV10/TransactionInformationAndStatus], if every occurrence of [TransactionInformationAndStatus/TransactionStatus] has value included in the following list 'RJCT' , then the following element(s) [TransactionInformationAndStatus/EffectiveInterbankSettlementDate] must be absent",
+      "referenced_paths": [
+        "[FullMessage/Document/FIToFIPaymentStatusReportV10/TransactionInformationAndStatus]",
+        "[TransactionInformationAndStatus/EffectiveInterbankSettlementDate]",
+        "[TransactionInformationAndStatus/TransactionStatus]"
+      ]
+    },
+    {
+      "id": "R11",
+      "name": "CBPR_Original_Message_Identification_TextualRule",
+      "kind": "TextualRule",
+      "description": "Original Message Identification must transport the Message Identification of the underlying payment (e.g. pacs.008/pacs.009/pacs.004).",
+      "formal_definition": null,
+      "referenced_paths": []
+    },
+    {
+      "id": "R12",
+      "name": "CBPR_OriginalMessageNameIdentification_FormalRule",
+      "kind": "FormalRule",
+      "description": "This element must be populated with either pacs.008.001.xx, pacs.009.001.xx, pacs.004.001.xx, pacs.003.001.xx or pacs.010.001.xx.",
+      "formal_definition": "For each [FullMessage/Document/FIToFIPaymentStatusReportV10/TransactionInformationAndStatus/OriginalGroupInformation/OriginalMessageNameIdentification], the value of every occurrence of [OriginalMessageNameIdentification] must comply with the following XML pattern : 'pacs\\.00[8349]\\.001\\.[0-9]{2}|pacs\\.010\\.001\\.[0-9]{2}'",
+      "referenced_paths": [
+        "[FullMessage/Document/FIToFIPaymentStatusReportV10/TransactionInformationAndStatus/OriginalGroupInformation/OriginalMessageNameIdentification]"
+      ]
+    },
+    {
+      "id": "R13",
+      "name": "CBPR_Original_Instruction_Identification_TextualRule",
+      "kind": "TextualRule",
+      "description": "Should transport the Instruction Identification of the underlying payment message for example pacs.008/pacs.009 or the same Original Instruction Identification if present in pacs.004.",
+      "formal_definition": null,
+      "referenced_paths": []
+    },
+    {
+      "id": "R14",
+      "name": "CBPR_Original_Instruction_Identification_FormalRule",
+      "kind": "FormalRule",
+      "description": "This element must not start or end with a slash '/' and must not contain two consecutive slashes '//'.",
+      "formal_definition": "For each [FullMessage/Document/FIToFIPaymentStatusReportV10/TransactionInformationAndStatus/OriginalInstructionIdentification], the value of every occurrence of [OriginalInstructionIdentification] must not comply with the following XML pattern : '(/.*)|(.*/)|(.*//.*)'",
+      "referenced_paths": [
+        "[FullMessage/Document/FIToFIPaymentStatusReportV10/TransactionInformationAndStatus/OriginalInstructionIdentification]"
+      ]
+    },
+    {
+      "id": "R15",
+      "name": "CBPR_Original_End_To_End_Identification_TextualRule",
+      "kind": "TextualRule",
+      "description": "Should transport the EndToEnd Identification of the underlying payment message for example pacs.008/pacs.009 or the same Original EndToEnd Identification as in the pacs.004.",
+      "formal_definition": null,
+      "referenced_paths": []
+    },
+    {
+      "id": "R16",
+      "name": "CBPR_Original_Transaction_Identification_TextualRule",
+      "kind": "TextualRule",
+      "description": "Should transport the Transaction Identification of the underlying payment message for example pacs.008/pacs.009 when present, or the same Original Transaction Identification if present in pacs.004",
+      "formal_definition": null,
+      "referenced_paths": []
+    },
+    {
+      "id": "R17",
+      "name": "CBPR_Original_UETR_TextualRule",
+      "kind": "TextualRule",
+      "description": "Must transport the UETR of the underlying pacs.008/pacs.009.",
+      "formal_definition": null,
+      "referenced_paths": []
+    },
+    {
+      "id": "R18",
+      "name": "CBPR_Originator_Identification_TextualRule",
+      "kind": "TextualRule",
+      "description": "If AnyBIC is present, in addition to any other optional elements, in case of conflicting information it will always take precedence.",
+      "formal_definition": null,
+      "referenced_paths": []
+    },
+    {
+      "id": "R19",
+      "name": "CBPR_Party_Name_Postal_Address_FormalRule",
+      "kind": "FormalRule",
+      "description": "If Postal Address is present then Name is mandatory. Recommendation: If present, the BIC (AnyBIC) will always take precedence in case of conflicting information.",
+      "formal_definition": "For each [FullMessage/Document/FIToFIPaymentStatusReportV10/TransactionInformationAndStatus/StatusReasonInformation/Originator], if at least one occurrence of the following element(s) [Originator/PostalAddress] is (are) present , then at least one occurrence of the following element(s) [Originator/Name] must be present",
+      "referenced_paths": [
+        "[FullMessage/Document/FIToFIPaymentStatusReportV10/TransactionInformationAndStatus/StatusReasonInformation/Originator]",
+        "[Originator/Name]",
+        "[Originator/PostalAddress]"
+      ]
+    },
+    {
+      "id": "R20",
+      "name": "CBPR_Party_Name_Any_BIC_FormalRule",
+      "kind": "FormalRule",
+      "description": "If AnyBIC is absent, then Name is mandatory.",
+      "formal_definition": "For each [FullMessage/Document/FIToFIPaymentStatusReportV10/TransactionInformationAndStatus/StatusReasonInformation/Originator], if the following element(s) [Originator/Identification/OrganisationIdentification/AnyBIC] is (are) absent , then at least one occurrence of the following element(s) [Originator/Name] must be present",
+      "referenced_paths": [
+        "[FullMessage/Document/FIToFIPaymentStatusReportV10/TransactionInformationAndStatus/StatusReasonInformation/Originator]",
+        "[Originator/Identification/OrganisationIdentification/AnyBIC]",
+        "[Originator/Name]"
+      ]
+    },
+    {
+      "id": "R21",
+      "name": "CBPR_Duplication_Postal_Address_TextualRule",
+      "kind": "TextualRule",
+      "description": "Data present in structured elements within the Postal Address must not, under any circumstances be repeated in AddressLine.",
+      "formal_definition": null,
+      "referenced_paths": []
+    }
+  ]
+}

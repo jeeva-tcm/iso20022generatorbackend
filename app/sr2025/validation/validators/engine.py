@@ -825,7 +825,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                         f"Field <{tag_name}> contains '{raw_value}', which is after today ({today_date}).",
                         f"Update <{tag_name}> to a valid past date. (Line: {line_num})"
                     ))
-            elif parsed_date < today_date and tag_name != 'BirthDt':
+            elif parsed_date < today_date and tag_name not in ('BirthDt', 'IntrBkSttlmDt', 'OrgnlIntrBkSttlmDt'):
                 # Find the line number in the raw XML
                 try:
                     line_num = xml_content.count('\n', 0, m.start()) + 1
