@@ -91,9 +91,21 @@ def _slash(val: str) -> bool:
 class CamtGeneralValidator:
     """General CAMT message business rules."""
 
+    # SR2026: BizSvc is mandatory [1..1] with a fixed value per message
+    # (per CAMT SR2026 difference docs). camt.055 uses .03; the rest use .04.
+    _CAMT_BIZSVC = {
+        "camt.052": "swift.cbprplus.04",
+        "camt.053": "swift.cbprplus.04",
+        "camt.054": "swift.cbprplus.04",
+        "camt.055": "swift.cbprplus.03",
+        "camt.056": "swift.cbprplus.04",
+        "camt.057": "swift.cbprplus.04",
+    }
+
     @classmethod
     def validate(cls, root: etree._Element, report: ValidationReport, message_type: str):
         msg = (message_type or "").lower()
+        cls._check_camt_bizsvc(root, report, msg)
         if "camt.025" in msg:
             cls._camt025(root, report)
         elif "camt.029" in msg:
@@ -118,6 +130,29 @@ class CamtGeneralValidator:
             cls._camt108(root, report)
         elif "camt.109" in msg:
             cls._camt109(root, report)
+
+    @classmethod
+    def _check_camt_bizsvc(cls, root: etree._Element, report: ValidationReport, msg: str):
+        expected = next((v for k, v in cls._CAMT_BIZSVC.items() if k in msg), None)
+        if not expected:
+            return
+        hdr = root.xpath("//*[local-name()='AppHdr']")
+        if not hdr:
+            return
+        biz = hdr[0].xpath("*[local-name()='BizSvc']")
+        if not biz or not _t(biz[0]):
+            _add(report, "ERROR", "MISSING_BIZ_SVC", "//AppHdr/BizSvc",
+                 f"BizSvc is missing. SR2026 requires BizSvc = '{expected}' for this message.",
+                 f"Add <BizSvc>{expected}</BizSvc> to AppHdr.",
+                 hdr[0].sourceline or 1)
+            return
+        val = _t(biz[0])
+        if val != expected:
+            _add(report, "ERROR", "INVALID_BIZ_SVC", "//AppHdr/BizSvc",
+                 f"BizSvc '{val}' is invalid under SR2026. It must be '{expected}' "
+                 "(CBPR+ SR2026 fixed value).",
+                 f"Change BizSvc to {expected}.",
+                 biz[0].sourceline or 1)
 
     # ─── camt.025 ─────────────────────────────────────────────────────────────
 

@@ -596,30 +596,12 @@ class PreNormalizationValidator:
                 f"Header and payload must reference the same ISO 20022 message definition."
             ))
 
-        # 2. BizSvc format — validated against the UsageIdentifierPatternText from ISO 20022 /
-        #    CBPR+ SR2025 (page 184 of the pacs.010.001.03 usage guideline):
-        #      [a-z0-9]{1,10}\.([a-z0-9]{1,10}\.)+\d\d
-        #    This allows multi-segment values such as:
-        #      swift.cbprplus.02          (CBPR+ general)
-        #      swift.cbprplus.col.02      (CBPR+ pacs.010 Margin Collection, SR2025 §4.1.6)
-        #      swift.hvps.01              (HVPS+)
-        #      swift.csp.02               (CSP)
-        _BIZSVC_PATTERN = re.compile(
-            r'^[a-z0-9]{1,10}(\.[a-z0-9]{1,10})+\.\d{2}$'
-        )
-        biz_svc_el = app_hdr.find(".//{*}BizSvc")
-        if biz_svc_el is not None and biz_svc_el.text:
-            biz_svc = biz_svc_el.text.strip()
-            if not _BIZSVC_PATTERN.match(biz_svc):
-                line = str(biz_svc_el.sourceline or "?")
-                report.add_issue(ValidationIssue(
-                    "WARNING", 2, "HEAD001_BIZSVC_FORMAT", line,
-                    f"AppHdr.BizSvc '{biz_svc}' does not match the SWIFT UsageIdentifierPattern "
-                    f"'[issuer].([segment].)+NN' (e.g. swift.cbprplus.02 or swift.cbprplus.col.02).",
-                    "Use a recognised value: 'swift.cbprplus.col.02' (CBPR+ pacs.010 SR2025 "
-                    "Margin Collection), 'swift.cbprplus.02' (CBPR+ general), "
-                    "'swift.hvps.01' (HVPS+), or 'swift.csp.02' (CSP)."
-                ))
+        # 2. BizSvc — NOT validated here for SR2026.
+        #    In SR2026, every message type enforces its exact BizSvc fixed value as a Layer-3
+        #    business-rule ERROR (pacs.002/003/004/008/009±cov±adv, camt.052–057, pain.001/002/008).
+        #    That L3 check is stricter and clearer than this generic L2 format pattern and was
+        #    producing a duplicate warning for the same field, so the L2 BizSvc format warning has
+        #    been removed for SR2026.
 
         # 3. Timezone consistency (warning) — both header CreDt and payload CreDtTm should
         # carry the same offset for downstream timing/cut-off calculations to be correct.

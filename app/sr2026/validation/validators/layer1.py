@@ -26,9 +26,9 @@ class Layer1Validator:
                  severity="ERROR", 
                  code="FILE_TOO_LARGE",
                  path="/", 
-                 message=f"Your message is {size_kb:.1f} KB, exceeding the {max_size} KB limit.",
-                 line=1,
-                 fix=f"Please reduce the message size below {max_size} KB."
+                message=f"The file is {size_kb:.1f} KB, which is larger than the {max_size} KB limit.",
+                line=1,
+                fix=f"Please compress the XML or remove unnecessary sections to keep it under {max_size} KB."
             ))
             return None
 
@@ -38,9 +38,9 @@ class Layer1Validator:
                 severity="ERROR",
                 code="INVALID_XML_STRUCTURE",
                 path="/",
-                message="The content does not appear to be valid XML structure.",
+                message="The content doesn't look like a valid XML file.",
                 line=1,
-                fix="Ensure XML starts with '<' or '<?xml'."
+                fix="Make sure the file starts with the standard '<?xml' header and contains valid tags."
             ))
             return None
 
@@ -62,9 +62,9 @@ class Layer1Validator:
                     severity="ERROR",
                     code="INVALID_ENCODING",
                     path="/",
-                    message=f"XML uses '{encoding}' encoding. ISO 20022 requires UTF-8.",
+                    message=f"The file is saved as '{encoding}'. ISO 20022 rules require UTF-8 encoding.",
                     line=1,
-                    fix="Change the XML encoding declaration to UTF-8."
+                    fix="Please re-save your XML file using UTF-8 encoding."
                 ))
 
         # 4. Illegal characters check
@@ -73,9 +73,9 @@ class Layer1Validator:
                 severity="ERROR",
                 code="ILLEGAL_CONTROL_CHARACTERS",
                 path="/",
-                message="XML content contains disallowed control characters (ASCII 0-31).",
+                message="The file contains hidden control characters or symbols that aren't allowed.",
                 line=1,
-                fix="Remove any hidden control characters."
+                fix="Please open the file in a text editor and remove any strange symbols or hidden characters."
             ))
 
         # 5. Security: DTD and Entity Rejections
@@ -116,9 +116,9 @@ class Layer1Validator:
                     severity="ERROR",
                     code="MISSING_ISO_ROOT",
                     path="/",
-                    message="The message is missing the required ISO 20022 root elements (<Document> or <BusMsg>).",
+                    message="The file is missing the required ISO 20022 main wrapper (<Document> or <BusMsg>).",
                     line=1,
-                    fix="Wrap the message in a standard <Document> or <BusMsg> element."
+                    fix="Make sure your entire message is inside a <Document> or <BusMsg> block."
                 ))
             else:
                 # 8. Namespace verification
@@ -130,9 +130,9 @@ class Layer1Validator:
                         severity="ERROR",
                         code="INVALID_NAMESPACE_FORMAT",
                         path="/",
-                        message=f"The namespace '{ns}' does not follow the standard urn:iso URN format.",
+                        message=f"The XML namespace '{ns}' is incorrect. It should follow the standard 'urn:iso:...' format.",
                         line=doc_node.sourceline or 1,
-                        fix="Update namespace to match urn:iso:std:iso:20022:tech:xsd:<message_type>."
+                        fix="Please correct the namespace to exactly match the official ISO 20022 specification for this message type."
                     ))
 
             # 9. XML Depth check
@@ -146,9 +146,9 @@ class Layer1Validator:
                     severity="ERROR",
                     code="XML_DEPTH_EXCEEDED",
                     path="/",
-                    message=f"XML depth exceeds the maximum allowed limit of {max_depth} levels (actual: {actual_depth}).",
+                    message=f"The XML tags are nested too deeply (currently {actual_depth} levels, max allowed is {max_depth}).",
                     line=1,
-                    fix="Simplify the XML structure to reduce element nesting."
+                    fix="Please simplify the structure of your XML so there aren't so many elements inside other elements."
                 ))
 
             return root

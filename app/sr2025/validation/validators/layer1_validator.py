@@ -27,8 +27,8 @@ class Layer1Mixin:
         if filename and not filename.lower().endswith(allowed_exts):
              report.add_issue(ValidationIssue(
                 "ERROR", 1, "Wrong File Type", "File Extension",
-                f"The file '{filename}' is not a standard XML extension.",
-                "Please use .xml, .xsd, or .txt extension."
+                f"The file '{filename}' does not have a standard XML extension.",
+                "Please use a .xml, .xsd, or .txt extension for your file."
             ))
 
         # Check content structure (must look like XML)
@@ -36,8 +36,8 @@ class Layer1Mixin:
         if not has_xml_structure:
              report.add_issue(ValidationIssue(
                 "ERROR", 1, "Invalid Content", "Line 1",
-                "The file content does not appear to be valid XML.",
-                "Ensure the file contains XML tags starting with '<'."
+                "The content doesn't look like a valid XML file.",
+                "Make sure the file starts with the standard '<?xml' header and contains valid tags."
             ))
 
         # 3. Payload Size (FATAL)
@@ -46,8 +46,8 @@ class Layer1Mixin:
         if size_kb > max_size:
              report.add_issue(ValidationIssue(
                  "ERROR", 1, "File Too Large", "Size Limit", 
-                 f"Your message is {size_kb:.1f} KB, exceeding the {max_size} KB limit.",
-                 f"Please reduce the message size below {max_size} KB."
+                 f"The file is {size_kb:.1f} KB, which is larger than the {max_size} KB limit.",
+                 f"Please compress the XML or remove unnecessary sections to keep it under {max_size} KB."
              ))
              report.layer_status["1"] = {"status": "❌", "time": (time.time() - start) * 1000}
              return False
@@ -65,8 +65,8 @@ class Layer1Mixin:
             if encoding != "UTF-8":
                 report.add_issue(ValidationIssue(
                     "ERROR", 1, "Wrong Encoding", "Line 1",
-                    f"Your file uses {encoding} encoding, but ISO 20022 messages must use UTF-8.",
-                    "Change the encoding in your XML header to UTF-8."
+                    f"The file is saved as '{encoding}'. ISO 20022 rules require UTF-8 encoding.",
+                    "Please re-save your XML file using UTF-8 encoding."
                 ))
 
         # 5. Illegal Characters (NON-FATAL for L1 checks)
@@ -74,16 +74,16 @@ class Layer1Mixin:
         if illegal_chars:
             report.add_issue(ValidationIssue(
                 "ERROR", 1, "Invalid Characters", "Line 1",
-                "Your message contains invisible control characters that are not allowed.",
-                "Remove hidden characters (ASCII 0-31) from your XML."
+                "The file contains hidden control characters or symbols that aren't allowed.",
+                "Please open the file in a text editor and remove any strange symbols or hidden characters."
             ))
 
         # 5.1 DTD Declaration Rejection (Security — FATAL)
         if re.search(r'<!DOCTYPE', xml_content, re.IGNORECASE):
             report.add_issue(ValidationIssue(
                 "ERROR", 1, "DTD_FORBIDDEN", "Line 1",
-                "DTD declarations (<!DOCTYPE>) are not allowed in ISO 20022 messages.",
-                "Remove any <!DOCTYPE ...> declaration from your XML. ISO 20022 uses XSD validation only."
+                "DTD declarations (<!DOCTYPE>) are not allowed for security reasons.",
+                "Please remove any <!DOCTYPE ...> declaration from your XML."
             ))
             report.layer_status["1"] = {"status": "❌", "time": (time.time() - start) * 1000}
             return False
@@ -92,8 +92,8 @@ class Layer1Mixin:
         if re.search(r'<!ENTITY', xml_content, re.IGNORECASE):
             report.add_issue(ValidationIssue(
                 "ERROR", 1, "ENTITY_FORBIDDEN", "Line 1",
-                "XML entity declarations (<!ENTITY>) are not allowed in ISO 20022 messages.",
-                "Remove all <!ENTITY ...> declarations. Inline all values directly."
+                "XML entity declarations (<!ENTITY>) are not allowed for security reasons.",
+                "Please remove all <!ENTITY ...> declarations."
             ))
             report.layer_status["1"] = {"status": "❌", "time": (time.time() - start) * 1000}
             return False
@@ -112,8 +112,8 @@ class Layer1Mixin:
             if not iso_nodes:
                 report.add_issue(ValidationIssue(
                     "ERROR", 1, "Missing Structure", "Root",
-                    "The XML is missing the required ISO 20022 <Document> or <BusMsg> wrapper.",
-                    "Ensure your message is wrapped in a standard ISO 20022 container."
+                    "The file is missing the required ISO 20022 main wrapper (<Document> or <BusMsg>).",
+                    "Make sure your entire message is inside a <Document> or <BusMsg> block."
                 ))
             else:
                 # 8. Namespace Validation
@@ -124,8 +124,8 @@ class Layer1Mixin:
                 if not re.match(r'^urn:iso:std:iso:20022:tech:xsd:[a-z]{4}\.\d{3}\.\d{3}\.\d{2}$', ns) and "head.001" not in ns:
                     report.add_issue(ValidationIssue(
                         "ERROR", 1, "Wrong Namespace", str(doc_node.sourceline or 1),
-                        f"The namespace '{ns}' does not match the ISO 20022 standard format.",
-                        "Use the correct URN format (e.g. urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08)."
+                        f"The XML namespace '{ns}' is incorrect. It should follow the standard 'urn:iso:...' format.",
+                        "Please correct the namespace to exactly match the official ISO 20022 specification for this message type."
                     ))
                 report.metadata.update({"Namespace": ns})
 
@@ -138,8 +138,8 @@ class Layer1Mixin:
             if actual_depth > max_depth:
                 report.add_issue(ValidationIssue(
                     "ERROR", 1, "XML_DEPTH_EXCEEDED", "Root",
-                    f"XML nesting depth is {actual_depth}, which exceeds the maximum of {max_depth} levels.",
-                    f"Reduce the nesting depth of your XML to {max_depth} levels or fewer."
+                    f"The XML tags are nested too deeply (currently {actual_depth} levels, max allowed is {max_depth}).",
+                    "Please simplify the structure of your XML so there aren't so many elements inside other elements."
                 ))
 
         except etree.XMLSyntaxError as e:

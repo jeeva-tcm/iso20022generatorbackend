@@ -50,7 +50,7 @@ class TaxValidator:
                                 severity="ERROR",
                                 code="TAX_CURRENCY_MISMATCH",
                                 path=f"//{parent_name}/Tax",
-                                message=f"Tax currency '{ccy}' does not match the transaction currency '{tx_ccy}'.",
+                                message=f"The currency for the Tax ({ccy}) does not match the main transaction currency ({tx_ccy}).",
                                 line=tax_amt.sourceline or line,
                                 fix=f"Update the tax currency to match the main currency '{tx_ccy}'."
                             ))

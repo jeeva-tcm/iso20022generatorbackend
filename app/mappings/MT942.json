@@ -28,11 +28,12 @@
             "mx_path": "BkToCstmrAcctRpt/Rpt/Id"
         },
         {
-            "mt_tag": "21",
-            "name": "Related Reference",
-            "mandatory": false,
-            "type": "text",
-            "mx_path": "BkToCstmrAcctRpt/Rpt/RltdRef"
+            "mt_tag": "_static_seq",
+            "name": "Electronic Sequence Number",
+            "mandatory": true,
+            "type": "static",
+            "value": "1",
+            "mx_path": "BkToCstmrAcctRpt/Rpt/ElctrncSeqNb"
         },
         {
             "mt_tag": "25",

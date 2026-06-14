@@ -32,7 +32,7 @@
             "name": "Related Reference",
             "mandatory": false,
             "type": "text",
-            "mx_path": "BkToCstmrDbtCdtNtfctn/Ntfctn/Ntry/NtryDtls/TxDtls/Refs/RltdRef"
+            "mx_path": "BkToCstmrDbtCdtNtfctn/Ntfctn/Ntry/NtryDtls/TxDtls/Refs/InstrId"
         },
         {
             "mt_tag": "25",
@@ -56,7 +56,7 @@
             "name": "Ordering Institution",
             "mandatory": false,
             "type": "bic",
-            "mx_path_bic": "BkToCstmrDbtCdtNtfctn/Ntfctn/Ntry/NtryDtls/TxDtls/RltdPties/DbtrAgt/FinInstnId/BICFI"
+            "mx_path_bic": "BkToCstmrDbtCdtNtfctn/Ntfctn/Ntry/NtryDtls/TxDtls/RltdAgts/DbtrAgt/FinInstnId/BICFI"
         },
         {
             "mt_tag": "72",

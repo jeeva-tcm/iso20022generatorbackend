@@ -112,9 +112,9 @@ class Layer3Validator:
                         severity="WARNING",
                         code="BIC_NOT_FOUND",
                         path=key,
-                        message=f"BIC '{bic_val}' not found in official directory.",
+                        message=f"The BIC/Swift code '{bic_val}' is not recognized in the official directory.",
                         line=line_map.get(key, 1),
-                        fix="Verify if the BIC is correct or recently decommissioned."
+                        fix="Please check if the BIC code is typed correctly or if the bank was recently decommissioned."
                     ))
 
         # 1. SWIFT character set check on unstructured remittance fields
@@ -127,9 +127,9 @@ class Layer3Validator:
                     severity="WARNING",
                     code="SWIFT_CHARSET_VIOLATION",
                     path=key,
-                    message=f"Remittance field contains characters outside the permitted SWIFT set.",
+                    message="This text field contains special characters that SWIFT doesn't allow.",
                     line=line_map.get(key, 1),
-                    fix="Use standard letters, digits, and spaces or allowed special characters."
+                    fix="Please only use standard letters, numbers, spaces, and basic punctuation marks."
                 ))
 
         # 2. Currency Decimal Precision and Validation
@@ -144,9 +144,9 @@ class Layer3Validator:
                         severity="ERROR",
                         code="INVALID_CURRENCY",
                         path=ccy_key,
-                        message=f"Currency '{ccy}' is not a valid ISO 4217 code.",
+                        message=f"The currency code '{ccy}' is not recognized.",
                         line=line_map.get(ccy_key, 1),
-                        fix="Use a valid 3-letter currency code (e.g. USD, EUR, GBP)."
+                        fix="Please use a standard 3-letter currency code like USD, EUR, or GBP."
                     ))
                 else:
                     max_decimals = currencies[ccy]
@@ -159,9 +159,9 @@ class Layer3Validator:
                                 severity="ERROR",
                                 code="INVALID_AMOUNT",
                                 path=key,
-                                message="Amount must be greater than zero.",
+                                message="The payment amount must be greater than zero.",
                                 line=line_map.get(key, 1),
-                                fix="Provide a positive amount value."
+                                fix="Please provide a valid, positive amount for the payment."
                             ))
                         
                         # Check decimal points
@@ -172,9 +172,9 @@ class Layer3Validator:
                                     severity="ERROR",
                                     code="INVALID_DECIMAL_PRECISION",
                                     path=key,
-                                    message=f"Amount decimal precision exceeds {max_decimals} decimal places allowed for {ccy}.",
+                                    message=f"The amount has too many decimal places (maximum allowed for {ccy} is {max_decimals}).",
                                     line=line_map.get(key, 1),
-                                    fix=f"Round the amount to maximum {max_decimals} decimal places."
+                                    fix=f"Please round the amount to {max_decimals} decimal places or fewer."
                                 ))
 
                         # Check for high value transaction warning
@@ -203,9 +203,9 @@ class Layer3Validator:
                         severity="ERROR",
                         code="INVALID_COUNTRY_CODE",
                         path=key,
-                        message=f"Country code '{ctry}' is not a valid ISO 3166-1 country code.",
+                        message=f"The country code '{ctry}' is not recognized.",
                         line=line_map.get(key, 1),
-                        fix="Use a valid 2-letter uppercase ISO country code (e.g. US, GB, DE)."
+                        fix="Please use a valid 2-letter uppercase country code like US, GB, or DE."
                     ))
 
         # 4. Purpose code validation
@@ -219,9 +219,9 @@ class Layer3Validator:
                         severity="ERROR",
                         code="INVALID_PURPOSE_CODE",
                         path=key,
-                        message=f"Purpose code '{purp}' is not a valid ExternalPurpose1Code.",
+                        message=f"The Purpose Code '{purp}' is not a recognized ISO 20022 purpose.",
                         line=line_map.get(key, 1),
-                        fix="Use a valid ISO 20022 Purpose Code (e.g. SALA, CORT, PENS)."
+                        fix="Please choose a valid 4-letter Purpose Code like SALA, CORT, or PENS."
                     ))
 
         # 5. Charge bearer code validation
@@ -235,9 +235,9 @@ class Layer3Validator:
                         severity="ERROR",
                         code="INVALID_CHARGE_BEARER",
                         path=key,
-                        message=f"Charge Bearer code '{chrg}' is not valid.",
+                        message=f"The Charge Bearer code '{chrg}' is incorrect.",
                         line=line_map.get(key, 1),
-                        fix="Use one of: SHAR, CRED, DEBT, SLEV."
+                        fix="Please choose one of the valid options: SHAR, CRED, DEBT, or SLEV."
                     ))
 
         # 6. Sanctions Screening (Fail-fast)
@@ -255,9 +255,9 @@ class Layer3Validator:
                     severity="ERROR", 
                     code="SANCTIONS_BLOCKED", 
                     path=path,
-                    message=f"Fail-fast: Party from sanctioned country code '{value}' detected.",
+                    message=f"A party from a sanctioned country code '{value}' was detected.",
                     line=line_map.get(path, 1),
-                    fix="Transaction rejected due to sanctions compliance."
+                    fix="This transaction cannot proceed due to international sanctions compliance rules."
                 ))
                 
             # Check sanctioned keywords/names anywhere in the payload
@@ -267,7 +267,7 @@ class Layer3Validator:
                     severity="ERROR", 
                     code="SANCTIONS_BLOCKED", 
                     path=path,
-                    message=f"Fail-fast: Party from sanctioned country '{hit.title()}' detected.",
+                    message=f"A party from a sanctioned country '{hit.title()}' was detected.",
                     line=line_map.get(path, 1),
-                    fix="Transaction rejected due to sanctions compliance."
+                    fix="This transaction cannot proceed due to international sanctions compliance rules."
                 ))

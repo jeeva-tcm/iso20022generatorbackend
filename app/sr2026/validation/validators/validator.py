@@ -20,6 +20,7 @@ from app.sr2026.validation.delta_rules.camt_general_validator import CamtGeneral
 from app.sr2026.validation.delta_rules.camt_statement_validator import CamtStatementValidator
 from app.sr2026.validation.delta_rules.camt_charges_validator import CamtChargesValidator
 from app.sr2026.validation.delta_rules.pain_validator import PainValidator
+from app.sr2026.validation.delta_rules.camt_pain_sr2026_rules import CamtPainSR2026Rules
 from app.sr2026.validation.delta_rules.pacs008stp_validator import Pacs008StpValidator
 from app.sr2026.validation.delta_rules.warning_engine import WarningEngine
 from app.schemas.api_validation import ApiValidateResponse, ApiIssue
@@ -257,6 +258,13 @@ class SR2026Validator:
                 PainValidator.validate(root_element, report, message_type)
             except Exception as e:
                 print(f"[SR2026] PainValidator error: {e}")
+
+            # Step 9.13b: CAMT/PAIN cross-cutting SR2026 rules (MsgDefIdr, BizMsgIdr=MsgId,
+            # ClrSysId-when-member, SchemeName-when-Other, Proxy/Type, multiplicity caps)
+            try:
+                CamtPainSR2026Rules.validate(root_element, report, message_type)
+            except Exception as e:
+                print(f"[SR2026] CamtPainSR2026Rules error: {e}")
 
             # Step 9.14: pacs.008 STP SEPA/country-pair IBAN rules
             try:

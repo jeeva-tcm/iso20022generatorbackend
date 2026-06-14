@@ -75,6 +75,23 @@ class Pacs009Validator:
                                 line=nodes[0].sourceline or 1,
                                 fix=r.get("fixSuggestion", ""),
                             ))
+                elif r.get("type") == "ENUM":
+                    # Header ENUM rules (e.g. HDR001 BizSvc allowed-value set, CpyDplct) were
+                    # previously skipped — only FIXED_VALUE/MATCH were handled here — so a wrong
+                    # BizSvc on pacs.009 CORE passed silently. Mirror the groupHeaderRules ENUM path.
+                    field_path = r["field"].split("/")[-1]
+                    nodes = app_hdr.xpath(f"*[local-name()='{field_path}']")
+                    if nodes:
+                        val = _text(nodes[0])
+                        if val not in r["allowedValues"]:
+                            report.add_issue(ValidationIssue(
+                                severity=r["severity"],
+                                code=r["errorCode"],
+                                path=f"//AppHdr/{field_path}",
+                                message=r["errorMessage"],
+                                line=nodes[0].sourceline or 1,
+                                fix=r.get("fixSuggestion", ""),
+                            ))
                 elif r.get("type") == "MATCH":
                     field1 = r["field1"].split("/")[-1] # BizMsgIdr
                     field1_nodes = app_hdr.xpath(f"*[local-name()='{field1}']")

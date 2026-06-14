@@ -44,15 +44,43 @@ def _add(report: ValidationReport, severity: str, code: str, path: str,
 class PainValidator:
     """pain.001 / pain.002 / pain.008 formal rule validation."""
 
+    # SR2026 fixed BizSvc per pain message (matches the certified generator):
+    #   pain.001 = .04, pain.002 = .04, pain.008 = .03 (direct-debit family, like pacs.003).
+    _PAIN_BIZSVC = {
+        "pain.008": "swift.cbprplus.03",
+        "pain.001": "swift.cbprplus.04",
+        "pain.002": "swift.cbprplus.04",
+    }
+
     @classmethod
     def validate(cls, root: etree._Element, report: ValidationReport, message_type: str):
         msg = (message_type or "").lower()
+        cls._check_bizsvc(root, report, msg)
         if "pain.001" in msg:
             cls._pain001(root, report)
         elif "pain.002" in msg:
             cls._pain002(root, report)
         elif "pain.008" in msg:
             cls._pain008(root, report)
+
+    @classmethod
+    def _check_bizsvc(cls, root: etree._Element, report: ValidationReport, msg: str):
+        # SR2026: AppHdr/BizSvc must equal the fixed value for pain messages. Mirrors the per-message
+        # L3 BizSvc enforcement already present for PACS/CAMT (and replaces the removed L2 format
+        # warning), so pain.* gets a single, clear Layer-3 error instead of a generic format warning.
+        expected = next((v for k, v in cls._PAIN_BIZSVC.items() if k in msg), None)
+        if not expected:
+            return
+        biz = root.xpath("//*[local-name()='AppHdr']/*[local-name()='BizSvc']")
+        if not biz:
+            return  # presence handled by header/mandatory-field rules; don't double-report
+        val = _t(biz[0])
+        if val and val != expected:
+            _add(report, "ERROR", "INVALID_BIZ_SVC", "//AppHdr/BizSvc",
+                 f"BizSvc '{val}' is invalid under SR2026. It must be '{expected}' "
+                 "(CBPR+ SR2026 fixed value).",
+                 f"Change BizSvc to {expected}.",
+                 biz[0].sourceline or 1)
 
     # ─── pain.001 ─────────────────────────────────────────────────────────────
 

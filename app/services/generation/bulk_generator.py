@@ -4,6 +4,7 @@ Generates N valid randomized ISO 20022 messages based on selected message type a
 """
 import uuid
 import random
+import re
 import string
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
@@ -2653,12 +2654,30 @@ def post_process_xml_for_sr2026(xml: str, message_type: str) -> str:
         # Base pacs.009 requires swift.cbprplus.04
         xml = xml.replace("<BizSvc>swift.cbprplus.02</BizSvc>", "<BizSvc>swift.cbprplus.04</BizSvc>")
         xml = xml.replace("<BizSvc>swift.cbprplus.03</BizSvc>", "<BizSvc>swift.cbprplus.04</BizSvc>")
-    elif "pacs.003" in msg_lower:
+    elif "pacs.003" in msg_lower or "pain.008" in msg_lower:
         xml = xml.replace("<BizSvc>swift.cbprplus.02</BizSvc>", "<BizSvc>swift.cbprplus.03</BizSvc>")
+        xml = xml.replace("<BizSvc>swift.cbprplus.04</BizSvc>", "<BizSvc>swift.cbprplus.03</BizSvc>")
+    elif "camt.055" in msg_lower:
+        # camt.055 SR2026 fixed BizSvc is swift.cbprplus.03 (per SR2026 diff doc), not .04
+        xml = xml.replace("<BizSvc>swift.cbprplus.02</BizSvc>", "<BizSvc>swift.cbprplus.03</BizSvc>")
+        xml = xml.replace("<BizSvc>swift.cbprplus.04</BizSvc>", "<BizSvc>swift.cbprplus.03</BizSvc>")
     else:
         # Standard fallback: replace old values with swift.cbprplus.04
         xml = xml.replace("<BizSvc>swift.cbprplus.02</BizSvc>", "<BizSvc>swift.cbprplus.04</BizSvc>")
         xml = xml.replace("<BizSvc>swift.cbprplus.03</BizSvc>", "<BizSvc>swift.cbprplus.04</BizSvc>")
+
+    # SR2026 PAIN: PaymentInformationIdentification must equal GroupHeader/MessageIdentification
+    # (CBPR_MessageIdentification_PaymentInformationIdentification_FormalRule). pain.002 has the
+    # equivalent rule for OriginalPaymentInformationId vs OriginalMessageId. Applied only in
+    # SR2026 post-processing so SR2025 output is unchanged.
+    if "pain.001" in msg_lower or "pain.008" in msg_lower:
+        m = re.search(r"<MsgId>([^<]*)</MsgId>", xml)
+        if m:
+            xml = re.sub(r"<PmtInfId>[^<]*</PmtInfId>", f"<PmtInfId>{m.group(1)}</PmtInfId>", xml)
+    elif "pain.002" in msg_lower:
+        m = re.search(r"<OrgnlMsgId>([^<]*)</OrgnlMsgId>", xml)
+        if m:
+            xml = re.sub(r"<OrgnlPmtInfId>[^<]*</OrgnlPmtInfId>", f"<OrgnlPmtInfId>{m.group(1)}</OrgnlPmtInfId>", xml)
 
     return xml
 

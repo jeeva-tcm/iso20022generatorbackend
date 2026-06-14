@@ -219,12 +219,13 @@ class Layer3Mixin:
                         else:
                             attr_regex = str(attr_algo_cfg) if attr_algo_cfg else ""
                             attr_error = f"Attribute '{attr_name}' for '{field_name}' has invalid format: '{attr_val}'."
-                        
+
                         if not attr_val:
                              report.add_issue(ValidationIssue(
                                 "ERROR", 3, "MISSING_ATTRIBUTE", str(line_map.get(key, "/")),
-                                f"Mandatory attribute '{attr_name}' is missing for field '{field_name}'.",
-                                f"Add {attr_name}=\"...\" to the <{field_name}> tag."
+                                f"The field '{field_name}' is missing a required property ('{attr_name}').",
+                                f"Please provide a value for '{attr_name}' inside '{field_name}'.",
+                                line=_get_line_num(key)
                             ))
                         elif attr_regex and not re.match(attr_regex, str(attr_val)):
                              report.add_issue(ValidationIssue(
@@ -382,8 +383,8 @@ class Layer3Mixin:
                                 else:
                                     report.add_issue(ValidationIssue(
                                         severity, layer, "INVALID_CURRENCY_CODE", ccy_path,
-                                        f"Unrecognised Currency Code '{ccy}'.",
-                                        f"The code '{ccy}' is not a valid ISO 4217 currency. Use standard codes like USD, EUR, GBP, JPY, etc.",
+                                        f"The currency code '{ccy}' is not recognized.",
+                                        "Please use a standard 3-letter currency code like USD, EUR, or GBP.",
                                         line=_get_line_num(ccy_path)
                                     ))
                                     continue
@@ -401,8 +402,8 @@ class Layer3Mixin:
                             if actual_decimals > allowed_decimals:
                                 report.add_issue(ValidationIssue(
                                     severity, layer, "INVALID_DECIMAL_PRECISION", key,
-                                    f"Incorrect decimal precision for {ccy} amount '{val_str}'. {ccy} allows max {allowed_decimals} decimal place(s), but {actual_decimals} were provided.",
-                                    f"Adjust the fractional part: {ccy} supports {allowed_decimals} decimal place(s) (e.g., {'10.00' if allowed_decimals == 2 else '10' if allowed_decimals == 0 else '10.000'}).",
+                                    f"The amount has too many decimal places ({actual_decimals} decimals provided, but {ccy} allows a maximum of {allowed_decimals}).",
+                                    f"Please round the amount to {allowed_decimals} decimal places or fewer.",
                                     line=_get_line_num(key)
                                 ))
 
@@ -416,7 +417,7 @@ class Layer3Mixin:
                         regex_to_use = pattern_cfg
 
                     if not re.match(str(regex_to_use), str(value)):
-                        report.add_issue(ValidationIssue(severity, layer, rule_id, key, f"{desc} Value '{value}' is invalid format.", line=_get_line_num(key)))
+                        report.add_issue(ValidationIssue(severity, layer, rule_id, key, f"The value '{value}' has an incorrect format.", "Please provide the value in the correct format.", line=_get_line_num(key)))
                 
                 elif rule_type == "expression":
                     rule_meta = {"severity": severity, "layer": layer, "rule_id": rule_id, "desc": desc}
@@ -757,8 +758,8 @@ class Layer3Mixin:
             
             if purpose not in supported_purposes:
                 report.add_issue(ValidationIssue("ERROR", 3, "INVALID_PURPOSE_CODE", _gl(purp_key), 
-                    f"Invalid purpose code '{purpose}'. This code is not a recognised ISO 20022 ExternalPurpose1Code value.", 
-                    f"Replace '{purpose}' with a valid ISO 20022 purpose code (e.g., SALA, CORT, PENS, BONU, TRAD, LOAN, RENT, SUPP, TAXS, etc.)."))
+                    f"The Purpose Code '{purpose}' is not a recognized ISO 20022 purpose.", 
+                    f"Please choose a valid 4-letter Purpose Code like SALA, CORT, or PENS."))
                 return True # Suppress generic error by returning True after adding specific error
             # Discover Amount Key (climb up from Purp)
             amt_key = None
@@ -803,8 +804,8 @@ class Layer3Mixin:
                 actual_decimals = len(raw_str.split('.')[1]) if '.' in raw_str else 0
                 if actual_decimals > allowed_decimals:
                     report.add_issue(ValidationIssue("ERROR", 3, "INVALID_DECIMAL_PRECISION", _gl(amt_key), 
-                        f"Currency {currency} does not support {actual_decimals} decimals (Max: {allowed_decimals}). Found '{raw_str}'.", 
-                        f"Adjust the value to match {currency} minor units."))
+                        f"The amount has too many decimal places ({actual_decimals} decimals provided, but {ccy} allows a maximum of {allowed_decimals}).", 
+                        f"Please round the amount to {allowed_decimals} decimal places or fewer."))
                     return True
 
             # --- Step 4: Validate Purpose + Currency Limit ---
@@ -959,14 +960,14 @@ class Layer3Mixin:
         if not iban_val or not isinstance(iban_val, str) or len(iban_val) < 15:
             line_str = _gl(iban_key)
             line_num = int(line_str) if line_str.isdigit() else None
-            report.add_issue(ValidationIssue("ERROR", 3, "INVALID_IBAN", iban_key, "Invalid or Missing Debtor IBAN", "Ensure the IBAN is at least 15 characters long and follows the correct structure.", line=line_num))
+            report.add_issue(ValidationIssue("ERROR", 3, "INVALID_IBAN", iban_key, "The IBAN for the Debtor is missing or invalid.", "Please ensure the IBAN is at least 15 characters long and correctly formatted.", line=line_num))
             return True
 
         country_code = iban_val[:2].upper()
         if not country_code.isalpha():
              line_str = _gl(iban_key)
              line_num = int(line_str) if line_str.isdigit() else None
-             report.add_issue(ValidationIssue("ERROR", 3, "INVALID_IBAN_CTRY", iban_key, "Invalid or Missing Debtor IBAN", "The first two characters of the IBAN must be a valid country code.", line=line_num))
+             report.add_issue(ValidationIssue("ERROR", 3, "INVALID_IBAN_CTRY", iban_key, "The IBAN for the Debtor is invalid.", "The first two characters of the IBAN must be a valid country code like GB or US.", line=line_num))
              return True
 
         # Map country to currency
@@ -986,8 +987,8 @@ class Layer3Mixin:
             line_num = int(line_str) if line_str.isdigit() else None
             report.add_issue(ValidationIssue(
                 "ERROR", 3, "CURR_IBAN_MISMATCH", curr_path,
-                f"Currency {currency} does not match expected currency {expected_currency} for IBAN country {country_code}",
-                f"Update the transaction currency to {expected_currency} for the account based in {country_code}.",
+                f"The currency ({currency}) does not match the expected currency ({expected_currency}) for the IBAN country ({country_code}).",
+                f"Please update the currency to '{expected_currency}' or provide an IBAN from a {currency} country.",
                 line=line_num
             ))
             return True # Suppress generic error

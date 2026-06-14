@@ -861,19 +861,19 @@ class Layer2Mixin:
                 # Special Conflict: SchmeNm Cd vs Prtry
                 if found_elem in ["Cd", "Prtry"] and ("Cd" in all_expected or "Prtry" in all_expected):
                      return (
-                         "/OrgId/Othr → Mutually exclusive elements conflict",
-                         "You cannot provide both <Cd> and <Prtry> in the same <SchmeNm> block. Please remove one. ISO rules require either a standardized code OR a proprietary name, never both."
+                         "Both <Cd> (Code) and <Prtry> (Proprietary Name) are present, but only one is allowed",
+                         "You cannot provide both a standardized <Cd> and a proprietary <Prtry> name in the same block. ISO rules require you to choose exactly one. Please remove the one that doesn't apply."
                      )
 
                 return (
-                    f"The element '{found_elem}' is not expected here. Either it is not allowed in this specification, or another mandatory element is missing before this one. One of the following elements is expected : {expected_list}",
-                    f"To fix this, ensure that one of the following elements is present before '{found_elem}': {expected_list}. Review the ISO 20022 schema sequence requirements for this message type."
+                    f"Unexpected field '{found_elem}' found here. It's either not allowed, or you missed a mandatory field right before it.",
+                    f"Please verify your XML order. The schema expects one of these fields right before or instead of '{found_elem}': {expected_list}."
                 )
 
             # FALLBACK
             return (
-                f"The element '{found_elem}' is not expected at this position. Either it is not allowed here or a mandatory field is missing before it.",
-                f"Check the ISO 20022 schema for the correct field sequence. Often this happens when you skip a mandatory field."
+                f"Unexpected field '{found_elem}'. It is in the wrong place or a mandatory field is missing before it.",
+                f"Check the correct field sequence. This usually happens when you skip a required field or place fields in the wrong order."
             )
 
         # ── 7. MISSING MANDATORY CHILD FIELD ─────────────────────────────

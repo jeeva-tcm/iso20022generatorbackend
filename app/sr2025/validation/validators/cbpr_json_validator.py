@@ -250,8 +250,8 @@ class CBPRJsonSchemaMixin:
                         layer=3,
                         code="CBPR_JSON_CCY_PATTERN",
                         path=f"{local}/@Ccy",
-                        message=f"@Ccy '{ccy}' does not match CBPR+ ActiveOrHistoricCurrencyCode pattern (ISO 4217 3-letter).",
-                        fix_suggestion="Use a valid ISO 4217 currency code (e.g. USD, EUR).",
+                        message=f"The currency code '{ccy}' is not a valid 3-letter ISO 4217 code.",
+                        fix_suggestion="Please use a valid 3-letter currency code like USD, EUR, GBP, etc.",
                     ))
         # No separate layer_status entry — Layer 3's existing status absorbs these issues.
 
@@ -271,8 +271,8 @@ class CBPRJsonSchemaMixin:
                 layer=3,
                 code="CBPR_JSON_MAX_LENGTH",
                 path=local,
-                message=f"<{local}> length {len(value)} exceeds CBPR+ '{ref}' max of {max_len}.",
-                fix_suggestion=f"Shorten the value to at most {max_len} characters.",
+                message=f"The text in <{local}> is too long (currently {len(value)} characters, maximum allowed is {max_len}).",
+                fix_suggestion=f"Please shorten the value so it is {max_len} characters or less.",
             )
         # minLength
         min_len = rule.get("minLength")
@@ -282,8 +282,8 @@ class CBPRJsonSchemaMixin:
                 layer=3,
                 code="CBPR_JSON_MIN_LENGTH",
                 path=local,
-                message=f"<{local}> length {len(value)} below CBPR+ '{ref}' minimum of {min_len}.",
-                fix_suggestion=f"Provide at least {min_len} characters.",
+                message=f"The text in <{local}> is too short (currently {len(value)} characters, minimum required is {min_len}).",
+                fix_suggestion=f"Please provide at least {min_len} characters.",
             )
         # pattern
         pat = rule.get("pattern")
@@ -295,8 +295,8 @@ class CBPRJsonSchemaMixin:
                         layer=3,
                         code="CBPR_JSON_PATTERN",
                         path=local,
-                        message=f"<{local}> value '{value[:40]}…' does not match CBPR+ '{ref}' pattern.",
-                        fix_suggestion=(rule.get("description") or "Refer to the CBPR+ MyStandards definition for the allowed character set.")[:200],
+                        message=f"The text '{value[:40]}…' in <{local}> contains invalid characters or formatting.",
+                        fix_suggestion="Check the text. Usually this means you included special characters that aren't allowed, or the format is wrong.",
                     )
             except re.error:
                 # Malformed pattern in schema — skip silently
@@ -309,7 +309,7 @@ class CBPRJsonSchemaMixin:
                 layer=3,
                 code="CBPR_JSON_ENUM",
                 path=local,
-                message=f"<{local}> value '{value}' is not one of CBPR+ '{ref}' allowed values: {enum_vals}.",
-                fix_suggestion=f"Use one of: {', '.join(enum_vals)}.",
+                message=f"The value '{value}' in <{local}> is not allowed by CBPR+ rules.",
+                fix_suggestion=f"Please change it to one of these valid options: {', '.join(enum_vals)}.",
             )
         return None

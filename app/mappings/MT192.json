@@ -104,7 +104,7 @@
             "name": "Cancellation Reason Code",
             "mandatory": true,
             "type": "static",
-            "value": "NARR",
+            "value": "CUST",
             "mx_path": "FIToFIPmtCxlReq/Undrlyg/TxInf/CxlRsnInf/Rsn/Cd"
         }
     ]

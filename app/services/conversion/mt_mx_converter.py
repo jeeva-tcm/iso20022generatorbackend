@@ -1157,7 +1157,13 @@ class MT2MXConverter:
                         # Mandatory elements inside TxDtls if TxDtls exists (CBPR+)
                         self.set_element_attr(ntry_node, "NtryDtls/TxDtls/Amt", "Ccy", currency, parsed_61["amount"], namespaces)
                         self.set_element_text(ntry_node, "NtryDtls/TxDtls/CdtDbtInd", indicator, namespaces)
-                        self.set_element_text(ntry_node, ref_path, parsed_61["reference"], namespaces)
+                        # MT :61: reference is "AcctOwnerRef//AcctSvcrRef". The '//' separator
+                        # is invalid in CBPR InstrId (CBPR_Instruction_Identification: no '//',
+                        # no leading/trailing '/'). Use the account-owner reference, slash-stripped.
+                        _ref_parts = [p for p in parsed_61["reference"].split("//") if p.strip("/")]
+                        _ref_val = (_ref_parts[0] if _ref_parts else parsed_61["reference"]).strip("/")
+                        if _ref_val:
+                            self.set_element_text(ntry_node, ref_path, _ref_val, namespaces)
                     # Basic fallback for failed parse
                     path = rule.get("mx_path")
                     if path:
@@ -1254,9 +1260,17 @@ class MT2MXConverter:
                     biz_svc_val = "swift.cbprplus.adv.04"
                 else:
                     biz_svc_val = "swift.cbprplus.04"
-            elif _target == "pacs.003.001.08":
-                biz_svc_val = "swift.cbprplus.03"   # pacs.003 SR2026 stays .03
+            elif _target == "pacs.003.001.08" or _target == "pain.008.001.08":
+                biz_svc_val = "swift.cbprplus.03"   # pacs.003 and pain.008 SR2026 stay .03
             elif _target in ("pacs.002.001.10", "pacs.004.001.09", "pacs.010.001.03"):
+                biz_svc_val = "swift.cbprplus.04"
+            # SR2026 CAMT BizSvc fixed values (per CAMT diff docs): camt.055 -> .03,
+            # camt.052/053/054/056/057 -> .04. (Does not affect PACS targets above.)
+            elif _target == "camt.055.001.08":
+                biz_svc_val = "swift.cbprplus.03"
+            elif _target.startswith("camt.052") or _target.startswith("camt.053") \
+                    or _target.startswith("camt.054") or _target.startswith("camt.056") \
+                    or _target.startswith("camt.057"):
                 biz_svc_val = "swift.cbprplus.04"
         head_sub(app_hdr, "BizSvc", biz_svc_val)
         head_sub(app_hdr, "CreDt", self._cbpr_datetime())
@@ -1962,7 +1976,7 @@ class MT2MXConverter:
             "Domn": ["Cd", "Fmly"],
             "Fmly": ["Cd", "SubFmlyCd"],
             "NtryDtls": ["Btch", "TxDtls"],
-            "TxDtls": ["Refs", "Amt", "AmtDtls", "Avlbty", "BkTxCd", "Chrgs", "RltdPties", "RltdAgts", "LclInstrm", "Purp", "RltdRmtInf", "RmtInf", "RltdDates", "SplmtryData", "CdtDbtInd"],
+            "TxDtls": ["Refs", "Amt", "CdtDbtInd", "AmtDtls", "Avlbty", "BkTxCd", "Chrgs", "Intrst", "RltdPties", "RltdAgts", "LclInstrm", "Purp", "RltdRmtInf", "RmtInf", "RltdDts", "RltdDates", "AddtlTxInf", "SplmtryData"],
             "Refs": ["MsgId", "AcctSvcrRef", "PmtInfId", "InstrId", "EndToEndId", "UETR", "TxId", "MndtId", "ChqNb", "ClrSysRef", "AcctOwnrTxId", "AcctSvcrTxId", "MktInfrstrctrTxId", "PrcgId", "Prtry"],
             "Sts": ["Conf", "RjctdMod", "DplctOf", "AssgnmtCxlConf", "Cd", "Prtry", "Rsn"],
             "Amt": ["InstdAmt", "EqvtAmt"],
@@ -2159,6 +2173,41 @@ class MT2MXConverter:
                     break
             if not found_ind:
                 self.set_element_text(ntry, "CdtDbtInd", "CRDT", namespaces)
+
+            # 5. camt.054: if a TxDtls exists (e.g. built from :21:/:52A:), it requires a
+            # mandatory Amt + CdtDbtInd (EntryTransaction). Inject from the parent Ntry.
+            ntry_amt = None; ntry_ccy = None
+            for child in list(ntry):
+                if child.tag.split("}")[-1] == "Amt":
+                    ntry_amt = (child.text or "").strip(); ntry_ccy = child.get("Ccy", "")
+                    break
+            ntry_ind = "CRDT"
+            for child in list(ntry):
+                if child.tag.split("}")[-1] == "CdtDbtInd":
+                    ntry_ind = (child.text or "CRDT").strip(); break
+            for txd in ntry.iter():
+                if txd.tag.split("}")[-1] != "TxDtls":
+                    continue
+                # EntryTransaction10__1 mandatory children (SR2026): Refs (with InstrId),
+                # Amt, CdtDbtInd, RltdDts.
+                refs = self._find_child(txd, "Refs")
+                if refs is not None and not any(c.tag.split("}")[-1] == "InstrId" for c in refs):
+                    self.set_element_text(refs, "InstrId",
+                                          f"REF-{str(uuid.uuid4())[:12].upper()}", namespaces)
+                has_amt = any(c.tag.split("}")[-1] == "Amt" for c in txd)
+                if not has_amt and ntry_amt:
+                    amt_tag = f"{{{xmlns}}}Amt" if xmlns else "Amt"
+                    amt_el = ET.SubElement(txd, amt_tag)
+                    amt_el.text = ntry_amt
+                    if ntry_ccy:
+                        amt_el.set("Ccy", ntry_ccy)
+                if not any(c.tag.split("}")[-1] == "CdtDbtInd" for c in txd):
+                    self.set_element_text(txd, "CdtDbtInd", ntry_ind, namespaces)
+                # RltdDts is mandatory [1..1] in SR2026 camt.054 TxDtls. Add an empty
+                # container (all its children are optional) if absent.
+                if not any(c.tag.split("}")[-1] == "RltdDts" for c in txd):
+                    rd_tag = f"{{{xmlns}}}RltdDts" if xmlns else "RltdDts"
+                    ET.SubElement(txd, rd_tag)
 
         # camt.057 specific healing for 'Itm' nodes
         all_itms = []

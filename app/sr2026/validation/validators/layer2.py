@@ -102,9 +102,9 @@ class Layer2Validator:
                 layer=2,
                 code="APPHDR_SCHEMA_ERROR",
                 path="/AppHdr",
-                message="AppHdr XSD Validation Error: Element 'AppHdr': This element is missing. Expected is ( AppHdr ).",
+                message="The standard header block (<AppHdr>) is missing from the file.",
                 line=1,
-                fix="Ensure the <AppHdr> block is present in the XML envelope."
+                fix="Please ensure the <AppHdr> block is present in the XML envelope before the main document."
             ))
             return False
 
@@ -133,7 +133,7 @@ class Layer2Validator:
                     layer=2,
                     code="APPHDR_SCHEMA_ERROR",
                     path=f"//AppHdr/{name}",
-                    message=f"AppHdr XSD Validation Error: Element '{name}' is missing from AppHdr.",
+                    message=f"The mandatory field '{name}' is missing from the header block.",
                     line=apphdr_node.sourceline or 1,
                     fix=f"Add the mandatory <{name}> element to AppHdr."
                 ))
@@ -201,7 +201,7 @@ class Layer2Validator:
                     layer=2,
                     code="APPHDR_SCHEMA_ERROR",
                     path=path_str,
-                    message=f"AppHdr XSD Validation Error: {clean_msg}",
+                    message=f"Header error: {clean_msg}",
                     line=error.line,
                     fix=fix_str
                 ))
@@ -221,9 +221,9 @@ class Layer2Validator:
                 severity="ERROR",
                 code="SCHEMA_NOT_FOUND",
                 path="/",
-                message=f"SR2026 schema validation template not found for message type '{message_type}'.",
+                message=f"The message type '{message_type}' is not supported or recognized.",
                 line=1,
-                fix="Verify the messageType and try again."
+                fix="Please verify the messageType matches a supported ISO 20022 schema (e.g., pacs.008)."
             ))
             return None  # catastrophic - no schema to validate against
 
@@ -238,9 +238,9 @@ class Layer2Validator:
                     layer=2,
                     code="DOCUMENT_NODE_MISSING",
                     path="/",
-                    message="Payload validation failed: No <Document> or <BusMsg> element found.",
+                    message="The file is missing the required main wrapper (<Document> or <BusMsg>).",
                     line=1,
-                    fix="Ensure the payload is wrapped in <Document>."
+                    fix="Make sure the entire payload is wrapped inside a <Document> block."
                 ))
                 return False
 
