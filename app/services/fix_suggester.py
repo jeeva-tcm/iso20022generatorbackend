@@ -4125,6 +4125,58 @@ class FixSuggester:
             "following element",
             "missing before",
         )):
+            # ── Wrong ISO 20022 document root element ────────────────────────
+            # Each message type has a unique Document child element name.
+            # When the wrong one appears (e.g. BkToCstmrStmt inside a camt.052
+            # or NtfctnToRcvStsRpt inside a camt.053), rename it to the element
+            # the declared namespace actually requires.
+            _ISO20022_DOC_ROOTS = {
+                # camt — cash management
+                "camt.029": "RsltnOfInvstgtn",
+                "camt.052": "BkToCstmrAcctRpt",
+                "camt.053": "BkToCstmrStmt",
+                "camt.054": "BkToCstmrDbtCdtNtfctn",
+                "camt.055": "CstmrPmtCxlReq",
+                "camt.056": "FIToFIPmtCxlReq",
+                "camt.057": "NtfctnToRcv",
+                "camt.058": "NtfctnToRcvCxlAdvc",
+                "camt.059": "NtfctnToRcvStsRpt",
+                # pacs — payments clearing and settlement
+                "pacs.002": "FIToFIPmtStsRpt",
+                "pacs.004": "PmtRtr",
+                "pacs.008": "FIToFICstmrCdtTrf",
+                "pacs.009": "FICdtTrf",
+                # pain — payment initiation
+                "pain.001": "CstmrCdtTrfInitn",
+                "pain.002": "CstmrPmtStsRpt",
+                "pain.008": "CstmrDrctDbtInitn",
+            }
+            _all_known_roots = "|".join(re.escape(v) for v in _ISO20022_DOC_ROOTS.values())
+            _m_wrong_root = re.search(
+                rf"element '({_all_known_roots})' is not expected",
+                msg, re.I
+            )
+            if _m_wrong_root:
+                _wrong_name = _m_wrong_root.group(1)
+                _mt_now = _detect_msg_type(xml)
+                _correct_root = next(
+                    (v for k, v in _ISO20022_DOC_ROOTS.items() if k in _mt_now), None
+                )
+                if _correct_root and _correct_root != _wrong_name:
+                    for _bad_el in root.iter():
+                        if (isinstance(_bad_el.tag, str)
+                                and etree.QName(_bad_el.tag).localname == _wrong_name):
+                            _root_copy = self._copy(root)
+                            for _bad_copy in _root_copy.iter():
+                                if (isinstance(_bad_copy.tag, str)
+                                        and etree.QName(_bad_copy.tag).localname == _wrong_name):
+                                    _ns = etree.QName(_bad_copy.tag).namespace
+                                    _bad_copy.tag = (f"{{{_ns}}}{_correct_root}"
+                                                     if _ns else _correct_root)
+                            return FixSuggestion(
+                                "/", self._serialize(root),
+                                self._serialize(_root_copy), code, msg, "high"
+                            )
             # ── Missing closing tag check ─────────────────────────────────────
             # When lxml recover=True auto-closes a removed closing tag at the
             # wrong nesting level, the document looks well-formed but has wrong
@@ -5130,41 +5182,82 @@ class FixSuggester:
                 _ln = etree.QName(_dp_el.tag).localname
                 if _ln.endswith("Amt") or _ln == "Amt":
                     _raw_amt = (_dp_el.text or "").strip()
-                    if re.match(r"^\d+\.\d{3,}$", _raw_amt):
-                        _ccy = _dp_el.get("Ccy", "USD")
-                        _prec = _ccy_precision(_ccy)
+                    _ccy = _dp_el.get("Ccy", "USD")
+                    _prec = _ccy_precision(_ccy)
+                    # Match too many decimal places OR multiple decimal points
+                    if re.match(r"^\d+\.\d{3,}$", _raw_amt) or _raw_amt.count(".") > 1:
                         try:
                             _fixed_amt = f"{float(_raw_amt):.{_prec}f}"
-                            if _fixed_amt != _raw_amt:
-                                _dp_copy = self._copy(_dp_el)
-                                _dp_copy.text = _fixed_amt
-                                return FixSuggestion(self._xpath_of(_dp_el), self._serialize(_dp_el),
-                                                      self._serialize(_dp_copy), code, msg, "high")
                         except ValueError:
-                            pass
+                            # Multiple decimal points (e.g. "4000.098.09872635") —
+                            # recover the leading integer: 4000 → "4000.00"
+                            _int_m = re.match(r'^(\d+)', _raw_amt)
+                            _fixed_amt = (f"{int(_int_m.group(1)):.{_prec}f}"
+                                          if _int_m else None)
+                        if _fixed_amt and _fixed_amt != _raw_amt:
+                            _dp_copy = self._copy(_dp_el)
+                            _dp_copy.text = _fixed_amt
+                            return FixSuggestion(self._xpath_of(_dp_el), self._serialize(_dp_el),
+                                                  self._serialize(_dp_copy), code, msg, "high")
 
-        # ── NON_POSITIVE_AMOUNT / INVALID_AMOUNT ——————————————————————────────
+        # ── NON_POSITIVE_AMOUNT / INVALID_AMOUNT —————————————————————————————————
+        # IMPORTANT: NEVER replace an existing amount with 0.01 or any other dummy.
+        # For value errors (non-positive): preserve absolute value or fall back to
+        # the KB default (1000.00).  For format errors (bad decimals, comma
+        # separator): fix the format while keeping the numeric value.
         if code in ("NON_POSITIVE_AMOUNT", "INVALID_AMOUNT", "PACS004_AMT_NEGATIVE",
                     "PACS004_AMT_NOT_NUMERIC", "PACS004_AMT_LEN"):
+            _amt_default = _kb_get("dummy_data.amounts.default") or "1000.00"
             for _ael in root.iter():
                 if not isinstance(_ael.tag, str): continue
                 _ln = etree.QName(_ael.tag).localname
                 if (_ln.endswith("Amt") or _ln == "Amt") and not list(_ael):
                     _raw = (_ael.text or "").strip()
+                    _ccy = _ael.get("Ccy", "USD")
+                    _prec = _ccy_precision(_ccy)
                     _is_bad = False
+                    _new_val = None
                     try:
-                        _v = float(_raw)
-                        if _v <= 0 and code == "NON_POSITIVE_AMOUNT":
-                            _is_bad = True
-                        if not _raw or not re.match(r"^\d+(\.\d{1,2})?$", _raw):
-                            _is_bad = True
+                        # Normalize: European comma decimal separator → period
+                        _norm = _raw.replace(",", ".")
+                        _v = float(_norm)
+                        if code in ("NON_POSITIVE_AMOUNT", "PACS004_AMT_NEGATIVE"):
+                            # Value-only check — format may be perfectly valid
+                            if _v <= 0:
+                                _is_bad = True
+                                _new_val = (f"{abs(_v):.{_prec}f}"
+                                            if abs(_v) > 0 else _amt_default)
+                        else:
+                            # Format check only for format-related error codes
+                            _valid_patt = rf"^\d+(\.(\d{{1,{max(_prec, 5)}}}))?$"
+                            if not re.match(_valid_patt, _norm):
+                                _is_bad = True
+                                _new_val = (f"{abs(_v):.{_prec}f}"
+                                            if _v != 0 else _amt_default)
+                            elif _prec >= 0 and re.match(
+                                    rf"^\d+\.\d{{{_prec + 1},}}$", _norm):
+                                # Too many decimal places — round to currency precision
+                                _is_bad = True
+                                _new_val = f"{_v:.{_prec}f}"
                     except (ValueError, TypeError):
                         _is_bad = True
+                        # float() failed — value has multiple decimal points or other
+                        # garbage (e.g. "4000.098.09872635").  Recover the leading
+                        # integer so we return "4000.00" not the unrelated "1000.00".
+                        _int_m = re.match(r'^(\d+)', _raw.replace(",", "."))
+                        if _int_m:
+                            _leading = int(_int_m.group(1))
+                            _new_val = f"{_leading:.{_prec}f}"
+                        else:
+                            _new_val = None  # no digits at all — truly unparseable
                     if _is_bad:
                         _ae_copy = self._copy(_ael)
-                        _ae_copy.text = "0.01"
+                        # Never replace with 1000.00/0.01 when the original value
+                        # contains a recoverable number — preserve it.
+                        _ae_copy.text = _new_val or _amt_default
+                        _conf = "high" if _new_val else "medium"
                         return FixSuggestion(self._xpath_of(_ael), self._serialize(_ael),
-                                              self._serialize(_ae_copy), code, msg, "low")
+                                              self._serialize(_ae_copy), code, msg, _conf)
 
         # ── FUTURE_DATE_BIRTH_ERROR — birth date in future → past date ────────
         if code == "FUTURE_DATE_BIRTH_ERROR":
@@ -5637,14 +5730,22 @@ class FixSuggester:
                 if not isinstance(_af_el.tag, str): continue
                 if etree.QName(_af_el.tag).localname in ("Amt", "IntrBkSttlmAmt", "InstdAmt"):
                     _raw = (_af_el.text or "").strip()
-                    if re.search(r"\.\d{3,}", _raw):
+                    if re.search(r"\.\d{3,}", _raw) or _raw.count(".") > 1:
+                        _af_ccy = _af_el.get("Ccy", "USD")
+                        _af_prec = _ccy_precision(_af_ccy)
                         try:
+                            _af_fixed = f"{float(_raw):.{_af_prec}f}"
+                        except (ValueError, TypeError):
+                            # Multiple decimal points (e.g. "4000.098.09872635") —
+                            # recover the leading integer: 4000 → "4000.00"
+                            _af_int_m = re.match(r'^(\d+)', _raw)
+                            _af_fixed = (f"{int(_af_int_m.group(1)):.{_af_prec}f}"
+                                         if _af_int_m else None)
+                        if _af_fixed:
                             _af_copy = self._copy(_af_el)
-                            _af_copy.text = f"{float(_raw):.2f}"
+                            _af_copy.text = _af_fixed
                             return FixSuggestion(self._xpath_of(_af_el), self._serialize(_af_el),
                                                   self._serialize(_af_copy), code, msg, "high")
-                        except (ValueError, TypeError):
-                            pass
 
         # ── PACS004_ADDINF_LEN — AddtlInf too long → truncate to 140 ─────────
         if code == "PACS004_ADDINF_LEN":
@@ -7097,6 +7198,18 @@ class FixSuggester:
                         return txt
         return None
 
+    @staticmethod
+    def _is_valid_calendar_date(value: str) -> bool:
+        """Return True only if value represents a real calendar date/datetime (not just format-valid).
+        Catches cases like 2026-06-00 (day=00) that pass \d{2} regex but are not valid dates."""
+        import datetime as _dt
+        date_part = value[:10]
+        try:
+            _dt.datetime.strptime(date_part, "%Y-%m-%d")
+            return True
+        except ValueError:
+            return False
+
     def _violates_constraint(self, value: str, constraint: dict) -> bool:
         """Return True if `value` violates the KB field constraint."""
         if not isinstance(constraint, dict) or not value:
@@ -7117,6 +7230,9 @@ class FixSuggester:
         # Regex constraint
         pattern = self._CONSTRAINT_REGEX.get(ctype)
         if pattern and not re.match(pattern, value):
+            return True
+        # Calendar validation for date/datetime types: regex allows day=00, strptime does not
+        if ctype in ("Date", "DateTime") and not self._is_valid_calendar_date(value):
             return True
         # Length constraints
         max_len = constraint.get("max_length")
@@ -9422,7 +9538,8 @@ class FixSuggester:
         if _is_apphdr_dt_field and _is_hdr_val:
             import datetime as _dt_mod
             _cur = (el.text or "").strip()
-            _valid_dt = re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+\-]\d{2}:\d{2}$", _cur)
+            _valid_dt = (re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+\-]\d{2}:\d{2}$", _cur)
+                         and self._is_valid_calendar_date(_cur))
             if not _valid_dt:
                 _now = _dt_mod.datetime.now(_dt_mod.timezone.utc)
                 el_copy = self._copy(el)
@@ -9782,13 +9899,21 @@ class FixSuggester:
                     return FixSuggestion(xpath, original_fragment,
                                          self._serialize(_el_copy), code, msg, "high")
             except (ValueError, TypeError):
-                pass
+                # float() failed — value likely has multiple decimal points
+                # (e.g. "4000.098.09872635"). Recover the leading integer before
+                # falling back to a placeholder so we return "4000.00" not "1000.00".
+                if _is_amt_el:
+                    _ccy_exc2 = (el.get("Ccy") or "").upper()
+                    _prec_exc2 = _ccy_precision(_ccy_exc2) if _ccy_exc2 else 2
+                    _int_m2 = re.match(r'^(\d+)', _amt_cur.replace(",", "."))
+                    if _int_m2:
+                        _repaired_exc2 = f"{int(_int_m2.group(1)):.{_prec_exc2}f}"
+                        _el_copy_exc2 = self._copy(el)
+                        _el_copy_exc2.text = _repaired_exc2
+                        return FixSuggestion(xpath, original_fragment,
+                                             self._serialize(_el_copy_exc2), code, msg, "high")
             # ── Non-numeric amount text (e.g. 'GB', 'abc') ───────────────────
-            # float() above threw — the text is not a number at all. Replace
-            # with a valid placeholder that keeps the Ccy attribute intact.
-            # Only fires when the element IS an amount element (ends with Amt
-            # or carries a Ccy attribute) to avoid touching non-amount fields
-            # whose text happens to be non-numeric for a different reason.
+            # Reached only when there are no leading digits at all.
             if _is_amt_el and _amt_cur and not re.match(r"^-?\d+(\.\d{0,5})?$", _amt_cur):
                 _ccy_n = (el.get("Ccy") or "").upper()
                 _prec_n = _ccy_precision(_ccy_n) if _ccy_n else 2
@@ -10044,23 +10169,15 @@ class FixSuggester:
                     txt = (el.text or "").strip()
                     # ISO datetime WITHOUT timezone — append +00:00
                     _iso_dt_no_tz  = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$"
-                    # ISO datetime WITH a valid explicit offset — leave unchanged
+                    # ISO datetime WITH a valid explicit offset — leave unchanged only if calendar date is valid
                     _iso_dt_with_tz = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?[+\-]\d{2}:\d{2}$"
-                    if re.match(_iso_dt_no_tz, txt):
+                    if re.match(_iso_dt_no_tz, txt) and self._is_valid_calendar_date(txt):
                         new_val = re.sub(r"\.\d+", "", txt) + "+00:00"
-                    elif re.match(_iso_dt_with_tz, txt):
-                        new_val = txt  # already has a valid explicit offset
+                    elif re.match(_iso_dt_with_tz, txt) and self._is_valid_calendar_date(txt):
+                        new_val = txt  # already has a valid explicit offset and a valid calendar date
                     else:
-                        # Value is not a valid ISO datetime at all — generate a fresh one
+                        # Value is not a valid ISO datetime or has an invalid calendar date (e.g. day=00) — generate a fresh one
                         new_val = now.strftime("%Y-%m-%dT%H:%M:%S+00:00")
-                    txt = (el.text or "").strip()
-                    if "+" in txt or (len(txt) > 6 and "-" in txt[-6:]):
-                        new_val = txt  # already has offset
-                    elif re.match(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}', txt):
-                        new_val = re.sub(r'Z$', '', txt) + "+00:00"
-                    else:
-                        # Garbage value — generate a fresh valid datetime
-                        new_val = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
                 else:
                     new_val = el.text
 

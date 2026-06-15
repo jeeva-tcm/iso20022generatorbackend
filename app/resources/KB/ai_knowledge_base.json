@@ -439,6 +439,56 @@
             "notes": "Assignment identifier in camt.055/056. Must be unique. AI can generate a dated reference."
         }
     },
+    "amount_fix_rules": {
+        "_doc": "Global rules for fixing amount errors across ALL ISO 20022 message types. The fix engine MUST follow these rules whenever an amount-related error code is encountered.",
+        "_last_updated": "2026-06-15",
+        "PRESERVE_AMOUNT_VALUE": {
+            "rule_id": "AMT_FIX_001",
+            "description": "When fixing any amount error, ALWAYS preserve the user's intended numeric value. Never replace an existing non-zero amount with a dummy value (0.01, 1000.00, etc.).",
+            "affects_tags": ["Amt", "IntrBkSttlmAmt", "InstdAmt", "TtlIntrBkSttlmAmt", "TtlRtrdIntrBkSttlmAmt", "EqvtAmt", "ChrgsAmt"],
+            "critical_notes": [
+                "NEVER replace a valid or repairable amount with 0.01 — this destroys the user's payment data",
+                "For NON_POSITIVE_AMOUNT: use the absolute value of the existing number; if zero, use KB dummy_data.amounts.default (1000.00)",
+                "For format errors (wrong decimal places, comma separator): fix the FORMAT while keeping the numeric value",
+                "Comma decimal separator (e.g. 1000,00) → normalize to period (1000.00) before processing",
+                "Too many decimal places: round to the ISO 4217 precision for the currency (e.g. NOK=2, JPY=0, KWD=3)",
+                "Only use dummy_data.amounts.default when the value is completely unparseable (e.g. contains letters)"
+            ],
+            "fix_strategy": {
+                "NON_POSITIVE_AMOUNT": "abs(value) if value != 0 else dummy_data.amounts.default",
+                "PACS004_AMT_NEGATIVE": "abs(value) if value != 0 else dummy_data.amounts.default",
+                "INVALID_AMOUNT": "normalize_format(value) — fix separator/precision, keep numeric value",
+                "PACS004_AMT_NOT_NUMERIC": "normalize_format(value) — if truly non-numeric, use dummy_data.amounts.default",
+                "PACS004_AMT_LEN": "round to currency precision, preserve numeric value",
+                "INVALID_DECIMAL_PRECISION": "round to currency precision, preserve numeric value"
+            },
+            "fallback_only_when": "value is completely unparseable (contains letters, symbols, or is empty)",
+            "fallback_value": "dummy_data.amounts.default (currently 1000.00)",
+            "anti_patterns": [
+                "DO NOT set Amt to 0.01 — this is a near-zero dummy that makes no business sense for a payment",
+                "DO NOT borrow the amount from another transaction element to fix an unrelated amount",
+                "DO NOT change the Ccy attribute when fixing the amount value"
+            ]
+        },
+        "RECOVER_LEADING_INTEGER": {
+            "rule_id": "AMT_FIX_002",
+            "description": "When an amount value is malformed with multiple decimal points (e.g. '4000.098.09872635'), extract the leading integer and format it to the currency's ISO 4217 precision. Never fall back to the KB default (1000.00) when a leading integer is recoverable.",
+            "example": {
+                "input": "4000.098.09872635",
+                "currency": "GBP",
+                "expected_output": "4000.00",
+                "wrong_output": "1000.00"
+            },
+            "trigger": "float() raises ValueError because the value contains more than one decimal point",
+            "algorithm": "1. Replace commas with periods. 2. Use regex '^(\\d+)' to extract the leading integer. 3. Format to currency precision: f'{leading_int:.{prec}f}'. 4. Only use dummy_data.amounts.default if there are NO leading digits at all.",
+            "applies_to_codes": ["INVALID_AMOUNT", "PACS004_AMT_NOT_NUMERIC", "PACS004_AMT_LEN"],
+            "critical_notes": [
+                "A value like '4000.098.09872635' clearly originated from '4000.00' — the user intended 4000, not 1000",
+                "The leading integer before the first decimal point is the most reliable recovery of the user's intent",
+                "Fallback to dummy_data.amounts.default only when re.match(r'^(\\d+)', raw) returns None (e.g. '.abc', '', 'N/A')"
+            ]
+        }
+    },
     "date_fix_rules": {
         "_doc": "Rules specifically for fixing date and datetime errors. The AI MUST follow these when encountering any date-related error code.",
         "PAST_DATE_ERROR": {
