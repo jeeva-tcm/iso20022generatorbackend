@@ -1,0 +1,11 @@
+{
+  "_README": "SR2026 DELTA for ai_knowledge_base.json. Add ONLY entries that are NEW or CHANGED vs the SR2025 base. This file overlays the base (app/resources/KB/ai_knowledge_base.json) ONLY when the fix request carries x-sr-version: SR2026. Merge rules: nested dicts merge key-by-key (so you can override a single field); scalars and LISTS replace. Top-level keys are either error codes (with root_cause / fix / affected_tags), or KB sections like field_constraints / tag_templates / dummy_data. Anything not present here is inherited from SR2025. Keys starting with '_' (like this one) are ignored by lookups. Example of a NEW SR2026-only error code is shown below under _EXAMPLE — copy it up to the top level (without the _EXAMPLE wrapper) and rename to the real code to activate.",
+  "_EXAMPLE": {
+    "SR2026_NEW_RULE_CODE": {
+      "aliases": ["SR2026-NEW-RULE-CODE"],
+      "root_cause": "Describe what triggers this SR2026 delta-rule error.",
+      "fix": "Describe the deterministic fix the suggester should apply.",
+      "affected_tags": ["Parent/Child"]
+    }
+  }
+}

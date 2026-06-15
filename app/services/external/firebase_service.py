@@ -89,8 +89,11 @@ class FirebaseHistoryService:
                 # signature is only verified when we make a real RPC. Do a
                 # tiny throwaway read to surface "invalid_grant" / "Invalid
                 # JWT Signature" at boot, BEFORE the first user request
-                # hangs for 5 minutes.
-                self._run_boot_health_check()
+                # hangs for 5 minutes. Bounded by a hard wall-clock timeout —
+                # the gRPC per-RPC timeout does NOT cover channel/connection
+                # establishment, so an unreachable Firestore (offline / VPN /
+                # blocked egress) would otherwise freeze server boot here.
+                self._run_boot_health_check_bounded()
             else:
                 print("ALERT: No Firebase credentials found. Falling back to local JSON database.")
                 self._circuit_broken_reason = "_build_credentials returned None — see build logs for the underlying decode/cert error"
@@ -100,6 +103,35 @@ class FirebaseHistoryService:
                 self._circuit_broken_reason = f"init exception: {type(e).__name__}: {e}"
             print(f"CRITICAL: Error initializing Firebase: {str(e)}. Falling back to local JSON database.")
             self.enabled = False
+
+    def _run_boot_health_check_bounded(self) -> None:
+        """Run the boot health check under a hard wall-clock ceiling.
+
+        The gRPC ``timeout=`` on the Firestore RPC only bounds the call once a
+        channel exists; it does NOT bound DNS/TCP/TLS connection establishment.
+        When Firestore is unreachable (offline, VPN, blocked egress) the connect
+        blocks indefinitely and freezes server boot. Run the check in a daemon
+        thread and abandon it if it overruns, falling back to local JSON so the
+        server always starts."""
+        import threading
+        done = threading.Event()
+
+        def _run():
+            try:
+                self._run_boot_health_check()
+            finally:
+                done.set()
+
+        threading.Thread(target=_run, name="firebase-boot-healthcheck",
+                         daemon=True).start()
+        ceiling = self.FIRESTORE_CALL_TIMEOUT_S + 5.0
+        if not done.wait(ceiling):
+            self.enabled = False
+            self._circuit_broken_reason = (
+                f"boot health check did not complete within {ceiling:.0f}s — "
+                "Firestore unreachable; using local JSON")
+            print(f"[Firebase] Boot health check exceeded {ceiling:.0f}s — "
+                  "Firestore unreachable. Falling back to local JSON database.")
 
     def _run_boot_health_check(self) -> None:
         """Issue a single tiny Firestore read to verify the credentials actually

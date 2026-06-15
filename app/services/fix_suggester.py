@@ -154,36 +154,100 @@ def _parse_allowed_values(text: str) -> list:
 #   - dummy_data         : harvest-fallback values
 #   - placeholder_resolution : how to resolve $VAR placeholders in templates
 
-_KB_CACHE: Optional[Dict[str, Any]] = None
+# Active SWIFT release for KB resolution. FixSuggester.suggest() sets this (from
+# self._sr_version) before any KB access, so the module-level loaders below can
+# overlay the SR2026 delta. Defaults to SR2025 (unchanged existing behaviour).
+_ACTIVE_SR_VERSION: str = "SR2025"
 
 
-def _load_knowledge_base() -> Dict[str, Any]:
-    global _KB_CACHE
-    if _KB_CACHE is not None:
-        return _KB_CACHE
-    base = os.path.join(os.path.dirname(__file__), "..", "resources")
-    # Resources were reorganised into a `KB/` subfolder; keep both paths so
-    # the loader works regardless of layout.
-    candidates = [
-        os.path.normpath(os.path.join(base, "KB", "ai_knowledge_base.json")),
-        os.path.normpath(os.path.join(base, "ai_knowledge_base.json")),
-    ]
+def _set_active_sr_version(version: Optional[str]) -> None:
+    global _ACTIVE_SR_VERSION
+    _ACTIVE_SR_VERSION = version if version in ("SR2025", "SR2026") else "SR2025"
+
+
+def _deep_merge(base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any]:
+    """Merge overlay onto a copy of base. Dicts merge key-by-key; any non-dict
+    value (scalars AND lists) in overlay replaces the base value. Lets an SR2026
+    delta override a single error code / field without restating the whole KB."""
+    out = dict(base)
+    for k, v in overlay.items():
+        if isinstance(v, dict) and isinstance(out.get(k), dict):
+            out[k] = _deep_merge(out[k], v)
+        else:
+            out[k] = v
+    return out
+
+
+def _read_json_first(paths: list) -> Dict[str, Any]:
+    """Return the first JSON file that loads from `paths`, else {}."""
     last_err: Optional[Exception] = None
-    for kb_path in candidates:
+    for p in paths:
         try:
-            with open(kb_path, "r", encoding="utf-8-sig") as f:
-                _KB_CACHE = json.load(f)
-            break
+            with open(p, "r", encoding="utf-8-sig") as f:
+                return json.load(f)
         except FileNotFoundError as e:
             last_err = e
             continue
         except Exception as e:
             last_err = e
             break
-    if _KB_CACHE is None:
-        logger.warning(f"[FixSuggester] ai_knowledge_base.json load failed: {last_err}")
-        _KB_CACHE = {}
-    return _KB_CACHE
+    if last_err is not None and not isinstance(last_err, FileNotFoundError):
+        logger.warning(f"[FixSuggester] KB JSON load error for {paths}: {last_err}")
+    return {}
+
+
+# ── KB directory layout ───────────────────────────────────────────────────────
+# All KB files live under one of two release folders: KB/sr2025/ (the base /
+# foundation — every SR2025 file) and KB/sr2026/ (overrides + new SR2026 files).
+# There are no loose files at the KB root.
+_KB_ROOT = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), "..", "resources", "KB"))
+
+
+def _kb_dirs(version: str = None) -> list:
+    """KB directories to consult, most-specific first. sr2025/ is the base; the
+    active release's folder is checked first so it can override a file."""
+    v = (version or _ACTIVE_SR_VERSION or "SR2025").lower()
+    dirs = [os.path.join(_KB_ROOT, v)]
+    if v != "sr2025":
+        dirs.append(os.path.join(_KB_ROOT, "sr2025"))
+    return dirs
+
+
+def _kb_path(name: str, version: str = None) -> Optional[str]:
+    """First existing path for KB file `name` across _kb_dirs(), else None.
+    Resolves the active release's override, falling back to the sr2025 base."""
+    for d in _kb_dirs(version):
+        p = os.path.join(d, name)
+        if os.path.exists(p):
+            return p
+    return None
+
+
+# Per-version cache: SR2025 = base KB; SR2026 = base KB + sr2026 delta overlay.
+_KB_CACHE: Dict[str, Dict[str, Any]] = {}
+
+
+def _load_knowledge_base() -> Dict[str, Any]:
+    """ai_knowledge_base.json for the active SR version. The shared base
+    (KB/ai_knowledge_base.json) carries the bulk of the rules; the active
+    release's folder — KB/sr2025/ or KB/sr2026/ — overlays ONLY the entries that
+    release adds or changes. An entry placed in a release folder is scoped to
+    that release (it does NOT leak to the other); entries in the base apply to
+    both."""
+    version = _ACTIVE_SR_VERSION
+    cached = _KB_CACHE.get(version)
+    if cached is not None:
+        return cached
+    kb = _read_json_first([os.path.join(_KB_ROOT, "sr2025", "ai_knowledge_base.json")])
+    if version == "SR2026":
+        delta = _read_json_first([os.path.join(_KB_ROOT, "sr2026", "ai_knowledge_base.json")])
+        if delta:
+            kb = _deep_merge(kb, delta)
+    if not kb:
+        logger.warning("[FixSuggester] ai_knowledge_base.json load failed (empty).")
+    _KB_CACHE[version] = kb
+    return kb
 
 
 def _kb_get(path: str, default: Any = None) -> Any:
@@ -254,18 +318,19 @@ def _load_kb_folder(msg_type: str, xml: str = "") -> Dict[str, Any]:
     name = _kb_folder_name(msg_type, xml)
     if not name:
         return {}
-    if name in _KB_FOLDER_CACHE:
-        return _KB_FOLDER_CACHE[name]
-    path = os.path.normpath(
-        os.path.join(os.path.dirname(__file__), "..", "resources", "KB", name)
-    )
-    try:
-        with open(path, "r", encoding="utf-8-sig") as f:
-            _KB_FOLDER_CACHE[name] = json.load(f)
-    except Exception as e:
-        logger.warning(f"[FixSuggester] KB folder load failed for {name}: {e}")
-        _KB_FOLDER_CACHE[name] = {}
-    return _KB_FOLDER_CACHE[name]
+    version = _ACTIVE_SR_VERSION
+    cache_key = f"{version}:{name}"
+    if cache_key in _KB_FOLDER_CACHE:
+        return _KB_FOLDER_CACHE[cache_key]
+    # These per-message KBs are list-based ("tags" arrays), so the active
+    # release's file REPLACES the base wholesale rather than merging. _kb_path
+    # checks KB/<active>/ first (SR2026 override, named either <name> or with
+    # sr2025→sr2026), then falls back to the KB/sr2025/ base.
+    path = (_kb_path(name)
+            or (_kb_path(name.replace("sr2025", "sr2026")) if version == "SR2026" else None))
+    kb = _read_json_first([path]) if path else {}
+    _KB_FOLDER_CACHE[cache_key] = kb
+    return kb
 
 
 def _value_for_datatype(dt: str) -> Optional[str]:
@@ -396,32 +461,16 @@ def _load_enterprise_kb() -> Dict[str, Any]:
     global _ENTERPRISE_KB_CACHE, _ENTERPRISE_MODULE_INDEX
     if _ENTERPRISE_KB_CACHE is not None:
         return _ENTERPRISE_KB_CACHE
-    base = os.path.join(os.path.dirname(__file__), "..", "resources")
-    # Resources may live under `KB/` or directly under `resources/` depending
-    # on layout; check both.
-    candidates = [
-        os.path.normpath(os.path.join(base, "KB", "swift_mx_enterprise_llm_kb.json")),
-        os.path.normpath(os.path.join(base, "swift_mx_enterprise_llm_kb.json")),
-    ]
-    last_err: Optional[Exception] = None
-    for kb_path in candidates:
-        try:
-            with open(kb_path, "r", encoding="utf-8-sig") as f:
-                _ENTERPRISE_KB_CACHE = json.load(f)
-            for mod in _ENTERPRISE_KB_CACHE.get("modules", []):
-                name = mod.get("module_name")
-                if name:
-                    _ENTERPRISE_MODULE_INDEX[name] = mod
-            break
-        except FileNotFoundError as e:
-            last_err = e
-            continue
-        except Exception as e:
-            last_err = e
-            break
-    if _ENTERPRISE_KB_CACHE is None:
-        logger.warning(f"[FixSuggester] swift_mx_enterprise_llm_kb.json load failed: {last_err}")
-        _ENTERPRISE_KB_CACHE = {}
+    # Resolve the active release's enterprise KB (sr2026 override if present,
+    # else the sr2025 base).
+    path = _kb_path("swift_mx_enterprise_llm_kb.json")
+    _ENTERPRISE_KB_CACHE = _read_json_first([path]) if path else {}
+    if not _ENTERPRISE_KB_CACHE:
+        logger.warning("[FixSuggester] swift_mx_enterprise_llm_kb.json load failed (empty).")
+    for mod in _ENTERPRISE_KB_CACHE.get("modules", []):
+        name = mod.get("module_name")
+        if name:
+            _ENTERPRISE_MODULE_INDEX[name] = mod
     return _ENTERPRISE_KB_CACHE
 
 
@@ -520,16 +569,10 @@ def _load_syntactic_kb() -> Dict[str, Any]:
     global _SYNTACTIC_KB_CACHE
     if _SYNTACTIC_KB_CACHE is not None:
         return _SYNTACTIC_KB_CACHE
-    path = os.path.normpath(os.path.join(
-        os.path.dirname(__file__), "..", "resources", "KB",
-        "syntactic_lexical_cbprplus_validation_kb.json",
-    ))
-    try:
-        with open(path, "r", encoding="utf-8-sig") as f:
-            _SYNTACTIC_KB_CACHE = json.load(f)
-    except Exception as e:
-        logger.warning(f"[FixSuggester] Syntactic KB load failed: {e}")
-        _SYNTACTIC_KB_CACHE = {}
+    path = _kb_path("syntactic_lexical_cbprplus_validation_kb.json")
+    _SYNTACTIC_KB_CACHE = _read_json_first([path]) if path else {}
+    if not _SYNTACTIC_KB_CACHE:
+        logger.warning("[FixSuggester] Syntactic KB load failed (empty).")
     return _SYNTACTIC_KB_CACHE
 
 
@@ -622,9 +665,12 @@ class _KBContext:
         return None
 
     def _load(self) -> None:
-        kb_dir = os.path.normpath(os.path.join(
-            os.path.dirname(__file__), "..", "resources", "KB"))
-        path = self._find_file(kb_dir, self.family)
+        # Search the active release's folder first, then the sr2025 base.
+        path = None
+        for kb_dir in _kb_dirs():
+            path = self._find_file(kb_dir, self.family)
+            if path:
+                break
         if not path or not os.path.exists(path):
             return
         try:
@@ -818,16 +864,19 @@ def _build_cross_kb_index() -> Dict[str, Dict[Any, list]]:
     by_code_leaf: Dict[Any, list] = {}
     by_leaf: Dict[Any, list] = {}
     valid_leaf: Dict[Any, list] = {}     # leaf → deduped enum allow-list across families
-    kb_dir = os.path.normpath(os.path.join(
-        os.path.dirname(__file__), "..", "resources", "KB"))
-    try:
-        files = [f for f in os.listdir(kb_dir)
-                 if f.endswith("_validation_kb.json")
-                 and f not in _KBContext._COMMON_KB_FILES
-                 and "syntactic" not in f]
-    except Exception:
-        files = []
-    for fn in files:
+    # Aggregate per-message KBs from the active release's folder and the sr2025
+    # base; the active folder's file for a family wins (added last).
+    files_by_dir: "OrderedDict[str, str]" = OrderedDict()
+    for kb_dir in reversed(_kb_dirs()):  # base first, active last so active overrides
+        try:
+            for f in os.listdir(kb_dir):
+                if (f.endswith("_validation_kb.json")
+                        and f not in _KBContext._COMMON_KB_FILES
+                        and "syntactic" not in f):
+                    files_by_dir[f] = kb_dir
+        except Exception:
+            continue
+    for fn, kb_dir in files_by_dir.items():
         # Derive a family key the _KBContext file-matcher recognises
         # ('pacs008', 'pacs009_cov', 'camt054', …).
         key = fn.split("_cbprplus")[0] if "_cbprplus" in fn \
@@ -3456,7 +3505,14 @@ class FixSuggester:
 
     # ── suggest ───────────────────────────────────────────────────────────────
 
-    def suggest(self, xml: str, issue: dict) -> FixSuggestion:
+    def suggest(self, xml: str, issue: dict, version: str = None) -> FixSuggestion:
+        # Active SWIFT release for this fix. Handlers whose fix differs by
+        # release (bucket C) and SR2026-only delta-rule codes (bucket B) read
+        # self._sr_version. Defaults to SR2025 so existing callers are unaffected.
+        self._sr_version = (version or issue.get("sr_version") or "SR2025")
+        # Make the active release visible to the module-level KB loaders so they
+        # overlay the SR2026 delta KB for this request.
+        _set_active_sr_version(self._sr_version)
         path      = str(issue.get("path", ""))
         code      = str(issue.get("code", ""))
         msg       = str(issue.get("message", ""))
@@ -5433,6 +5489,33 @@ class FixSuggester:
                             _p_copy.text = _default_purp
                             return FixSuggestion(self._xpath_of(_pel), self._serialize(_pel),
                                                   self._serialize(_p_copy), code, msg, "high")
+
+        # ── L3_SVCLVL_CODE — replace invalid SvcLvl/Cd with a valid code ──────
+        # Same fix in SR2025 and SR2026 (shared codelist rule). Prefer
+        # currency-agnostic service levels; never blind-default to SEPA, which
+        # is EUR-only (CBPR_COV_R32).
+        if code == "L3_SVCLVL_CODE":
+            _svc_codes = _codelist_codes("service_level")
+            _svc_default = next(
+                (c for c in ("SDVA", "NURG", "G001", "URGP") if c in _svc_codes),
+                next((c for c in _svc_codes if c != "SEPA"), "SDVA"))
+            for _sel in root.iter():
+                if not isinstance(_sel.tag, str):
+                    continue
+                if etree.QName(_sel.tag).localname != "Cd":
+                    continue
+                _sp = _sel.getparent()
+                _sp_ln = (etree.QName(_sp.tag).localname
+                          if _sp is not None and isinstance(_sp.tag, str) else "")
+                if _sp_ln != "SvcLvl":
+                    continue
+                _cur = (_sel.text or "").strip()
+                if _svc_codes and _cur in _svc_codes:
+                    continue  # already valid — leave it
+                _s_copy = self._copy(_sel)
+                _s_copy.text = _svc_default
+                return FixSuggestion(self._xpath_of(_sel), self._serialize(_sel),
+                                      self._serialize(_s_copy), code, msg, "high")
 
         # ── INVALID_CURRENCY_CODE — fix @Ccy or <Ccy> value ──────────────────
         if code == "INVALID_CURRENCY_CODE":
@@ -11449,7 +11532,7 @@ class FixSuggester:
 
     # ── Batch suggestion ──────────────────────────────────────────────────────
 
-    def suggest_batch(self, xml: str, issues: list[dict]) -> list[FixSuggestion]:
+    def suggest_batch(self, xml: str, issues: list[dict], version: str = None) -> list[FixSuggestion]:
         """
         Produce one suggestion per issue. To guarantee that N independent
         issues all land in the final document (and don't overwrite each other
@@ -11474,7 +11557,7 @@ class FixSuggester:
         changed_xpaths: set[str] = set()
         for issue in issues:
             try:
-                sug = self.suggest(current_xml, issue)
+                sug = self.suggest(current_xml, issue, version=version)
             except Exception as e:
                 logger.warning(
                     f"[FixSuggester] suggest() failed for "
@@ -12555,7 +12638,7 @@ class FixSuggester:
         )
 
     # ── Closed-loop verification ──────────────────────────────────────────────
-    def suggest_verified(self, xml: str, issue: dict) -> FixSuggestion:
+    def suggest_verified(self, xml: str, issue: dict, version: str = None) -> FixSuggestion:
         """suggest() plus a synchronous closed-loop self-check.
 
         Used by the interactive single-issue endpoint. The verification result
@@ -12564,7 +12647,7 @@ class FixSuggester:
         batch path) behaves exactly as before. Verification is best-effort and
         can never raise out of here.
         """
-        sug = self.suggest(xml, issue)
+        sug = self.suggest(xml, issue, version=version)
         try:
             sug.verified = self._self_verify(xml, sug)
         except Exception as e:
