@@ -108,7 +108,8 @@
         "type": "textual",
         "severity": "WARNING",
         "layer": 3,
-        "errorMessage": "E2E in pacs.009 COV should match underlying pacs.008 instruction ID."
+        "errorMessage": "EndToEndId in pacs.009 COV should match the underlying pacs.008 instruction.",
+        "fix": "Set EndToEndId to match the E2E from the underlying pacs.008 CdtTrfTxInf/PmtId/EndToEndId."
     },
     {
         "rule_id": "CBPR_R16",
@@ -130,7 +131,8 @@
         "type": "textual",
         "severity": "WARNING",
         "layer": 3,
-        "errorMessage": "UETR in pacs.009 COV should match underlying pacs.008 UETR."
+        "errorMessage": "UETR in pacs.009 COV should match the underlying pacs.008 UETR.",
+        "fix": "Set <UETR> to match the UETR from the underlying pacs.008 transaction."
     },
     {
         "rule_id": "CBPR_R18",
@@ -139,7 +141,8 @@
         "type": "textual",
         "severity": "INFO",
         "layer": 3,
-        "errorMessage": "LocalInstrument should use coded information (<Cd>)."
+        "errorMessage": "LclInstrm: use coded form <Cd> instead of <Prtry>.",
+        "fix": "Replace <Prtry>...</Prtry> with <Cd>SDVA</Cd> inside <LclInstrm>."
     },
     {
         "rule_id": "CBPR_R19",
@@ -148,7 +151,8 @@
         "type": "textual",
         "severity": "INFO",
         "layer": 3,
-        "errorMessage": "CategoryPurpose should use coded information (<Cd>)."
+        "errorMessage": "CtgyPurp: use coded form <Cd> instead of <Prtry>.",
+        "fix": "Replace <Prtry>...</Prtry> with <Cd>SUPP</Cd> inside <CtgyPurp>."
     },
     {
         "rule_id": "CBPR_R20",
@@ -171,7 +175,8 @@
         "type": "textual",
         "severity": "INFO",
         "layer": 3,
-        "errorMessage": "Agent (national): ClrSysMmbId alone is permitted when all agents are in the same country."
+        "errorMessage": "Agent national option: use ClrSysMmbId when all agents are in same country.",
+        "fix": "Use <ClrSysMmbId><ClrSysId><Cd>GBDSC</Cd></ClrSysId><MmbId>123456</MmbId></ClrSysMmbId> for national agents."
     },
     {
         "rule_id": "CBPR_R22",
@@ -180,7 +185,8 @@
         "type": "textual",
         "severity": "INFO",
         "layer": 3,
-        "errorMessage": "Agent Option 1 (preferred): use <BICFI>, optionally with <LEI>."
+        "errorMessage": "Agent Option 1 (preferred): use BICFI for agent identification.",
+        "fix": "Use <BICFI>BANKGB2LXXX</BICFI> as the primary agent identification method."
     },
     {
         "rule_id": "CBPR_R23",
@@ -224,7 +230,8 @@
         "type": "textual",
         "severity": "INFO",
         "layer": 3,
-        "errorMessage": "Purpose should use coded information (<Cd>)."
+        "errorMessage": "Purp: use coded form <Cd> instead of <Prtry>.",
+        "fix": "Replace <Prtry>...</Prtry> with <Cd>SUPP</Cd> inside <Purp>."
     },
     {
         "rule_id": "CBPR_R67",
@@ -233,7 +240,8 @@
         "type": "textual",
         "severity": "WARNING",
         "layer": 3,
-        "errorMessage": "UltimateDebtor: Name and/or Identification required for jurisdictional transactions."
+        "errorMessage": "UltimateDebtor Name and/or Identification required for jurisdictional transactions.",
+        "fix": "Add <Nm>Ultimate Debtor Name</Nm> inside <UltmtDbtr> for jurisdictional transactions."
     },
     {
         "rule_id": "CBPR_R68",
@@ -307,7 +315,8 @@
         "type": "textual",
         "severity": "WARNING",
         "layer": 3,
-        "errorMessage": "Debtor: Name mandatory with Account or Identification for jurisdictional transactions."
+        "errorMessage": "Debtor Name mandatory with Account or Identification for jurisdictional transactions.",
+        "fix": "Add <Nm>Debtor Name</Nm> inside <Dbtr> when account or ID is present."
     },
     {
         "rule_id": "CBPR_R74",
@@ -381,7 +390,8 @@
         "type": "textual",
         "severity": "WARNING",
         "layer": 3,
-        "errorMessage": "Creditor: Name mandatory with Account or Identification for jurisdictional transactions."
+        "errorMessage": "Creditor Name mandatory with Account or Identification for jurisdictional transactions.",
+        "fix": "Add <Nm>Creditor Name</Nm> inside <Cdtr> when account or ID is present."
     },
     {
         "rule_id": "CBPR_R115",
@@ -455,7 +465,8 @@
         "type": "textual",
         "severity": "WARNING",
         "layer": 3,
-        "errorMessage": "UltimateCreditor: Name and/or Identification required for jurisdictional transactions."
+        "errorMessage": "UltimateCreditor Name and/or Identification required for jurisdictional transactions.",
+        "fix": "Add <Nm>Ultimate Creditor Name</Nm> inside <UltmtCdtr> for jurisdictional transactions."
     },
     {
         "rule_id": "CBPR_R124",
@@ -477,6 +488,58 @@
         "type": "textual",
         "severity": "WARNING",
         "layer": 3,
-        "errorMessage": "Structured Remittance total content exceeds 9000 characters or bilateral agreement not documented."
+        "errorMessage": "Structured Remittance total content exceeds 9000 characters.",
+        "fix": "Reduce structured remittance content. Total Strd elements content must not exceed 9000 chars."
+    },
+    {
+        "rule_id": "CBPR_COV_R30",
+        "name": "CBPR_COV_NbOfTxs_Count_Match",
+        "description": "GrpHdr/NbOfTxs must equal the actual number of CdtTrfTxInf occurrences (ISO20022 NumberOfTransactionsAndCreditTransfersRule). Triggered when declared count mismatches actual transaction blocks.",
+        "condition": "exists(Document.FICdtTrf.GrpHdr.NbOfTxs)",
+        "expression": "int(VALUE) == count('Document.FICdtTrf.CdtTrfTxInf')",
+        "selector": "Document.FICdtTrf.GrpHdr.NbOfTxs",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "GrpHdr/NbOfTxs does not match actual CdtTrfTxInf count (NBOFTXS_MISMATCH / X00062). Auto-fix sets NbOfTxs to the actual number of CdtTrfTxInf blocks.",
+        "fix": "Count all CdtTrfTxInf elements in the message and update NbOfTxs to that count. For CBPR+ single-transaction messages NbOfTxs must be '1'."
+    },
+    {
+        "rule_id": "CBPR_COV_R31",
+        "name": "CBPR_COV_SttlmMtd_Must_Be_INDA_Or_INGA",
+        "description": "For CBPR+ pacs.009 COV, GrpHdr/SttlmInf/SttlmMtd MUST be 'INDA' or 'INGA' (cover settled on accounts). 'COVE' is NOT permitted for the COV variant (COVE + reimbursement agents belong to pacs.009 ADV). Verified against SWIFT MyStandards.",
+        "condition": "exists(Document.FICdtTrf.GrpHdr.SttlmInf.SttlmMtd)",
+        "expression": "VALUE in ('INDA', 'INGA')",
+        "selector": "Document.FICdtTrf.GrpHdr.SttlmInf.SttlmMtd",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "pacs.009 COV: SttlmMtd must be 'INDA' or 'INGA'. 'COVE' is rejected by the CBPR+ COV usage guideline (it belongs to pacs.009 ADV with reimbursement agents).",
+        "fix": "Replace the SttlmMtd value with 'INGA' (or 'INDA'). Do not use 'COVE' for pacs.009 COV; remove any InstgRmbrsmntAgt/InstdRmbrsmntAgt and use SttlmAcct if a settlement account is needed."
+    },
+    {
+        "rule_id": "CBPR_COV_R32",
+        "name": "CBPR_COV_SEPA_Requires_EUR",
+        "description": "SEPA service level (SvcLvl/Cd=SEPA) is only applicable to EUR payments. When SvcLvl=SEPA, IntrBkSttlmAmt currency must be EUR. Non-EUR currencies (CHF, USD, GBP, etc.) are incompatible with SEPA.",
+        "condition": "any(k.endswith('.PmtTpInf.SvcLvl.Cd') and DATA[k] == 'SEPA' for k in DATA.keys())",
+        "expression": "all(DATA.get(k) == 'EUR' for k in DATA.keys() if '@Ccy' in k and 'IntrBkSttlmAmt' in k)",
+        "selector": "Document.FICdtTrf.CdtTrfTxInf.PmtTpInf.SvcLvl.Cd",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "SEPA service level requires EUR currency. Non-EUR currency found in IntrBkSttlmAmt when SvcLvl=SEPA. Auto-fix removes the invalid SEPA service level (the monetary currency is preserved).",
+        "fix": "Remove the SEPA <SvcLvl> (SEPA is only valid for EUR payments). Auto-fix deletes the SvcLvl block; if PmtTpInf is left empty it is removed too. Alternatively, if SEPA is intended, change IntrBkSttlmAmt currency to 'EUR' by bilateral agreement."
+    },
+    {
+        "rule_id": "CBPR_COV_R33",
+        "name": "CBPR_COV_No_Reimbursement_Agents",
+        "description": "pacs.009 COV must NOT contain reimbursement agents (InstgRmbrsmntAgt / InstdRmbrsmntAgt / ThrdRmbrsmntAgt). Those belong to COVE settlement (pacs.009 ADV). COV settles the cover on accounts (SttlmAcct). Verified against SWIFT MyStandards.",
+        "condition": "exists('Document')",
+        "expression": "not any('RmbrsmntAgt' in k for k in DATA.keys())",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "pacs.009 COV: reimbursement agents (InstgRmbrsmntAgt/InstdRmbrsmntAgt/ThrdRmbrsmntAgt) are not permitted. They are only valid with SttlmMtd=COVE (pacs.009 ADV). Auto-fix removes them.",
+        "fix": "Remove all InstgRmbrsmntAgt/InstdRmbrsmntAgt/ThrdRmbrsmntAgt elements from SttlmInf. If a settlement account is required, use <SttlmAcct> instead."
     }
 ]

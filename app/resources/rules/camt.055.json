@@ -24,11 +24,46 @@
     {
         "rule_id": "L3-CAMT055-DATE-CHOICE-XOR",
         "description": "OrgnlReqdExctnDt and OrgnlReqdColltnDt are mutually exclusive in camt.055 TxInf. Only ONE date type is permitted per transaction cancellation request.",
-        "errorMessage": "Both OrgnlReqdExctnDt and OrgnlReqdColltnDt are present. These are mutually exclusive — only ONE is allowed per ISO 20022 camt.055 schema.",
+        "errorMessage": "Either OriginalRequestedExecutionDate or OriginalRequestedCollectionDate must be present, but both can't be present.",
         "fix": "Remove either OrgnlReqdExctnDt or OrgnlReqdColltnDt. Keep only the one that matches the original payment instruction.",
-        "condition": "exists('Document.CstmrPmtCxlReq.Undrlyg.OrgnlPmtInfAndCxl.TxInf.OrgnlReqdExctnDt') and exists('Document.CstmrPmtCxlReq.Undrlyg.OrgnlPmtInfAndCxl.TxInf.OrgnlReqdColltnDt')",
+        "condition": "any(re.match(r'.*\\.TxInf(\\[\\d+\\])?\\.OrgnlReqdExctnDt', k) for k in DATA.keys()) and any(re.match(r'.*\\.TxInf(\\[\\d+\\])?\\.OrgnlReqdColltnDt', k) for k in DATA.keys())",
         "type": "expression",
-        "expression": "True",
+        "expression": "False",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "CAMT055_ASSGNMT_ID_MAX16",
+        "description": "Assignment Id (Assgnmt.Id) is restricted to maximum 16 characters in CBPR+ camt.055.",
+        "errorMessage": "This field must be maximum 16 characters long. The current value exceeds 16 characters.",
+        "fix": "Shorten the Assgnmt.Id value to 16 characters or fewer.",
+        "type": "expression",
+        "selector": ".*\\.Assgnmt\\.Id$",
+        "expression": "len(str(VALUE)) <= 16",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "CAMT055_BAH_FR_ASSGNR_BIC",
+        "description": "BAH Fr/Assgnr BIC mismatch: AppHdr From BIC must equal Assgnmt Assgnr BIC.",
+        "errorMessage": "BAH \"From\" BIC must match \"Assigner\" BIC if CopyDuplicate is absent.",
+        "fix": "Set AppHdr/Fr/FIId/FinInstnId/BICFI to match Document/CstmrPmtCxlReq/Assgnmt/Assgnr/Agt/FinInstnId/BICFI.",
+        "type": "expression",
+        "selector": "AppHdr\\.Fr\\.FIId\\.FinInstnId\\.BICFI",
+        "condition": "not any('CpyDplct' in k for k in DATA.keys())",
+        "expression": "check_bic_match('Fr', 'Assgnr')",
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "CAMT055_BAH_TO_ASSGNE_BIC",
+        "description": "BAH To/Assgne BIC mismatch: AppHdr To BIC must equal Assgnmt Assgne BIC.",
+        "errorMessage": "BAH \"To\" BIC must match \"Assignee\" BIC if CopyDuplicate is absent.",
+        "fix": "Set AppHdr/To/FIId/FinInstnId/BICFI to match Document/CstmrPmtCxlReq/Assgnmt/Assgne/Agt/FinInstnId/BICFI.",
+        "type": "expression",
+        "selector": "AppHdr\\.To\\.FIId\\.FinInstnId\\.BICFI",
+        "condition": "not any('CpyDplct' in k for k in DATA.keys())",
+        "expression": "check_bic_match('To', 'Assgne')",
         "severity": "ERROR",
         "layer": 3
     },
@@ -68,6 +103,30 @@
         "condition": "exists(Document.CstmrPmtCxlReq.Assgnmt)",
         "mandatory_fields": [
             "Document.CstmrPmtCxlReq.Assgnmt.Assgne"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "CAMT055_CASE_ID_REQUIRED",
+        "description": "Case/Id is mandatory in camt.055 TxInf per CBPR+ schema sequence. Case must appear before OrgnlInstrId.",
+        "errorMessage": "Missing mandatory <Case><Id> in TxInf. The Case element (with Id and Cretr) is required before OrgnlInstrId in camt.055.001.08 CBPR+.",
+        "fix": "Add <Case><Id>YOUR-CASE-ID</Id><Cretr><Pty><Nm>...</Nm><PstlAdr>...</PstlAdr></Pty></Cretr></Case> inside <TxInf>, immediately after <CxlId> and before <OrgnlInstrId>.",
+        "condition": "exists(Document.CstmrPmtCxlReq.Undrlyg.OrgnlPmtInfAndCxl.TxInf)",
+        "mandatory_fields": [
+            "Document.CstmrPmtCxlReq.Undrlyg.OrgnlPmtInfAndCxl.TxInf.Case.Id"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "CAMT055_CASE_CRETR_REQUIRED",
+        "description": "Case/Cretr is mandatory in camt.055 TxInf per CBPR+ schema. Cretr must be present inside Case.",
+        "errorMessage": "Missing mandatory <Case><Cretr> in TxInf. The Case element requires a Cretr (creator) sub-element in camt.055.001.08 CBPR+.",
+        "fix": "Add <Cretr><Pty><Nm>...</Nm><PstlAdr><TwnNm>...</TwnNm><Ctry>XX</Ctry><AdrLine>...</AdrLine></PstlAdr></Pty></Cretr> inside the <Case> element.",
+        "condition": "exists(Document.CstmrPmtCxlReq.Undrlyg.OrgnlPmtInfAndCxl.TxInf.Case)",
+        "mandatory_fields": [
+            "Document.CstmrPmtCxlReq.Undrlyg.OrgnlPmtInfAndCxl.TxInf.Case.Cretr"
         ],
         "severity": "ERROR",
         "layer": 3

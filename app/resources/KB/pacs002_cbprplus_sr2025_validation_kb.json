@@ -1,0 +1,2145 @@
+{
+  "domain": "SWIFT MX CBPR+ pacs.002.001.10",
+  "version": "SR2025",
+  "last_updated": "2026-05-28",
+  "purpose": "Context KB for pacs.002 FIToFIPaymentStatusReport validation. For each XML tag: possible errors, affected tags, and all possible fixes. Based on CBPR+ SR2025 Usage Guideline (pacs.002.001.10) and SWIFT MX Enterprise KB.",
+  "reference_documents": [
+    "CBPRPlus-pacs.002.001.10_FIToFIPaymentStatusReport CBPRPlus SR2025 (Combined), 21 March 2025",
+    "SWIFT MX Enterprise LLM KB v2.0"
+  ],
+  "iso_20022_rules": [
+    {
+      "rule_id": "R3",
+      "name": "RelatedPresentWhenCopyDupl",
+      "description": "If CopyDuplicate is present, then Related MUST be present. Related MUST contain the relevant BusinessApplicationHeader elements of the BusinessMessage to which this BusinessMessage relates.",
+      "error_code": "H00001",
+      "severity": "Warning",
+      "error_text": "Element Related is missing"
+    },
+    {
+      "rule_id": "R6",
+      "name": "GroupStatusAcceptedRule",
+      "description": "If OriginalGroupInformationAndStatus/GroupStatus is present and equals ACTC, ACCP, ACSP, ACSC or ACWC, then TransactionInformationAndStatus/TransactionStatus must be different from RJCT. NOTE: removed by CBPR+ guideline (OriginalGroupInformationAndStatus is removed).",
+      "error_code": "X00063",
+      "severity": "Fatal",
+      "error_text": "Invalid message content for group and transaction statuses.",
+      "status": "removed_by_cbpr_plus"
+    },
+    {
+      "rule_id": "R7",
+      "name": "GroupStatusPendingRule",
+      "description": "If OriginalGroupInformationAndStatus/GroupStatus is present and equals PDNG, then TransactionInformationAndStatus/TransactionStatus must be different from RJCT. NOTE: removed by CBPR+ guideline.",
+      "error_code": "X00064",
+      "severity": "Fatal",
+      "error_text": "Invalid message content for group and transaction statuses.",
+      "status": "removed_by_cbpr_plus"
+    },
+    {
+      "rule_id": "R8",
+      "name": "GroupStatusRejectedRule",
+      "description": "If OriginalGroupInformationAndStatus/GroupStatus is present and equals RJCT, then TransactionInformationAndStatus/TransactionStatus, if present, must equal RJCT. NOTE: removed by CBPR+ guideline.",
+      "error_code": "X00065",
+      "severity": "Fatal",
+      "error_text": "Invalid message content for group and transaction statuses.",
+      "status": "removed_by_cbpr_plus"
+    },
+    {
+      "rule_id": "R9",
+      "name": "GroupStatusReceivedRule",
+      "description": "If OriginalGroupInformationAndStatus/GroupStatus is present and equals RCVD, then TransactionInformationAndStatus/TransactionStatus is not allowed. NOTE: removed by CBPR+ guideline.",
+      "error_code": "X00066",
+      "severity": "Fatal",
+      "error_text": "Invalid message content for group and transaction statuses.",
+      "status": "removed_by_cbpr_plus"
+    },
+    {
+      "rule_id": "R10",
+      "name": "SupplementaryDataRule",
+      "description": "The SupplementaryData building block at message level must not be used to provide additional information about a transaction; the SupplementaryData element at transaction level should be used for that purpose. NOTE: removed by CBPR+ guideline (message-level SupplementaryData is removed).",
+      "error_code": "Undefined",
+      "severity": "Undefined",
+      "status": "removed_by_cbpr_plus"
+    },
+    {
+      "rule_id": "R11",
+      "name": "OriginalGroupInformationAbsenceRule",
+      "description": "If OriginalGroupInformationAndStatus is absent, then TransactionInformationAndStatus[*]/OriginalGroupInformation must be present. NOTE: removed by CBPR+ guideline.",
+      "error_code": "X00345",
+      "severity": "Fatal",
+      "error_text": "Invalid OriginalGroupInformation presence.",
+      "status": "removed_by_cbpr_plus"
+    },
+    {
+      "rule_id": "R12",
+      "name": "OriginalGroupInformationSinglePresenceRule",
+      "description": "If OriginalGroupInformationAndStatus is present and only once, then TransactionInformationAndStatus[*]/OriginalGroupInformation must be absent. NOTE: removed by CBPR+ guideline.",
+      "error_code": "X00346",
+      "severity": "Fatal",
+      "error_text": "Invalid OriginalGroupInformation presence in transaction details.",
+      "status": "removed_by_cbpr_plus"
+    },
+    {
+      "rule_id": "R13",
+      "name": "OriginalGroupInformationMultiplePresenceRule",
+      "description": "If OriginalGroupInformationAndStatus is present and multiple times, then TransactionInformationAndStatus[*]/OriginalGroupInformation must be present. NOTE: removed by CBPR+ guideline.",
+      "error_code": "X00347",
+      "severity": "Fatal",
+      "error_text": "Missing OriginalGroupInformation in transaction details.",
+      "status": "removed_by_cbpr_plus"
+    },
+    {
+      "rule_id": "R16",
+      "name": "StatusReasonRule",
+      "description": "If StatusReasonInformation/Reason/Code is equal to NARR, then AdditionalInformation must be present.",
+      "error_code": "X00077",
+      "severity": "Fatal",
+      "error_text": "Invalid message content for additional status reason."
+    },
+    {
+      "rule_id": "R15",
+      "name": "BICFI",
+      "description": "Valid BICs for financial institutions are registered and published by the ISO 9362 Registration Authority and consist of eight (8) or eleven (11) contiguous characters.",
+      "error_code": "D00001",
+      "severity": "Fatal",
+      "error_text": "Invalid FI BIC."
+    }
+  ],
+  "cbpr_plus_formal_rules": [
+    {
+      "rule_id": "CBPR_FR_TO_1",
+      "name": "CBPR_From_To_Instructing_Instructed_Agent_BIC_1_FormalRule",
+      "description": "AppHdr/Fr BIC must match TransactionInformationAndStatus/InstructingAgent BIC and AppHdr/To BIC must match TransactionInformationAndStatus/InstructedAgent BIC, except when CpyDplct = COPY or CODU."
+    },
+    {
+      "rule_id": "CBPR_FR_TO_2",
+      "name": "CBPR_From_To_Instructing_Instructed_Agent_BIC_2_FormalRule",
+      "description": "AppHdr/Fr BIC must match TxInfAndSts/InstgAgt BIC and AppHdr/To BIC must match TxInfAndSts/InstdAgt BIC when CpyDplct is absent."
+    },
+    {
+      "rule_id": "CBPR_TXSTS_RJCT_FCTVDT",
+      "name": "CBPR_Transaction_Status_Reject_Effective_Sett_Date_FormalRule",
+      "description": "If TransactionInformationAndStatus/TransactionStatus is 'RJCT', then EffectiveInterbankSettlementDate (FctvIntrBkSttlmDt) is not allowed."
+    },
+    {
+      "rule_id": "CBPR_TXSTS_RJCT_RSN",
+      "name": "CBPR_Transaction_Status_Reject_Reason_FormalRule",
+      "description": "If TransactionInformationAndStatus/TransactionStatus equals 'RJCT', then at least one StatusReasonInformation/Reason must be present (mandatory)."
+    },
+    {
+      "rule_id": "CBPR_AGENT_BICFI_MANDATORY",
+      "name": "CBPR_Agent_PointToPointOnSWIFT",
+      "description": "If the transaction is exchanged on the SWIFT network (instructing agent/sender and instructed agent/receiver are on SWIFT), then BICFI is mandatory for InstgAgt and InstdAgt; other elements (e.g. LEI, ClrSysMmbId) are optional. For Instructing/Instructed Agents Name and PstlAdr are removed."
+    },
+    {
+      "rule_id": "CBPR_AGENT_BICFI_EXCLUSIVE",
+      "name": "CBPR_Agent_Identification_TextualRule",
+      "description": "If BICFI is present inside FinInstnId, then Nm and PstlAdr are NOT allowed (ClearingSystemMemberIdentification and LEI may complement). In case of conflicting information, BICFI always takes precedence. If BICFI is absent, (Nm & PstlAdr) OR [(Nm & PstlAdr) and ClrSysMmbId] must be present; exception: when Debtor Agent, Creditor Agent and all agents in between are within the same country, the clearing code only may be used."
+    },
+    {
+      "rule_id": "CBPR_ORIGINATOR_NAME_ANYBIC",
+      "name": "CBPR_Party_Name_Any_BIC_FormalRule",
+      "description": "For StatusReasonInformation/Originator: if AnyBIC is absent, then Name is mandatory. If AnyBIC is present, it takes precedence in case of conflicting information."
+    },
+    {
+      "rule_id": "CBPR_ORIGINATOR_NAME_PSTLADR",
+      "name": "CBPR_Party_Name_Postal_Address_FormalRule",
+      "description": "For StatusReasonInformation/Originator: if PostalAddress is present then Name is mandatory."
+    },
+    {
+      "rule_id": "CBPR_ORGNLINSTRID_SLASH",
+      "name": "CBPR_Original_Instruction_Identification_FormalRule",
+      "description": "OriginalInstructionIdentification must not start or end with a slash '/' and must not contain two consecutive slashes '//'. Pattern must not comply with '(/.*)|(.*/)|(.*//.*)'."
+    },
+    {
+      "rule_id": "CBPR_BIZ_SVC",
+      "name": "CBPR_Business_Service_Usage_TextualRule",
+      "description": "AppHdr/BizSvc must be 'swift.cbprplus.03' (SR2025). This element is mandatory (minimum occurrence changed to 1). Datatype changed to UsageIdentifierPatternText."
+    },
+    {
+      "rule_id": "CBPR_BIZ_MSG_IDR",
+      "name": "CBPR_Business_Message_Identifier_TextualRule",
+      "description": "AppHdr/BizMsgIdr must equal GrpHdr/MsgId (the Message Identification of the underlying group header)."
+    },
+    {
+      "rule_id": "CBPR_MSGDEF_IDR",
+      "name": "CBPR_Message_Definition_Identifier_TextualRule",
+      "description": "AppHdr/MsgDefIdr must be formatted exactly as it appears in the namespace of the Business Message instance, i.e. 'pacs.002.001.10'."
+    },
+    {
+      "rule_id": "CBPR_CHARSET",
+      "name": "CBPR_Character_Set_Usage_TextualRule",
+      "description": "All proprietary/text fields (excl. Nm/Adr for all actors and RmtInf) limited to FIN-X charset. Nm/Adr/RmtInf and proxy email extended with !#$&%*=^_`{|}~\";<>@[\\] (< as &lt;, > as &gt;)."
+    },
+    {
+      "rule_id": "CBPR_DATETIME_NO_Z",
+      "name": "CBPR_DateTime_Format",
+      "description": "DateTime fields (CreDt, CreDtTm, OrgnlCreDtTm, FctvIntrBkSttlmDt/DtTm) must use YYYY-MM-DDTHH:MM:SS+HH:MM format with a mandatory +/-HH:MM UTC offset. Z suffix is forbidden by the pattern '.*(\\+|-)((0[0-9])|(1[0-4])):[0-5][0-9]'."
+    },
+    {
+      "rule_id": "CBPR_SINGLE_TX",
+      "name": "Single Transaction Only",
+      "description": "CBPR+ allows the status of one single transaction only per pacs.002 message. TransactionInformationAndStatus is made mandatory (min 1) and repeatability reduced to max 1."
+    },
+    {
+      "rule_id": "CBPR_REJECT_REQUIRED",
+      "name": "Reject Notification Required",
+      "description": "The usage of pacs.002 to provide notification of a rejected (negative) status is required by all agents; usage to provide a positive status is always governed by bilateral agreement between the agents."
+    },
+    {
+      "rule_id": "CBPR_BRANCH_REMOVED",
+      "name": "BrnchId Removed",
+      "description": "BranchIdentification is removed from InstgAgt and InstdAgt (group and transaction level), AppHdr Fr/To agents, Related Fr/To agents, and ChrgsInf/Agt under CBPR+ SR2025."
+    },
+    {
+      "rule_id": "CBPR_REMOVED_ELEMENTS",
+      "name": "Removed Building Blocks/Elements",
+      "description": "Removed under CBPR+ SR2025: AppHdr/BizPrcgDt, AppHdr/Sgntr, GrpHdr/InstgAgt, GrpHdr/InstdAgt, OriginalGroupInformationAndStatus (message level), message-level SupplementaryData, TxInfAndSts/StatusIdentification, TxInfAndSts/ChargesInformation, TxInfAndSts/AcceptanceDateTime, TxInfAndSts/AccountServicerReference."
+    }
+  ],
+  "tags": [
+    {
+      "tag": "AppHdr",
+      "xml_element": "AppHdr",
+      "xpath": "/AppHdr",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Business Application Header V02. Mandatory for all CBPR+ messages (BusinessApplicationHeaderV02 defined as mandatory).",
+      "errors": [
+        {
+          "error_id": "APPHDR_MISSING",
+          "error_code": "SCHEMA_ERR",
+          "severity": "Fatal",
+          "description": "AppHdr element is absent; CBPR+ mandates BusinessApplicationHeaderV02.",
+          "affected_tags": [
+            "AppHdr"
+          ],
+          "possible_fixes": [
+            "Insert a complete <AppHdr> block before the <Document> element.",
+            "Ensure AppHdr contains Fr, To, BizMsgIdr, MsgDefIdr, BizSvc, CreDt, and optionally CharSet/MktPrctc/CpyDplct/PssblDplct/Prty/Rltd."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Fr",
+      "xml_element": "Fr",
+      "xpath": "/AppHdr/Fr",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Sending MessagingEndpoint. When exchanged on SWIFT, must contain a BIC8 or BIC11 (FIId/FinInstnId/BICFI). The sending status agent (instructing agent of the status report). If inconsistent, BIC takes precedence.",
+      "errors": [
+        {
+          "error_id": "APPHDR_FR_MISSING",
+          "error_code": "SCHEMA_ERR",
+          "severity": "Fatal",
+          "description": "Fr element is absent from AppHdr.",
+          "affected_tags": [
+            "AppHdr/Fr"
+          ],
+          "possible_fixes": [
+            "Insert <Fr><FIId><FinInstnId><BICFI>{InstgAgt_BICFI}</BICFI></FinInstnId></FIId></Fr> inside AppHdr.",
+            "Harvest the BICFI value from TxInfAndSts/InstgAgt/FinInstnId/BICFI."
+          ]
+        },
+        {
+          "error_id": "APPHDR_FR_NEQ_INSTGAGT",
+          "error_code": "CBPR_FR_TO_1",
+          "severity": "Fatal",
+          "description": "AppHdr/Fr BICFI does not match TxInfAndSts/InstgAgt BICFI (when CpyDplct is absent or not COPY/CODU).",
+          "affected_tags": [
+            "AppHdr/Fr/FIId/FinInstnId/BICFI",
+            "TxInfAndSts/InstgAgt/FinInstnId/BICFI"
+          ],
+          "possible_fixes": [
+            "Read InstgAgt/FinInstnId/BICFI from the transaction block and set AppHdr/Fr/FIId/FinInstnId/BICFI to the same value.",
+            "Alternatively update InstgAgt/FinInstnId/BICFI to match AppHdr/Fr if Fr is the authoritative source."
+          ]
+        },
+        {
+          "error_id": "APPHDR_FR_INVALID_BIC",
+          "error_code": "INVALID_BICFI",
+          "severity": "Fatal",
+          "description": "AppHdr/Fr contains an invalid or malformed BIC.",
+          "affected_tags": [
+            "AppHdr/Fr/FIId/FinInstnId/BICFI"
+          ],
+          "possible_fixes": [
+            "Replace with a valid BICFI: 8 or 11 uppercase alphanumeric characters following ISO 9362.",
+            "Pattern: [A-Z0-9]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?",
+            "Example valid BIC: DEUTDEFFXXX"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/To",
+      "xml_element": "To",
+      "xpath": "/AppHdr/To",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Receiving MessagingEndpoint. When exchanged on SWIFT, must contain a BIC8 or BIC11 (FIId/FinInstnId/BICFI). The receiving status agent (instructed agent of the status report). If inconsistent, BIC takes precedence.",
+      "errors": [
+        {
+          "error_id": "APPHDR_TO_MISSING",
+          "error_code": "SCHEMA_ERR",
+          "severity": "Fatal",
+          "description": "To element is absent from AppHdr.",
+          "affected_tags": [
+            "AppHdr/To"
+          ],
+          "possible_fixes": [
+            "Insert <To><FIId><FinInstnId><BICFI>{InstdAgt_BICFI}</BICFI></FinInstnId></FIId></To> inside AppHdr.",
+            "Harvest the BICFI from TxInfAndSts/InstdAgt/FinInstnId/BICFI."
+          ]
+        },
+        {
+          "error_id": "APPHDR_TO_NEQ_INSTDAGT",
+          "error_code": "CBPR_FR_TO_1",
+          "severity": "Fatal",
+          "description": "AppHdr/To BICFI does not match TxInfAndSts/InstdAgt BICFI.",
+          "affected_tags": [
+            "AppHdr/To/FIId/FinInstnId/BICFI",
+            "TxInfAndSts/InstdAgt/FinInstnId/BICFI"
+          ],
+          "possible_fixes": [
+            "Read InstdAgt/FinInstnId/BICFI from the transaction block and set AppHdr/To/FIId/FinInstnId/BICFI to match.",
+            "Alternatively update InstdAgt/BICFI to match AppHdr/To if To is authoritative."
+          ]
+        },
+        {
+          "error_id": "APPHDR_TO_INVALID_BIC",
+          "error_code": "INVALID_BICFI",
+          "severity": "Fatal",
+          "description": "AppHdr/To contains an invalid or malformed BIC.",
+          "affected_tags": [
+            "AppHdr/To/FIId/FinInstnId/BICFI"
+          ],
+          "possible_fixes": [
+            "Replace with a valid BICFI: 8 or 11 uppercase alphanumeric characters per ISO 9362.",
+            "Pattern: [A-Z]{6}[A-Z2-9][A-NP-Z0-9]([A-Z0-9]{3})?",
+            "Example valid BIC: DEUTDEFFXXX"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/BizMsgIdr",
+      "xml_element": "BizMsgIdr",
+      "xpath": "/AppHdr/BizMsgIdr",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "Max35Text",
+      "max_length": 35,
+      "description": "Unique identifier of the Business Message. Must equal GrpHdr/MsgId (the Message Identification of the underlying group header).",
+      "errors": [
+        {
+          "error_id": "BIZMSGIDR_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "BizMsgIdr is absent from AppHdr.",
+          "affected_tags": [
+            "AppHdr/BizMsgIdr"
+          ],
+          "possible_fixes": [
+            "Copy the value of GrpHdr/MsgId and insert as <BizMsgIdr>{MsgId_value}</BizMsgIdr>.",
+            "If MsgId is also absent, generate a unique Max35Text value (e.g. MSG-YYYYMMDD-001)."
+          ]
+        },
+        {
+          "error_id": "BIZMSGIDR_NEQ_MSGID",
+          "error_code": "CBPR_BIZ_MSG_IDR",
+          "severity": "Fatal",
+          "description": "AppHdr/BizMsgIdr does not equal Document/FIToFIPmtStsRpt/GrpHdr/MsgId.",
+          "affected_tags": [
+            "AppHdr/BizMsgIdr",
+            "GrpHdr/MsgId"
+          ],
+          "possible_fixes": [
+            "Read GrpHdr/MsgId and set BizMsgIdr to the same value.",
+            "If BizMsgIdr is the source of truth, update GrpHdr/MsgId to match BizMsgIdr.",
+            "Never invent a new value — always harvest from the other field."
+          ]
+        },
+        {
+          "error_id": "BIZMSGIDR_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "BizMsgIdr exceeds 35 characters.",
+          "affected_tags": [
+            "AppHdr/BizMsgIdr"
+          ],
+          "possible_fixes": [
+            "Truncate the value to a maximum of 35 characters.",
+            "Ensure the truncated value remains meaningful and unique.",
+            "Synchronize the truncated value back to GrpHdr/MsgId."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/MsgDefIdr",
+      "xml_element": "MsgDefIdr",
+      "xpath": "/AppHdr/MsgDefIdr",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "Max35Text",
+      "description": "Message Definition Identifier. Must exactly match the Document namespace.",
+      "expected_value": "pacs.002.001.10",
+      "errors": [
+        {
+          "error_id": "MSGDEFIDR_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "MsgDefIdr is absent from AppHdr.",
+          "affected_tags": [
+            "AppHdr/MsgDefIdr"
+          ],
+          "possible_fixes": [
+            "Insert <MsgDefIdr>pacs.002.001.10</MsgDefIdr> inside AppHdr."
+          ]
+        },
+        {
+          "error_id": "MSGDEFIDR_MISMATCH",
+          "error_code": "MSGDEFIDR_MISMATCH",
+          "severity": "Fatal",
+          "description": "AppHdr/MsgDefIdr does not match the Document xmlns namespace identifier.",
+          "affected_tags": [
+            "AppHdr/MsgDefIdr"
+          ],
+          "possible_fixes": [
+            "Read the xmlns attribute from the Document root element (e.g. urn:iso:std:iso:20022:tech:xsd:pacs.002.001.10).",
+            "Extract the message identifier portion and set MsgDefIdr to 'pacs.002.001.10'.",
+            "Ensure no trailing spaces or version mismatches."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/BizSvc",
+      "xml_element": "BizSvc",
+      "xpath": "/AppHdr/BizSvc",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "note": "Minimum occurrence changed to 1 by CBPR+ SR2025 guideline. Datatype changed to UsageIdentifierPatternText.",
+      "expected_value": "swift.cbprplus.03",
+      "datatype": "UsageIdentifierPatternText",
+      "description": "Business Service identifier. Mandatory under CBPR+ SR2025; must be 'swift.cbprplus.03'.",
+      "errors": [
+        {
+          "error_id": "BIZSVC_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "BizSvc is absent; it is mandatory under CBPR+ SR2025.",
+          "affected_tags": [
+            "AppHdr/BizSvc"
+          ],
+          "possible_fixes": [
+            "Insert <BizSvc>swift.cbprplus.03</BizSvc> inside AppHdr."
+          ]
+        },
+        {
+          "error_id": "BIZSVC_WRONG_VALUE",
+          "error_code": "CBPR_BIZ_SVC",
+          "severity": "Fatal",
+          "description": "BizSvc contains an incorrect value (e.g. 'swift.cbprplus.02' from older release).",
+          "affected_tags": [
+            "AppHdr/BizSvc"
+          ],
+          "possible_fixes": [
+            "Replace value with 'swift.cbprplus.03' as mandated by SR2025.",
+            "Note: SR2024 and earlier used 'swift.cbprplus.02'; upgrade to .03 for SR2025."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/CreDt",
+      "xml_element": "CreDt",
+      "xpath": "/AppHdr/CreDt",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "CBPR_DateTime",
+      "description": "Creation date/time of the Business Message. Must use YYYY-MM-DDTHH:MM:SS+HH:MM format with a mandatory +/-HH:MM UTC offset; Z suffix forbidden by the CBPR_DateTime pattern.",
+      "errors": [
+        {
+          "error_id": "CREDT_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "AppHdr/CreDt is absent.",
+          "affected_tags": [
+            "AppHdr/CreDt"
+          ],
+          "possible_fixes": [
+            "Insert <CreDt>{current datetime in YYYY-MM-DDTHH:MM:SS+00:00 format}</CreDt> inside AppHdr."
+          ]
+        },
+        {
+          "error_id": "CREDT_Z_SUFFIX",
+          "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+          "severity": "Fatal",
+          "description": "AppHdr/CreDt uses 'Z' suffix which is forbidden under the CBPR_DateTime pattern (a +/-HH:MM offset is mandatory).",
+          "affected_tags": [
+            "AppHdr/CreDt"
+          ],
+          "possible_fixes": [
+            "Replace trailing 'Z' with '+00:00'. Example: 2026-05-28T10:00:00Z → 2026-05-28T10:00:00+00:00."
+          ]
+        },
+        {
+          "error_id": "CREDT_MILLISECONDS",
+          "error_code": "CBPR_DATETIME_MILLISECONDS_FORBIDDEN",
+          "severity": "Fatal",
+          "description": "AppHdr/CreDt contains milliseconds which are forbidden under CBPR+.",
+          "affected_tags": [
+            "AppHdr/CreDt"
+          ],
+          "possible_fixes": [
+            "Remove millisecond component. Example: 2026-05-28T10:00:00.123+00:00 -> 2026-05-28T10:00:00+00:00."
+          ]
+        },
+        {
+          "error_id": "CREDT_NO_OFFSET",
+          "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+          "severity": "Fatal",
+          "description": "AppHdr/CreDt lacks the mandatory +/-HH:MM UTC offset.",
+          "affected_tags": [
+            "AppHdr/CreDt"
+          ],
+          "possible_fixes": [
+            "Append a UTC offset. Example: 2026-05-28T10:00:00 → 2026-05-28T10:00:00+00:00."
+          ]
+        },
+        {
+          "error_id": "CREDT_PAST_DATE",
+          "error_code": "PAST_DATE_ERROR",
+          "severity": "Warning",
+          "description": "AppHdr/CreDt is in the past beyond tolerance window.",
+          "affected_tags": [
+            "AppHdr/CreDt"
+          ],
+          "possible_fixes": [
+            "Replace with the current datetime in YYYY-MM-DDTHH:MM:SS+00:00 format."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Prty",
+      "xml_element": "Prty",
+      "xpath": "/AppHdr/Prty",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "valid_values": [
+        "NORM",
+        "HIGH"
+      ],
+      "datatype": "Priority2Code",
+      "description": "Priority of the Business Message. Datatype changed to Priority2Code (NORM, HIGH).",
+      "errors": [
+        {
+          "error_id": "PRTY_INVALID_CODE",
+          "error_code": "SCHEMENAME_INVALID",
+          "severity": "Fatal",
+          "description": "AppHdr/Prty contains a value not in the allowed code list (Priority2Code).",
+          "affected_tags": [
+            "AppHdr/Prty"
+          ],
+          "possible_fixes": [
+            "Replace with 'NORM' (normal) or 'HIGH' (high priority).",
+            "Default to 'NORM' if priority is not specifically determined."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/BizPrcgDt",
+      "xml_element": "BizPrcgDt",
+      "xpath": "/AppHdr/BizPrcgDt",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "note": "Removed by CBPR+ SR2025 guideline.",
+      "description": "Business Processing Date. Removed under CBPR+; must not be present.",
+      "errors": [
+        {
+          "error_id": "BIZPRCGDT_PRESENT",
+          "error_code": "CBPR_REMOVED_ELEMENTS",
+          "severity": "Fatal",
+          "description": "AppHdr/BizPrcgDt is present; this element is removed under CBPR+ SR2025.",
+          "affected_tags": [
+            "AppHdr/BizPrcgDt"
+          ],
+          "possible_fixes": [
+            "Remove the BizPrcgDt element from AppHdr entirely."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Sgntr",
+      "xml_element": "Sgntr",
+      "xpath": "/AppHdr/Sgntr",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "note": "Removed by CBPR+ SR2025 guideline. This information is available at the level of the SWIFTNet Header.",
+      "description": "Digital signature of the Business Entity. Removed under CBPR+; must not be present.",
+      "errors": [
+        {
+          "error_id": "SGNTR_PRESENT",
+          "error_code": "CBPR_REMOVED_ELEMENTS",
+          "severity": "Fatal",
+          "description": "AppHdr/Sgntr is present; this element is removed under CBPR+ SR2025 (signature handled at SWIFTNet Header level).",
+          "affected_tags": [
+            "AppHdr/Sgntr"
+          ],
+          "possible_fixes": [
+            "Remove the Sgntr element from AppHdr entirely."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Rltd",
+      "xml_element": "Rltd",
+      "xpath": "/AppHdr/Rltd",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "note": "Maximum occurrence reduced to 1 by CBPR+ SR2025 (base is [0..*]).",
+      "description": "Related Business Application Header(s). If used, must transport the exact same information as in the BAH of the related message. Must be present when CpyDplct is present (R3).",
+      "errors": [
+        {
+          "error_id": "RLTD_MISSING_WHEN_CPYDPLCT",
+          "error_code": "H00001",
+          "severity": "Warning",
+          "description": "CpyDplct is present but Rltd is absent; violates R3 (RelatedPresentWhenCopyDupl).",
+          "affected_tags": [
+            "AppHdr/Rltd",
+            "AppHdr/CpyDplct"
+          ],
+          "possible_fixes": [
+            "Insert a <Rltd> block carrying the BAH elements of the related (original) message.",
+            "Alternatively remove CpyDplct if the message is not a copy/duplicate."
+          ]
+        },
+        {
+          "error_id": "RLTD_MULTIPLE",
+          "error_code": "CBPR_REMOVED_ELEMENTS",
+          "severity": "Fatal",
+          "description": "More than one Rltd occurrence present; CBPR+ SR2025 reduced maximum occurrence to 1.",
+          "affected_tags": [
+            "AppHdr/Rltd"
+          ],
+          "possible_fixes": [
+            "Keep only a single Rltd block; remove additional occurrences."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr/MsgId",
+      "xml_element": "MsgId",
+      "xpath": "/Document/FIToFIPmtStsRpt/GrpHdr/MsgId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "CBPR_RestrictedFINXMax35Text",
+      "max_length": 35,
+      "description": "Unique message identifier (point to point reference). Must equal AppHdr/BizMsgIdr. Limited to FIN-X character set.",
+      "errors": [
+        {
+          "error_id": "MSGID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "GrpHdr/MsgId is absent.",
+          "affected_tags": [
+            "GrpHdr/MsgId",
+            "AppHdr/BizMsgIdr"
+          ],
+          "possible_fixes": [
+            "Insert <MsgId>{unique identifier up to 35 chars}</MsgId> as first child of GrpHdr.",
+            "Use format MSG-YYYYMMDD-NNN (e.g. MSG-20260528-001).",
+            "Ensure the same value is in AppHdr/BizMsgIdr."
+          ]
+        },
+        {
+          "error_id": "MSGID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "GrpHdr/MsgId exceeds 35 characters.",
+          "affected_tags": [
+            "GrpHdr/MsgId"
+          ],
+          "possible_fixes": [
+            "Truncate to maximum 35 characters preserving meaningful prefix.",
+            "Synchronize truncated value to AppHdr/BizMsgIdr."
+          ]
+        },
+        {
+          "error_id": "MSGID_DUPLICATE",
+          "error_code": "DUPLICATE_MSGID",
+          "severity": "Fatal",
+          "description": "GrpHdr/MsgId already exists in the receiving system (duplicate message).",
+          "affected_tags": [
+            "GrpHdr/MsgId"
+          ],
+          "possible_fixes": [
+            "Generate a new unique MsgId by appending current date and incrementing counter (e.g. MSG-20260528-002).",
+            "Check sending system for duplicate submission logic."
+          ]
+        },
+        {
+          "error_id": "MSGID_INVALID_CHARS",
+          "error_code": "INVALID_CHARSETS",
+          "severity": "Fatal",
+          "description": "MsgId contains characters outside the FIN-X character set (CBPR_RestrictedFINXMax35Text).",
+          "affected_tags": [
+            "GrpHdr/MsgId"
+          ],
+          "possible_fixes": [
+            "Replace special/accented characters with ASCII equivalents.",
+            "Allowed: 0-9 a-z A-Z / - ? : ( ) . , ' + SPACE.",
+            "Pattern: [0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr/CreDtTm",
+      "xml_element": "CreDtTm",
+      "xpath": "/Document/FIToFIPmtStsRpt/GrpHdr/CreDtTm",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "CBPR_DateTime",
+      "description": "Creation date and time of the message. Format: YYYY-MM-DDTHH:MM:SS+HH:MM with a mandatory +/-HH:MM UTC offset. Z suffix forbidden by the CBPR_DateTime pattern.",
+      "errors": [
+        {
+          "error_id": "CREDTTM_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "GrpHdr/CreDtTm is absent.",
+          "affected_tags": [
+            "GrpHdr/CreDtTm"
+          ],
+          "possible_fixes": [
+            "Insert <CreDtTm>{current datetime as YYYY-MM-DDTHH:MM:SS+00:00}</CreDtTm>."
+          ]
+        },
+        {
+          "error_id": "CREDTTM_Z_SUFFIX",
+          "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+          "severity": "Fatal",
+          "description": "CreDtTm uses 'Z' suffix; forbidden by the CBPR_DateTime pattern (a +/-HH:MM offset is mandatory).",
+          "affected_tags": [
+            "GrpHdr/CreDtTm"
+          ],
+          "possible_fixes": [
+            "Replace 'Z' with '+00:00'. Example: 2026-05-28T10:00:00Z → 2026-05-28T10:00:00+00:00."
+          ]
+        },
+        {
+          "error_id": "CREDTTM_MILLISECONDS",
+          "error_code": "CBPR_DATETIME_MILLISECONDS_FORBIDDEN",
+          "severity": "Fatal",
+          "description": "GrpHdr/CreDtTm contains milliseconds which are forbidden under CBPR+.",
+          "affected_tags": [
+            "GrpHdr/CreDtTm"
+          ],
+          "possible_fixes": [
+            "Strip milliseconds. Example: 2026-05-28T10:00:00.000+00:00 -> 2026-05-28T10:00:00+00:00."
+          ]
+        },
+        {
+          "error_id": "CREDTTM_NO_TIMEZONE",
+          "error_code": "CBPR_DATETIME_NO_TIMEZONE",
+          "severity": "Fatal",
+          "description": "GrpHdr/CreDtTm has no timezone offset; CBPR+ requires an explicit +HH:MM offset.",
+          "affected_tags": [
+            "GrpHdr/CreDtTm"
+          ],
+          "possible_fixes": [
+            "Append a timezone offset. Example: 2026-06-01T10:00:00 -> 2026-06-01T10:00:00+00:00."
+          ]
+        },
+        {
+          "error_id": "CREDTTM_NO_OFFSET",
+          "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+          "severity": "Fatal",
+          "description": "CreDtTm lacks the mandatory +/-HH:MM UTC offset.",
+          "affected_tags": [
+            "GrpHdr/CreDtTm"
+          ],
+          "possible_fixes": [
+            "Append a UTC offset. Example: 2026-05-28T10:00:00 → 2026-05-28T10:00:00+00:00."
+          ]
+        },
+        {
+          "error_id": "CREDTTM_PAST_DATE",
+          "error_code": "PAST_DATE_ERROR",
+          "severity": "Warning",
+          "description": "CreDtTm is too far in the past.",
+          "affected_tags": [
+            "GrpHdr/CreDtTm"
+          ],
+          "possible_fixes": [
+            "Replace with current datetime: YYYY-MM-DDTHH:MM:SS+00:00."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr/InstgAgt",
+      "xml_element": "InstgAgt",
+      "xpath": "/Document/FIToFIPmtStsRpt/GrpHdr/InstgAgt",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "note": "Removed by CBPR+ SR2025 guideline at group-header level. The instructing agent is carried at transaction level (TxInfAndSts/InstgAgt).",
+      "description": "Group-header-level instructing agent. Removed under CBPR+; must not be present at GrpHdr level.",
+      "errors": [
+        {
+          "error_id": "GRPHDR_INSTGAGT_PRESENT",
+          "error_code": "CBPR_REMOVED_ELEMENTS",
+          "severity": "Fatal",
+          "description": "GrpHdr/InstgAgt is present; this element is removed under CBPR+ SR2025 at group-header level.",
+          "affected_tags": [
+            "GrpHdr/InstgAgt"
+          ],
+          "possible_fixes": [
+            "Remove GrpHdr/InstgAgt.",
+            "Provide the instructing agent at transaction level: TxInfAndSts/InstgAgt/FinInstnId/BICFI."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr/InstdAgt",
+      "xml_element": "InstdAgt",
+      "xpath": "/Document/FIToFIPmtStsRpt/GrpHdr/InstdAgt",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "note": "Removed by CBPR+ SR2025 guideline at group-header level. The instructed agent is carried at transaction level (TxInfAndSts/InstdAgt).",
+      "description": "Group-header-level instructed agent. Removed under CBPR+; must not be present at GrpHdr level.",
+      "errors": [
+        {
+          "error_id": "GRPHDR_INSTDAGT_PRESENT",
+          "error_code": "CBPR_REMOVED_ELEMENTS",
+          "severity": "Fatal",
+          "description": "GrpHdr/InstdAgt is present; this element is removed under CBPR+ SR2025 at group-header level.",
+          "affected_tags": [
+            "GrpHdr/InstdAgt"
+          ],
+          "possible_fixes": [
+            "Remove GrpHdr/InstdAgt.",
+            "Provide the instructed agent at transaction level: TxInfAndSts/InstdAgt/FinInstnId/BICFI."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlGrpInfAndSts",
+      "xml_element": "OrgnlGrpInfAndSts",
+      "xpath": "/Document/FIToFIPmtStsRpt/OrgnlGrpInfAndSts",
+      "occurrence": "[0..*]",
+      "mandatory": false,
+      "note": "Removed by CBPR+ SR2025 guideline (entire message-level building block). Original group information is carried at transaction level via TxInfAndSts/OrgnlGrpInf.",
+      "description": "Message-level Original Group Information And Status. Removed under CBPR+; must not be present.",
+      "errors": [
+        {
+          "error_id": "ORGNLGRPINFANDSTS_PRESENT",
+          "error_code": "CBPR_REMOVED_ELEMENTS",
+          "severity": "Fatal",
+          "description": "OrgnlGrpInfAndSts building block is present; it is removed under CBPR+ SR2025.",
+          "affected_tags": [
+            "OrgnlGrpInfAndSts"
+          ],
+          "possible_fixes": [
+            "Remove the OrgnlGrpInfAndSts block entirely.",
+            "Carry original group information at transaction level via TxInfAndSts/OrgnlGrpInf (OrgnlMsgId, OrgnlMsgNmId, OrgnlCreDtTm)."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts",
+      "xml_element": "TxInfAndSts",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "note": "Made mandatory (min 1) and repeatability reduced to max 1 by CBPR+ SR2025. CBPR+ reports the status of a single transaction only.",
+      "description": "Transaction Information And Status block. Carries the original transaction references and the reported status. Single occurrence only under CBPR+.",
+      "errors": [
+        {
+          "error_id": "TXINFANDSTS_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "TxInfAndSts block is absent; it is mandatory under CBPR+ SR2025.",
+          "affected_tags": [
+            "TxInfAndSts"
+          ],
+          "possible_fixes": [
+            "Insert a complete <TxInfAndSts> block containing OrgnlEndToEndId, OrgnlUETR, TxSts, InstgAgt and InstdAgt at minimum, plus OrgnlGrpInf where the original group information is needed."
+          ]
+        },
+        {
+          "error_id": "TXINFANDSTS_MULTIPLE",
+          "error_code": "CBPR_SINGLE_TX",
+          "severity": "Fatal",
+          "description": "More than one TxInfAndSts block present; CBPR+ allows the status of one single transaction only.",
+          "affected_tags": [
+            "TxInfAndSts"
+          ],
+          "possible_fixes": [
+            "Split into separate pacs.002 messages, one per transaction.",
+            "Remove extra TxInfAndSts blocks if they are duplicates."
+          ]
+        },
+        {
+          "error_id": "TXSTS_RJCT_FCTVDT_PRESENT",
+          "error_code": "CBPR_TXSTS_RJCT_FCTVDT",
+          "severity": "Fatal",
+          "description": "TransactionStatus is 'RJCT' but EffectiveInterbankSettlementDate is present; not allowed when status is RJCT.",
+          "affected_tags": [
+            "TxInfAndSts/TxSts",
+            "TxInfAndSts/FctvIntrBkSttlmDt"
+          ],
+          "possible_fixes": [
+            "Remove FctvIntrBkSttlmDt when TxSts = RJCT.",
+            "Alternatively change TxSts to a non-rejected status if settlement actually occurred."
+          ]
+        },
+        {
+          "error_id": "TXSTS_RJCT_REASON_MISSING",
+          "error_code": "CBPR_TXSTS_RJCT_RSN",
+          "severity": "Fatal",
+          "description": "TransactionStatus equals 'RJCT' but no StatusReasonInformation/Reason is present.",
+          "affected_tags": [
+            "TxInfAndSts/TxSts",
+            "TxInfAndSts/StsRsnInf/Rsn"
+          ],
+          "possible_fixes": [
+            "Add a <StsRsnInf><Rsn><Cd>{reason code}</Cd></Rsn></StsRsnInf> block when TxSts = RJCT.",
+            "Use a valid ExternalStatusReason1Code (e.g. AC01, AM05, BE01)."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/OrgnlGrpInf",
+      "xml_element": "OrgnlGrpInf",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlGrpInf",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "note": "Made mandatory (min 1) by CBPR+ SR2025 when present in the path. Contains OrgnlMsgId, OrgnlMsgNmId, OrgnlCreDtTm.",
+      "description": "Original group information identifying the original (underlying) message being reported on.",
+      "errors": [
+        {
+          "error_id": "ORGNLGRPINF_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "OrgnlGrpInf is absent; required to identify the underlying message (made mandatory under CBPR+).",
+          "affected_tags": [
+            "TxInfAndSts/OrgnlGrpInf"
+          ],
+          "possible_fixes": [
+            "Insert <OrgnlGrpInf><OrgnlMsgId>{original MsgId}</OrgnlMsgId><OrgnlMsgNmId>pacs.008.001.08</OrgnlMsgNmId></OrgnlGrpInf>.",
+            "Harvest OrgnlMsgId and OrgnlMsgNmId from the underlying pacs.008/pacs.009/pacs.004 message."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/OrgnlGrpInf/OrgnlMsgId",
+      "xml_element": "OrgnlMsgId",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlGrpInf/OrgnlMsgId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "CBPR_RestrictedFINXMax35Text",
+      "max_length": 35,
+      "description": "Original Message Identification. Must transport the MessageIdentification of the underlying payment (e.g. pacs.008/pacs.009/pacs.004).",
+      "errors": [
+        {
+          "error_id": "ORGNLMSGID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "OrgnlMsgId is absent from OrgnlGrpInf.",
+          "affected_tags": [
+            "TxInfAndSts/OrgnlGrpInf/OrgnlMsgId"
+          ],
+          "possible_fixes": [
+            "Insert <OrgnlMsgId>{MsgId of the underlying message}</OrgnlMsgId>.",
+            "Harvest from GrpHdr/MsgId of the original pacs.008/pacs.009/pacs.004."
+          ]
+        },
+        {
+          "error_id": "ORGNLMSGID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "OrgnlMsgId exceeds 35 characters.",
+          "affected_tags": [
+            "TxInfAndSts/OrgnlGrpInf/OrgnlMsgId"
+          ],
+          "possible_fixes": [
+            "Truncate to maximum 35 characters preserving the unique prefix."
+          ]
+        },
+        {
+          "error_id": "ORGNLMSGID_INVALID_CHARS",
+          "error_code": "INVALID_CHARSETS",
+          "severity": "Fatal",
+          "description": "OrgnlMsgId contains characters outside the FIN-X character set.",
+          "affected_tags": [
+            "TxInfAndSts/OrgnlGrpInf/OrgnlMsgId"
+          ],
+          "possible_fixes": [
+            "Allowed: 0-9 a-z A-Z / - ? : ( ) . , ' + SPACE. Pattern: [0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/OrgnlGrpInf/OrgnlMsgNmId",
+      "xml_element": "OrgnlMsgNmId",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlGrpInf/OrgnlMsgNmId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "datatype": "CBPR_RestrictedFINXMax35Text",
+      "max_length": 35,
+      "description": "Original Message Name Identification. Identifies the original message type, e.g. pacs.008.001.08, pacs.009.001.xx, pacs.004.001.xx, MT103 or MT202.",
+      "errors": [
+        {
+          "error_id": "ORGNLMSGNMID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "OrgnlMsgNmId is absent from OrgnlGrpInf.",
+          "affected_tags": [
+            "TxInfAndSts/OrgnlGrpInf/OrgnlMsgNmId"
+          ],
+          "possible_fixes": [
+            "Insert <OrgnlMsgNmId>pacs.008.001.08</OrgnlMsgNmId> (or the actual underlying message name identification).",
+            "Use the namespace identifier of the underlying message (e.g. pacs.009.001.08, pacs.004.001.09, MT103, MT202)."
+          ]
+        },
+        {
+          "error_id": "ORGNLMSGNMID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "OrgnlMsgNmId exceeds 35 characters.",
+          "affected_tags": [
+            "TxInfAndSts/OrgnlGrpInf/OrgnlMsgNmId"
+          ],
+          "possible_fixes": [
+            "Truncate to maximum 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/OrgnlGrpInf/OrgnlCreDtTm",
+      "xml_element": "OrgnlCreDtTm",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlGrpInf/OrgnlCreDtTm",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "datatype": "CBPR_DateTime",
+      "description": "Original Creation Date Time of the underlying message. If present, must use YYYY-MM-DDTHH:MM:SS+HH:MM with mandatory offset; Z forbidden.",
+      "errors": [
+        {
+          "error_id": "ORGNLCREDTTM_Z_SUFFIX",
+          "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+          "severity": "Fatal",
+          "description": "OrgnlCreDtTm uses 'Z' suffix or lacks the mandatory +/-HH:MM offset; forbidden by CBPR_DateTime pattern.",
+          "affected_tags": [
+            "TxInfAndSts/OrgnlGrpInf/OrgnlCreDtTm"
+          ],
+          "possible_fixes": [
+            "Replace 'Z' with an explicit offset. Example: 2026-05-28T10:00:00Z → 2026-05-28T10:00:00+00:00."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/OrgnlInstrId",
+      "xml_element": "OrgnlInstrId",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlInstrId",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "datatype": "CBPR_RestrictedFINXMax16Text",
+      "max_length": 16,
+      "description": "Original Instruction Identification. Should transport the InstructionIdentification of the underlying payment (e.g. pacs.008/pacs.009) or the same OrgnlInstrId if present in pacs.004. Must not start/end with '/' or contain '//'.",
+      "errors": [
+        {
+          "error_id": "ORGNLINSTRID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "OrgnlInstrId exceeds 16 characters (CBPR_RestrictedFINXMax16Text).",
+          "affected_tags": [
+            "TxInfAndSts/OrgnlInstrId"
+          ],
+          "possible_fixes": [
+            "Truncate to maximum 16 characters."
+          ]
+        },
+        {
+          "error_id": "ORGNLINSTRID_SLASH",
+          "error_code": "CBPR_ORGNLINSTRID_SLASH",
+          "severity": "Fatal",
+          "description": "OrgnlInstrId starts with '/', ends with '/', or contains '//'.",
+          "affected_tags": [
+            "TxInfAndSts/OrgnlInstrId"
+          ],
+          "possible_fixes": [
+            "Remove leading and trailing slashes and any double slashes.",
+            "Value must not match the XML pattern '(/.*)|(.*/)|(.*//.*)'."
+          ]
+        },
+        {
+          "error_id": "ORGNLINSTRID_INVALID_CHARS",
+          "error_code": "INVALID_CHARSETS",
+          "severity": "Fatal",
+          "description": "OrgnlInstrId contains characters outside the FIN-X character set.",
+          "affected_tags": [
+            "TxInfAndSts/OrgnlInstrId"
+          ],
+          "possible_fixes": [
+            "Allowed: 0-9 a-z A-Z / - ? : ( ) . , ' + SPACE. Pattern: [0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/OrgnlEndToEndId",
+      "xml_element": "OrgnlEndToEndId",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlEndToEndId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "note": "Made mandatory (min 1) by CBPR+ SR2025. Datatype changed to CBPR_RestrictedFINXMax35Text.",
+      "datatype": "CBPR_RestrictedFINXMax35Text",
+      "max_length": 35,
+      "description": "Original End-to-End Identification. Should transport the EndToEndId of the underlying payment (e.g. pacs.008/pacs.009) or the same OrgnlEndToEndId as in pacs.004. 'NOTPROVIDED' is allowed when the underlying value was NOTPROVIDED.",
+      "errors": [
+        {
+          "error_id": "ORGNLENDTOENDID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "OrgnlEndToEndId is absent; it is mandatory under CBPR+ SR2025.",
+          "affected_tags": [
+            "TxInfAndSts/OrgnlEndToEndId"
+          ],
+          "possible_fixes": [
+            "Insert <OrgnlEndToEndId>{EndToEndId of the underlying message}</OrgnlEndToEndId>.",
+            "Insert <OrgnlEndToEndId>NOTPROVIDED</OrgnlEndToEndId> if the underlying value was NOTPROVIDED."
+          ]
+        },
+        {
+          "error_id": "ORGNLENDTOENDID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "OrgnlEndToEndId exceeds 35 characters.",
+          "affected_tags": [
+            "TxInfAndSts/OrgnlEndToEndId"
+          ],
+          "possible_fixes": [
+            "Truncate to 35 characters maximum.",
+            "Use 'NOTPROVIDED' if the original reference cannot be preserved within length limit."
+          ]
+        },
+        {
+          "error_id": "ORGNLENDTOENDID_INVALID_CHARS",
+          "error_code": "INVALID_CHARSETS",
+          "severity": "Fatal",
+          "description": "OrgnlEndToEndId contains characters outside the FIN-X character set.",
+          "affected_tags": [
+            "TxInfAndSts/OrgnlEndToEndId"
+          ],
+          "possible_fixes": [
+            "Allowed: 0-9 a-z A-Z / - ? : ( ) . , ' + SPACE. Pattern: [0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/OrgnlTxId",
+      "xml_element": "OrgnlTxId",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlTxId",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "datatype": "CBPR_RestrictedFINXMax35Text",
+      "max_length": 35,
+      "description": "Original Transaction Identification. Should transport the TransactionIdentification of the underlying payment (e.g. pacs.008/pacs.009) when present, or the same OrgnlTxId if present in pacs.004.",
+      "errors": [
+        {
+          "error_id": "ORGNLTXID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "OrgnlTxId exceeds 35 characters.",
+          "affected_tags": [
+            "TxInfAndSts/OrgnlTxId"
+          ],
+          "possible_fixes": [
+            "Truncate to 35 characters maximum preserving the unique prefix."
+          ]
+        },
+        {
+          "error_id": "ORGNLTXID_INVALID_CHARS",
+          "error_code": "INVALID_CHARSETS",
+          "severity": "Fatal",
+          "description": "OrgnlTxId contains characters outside the FIN-X character set.",
+          "affected_tags": [
+            "TxInfAndSts/OrgnlTxId"
+          ],
+          "possible_fixes": [
+            "Allowed: 0-9 a-z A-Z / - ? : ( ) . , ' + SPACE. Pattern: [0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/OrgnlUETR",
+      "xml_element": "OrgnlUETR",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlUETR",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "note": "Made mandatory (min 1) by CBPR+ SR2025. Must transport the UETR of the underlying pacs.008/pacs.009.",
+      "datatype": "UUIDv4Identifier",
+      "length": 36,
+      "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}",
+      "description": "Original UETR. UUID v4 format. Mandatory under CBPR+; must equal the UETR of the underlying payment message.",
+      "errors": [
+        {
+          "error_id": "ORGNLUETR_MISSING",
+          "error_code": "MISSING_UETR",
+          "severity": "Fatal",
+          "description": "OrgnlUETR is absent; mandatory under CBPR+.",
+          "affected_tags": [
+            "TxInfAndSts/OrgnlUETR"
+          ],
+          "possible_fixes": [
+            "Insert <OrgnlUETR>{valid UUID v4}</OrgnlUETR>.",
+            "Harvest the UETR from the underlying pacs.008/pacs.009 PmtId/UETR.",
+            "Example valid UETR: 4a1a0945-5772-409a-83ba-240e666e0267"
+          ]
+        },
+        {
+          "error_id": "ORGNLUETR_FORMAT_ERROR",
+          "error_code": "UETR_FORMAT_ERROR",
+          "severity": "Fatal",
+          "description": "OrgnlUETR is not a valid UUID v4 (wrong format, uppercase, wrong version digit, invalid variant).",
+          "affected_tags": [
+            "TxInfAndSts/OrgnlUETR"
+          ],
+          "possible_fixes": [
+            "Ensure UETR is lowercase hex in format xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx.",
+            "The 13th character (version) must be '4'.",
+            "The 17th character (variant) must be 8, 9, a, or b.",
+            "Total length must be exactly 36 characters including hyphens.",
+            "Harvest the correct value from the underlying message if existing value is corrupt."
+          ]
+        },
+        {
+          "error_id": "ORGNLUETR_UPPERCASE",
+          "error_code": "UETR_FORMAT_ERROR",
+          "severity": "Fatal",
+          "description": "OrgnlUETR contains uppercase hexadecimal characters; must be lowercase.",
+          "affected_tags": [
+            "TxInfAndSts/OrgnlUETR"
+          ],
+          "possible_fixes": [
+            "Convert all hex characters in OrgnlUETR to lowercase."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/TxSts",
+      "xml_element": "TxSts",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/TxSts",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "note": "Made mandatory (min 1) by CBPR+ SR2025.",
+      "datatype": "ExternalPaymentTransactionStatus1Code",
+      "max_length": 4,
+      "description": "Transaction Status in coded form (external code set, max 4 chars). Common values include ACTC, ACCP, ACSP, ACSC, ACWC, PDNG, RCVD, RJCT. RJCT triggers reject-related formal rules.",
+      "errors": [
+        {
+          "error_id": "TXSTS_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "TxSts is absent; it is mandatory under CBPR+ SR2025.",
+          "affected_tags": [
+            "TxInfAndSts/TxSts"
+          ],
+          "possible_fixes": [
+            "Insert <TxSts>{status code}</TxSts> with a valid ExternalPaymentTransactionStatus1Code.",
+            "Use RJCT for a rejected (negative) status, or an accepted code (e.g. ACSP, ACSC) for a positive status (positive status governed by bilateral agreement)."
+          ]
+        },
+        {
+          "error_id": "TXSTS_INVALID_CODE",
+          "error_code": "SCHEMENAME_INVALID",
+          "severity": "Fatal",
+          "description": "TxSts contains a value not in the external payment transaction status code set (or exceeds 4 characters).",
+          "affected_tags": [
+            "TxInfAndSts/TxSts"
+          ],
+          "possible_fixes": [
+            "Replace with a valid ExternalPaymentTransactionStatus1Code (max 4 characters), e.g. ACTC, ACCP, ACSP, ACSC, ACWC, PDNG, RJCT.",
+            "Download the current external code set from www.iso20022.org to validate."
+          ]
+        },
+        {
+          "error_id": "TXSTS_RJCT_NO_REASON",
+          "error_code": "CBPR_TXSTS_RJCT_RSN",
+          "severity": "Fatal",
+          "description": "TxSts = RJCT but no StatusReasonInformation/Reason present.",
+          "affected_tags": [
+            "TxInfAndSts/TxSts",
+            "TxInfAndSts/StsRsnInf/Rsn"
+          ],
+          "possible_fixes": [
+            "Add a StsRsnInf/Rsn block with a valid reason code when TxSts = RJCT."
+          ]
+        },
+        {
+          "error_id": "TXSTS_RJCT_WITH_FCTVDT",
+          "error_code": "CBPR_TXSTS_RJCT_FCTVDT",
+          "severity": "Fatal",
+          "description": "TxSts = RJCT but FctvIntrBkSttlmDt is present; not allowed for rejected status.",
+          "affected_tags": [
+            "TxInfAndSts/TxSts",
+            "TxInfAndSts/FctvIntrBkSttlmDt"
+          ],
+          "possible_fixes": [
+            "Remove FctvIntrBkSttlmDt when TxSts = RJCT."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/StsRsnInf",
+      "xml_element": "StsRsnInf",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "note": "Maximum occurrence reduced to 1 by CBPR+ SR2025 (base [0..*]). Mandatory when TxSts = RJCT. Contains Orgtr, Rsn, AddtlInf (AddtlInf max 2).",
+      "description": "Status Reason Information. Provides the reason for the reported status. Must contain a Reason when TransactionStatus is RJCT.",
+      "errors": [
+        {
+          "error_id": "STSRSNINF_MISSING_WHEN_RJCT",
+          "error_code": "CBPR_TXSTS_RJCT_RSN",
+          "severity": "Fatal",
+          "description": "TxSts = RJCT but StsRsnInf (with Reason) is absent.",
+          "affected_tags": [
+            "TxInfAndSts/StsRsnInf",
+            "TxInfAndSts/TxSts"
+          ],
+          "possible_fixes": [
+            "Insert <StsRsnInf><Rsn><Cd>{reason code}</Cd></Rsn></StsRsnInf> when TxSts = RJCT.",
+            "Use a valid ExternalStatusReason1Code."
+          ]
+        },
+        {
+          "error_id": "STSRSNINF_MULTIPLE",
+          "error_code": "CBPR_REMOVED_ELEMENTS",
+          "severity": "Fatal",
+          "description": "More than one StsRsnInf occurrence present; CBPR+ SR2025 reduced maximum occurrence to 1.",
+          "affected_tags": [
+            "TxInfAndSts/StsRsnInf"
+          ],
+          "possible_fixes": [
+            "Keep only a single StsRsnInf block; remove additional occurrences."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/StsRsnInf/Rsn/Cd",
+      "xml_element": "Cd",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Rsn/Cd",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "note": "Rsn is a choice between Cd (ExternalStatusReason1Code) and Prtry; mutually exclusive.",
+      "datatype": "ExternalStatusReason1Code",
+      "max_length": 4,
+      "description": "Status reason code from the external status reason code set (max 4 chars). If Cd = NARR, AdditionalInformation must be present (R16).",
+      "errors": [
+        {
+          "error_id": "RSN_CD_INVALID",
+          "error_code": "SCHEMENAME_INVALID",
+          "severity": "Fatal",
+          "description": "Rsn/Cd is not in the ISO 20022 ExternalStatusReason1Code list (or exceeds 4 characters).",
+          "affected_tags": [
+            "TxInfAndSts/StsRsnInf/Rsn/Cd"
+          ],
+          "possible_fixes": [
+            "Use a valid ExternalStatusReason1Code (e.g. AC01 IncorrectAccountNumber, AM05 Duplication, BE01, NARR).",
+            "Alternatively use Rsn/Prtry with a proprietary code.",
+            "Download the current external code set from www.iso20022.org to validate."
+          ]
+        },
+        {
+          "error_id": "RSN_CD_AND_PRTRY",
+          "error_code": "DUPLICATE_TAG",
+          "severity": "Fatal",
+          "description": "Both Rsn/Cd and Rsn/Prtry are present; mutually exclusive.",
+          "affected_tags": [
+            "TxInfAndSts/StsRsnInf/Rsn/Cd",
+            "TxInfAndSts/StsRsnInf/Rsn/Prtry"
+          ],
+          "possible_fixes": [
+            "Remove Prtry if Cd is the correct choice.",
+            "Remove Cd if Prtry is the correct choice."
+          ]
+        },
+        {
+          "error_id": "RSN_CD_NARR_WITHOUT_ADDTLINF",
+          "error_code": "X00077",
+          "severity": "Fatal",
+          "description": "Rsn/Cd equals NARR but AdditionalInformation (AddtlInf) is absent; violates R16 (StatusReasonRule).",
+          "affected_tags": [
+            "TxInfAndSts/StsRsnInf/Rsn/Cd",
+            "TxInfAndSts/StsRsnInf/AddtlInf"
+          ],
+          "possible_fixes": [
+            "Add at least one <AddtlInf>{narrative}</AddtlInf> when Rsn/Cd = NARR.",
+            "Alternatively replace NARR with a specific coded reason that does not require narrative."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/StsRsnInf/AddtlInf",
+      "xml_element": "AddtlInf",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/AddtlInf",
+      "occurrence": "[0..2]",
+      "mandatory": false,
+      "note": "Maximum occurrence reduced to 2 (R[0..2]) by CBPR+ SR2025.",
+      "description": "Additional information / narrative for the status reason. Mandatory when Rsn/Cd = NARR (R16). Maximum 2 occurrences.",
+      "errors": [
+        {
+          "error_id": "ADDTLINF_MISSING_WHEN_NARR",
+          "error_code": "X00077",
+          "severity": "Fatal",
+          "description": "Rsn/Cd = NARR but AddtlInf is absent; violates R16.",
+          "affected_tags": [
+            "TxInfAndSts/StsRsnInf/AddtlInf",
+            "TxInfAndSts/StsRsnInf/Rsn/Cd"
+          ],
+          "possible_fixes": [
+            "Add <AddtlInf>{narrative explaining the reason}</AddtlInf>."
+          ]
+        },
+        {
+          "error_id": "ADDTLINF_TOO_MANY",
+          "error_code": "CBPR_REMOVED_ELEMENTS",
+          "severity": "Fatal",
+          "description": "More than 2 AddtlInf occurrences present; CBPR+ SR2025 reduced maximum occurrence to 2.",
+          "affected_tags": [
+            "TxInfAndSts/StsRsnInf/AddtlInf"
+          ],
+          "possible_fixes": [
+            "Keep at most 2 AddtlInf occurrences; consolidate or remove extras."
+          ]
+        },
+        {
+          "error_id": "ADDTLINF_INVALID_CHARS",
+          "error_code": "INVALID_CHARSETS",
+          "severity": "Fatal",
+          "description": "StsRsnInf/AddtlInf contains characters outside the permitted extended character set.",
+          "affected_tags": [
+            "TxInfAndSts/StsRsnInf/AddtlInf"
+          ],
+          "possible_fixes": [
+            "AddtlInf supports extended charset including !#$&%*=^_{|}~\";<>@[\\].",
+            "Replace < with &lt; and > with &gt;.",
+            "Remove characters not in the permitted set."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/StsRsnInf/Orgtr",
+      "xml_element": "Orgtr",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/StsRsnInf/Orgtr",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Party that issues the status. If AnyBIC is absent, Name is mandatory; if PostalAddress is present, Name is mandatory. AnyBIC takes precedence on conflict.",
+      "errors": [
+        {
+          "error_id": "ORGTR_NAME_MISSING_NO_ANYBIC",
+          "error_code": "CBPR_ORIGINATOR_NAME_ANYBIC",
+          "severity": "Fatal",
+          "description": "Orgtr/Id/OrgId/AnyBIC is absent and Orgtr/Nm is also absent; Name is mandatory when AnyBIC is absent.",
+          "affected_tags": [
+            "TxInfAndSts/StsRsnInf/Orgtr/Nm",
+            "TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/AnyBIC"
+          ],
+          "possible_fixes": [
+            "Add <Nm>{originator name}</Nm> to Orgtr.",
+            "Alternatively add Orgtr/Id/OrgId/AnyBIC."
+          ]
+        },
+        {
+          "error_id": "ORGTR_PSTLADR_WITHOUT_NAME",
+          "error_code": "CBPR_ORIGINATOR_NAME_PSTLADR",
+          "severity": "Fatal",
+          "description": "Orgtr/PstlAdr is present but Orgtr/Nm is absent; Name is mandatory when PostalAddress is present.",
+          "affected_tags": [
+            "TxInfAndSts/StsRsnInf/Orgtr/Nm",
+            "TxInfAndSts/StsRsnInf/Orgtr/PstlAdr"
+          ],
+          "possible_fixes": [
+            "Add <Nm>{originator name}</Nm> to Orgtr.",
+            "Or remove PstlAdr if not required."
+          ]
+        },
+        {
+          "error_id": "ORGTR_NM_INVALID_CHARS",
+          "error_code": "INVALID_CHARSETS",
+          "severity": "Fatal",
+          "description": "StsRsnInf/Orgtr/Nm contains characters outside the permitted character set.",
+          "affected_tags": [
+            "TxInfAndSts/StsRsnInf/Orgtr/Nm"
+          ],
+          "possible_fixes": [
+            "Nm fields support extended charset: A-Z a-z 0-9 / - ? : ( ) . , ' + SPACE and !#$&%*=^_{|}~\";<>@[\\].",
+            "Replace < with &lt; and > with &gt;.",
+            "Remove characters not in the permitted extended set."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/FctvIntrBkSttlmDt",
+      "xml_element": "FctvIntrBkSttlmDt",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/FctvIntrBkSttlmDt",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "note": "Choice of Dt (ISODate) or DtTm (CBPR_DateTime) via DateAndDateTime2Choice__1. Not allowed when TxSts = RJCT.",
+      "description": "Effective Interbank Settlement Date — date/time at which the transaction is completed and cleared (payment effected). Must be absent when TransactionStatus = RJCT.",
+      "errors": [
+        {
+          "error_id": "FCTVDT_PRESENT_WHEN_RJCT",
+          "error_code": "CBPR_TXSTS_RJCT_FCTVDT",
+          "severity": "Fatal",
+          "description": "FctvIntrBkSttlmDt is present while TxSts = RJCT; not allowed.",
+          "affected_tags": [
+            "TxInfAndSts/FctvIntrBkSttlmDt",
+            "TxInfAndSts/TxSts"
+          ],
+          "possible_fixes": [
+            "Remove FctvIntrBkSttlmDt when TxSts = RJCT.",
+            "Alternatively correct TxSts to a settled status if settlement actually occurred."
+          ]
+        },
+        {
+          "error_id": "FCTVDT_DTTM_Z_SUFFIX",
+          "error_code": "CBPR_DATETIME_Z_FORBIDDEN",
+          "severity": "Fatal",
+          "description": "FctvIntrBkSttlmDt/DtTm uses 'Z' suffix or lacks the mandatory +/-HH:MM offset; forbidden by CBPR_DateTime pattern.",
+          "affected_tags": [
+            "TxInfAndSts/FctvIntrBkSttlmDt/DtTm"
+          ],
+          "possible_fixes": [
+            "Replace 'Z' with an explicit offset. Example: 2026-05-28T10:00:00Z → 2026-05-28T10:00:00+00:00.",
+            "Alternatively use the date-only choice <Dt>YYYY-MM-DD</Dt>."
+          ]
+        },
+        {
+          "error_id": "FCTVDT_DT_WRONG_FORMAT",
+          "error_code": "PAST_DATE_ERROR",
+          "severity": "Fatal",
+          "description": "FctvIntrBkSttlmDt/Dt is not in YYYY-MM-DD format.",
+          "affected_tags": [
+            "TxInfAndSts/FctvIntrBkSttlmDt/Dt"
+          ],
+          "possible_fixes": [
+            "Use date-only format YYYY-MM-DD with no time component. Example: 2026-05-28."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/ClrSysRef",
+      "xml_element": "ClrSysRef",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/ClrSysRef",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "datatype": "CBPR_RestrictedFINXMax35Text",
+      "max_length": 35,
+      "description": "Clearing System Reference — unique reference assigned by a clearing system to identify the instruction. Datatype changed to CBPR_RestrictedFINXMax35Text.",
+      "errors": [
+        {
+          "error_id": "CLRSYSREF_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "ClrSysRef exceeds 35 characters.",
+          "affected_tags": [
+            "TxInfAndSts/ClrSysRef"
+          ],
+          "possible_fixes": [
+            "Truncate to 35 characters maximum."
+          ]
+        },
+        {
+          "error_id": "CLRSYSREF_INVALID_CHARS",
+          "error_code": "INVALID_CHARSETS",
+          "severity": "Fatal",
+          "description": "ClrSysRef contains characters outside the FIN-X character set.",
+          "affected_tags": [
+            "TxInfAndSts/ClrSysRef"
+          ],
+          "possible_fixes": [
+            "Allowed: 0-9 a-z A-Z / - ? : ( ) . , ' + SPACE. Pattern: [0-9a-zA-Z/\\-\\?:\\(\\)\\.,'\\+ ]+"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/InstgAgt",
+      "xml_element": "InstgAgt",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/InstgAgt",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "note": "Made mandatory (min 1) by CBPR+ SR2025. BICFI mandatory; Name/PstlAdr removed; BrnchId removed. Must match AppHdr/Fr. The instructing agent is the party sending the status message.",
+      "description": "Instructing agent of the status report. Must have a valid BICFI. Must match AppHdr/Fr.",
+      "errors": [
+        {
+          "error_id": "INSTGAGT_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "InstgAgt is absent from TxInfAndSts; it is mandatory under CBPR+ SR2025.",
+          "affected_tags": [
+            "TxInfAndSts/InstgAgt"
+          ],
+          "possible_fixes": [
+            "Insert <InstgAgt><FinInstnId><BICFI>{instructing_bic}</BICFI></FinInstnId></InstgAgt>.",
+            "Use the same BIC as AppHdr/Fr."
+          ]
+        },
+        {
+          "error_id": "INSTGAGT_BICFI_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "InstgAgt/FinInstnId/BICFI is absent; BICFI is mandatory for instructing agents on SWIFT.",
+          "affected_tags": [
+            "TxInfAndSts/InstgAgt/FinInstnId/BICFI"
+          ],
+          "possible_fixes": [
+            "Add <BICFI>{instructing_bic}</BICFI> to FinInstnId.",
+            "Harvest the BIC from AppHdr/Fr."
+          ]
+        },
+        {
+          "error_id": "INSTGAGT_INVALID_BIC",
+          "error_code": "INVALID_BICFI",
+          "severity": "Fatal",
+          "description": "InstgAgt/FinInstnId/BICFI is invalid or malformed.",
+          "affected_tags": [
+            "TxInfAndSts/InstgAgt/FinInstnId/BICFI"
+          ],
+          "possible_fixes": [
+            "Replace with a valid BICFI: 8 or 11 uppercase alphanumeric characters.",
+            "Pattern: [A-Z0-9]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?"
+          ]
+        },
+        {
+          "error_id": "INSTGAGT_NM_PSTLADR_WITH_BIC",
+          "error_code": "BICFI_EXCLUSIVE",
+          "severity": "Fatal",
+          "description": "CBPR+: BICFI is present but Nm and/or PstlAdr are also present in the same FinInstnId (Nm/PstlAdr are removed for instructing/instructed agents).",
+          "affected_tags": [
+            "TxInfAndSts/InstgAgt/FinInstnId/Nm",
+            "TxInfAndSts/InstgAgt/FinInstnId/PstlAdr"
+          ],
+          "possible_fixes": [
+            "Remove Nm and PstlAdr from InstgAgt/FinInstnId; instructing agents are identified by BICFI only (ClrSysMmbId and LEI may complement)."
+          ]
+        },
+        {
+          "error_id": "INSTGAGT_NEQ_APPHDR_FR",
+          "error_code": "CBPR_FR_TO_1",
+          "severity": "Fatal",
+          "description": "InstgAgt BICFI does not match AppHdr/Fr BICFI (when CpyDplct absent or not COPY/CODU).",
+          "affected_tags": [
+            "TxInfAndSts/InstgAgt/FinInstnId/BICFI",
+            "AppHdr/Fr/FIId/FinInstnId/BICFI"
+          ],
+          "possible_fixes": [
+            "Align InstgAgt/FinInstnId/BICFI with AppHdr/Fr/FIId/FinInstnId/BICFI."
+          ]
+        },
+        {
+          "error_id": "INSTGAGT_BRNCHID_PRESENT",
+          "error_code": "CBPR_BRANCH_REMOVED",
+          "severity": "Fatal",
+          "description": "BrnchId is present in InstgAgt; removed under CBPR+ SR2025.",
+          "affected_tags": [
+            "TxInfAndSts/InstgAgt/BrnchId"
+          ],
+          "possible_fixes": [
+            "Remove the BrnchId element from InstgAgt entirely."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/InstdAgt",
+      "xml_element": "InstdAgt",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/InstdAgt",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "note": "Made mandatory (min 1) by CBPR+ SR2025. BICFI mandatory; Name/PstlAdr removed; BrnchId removed. Must match AppHdr/To. The instructed agent is the party receiving the status message.",
+      "description": "Instructed agent of the status report. Must have a valid BICFI. Must match AppHdr/To.",
+      "errors": [
+        {
+          "error_id": "INSTDAGT_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "InstdAgt is absent from TxInfAndSts; it is mandatory under CBPR+ SR2025.",
+          "affected_tags": [
+            "TxInfAndSts/InstdAgt"
+          ],
+          "possible_fixes": [
+            "Insert <InstdAgt><FinInstnId><BICFI>{instructed_bic}</BICFI></FinInstnId></InstdAgt>.",
+            "Use the same BIC as AppHdr/To."
+          ]
+        },
+        {
+          "error_id": "INSTDAGT_BICFI_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "InstdAgt/FinInstnId/BICFI is absent; BICFI is mandatory for instructed agents on SWIFT.",
+          "affected_tags": [
+            "TxInfAndSts/InstdAgt/FinInstnId/BICFI"
+          ],
+          "possible_fixes": [
+            "Add <BICFI>{instructed_bic}</BICFI> to FinInstnId.",
+            "Harvest the BIC from AppHdr/To."
+          ]
+        },
+        {
+          "error_id": "INSTDAGT_INVALID_BIC",
+          "error_code": "INVALID_BICFI",
+          "severity": "Fatal",
+          "description": "InstdAgt/FinInstnId/BICFI is invalid or malformed.",
+          "affected_tags": [
+            "TxInfAndSts/InstdAgt/FinInstnId/BICFI"
+          ],
+          "possible_fixes": [
+            "Replace with a valid BICFI: 8 or 11 uppercase alphanumeric characters.",
+            "Pattern: [A-Z0-9]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?"
+          ]
+        },
+        {
+          "error_id": "INSTDAGT_NM_PSTLADR_WITH_BIC",
+          "error_code": "BICFI_EXCLUSIVE",
+          "severity": "Fatal",
+          "description": "CBPR+: BICFI is present but Nm and/or PstlAdr are also in the same FinInstnId (Nm/PstlAdr are removed for instructing/instructed agents).",
+          "affected_tags": [
+            "TxInfAndSts/InstdAgt/FinInstnId/Nm",
+            "TxInfAndSts/InstdAgt/FinInstnId/PstlAdr"
+          ],
+          "possible_fixes": [
+            "Remove Nm and PstlAdr from InstdAgt/FinInstnId; instructed agents are identified by BICFI only (ClrSysMmbId and LEI may complement)."
+          ]
+        },
+        {
+          "error_id": "INSTDAGT_NEQ_APPHDR_TO",
+          "error_code": "CBPR_FR_TO_1",
+          "severity": "Fatal",
+          "description": "InstdAgt BICFI does not match AppHdr/To BICFI (when CpyDplct absent or not COPY/CODU).",
+          "affected_tags": [
+            "TxInfAndSts/InstdAgt/FinInstnId/BICFI",
+            "AppHdr/To/FIId/FinInstnId/BICFI"
+          ],
+          "possible_fixes": [
+            "Align InstdAgt/FinInstnId/BICFI with AppHdr/To/FIId/FinInstnId/BICFI."
+          ]
+        },
+        {
+          "error_id": "INSTDAGT_BRNCHID_PRESENT",
+          "error_code": "CBPR_BRANCH_REMOVED",
+          "severity": "Fatal",
+          "description": "BrnchId is present in InstdAgt; removed under CBPR+ SR2025.",
+          "affected_tags": [
+            "TxInfAndSts/InstdAgt/BrnchId"
+          ],
+          "possible_fixes": [
+            "Remove the BrnchId element from InstdAgt entirely."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/OrgnlTxRef",
+      "xml_element": "OrgnlTxRef",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/OrgnlTxRef",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Original Transaction Reference — key elements of the original transaction (IntrBkSttlmAmt, Amt, IntrBkSttlmDt, PmtTpInf, SttlmInf, Dbtr/DbtrAcct/DbtrAgt, Cdtr/CdtrAcct/CdtrAgt, RmtInf, etc.) copied from the underlying message for reconciliation.",
+      "errors": [
+        {
+          "error_id": "ORGNLTXREF_AGT_BICFI_EXCLUSIVE",
+          "error_code": "BICFI_EXCLUSIVE",
+          "severity": "Fatal",
+          "description": "An agent inside OrgnlTxRef (e.g. DbtrAgt/CdtrAgt) has BICFI present together with Nm and/or PstlAdr.",
+          "affected_tags": [
+            "TxInfAndSts/OrgnlTxRef/DbtrAgt/FinInstnId",
+            "TxInfAndSts/OrgnlTxRef/CdtrAgt/FinInstnId"
+          ],
+          "possible_fixes": [
+            "Remove Nm and PstlAdr from any FinInstnId where BICFI is present (BICFI takes precedence)."
+          ]
+        },
+        {
+          "error_id": "ORGNLTXREF_AGT_NM_WITHOUT_PSTLADR",
+          "error_code": "CBPR_AGENT_BICFI_EXCLUSIVE",
+          "severity": "Fatal",
+          "description": "An agent inside OrgnlTxRef has Nm present but PstlAdr absent (or vice versa) while BICFI is absent.",
+          "affected_tags": [
+            "TxInfAndSts/OrgnlTxRef/CdtrAgt/FinInstnId/Nm",
+            "TxInfAndSts/OrgnlTxRef/CdtrAgt/FinInstnId/PstlAdr"
+          ],
+          "possible_fixes": [
+            "When BICFI is absent, provide both Nm and PstlAdr (and optionally ClrSysMmbId).",
+            "Or supply BICFI and remove Nm/PstlAdr."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/StatusIdentification",
+      "xml_element": "StsId",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/StsId",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "note": "Removed by CBPR+ SR2025 guideline.",
+      "description": "Status Identification. Removed under CBPR+; must not be present.",
+      "errors": [
+        {
+          "error_id": "STSID_PRESENT",
+          "error_code": "CBPR_REMOVED_ELEMENTS",
+          "severity": "Fatal",
+          "description": "TxInfAndSts/StsId is present; this element is removed under CBPR+ SR2025.",
+          "affected_tags": [
+            "TxInfAndSts/StsId"
+          ],
+          "possible_fixes": [
+            "Remove the StsId element from TxInfAndSts entirely."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/ChrgsInf",
+      "xml_element": "ChrgsInf",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/ChrgsInf",
+      "occurrence": "[0..*]",
+      "mandatory": false,
+      "note": "Removed by CBPR+ SR2025 guideline at transaction level.",
+      "description": "Charges Information related to the rejection. Removed under CBPR+; must not be present.",
+      "errors": [
+        {
+          "error_id": "CHRGSINF_PRESENT",
+          "error_code": "CBPR_REMOVED_ELEMENTS",
+          "severity": "Fatal",
+          "description": "TxInfAndSts/ChrgsInf is present; this element is removed under CBPR+ SR2025.",
+          "affected_tags": [
+            "TxInfAndSts/ChrgsInf"
+          ],
+          "possible_fixes": [
+            "Remove the ChrgsInf element from TxInfAndSts entirely."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/AccptncDtTm",
+      "xml_element": "AccptncDtTm",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/AccptncDtTm",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "note": "Removed by CBPR+ SR2025 guideline.",
+      "description": "Acceptance Date Time. Removed under CBPR+; must not be present.",
+      "errors": [
+        {
+          "error_id": "ACCPTNCDTTM_PRESENT",
+          "error_code": "CBPR_REMOVED_ELEMENTS",
+          "severity": "Fatal",
+          "description": "TxInfAndSts/AccptncDtTm is present; this element is removed under CBPR+ SR2025.",
+          "affected_tags": [
+            "TxInfAndSts/AccptncDtTm"
+          ],
+          "possible_fixes": [
+            "Remove the AccptncDtTm element from TxInfAndSts entirely."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/AcctSvcrRef",
+      "xml_element": "AcctSvcrRef",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/AcctSvcrRef",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "note": "Removed by CBPR+ SR2025 guideline.",
+      "description": "Account Servicer Reference. Removed under CBPR+; must not be present.",
+      "errors": [
+        {
+          "error_id": "ACCTSVCRREF_PRESENT",
+          "error_code": "CBPR_REMOVED_ELEMENTS",
+          "severity": "Fatal",
+          "description": "TxInfAndSts/AcctSvcrRef is present; this element is removed under CBPR+ SR2025.",
+          "affected_tags": [
+            "TxInfAndSts/AcctSvcrRef"
+          ],
+          "possible_fixes": [
+            "Remove the AcctSvcrRef element from TxInfAndSts entirely."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "SplmtryData",
+      "xml_element": "SplmtryData",
+      "xpath": "/Document/FIToFIPmtStsRpt/SplmtryData",
+      "occurrence": "[0..*]",
+      "mandatory": false,
+      "note": "Removed by CBPR+ SR2025 guideline at message level. Supplementary data, if needed, is carried at transaction level (TxInfAndSts/SplmtryData).",
+      "description": "Message-level Supplementary Data. Removed under CBPR+; must not be present.",
+      "errors": [
+        {
+          "error_id": "SPLMTRYDATA_MSGLEVEL_PRESENT",
+          "error_code": "CBPR_REMOVED_ELEMENTS",
+          "severity": "Fatal",
+          "description": "Message-level SplmtryData is present; it is removed under CBPR+ SR2025.",
+          "affected_tags": [
+            "SplmtryData"
+          ],
+          "possible_fixes": [
+            "Remove the message-level SplmtryData block.",
+            "If supplementary data is required, place it at transaction level under TxInfAndSts/SplmtryData."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TxInfAndSts/SplmtryData",
+      "xml_element": "SplmtryData",
+      "xpath": "/Document/FIToFIPmtStsRpt/TxInfAndSts/SplmtryData",
+      "occurrence": "[0..*]",
+      "mandatory": false,
+      "description": "Transaction-level Supplementary Data. Must contain Envlp [1..1]; PlcAndNm [0..1] optional.",
+      "errors": [
+        {
+          "error_id": "SPLMTRYDATA_MISSING_ENVLP",
+          "error_code": "MISSING_EXPECTED_ELEMENT",
+          "severity": "Fatal",
+          "description": "TxInfAndSts/SplmtryData is present but the Envlp element is absent.",
+          "affected_tags": [
+            "TxInfAndSts/SplmtryData/Envlp"
+          ],
+          "possible_fixes": [
+            "Add an <Envlp> element inside SplmtryData (Envlp is mandatory when SplmtryData is present).",
+            "Remove the SplmtryData block if no supplementary data is needed."
+          ]
+        }
+      ]
+    }
+  ],
+  "cross_tag_dependency_rules": [
+    {
+      "rule_id": "DEP_001",
+      "rule": "AppHdr/BizMsgIdr must equal GrpHdr/MsgId",
+      "affected_tags": [
+        "AppHdr/BizMsgIdr",
+        "GrpHdr/MsgId"
+      ],
+      "fix": "Harvest MsgId from GrpHdr and set BizMsgIdr to same value or vice versa."
+    },
+    {
+      "rule_id": "DEP_002",
+      "rule": "AppHdr/Fr/BICFI must equal TxInfAndSts/InstgAgt/BICFI (unless CpyDplct=COPY/CODU)",
+      "affected_tags": [
+        "AppHdr/Fr",
+        "TxInfAndSts/InstgAgt"
+      ],
+      "fix": "Harvest InstgAgt BICFI and set AppHdr/Fr to match."
+    },
+    {
+      "rule_id": "DEP_003",
+      "rule": "AppHdr/To/BICFI must equal TxInfAndSts/InstdAgt/BICFI (unless CpyDplct=COPY/CODU)",
+      "affected_tags": [
+        "AppHdr/To",
+        "TxInfAndSts/InstdAgt"
+      ],
+      "fix": "Harvest InstdAgt BICFI and set AppHdr/To to match."
+    },
+    {
+      "rule_id": "DEP_004",
+      "rule": "AppHdr/MsgDefIdr must equal 'pacs.002.001.10' and match the Document namespace",
+      "affected_tags": [
+        "AppHdr/MsgDefIdr"
+      ],
+      "fix": "Set MsgDefIdr to pacs.002.001.10."
+    },
+    {
+      "rule_id": "DEP_005",
+      "rule": "If CpyDplct is present, Rltd must be present (R3)",
+      "affected_tags": [
+        "AppHdr/CpyDplct",
+        "AppHdr/Rltd"
+      ],
+      "fix": "Add the Rltd BAH block when CpyDplct is present, or remove CpyDplct."
+    },
+    {
+      "rule_id": "DEP_006",
+      "rule": "If TxSts = RJCT, then FctvIntrBkSttlmDt is not allowed",
+      "affected_tags": [
+        "TxInfAndSts/TxSts",
+        "TxInfAndSts/FctvIntrBkSttlmDt"
+      ],
+      "fix": "Remove FctvIntrBkSttlmDt when TxSts = RJCT."
+    },
+    {
+      "rule_id": "DEP_007",
+      "rule": "If TxSts = RJCT, then StsRsnInf/Rsn is mandatory",
+      "affected_tags": [
+        "TxInfAndSts/TxSts",
+        "TxInfAndSts/StsRsnInf/Rsn"
+      ],
+      "fix": "Add a StsRsnInf/Rsn block with a valid reason code when TxSts = RJCT."
+    },
+    {
+      "rule_id": "DEP_008",
+      "rule": "If StsRsnInf/Rsn/Cd = NARR, then AddtlInf is mandatory (R16)",
+      "affected_tags": [
+        "TxInfAndSts/StsRsnInf/Rsn/Cd",
+        "TxInfAndSts/StsRsnInf/AddtlInf"
+      ],
+      "fix": "Add at least one AddtlInf when Cd = NARR."
+    },
+    {
+      "rule_id": "DEP_009",
+      "rule": "OriginalGroupInformationAndStatus is removed; original group info must be carried at TxInfAndSts/OrgnlGrpInf",
+      "affected_tags": [
+        "OrgnlGrpInfAndSts",
+        "TxInfAndSts/OrgnlGrpInf"
+      ],
+      "fix": "Remove message-level OrgnlGrpInfAndSts; populate TxInfAndSts/OrgnlGrpInf (OrgnlMsgId, OrgnlMsgNmId)."
+    },
+    {
+      "rule_id": "DEP_010",
+      "rule": "GrpHdr/InstgAgt and GrpHdr/InstdAgt are removed; agents must be carried at transaction level",
+      "affected_tags": [
+        "GrpHdr/InstgAgt",
+        "GrpHdr/InstdAgt",
+        "TxInfAndSts/InstgAgt",
+        "TxInfAndSts/InstdAgt"
+      ],
+      "fix": "Remove group-level agents; provide TxInfAndSts/InstgAgt and TxInfAndSts/InstdAgt with mandatory BICFI."
+    },
+    {
+      "rule_id": "DEP_011",
+      "rule": "TxInfAndSts must occur exactly once (single transaction)",
+      "affected_tags": [
+        "TxInfAndSts"
+      ],
+      "fix": "Keep a single TxInfAndSts; split multiple statuses into separate pacs.002 messages."
+    },
+    {
+      "rule_id": "DEP_012",
+      "rule": "InstgAgt and InstdAgt must be identified by BICFI only (Name & PstlAdr removed)",
+      "affected_tags": [
+        "TxInfAndSts/InstgAgt/FinInstnId/BICFI",
+        "TxInfAndSts/InstdAgt/FinInstnId/BICFI"
+      ],
+      "fix": "Populate BICFI; remove Nm/PstlAdr from these agents (ClrSysMmbId/LEI may complement)."
+    },
+    {
+      "rule_id": "DEP_013",
+      "rule": "If FinInstnId/BICFI present (within OrgnlTxRef agents), then Nm and PstlAdr MUST NOT be present in same block",
+      "affected_tags": [
+        "FinInstnId/BICFI",
+        "FinInstnId/Nm",
+        "FinInstnId/PstlAdr"
+      ],
+      "fix": "Remove Nm and PstlAdr when BICFI is present."
+    },
+    {
+      "rule_id": "DEP_014",
+      "rule": "For StatusReasonInformation/Originator: if AnyBIC absent then Name mandatory; if PstlAdr present then Name mandatory",
+      "affected_tags": [
+        "TxInfAndSts/StsRsnInf/Orgtr/Nm",
+        "TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/AnyBIC",
+        "TxInfAndSts/StsRsnInf/Orgtr/PstlAdr"
+      ],
+      "fix": "Add Orgtr/Nm when AnyBIC is absent or PstlAdr is present."
+    },
+    {
+      "rule_id": "DEP_015",
+      "rule": "BrnchId is removed from all agent elements (group + transaction + AppHdr Fr/To + Related Fr/To + ChrgsInf/Agt) under CBPR+ SR2025",
+      "affected_tags": [
+        "TxInfAndSts/InstgAgt/BrnchId",
+        "TxInfAndSts/InstdAgt/BrnchId",
+        "AppHdr/Fr/FIId/FinInstnId/BrnchId",
+        "AppHdr/To/FIId/FinInstnId/BrnchId"
+      ],
+      "fix": "Remove all BrnchId elements from agent blocks."
+    },
+    {
+      "rule_id": "DEP_016",
+      "rule": "OrgnlEndToEndId and OrgnlUETR are mandatory and must transport the underlying message's values",
+      "affected_tags": [
+        "TxInfAndSts/OrgnlEndToEndId",
+        "TxInfAndSts/OrgnlUETR"
+      ],
+      "fix": "Harvest EndToEndId and UETR from the underlying pacs.008/pacs.009 and populate these fields."
+    }
+  ],
+  "tag_insertion_order": {
+    "AppHdr": [
+      "CharSet",
+      "Fr",
+      "To",
+      "BizMsgIdr",
+      "MsgDefIdr",
+      "BizSvc",
+      "MktPrctc",
+      "CreDt",
+      "CpyDplct",
+      "PssblDplct",
+      "Prty",
+      "Rltd"
+    ],
+    "FIToFIPmtStsRpt": [
+      "GrpHdr",
+      "TxInfAndSts"
+    ],
+    "GrpHdr": [
+      "MsgId",
+      "CreDtTm"
+    ],
+    "TxInfAndSts": [
+      "OrgnlGrpInf",
+      "OrgnlInstrId",
+      "OrgnlEndToEndId",
+      "OrgnlTxId",
+      "OrgnlUETR",
+      "TxSts",
+      "StsRsnInf",
+      "FctvIntrBkSttlmDt",
+      "ClrSysRef",
+      "InstgAgt",
+      "InstdAgt",
+      "OrgnlTxRef",
+      "SplmtryData"
+    ],
+    "OrgnlGrpInf": [
+      "OrgnlMsgId",
+      "OrgnlMsgNmId",
+      "OrgnlCreDtTm"
+    ],
+    "StsRsnInf": [
+      "Orgtr",
+      "Rsn",
+      "AddtlInf"
+    ]
+  }
+}

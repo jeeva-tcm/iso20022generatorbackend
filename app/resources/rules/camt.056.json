@@ -48,5 +48,39 @@
         "layer": 3,
         "errorMessage": "Underlying transaction must reference an OrgnlUETR (or at minimum OrgnlTxId) for the cancellation to be processable.",
         "fix": "Add <OrgnlUETR>uuid-v4</OrgnlUETR> identifying the payment being cancelled."
+    },
+    {
+        "rule_id": "CAMT056_CRETR_PTY_NM_PSTLADR_COEXISTENCE",
+        "description": "Case/Cretr/Pty must contain both Nm and PstlAdr (with Ctry). CBPR+ forbids Nm without PstlAdr and vice versa. A completely empty <Pty/> is caught by the pre-L2 EMPTY_REQUIRED_CONTAINER check.",
+        "condition": "exists(Document.FIToFIPmtCxlReq.Undrlyg.TxInf.Case.Cretr.Pty.Nm) or exists(Document.FIToFIPmtCxlReq.Undrlyg.TxInf.Case.Cretr.Pty.PstlAdr.Ctry)",
+        "expression": "exists(Document.FIToFIPmtCxlReq.Undrlyg.TxInf.Case.Cretr.Pty.Nm) and exists(Document.FIToFIPmtCxlReq.Undrlyg.TxInf.Case.Cretr.Pty.PstlAdr.Ctry)",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Case/Cretr/Pty is incomplete — empty <Pty> or missing Nm/PstlAdr. Pty must contain <Nm> (party name) and <PstlAdr> with at least <Ctry>.",
+        "fix": "Replace <Pty/> or incomplete <Pty> with: <Pty><Nm>Case Creator Name</Nm><PstlAdr><StrtNm>Allen Street</StrtNm><BldgNb>849</BldgNb><TwnNm>White City</TwnNm><Ctry>NO</Ctry></PstlAdr></Pty>"
+    },
+    {
+        "rule_id": "CAMT056_FR_EQ_ASSGNR_BIC",
+        "name": "CBPR_From_Assigner_BIC_FormalRule",
+        "description": "When AppHdr/CpyDplct is absent: AppHdr/Fr BICFI must match Assgnmt/Assgnr/Agt BICFI.",
+        "condition": "not exists(AppHdr.CpyDplct)",
+        "expression": "check_bic_match('Fr', 'Assgnr')",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "AppHdr <Fr> BICFI must match <Assgnr> Agt BICFI when CpyDplct is absent.",
+        "fix": "Align AppHdr <Fr> BICFI with Assgnmt/Assgnr/Agt BICFI."
+    },
+    {
+        "rule_id": "CAMT056_TO_EQ_ASSGNE_BIC",
+        "name": "CBPR_To_Assignee_BIC_FormalRule",
+        "description": "When AppHdr/CpyDplct is absent: AppHdr/To BICFI must match Assgnmt/Assgne/Agt BICFI.",
+        "condition": "not exists(AppHdr.CpyDplct)",
+        "expression": "check_bic_match('To', 'Assgne')",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "AppHdr <To> BICFI must match <Assgne> Agt BICFI when CpyDplct is absent.",
+        "fix": "Align AppHdr <To> BICFI with Assgnmt/Assgne/Agt BICFI."
     }
 ]

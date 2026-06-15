@@ -12,6 +12,19 @@
         "fix": "Add a valid UUID v4 to <PmtId><UETR> (e.g., 4a1a0945-5772-409a-83ba-240e666e0267)."
     },
     {
+        "rule_id": "PACS008_PMTID_REQUIRED",
+        "description": "CBPR+: InstrId and TxId are mandatory in pacs.008 PmtId (XSD declares them optional).",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtId)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtId.InstrId",
+            "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtId.TxId"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "InstrId and TxId are mandatory in pacs.008 PmtId under CBPR+.",
+        "fix": "Add <InstrId> and <TxId> inside <PmtId> (Max16Text / Max35Text identifiers)."
+    },
+    {
         "rule_id": "PACS008_DBTR_REQUIRED",
         "description": "CBPR+: Debtor is mandatory in pacs.008.",
         "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf)",
@@ -19,7 +32,9 @@
             "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Dbtr"
         ],
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "Debtor is mandatory in pacs.008.",
+        "fix": "Add <Dbtr><Nm>Sample Name</Nm></Dbtr> inside CdtTrfTxInf."
     },
     {
         "rule_id": "PACS008_CDTR_REQUIRED",
@@ -29,7 +44,9 @@
             "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Cdtr"
         ],
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "Creditor is mandatory in pacs.008.",
+        "fix": "Add <Cdtr><Nm>Sample Name</Nm></Cdtr> inside CdtTrfTxInf."
     },
     {
         "rule_id": "PACS008_DBTR_NM_REQUIRED",
@@ -39,7 +56,8 @@
             "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Dbtr.Nm"
         ],
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "fix": "Add <Nm>Sample Name</Nm> as first child of <Dbtr>."
     },
     {
         "rule_id": "PACS008_CDTR_NM_REQUIRED",
@@ -49,7 +67,8 @@
             "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Cdtr.Nm"
         ],
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "fix": "Add <Nm>Sample Name</Nm> as first child of <Cdtr>."
     },
     {
         "rule_id": "PACS008_DBTRACCT_REQUIRED",
@@ -60,7 +79,7 @@
         ],
         "severity": "ERROR",
         "layer": 3,
-        "errorMessage": "DbtrAcct is mandatory in pacs.008 \u2014 every customer payment must reference a debtor account.",
+        "errorMessage": "DbtrAcct is mandatory in pacs.008 — every customer payment must reference a debtor account.",
         "fix": "Add <DbtrAcct><Id><IBAN>...</IBAN></Id></DbtrAcct> (or <Othr><Id>...</Id></Othr> for non-IBAN accounts)."
     },
     {
@@ -72,7 +91,7 @@
         ],
         "severity": "ERROR",
         "layer": 3,
-        "errorMessage": "CdtrAcct is mandatory in pacs.008 \u2014 every customer payment must reference a creditor account.",
+        "errorMessage": "CdtrAcct is mandatory in pacs.008 — every customer payment must reference a creditor account.",
         "fix": "Add <CdtrAcct><Id><IBAN>...</IBAN></Id></CdtrAcct> (or <Othr><Id>...</Id></Othr> for non-IBAN accounts)."
     },
     {
@@ -83,7 +102,8 @@
             "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgBr"
         ],
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "fix": "Add <ChrgBr>SLEV</ChrgBr> inside CdtTrfTxInf."
     },
     {
         "rule_id": "PACS008_INTRBKSTTLMDT_REQUIRED",
@@ -93,7 +113,8 @@
             "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrBkSttlmDt"
         ],
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "fix": "Add <IntrBkSttlmDt>2025-01-15</IntrBkSttlmDt> (use today ISO date) inside CdtTrfTxInf."
     },
     {
         "rule_id": "PACS008_INSTRPRTY_VALID",
@@ -102,7 +123,9 @@
         "type": "codelist",
         "list_name": "instrpr_enum",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "Instruction Priority (InstrPrty) must be HIGH or NORM.",
+        "fix": "Set <InstrPrty> to NORM or HIGH. NORM is the default priority."
     },
     {
         "rule_id": "PACS008_NO_LOOPBACK_BIC",
@@ -111,7 +134,7 @@
         "expression": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.DbtrAgt.FinInstnId.BICFI != Document.FIToFICstmrCdtTrf.CdtTrfTxInf.CdtrAgt.FinInstnId.BICFI",
         "severity": "WARNING",
         "layer": 3,
-        "errorMessage": "Debtor Agent BIC equals Creditor Agent BIC \u2014 verify this is not a loopback payment.",
+        "errorMessage": "Debtor Agent BIC equals Creditor Agent BIC — verify this is not a loopback payment.",
         "fix": "If you intend a same-bank transfer, this is acceptable; otherwise correct one of the agents."
     },
     {
@@ -133,7 +156,7 @@
         "expression": "False",
         "severity": "ERROR",
         "layer": 3,
-        "errorMessage": "XchgRate provided but InstdAmt and IntrBkSttlmAmt share the same currency \u2014 exchange rate not applicable.",
+        "errorMessage": "XchgRate provided but InstdAmt and IntrBkSttlmAmt share the same currency — exchange rate not applicable.",
         "fix": "Remove <XchgRate> when the instructed and settlement amounts are in the same currency."
     },
     {
@@ -177,7 +200,8 @@
             "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.DbtrAgt"
         ],
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "fix": "Add <DbtrAgt><FinInstnId><BICFI>DBTRAGT1XXX</BICFI></FinInstnId></DbtrAgt> before <DbtrAgtAcct>."
     },
     {
         "rule_id": "PACS008_CDTRAGTACCT_REQUIRES_CDTRAGT",
@@ -187,7 +211,8 @@
             "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.CdtrAgt"
         ],
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "fix": "Add <CdtrAgt><FinInstnId><BICFI>CDTRAGT1XXX</BICFI></FinInstnId></CdtrAgt> before <CdtrAgtAcct>."
     },
     {
         "rule_id": "CBPR_R1",
@@ -273,14 +298,38 @@
     {
         "rule_id": "CBPR_R8",
         "name": "CBPR_Business_Service_Usage_TextualRule",
-        "description": "BizSvc must have the value 'swift.cbprplus.02' for pacs.008.",
+        "description": "BizSvc must have the value 'swift.cbprplus.02' for pacs.008 (CBPR+).",
         "selector": "AppHdr.BizSvc",
         "type": "expression",
         "expression": "VALUE == 'swift.cbprplus.02'",
         "severity": "ERROR",
         "layer": 3,
-        "errorMessage": "AppHdr <BizSvc> must be 'swift.cbprplus.02' for pacs.008.",
+        "errorMessage": "AppHdr <BizSvc> must be 'swift.cbprplus.02' for pacs.008 (CBPR+).",
         "fix": "Set <BizSvc>swift.cbprplus.02</BizSvc> in AppHdr."
+    },
+    {
+        "rule_id": "CBPR_P8_STTLMMTD",
+        "name": "CBPR_Settlement_Method_pacs008",
+        "description": "For pacs.008 (CBPR+) the settlement method must be INDA or INGA; CLRG/COVE are not used for FI-to-FI customer credit transfer.",
+        "selector": ".*\\.SttlmInf\\.SttlmMtd$",
+        "type": "expression",
+        "expression": "VALUE in ['INDA', 'INGA']",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "The value of <SttlmMtd> is not valid. It must be one of the following values : INDA, INGA.",
+        "fix": "Set <SttlmMtd> to INDA or INGA (CBPR+ pacs.008 does not use CLRG/COVE)."
+    },
+    {
+        "rule_id": "CBPR_P8_NO_CLRSYS",
+        "name": "CBPR_ClrSys_Forbidden_pacs008",
+        "description": "pacs.008 (CBPR+) SettlementInstruction must not contain ClrSys; settlement is via INDA/INGA, identified by SttlmAcct.",
+        "selector": ".*\\.SttlmInf\\.ClrSys\\.Cd$",
+        "type": "expression",
+        "expression": "False",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "The element 'ClrSys' is not expected here. Either it is not allowed in this specification, or another mandatory element is missing before this one. One of the following elements is expected : 'SttlmAcct'.",
+        "fix": "Remove <ClrSys> from <SttlmInf> (CBPR+ pacs.008 uses INDA/INGA settlement, not a clearing system)."
     },
     {
         "rule_id": "CBPR_R9",
@@ -640,7 +689,8 @@
         "type": "textual",
         "severity": "INFO",
         "layer": 3,
-        "errorMessage": "CdtTrfTxInf/LclInstrm: coded information (<Cd>) is preferred over proprietary (<Prtry>)."
+        "errorMessage": "LclInstrm: use coded form <Cd> instead of <Prtry>.",
+        "fix": "Replace <Prtry>...</Prtry> with <Cd>SDVA</Cd> (or appropriate code) inside <LclInstrm>."
     },
     {
         "rule_id": "CBPR_R40",
@@ -649,7 +699,8 @@
         "type": "textual",
         "severity": "INFO",
         "layer": 3,
-        "errorMessage": "CdtTrfTxInf/CtgyPurp: coded information (<Cd>) is preferred over proprietary (<Prtry>)."
+        "errorMessage": "CtgyPurp: use coded form <Cd> instead of <Prtry>.",
+        "fix": "Replace <Prtry>...</Prtry> with <Cd>SUPP</Cd> (or appropriate code) inside <CtgyPurp>."
     },
     {
         "rule_id": "CBPR_R41",
@@ -943,5 +994,157 @@
         "layer": 3,
         "errorMessage": "CdtTrfTxInf/IntrmyAgt2/PstlAdr: each <AdrLine> max 35 characters.",
         "fix": "Reduce each <AdrLine> to 35 characters or fewer."
+    },
+    {
+        "rule_id": "PACS008_EMPTY_BICFI",
+        "name": "PACS008_Empty_BICFI_In_Any_Agent",
+        "description": "A BICFI element exists but is empty. Any agent element (DbtrAgt, CdtrAgt, InstgAgt, InstdAgt, IntrmyAgt1/2/3, PrvsInstgAgt1/2/3) that is present MUST contain a non-empty BICFI.",
+        "type": "expression",
+        "expression": "all(DATA[k].strip() != '' for k in DATA.keys() if k.endswith('.BICFI') or k.endswith('FinInstnId.BICFI'))",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "A BICFI element is present but empty. Every agent that is included must carry a valid 8- or 11-character BIC.",
+        "fix": "Either populate <BICFI> with a valid BIC (e.g. DEUTDEDBXXX) or remove the entire empty agent block if that agent is not applicable to this payment chain."
+    },
+    {
+        "rule_id": "PACS008_INSTRID_NOT_EMPTY",
+        "name": "PACS008_InstrId_Must_Not_Be_Empty",
+        "description": "InstrId is present but empty. CBPR+ mandates InstrId to contain a value when the element exists.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtId.InstrId)",
+        "expression": "DATA.get('Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtId.InstrId','').strip() != ''",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "PmtId/InstrId is present but empty. Must contain a non-empty Max16Text value.",
+        "fix": "Populate <InstrId> with a unique instruction identifier up to 16 characters (e.g. INSTR-001). Must not start or end with '/' and must not contain '//'."
+    },
+    {
+        "rule_id": "PACS008_NBOFTXS_NOT_EMPTY",
+        "name": "PACS008_NbOfTxs_Must_Not_Be_Empty",
+        "description": "NbOfTxs is present but empty. Must contain a numeric count of CdtTrfTxInf blocks.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.GrpHdr.NbOfTxs)",
+        "expression": "DATA.get('Document.FIToFICstmrCdtTrf.GrpHdr.NbOfTxs','').strip() != ''",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "GrpHdr/NbOfTxs is present but empty. Must equal the count of <CdtTrfTxInf> blocks.",
+        "fix": "Set <NbOfTxs> to the number of <CdtTrfTxInf> elements in this message (e.g. '1')."
+    },
+    {
+        "rule_id": "PACS008_SVCLVL_CD_NOT_EMPTY",
+        "name": "PACS008_SvcLvl_Cd_Must_Not_Be_Empty",
+        "description": "PmtTpInf/SvcLvl/Cd is present but empty. CBPR+ requires a valid service level code.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtTpInf.SvcLvl.Cd)",
+        "expression": "DATA.get('Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtTpInf.SvcLvl.Cd','').strip() != ''",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "PmtTpInf/SvcLvl/Cd is present but empty. Must contain a valid ExternalServiceLevel1Code value.",
+        "fix": "Set <Cd> to 'SEPA' for SEPA payments or 'SDVA' for same-day value, or remove the empty <SvcLvl> block if not required. For CBPR+ standard: use 'SDVA'."
+    },
+    {
+        "rule_id": "PACS008_INSTDAMT_DECIMAL_PRECISION",
+        "name": "PACS008_InstdAmt_Decimal_Precision_Overflow",
+        "description": "InstdAmt value exceeds the allowed 5 fractional digits (xs:decimal totalDigits=18, fractionDigits=5). Amounts with more than 5 decimal places fail XSD validation.",
+        "selector": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.InstdAmt",
+        "type": "expression",
+        "expression": "re.match(r'^\\d+(\\.\\d{0,5})?$', str(VALUE).strip())",
+        "severity": "ERROR",
+        "layer": 2,
+        "errorMessage": "InstdAmt has more than 5 decimal places. XSD allows fractionDigits=5 maximum.",
+        "fix": "Round <InstdAmt> to 2 decimal places (standard monetary precision). Example: 388658.9999999999999999999999906 → 388659.00. Preserve the Ccy attribute."
+    },
+    {
+        "rule_id": "PACS008_CHRGSINF_AMT_DECIMAL_PRECISION",
+        "name": "PACS008_ChrgsInf_Amt_Decimal_Precision_Overflow",
+        "description": "ChrgsInf/Amt value exceeds the allowed 5 fractional digits.",
+        "selector": "Document.FIToFICstmrCdtTrf.CdtTrfTxInf.ChrgsInf.Amt",
+        "type": "expression",
+        "expression": "re.match(r'^\\d+(\\.\\d{0,5})?$', str(VALUE).strip())",
+        "severity": "ERROR",
+        "layer": 2,
+        "errorMessage": "ChrgsInf/Amt has more than 5 decimal places. XSD allows fractionDigits=5 maximum.",
+        "fix": "Round <ChrgsInf><Amt> to 2 decimal places. Example: 393409.99999999999999999968 → 393410.00. Preserve the Ccy attribute."
+    },
+    {
+        "rule_id": "PACS008_INTRMYAGT_ACCT_ID_NOT_EMPTY",
+        "name": "PACS008_IntrmyAgtAcct_Othr_Id_Not_Empty",
+        "description": "IntrmyAgt1/2/3Acct/Id/Othr/Id is present but empty. An account reference must be non-empty when the Othr/Id element is included.",
+        "type": "expression",
+        "expression": "all(DATA[k].strip() != '' for k in DATA.keys() if 'IntrmyAgt' in k and k.endswith('.Othr.Id'))",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "An IntermediaryAgent account Othr/Id element is present but empty. Either populate it or remove the empty account block.",
+        "fix": "Either provide a valid account identifier in <Othr><Id> (e.g. ACCT-12345) or remove the entire empty <IntrmyAgtXAcct> block if that account is not applicable."
+    },
+    {
+        "rule_id": "PACS008_CDTRAGTACCT_OTHR_ID_NOT_EMPTY",
+        "name": "PACS008_CdtrAgtAcct_Othr_Id_Not_Empty",
+        "description": "CdtrAgtAcct/Id/Othr/Id is present but empty. Account reference must be non-empty when included.",
+        "condition": "exists(Document.FIToFICstmrCdtTrf.CdtTrfTxInf.CdtrAgtAcct.Id.Othr.Id)",
+        "expression": "DATA.get('Document.FIToFICstmrCdtTrf.CdtTrfTxInf.CdtrAgtAcct.Id.Othr.Id','').strip() != ''",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtrAgtAcct/Id/Othr/Id is present but empty. Either populate it or remove the empty account block.",
+        "fix": "Provide a valid account identifier in <CdtrAgtAcct><Id><Othr><Id> or remove the empty block."
+    },
+    {
+        "rule_id": "PACS008_APPHDR_FR_BICFI_NOT_EMPTY",
+        "name": "PACS008_AppHdr_Fr_BICFI_Not_Empty",
+        "description": "AppHdr/Fr/FIId/FinInstnId/BICFI is present but empty. The sender BIC is mandatory in CBPR+ BAH.",
+        "condition": "exists(AppHdr.Fr.FIId.FinInstnId.BICFI)",
+        "expression": "DATA.get('AppHdr.Fr.FIId.FinInstnId.BICFI','').strip() != ''",
+        "type": "expression",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "AppHdr/Fr/FIId/FinInstnId/BICFI is empty. The sending institution BIC must be present.",
+        "fix": "Populate <AppHdr><Fr><FIId><FinInstnId><BICFI> with the sending institution's BIC. Must match <InstgAgt><FinInstnId><BICFI> (per CBPR_R2/R3)."
+    },
+    {
+        "rule_id": "PACS008_RMTINF_WRONG_PARENT",
+        "name": "PACS008_RmtInf_Must_Be_Under_CdtTrfTxInf",
+        "description": "RmtInf element found under UltmtCdtr or other wrong parent. RmtInf is only valid as a direct child of CdtTrfTxInf.",
+        "type": "expression",
+        "expression": "all(not k.startswith('Document.FIToFICstmrCdtTrf.CdtTrfTxInf.UltmtCdtr.RmtInf') and not k.startswith('Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Cdtr.RmtInf') and not k.startswith('Document.FIToFICstmrCdtTrf.CdtTrfTxInf.Dbtr.RmtInf') for k in DATA.keys())",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "RmtInf found under wrong parent element (e.g. UltmtCdtr). RmtInf must be a direct child of CdtTrfTxInf.",
+        "fix": "Move <RmtInf> to be a direct child of <CdtTrfTxInf>. Remove it from <UltmtCdtr>, <Cdtr>, or <Dbtr>. UltmtCdtr only allows <Nm>, <PstlAdr>, and <Id>."
+    },
+    {
+        "rule_id": "PACS008_CRDTM_DATE_FORMAT",
+        "name": "PACS008_CreDtTm_Date_Format_Invalid",
+        "description": "GrpHdr/CreDtTm contains an invalid ISO 8601 datetime. A common error is a date like '2026-06-084T...' (day with extra digit) or '2026-06-08T' without time part.",
+        "selector": "Document.FIToFICstmrCdtTrf.GrpHdr.CreDtTm",
+        "type": "expression",
+        "expression": "re.match(r'^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}([+-]\\d{2}:\\d{2})$', str(VALUE).strip())",
+        "severity": "ERROR",
+        "layer": 2,
+        "errorMessage": "GrpHdr/CreDtTm has an invalid datetime format. Must be YYYY-MM-DDTHH:MM:SS+HH:MM (no Z, no milliseconds).",
+        "fix": "Replace with a valid ISO 8601 datetime using today's date. Format: YYYY-MM-DDTHH:MM:SS+00:00 (e.g. 2026-06-09T10:00:00+00:00). Never use 'Z' suffix or milliseconds."
+    },
+    {
+        "rule_id": "PACS008_APPHDR_CREDT_FORMAT",
+        "name": "PACS008_AppHdr_CreDt_Format_Invalid",
+        "description": "AppHdr/CreDt contains an invalid datetime. Must be YYYY-MM-DDTHH:MM:SS+HH:MM. Z suffix and milliseconds are forbidden under CBPR+.",
+        "selector": "AppHdr.CreDt",
+        "type": "expression",
+        "expression": "re.match(r'^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}([+-]\\d{2}:\\d{2})$', str(VALUE).strip())",
+        "severity": "ERROR",
+        "layer": 2,
+        "errorMessage": "AppHdr/CreDt has an invalid datetime format. Must be YYYY-MM-DDTHH:MM:SS+HH:MM (no Z, no milliseconds).",
+        "fix": "Replace with a valid ISO 8601 datetime with timezone. Example: 2026-06-09T10:00:00+00:00."
+    },
+    {
+        "rule_id": "PACS008_CHARSET",
+        "name": "PACS008_Character_Set_Usage",
+        "description": "All text values must comply with the CBPR+ permitted character set. Standard fields: A-Z a-z 0-9 space /\\-?:().,'+. Extended fields (Nm, Adr, RmtInf): additionally !#$&%*=^_{{|}}~\";<>@[\\]. Use &lt; for < and &gt; for >.",
+        "type": "expression",
+        "expression": "all(re.match(r'^[A-Za-z0-9 /\\-?:().,\\'+]*$', str(v)) for k, v in DATA.items() if isinstance(v, str) and not k.endswith('@Ccy') and not k.endswith('@Tp') and not re.search(r'(IBAN|BIC|LEI|UETR|MsgId|BizMsgIdr|CreDtTm|IntrBkSttlmDt|Nm|AdrLine|StrtNm|TwnNm|Ustrd|AddtlInf)', k))",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Character set used does not comply with CBPR+ UHB specifications. Only A-Z a-z 0-9 space and /\\-?:().,\\' are permitted in standard fields. Nm/Adr/RmtInf fields allow extended charset including !#$&%*=^_{{|}}~\";<>@[\\].",
+        "fix": "Remove characters outside the CBPR+ permitted set. For Nm/Adr/RmtInf fields use the extended charset. Replace < with &lt; and > with &gt;."
     }
 ]

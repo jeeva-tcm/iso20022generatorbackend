@@ -34,6 +34,17 @@
         "layer": 3
     },
     {
+        "rule_id": "ADV_COVE_RMBRSMNT_AGT_REQUIRED",
+        "name": "CBPR_ADV_Cover_Settlement_Reimbursement_Agent",
+        "description": "pacs.009 ADV: SttlmMtd COVE requires at least one of InstgRmbrsmntAgt or InstdRmbrsmntAgt in GrpHdr/SttlmInf.",
+        "condition": "DATA.get('Document.FICdtTrf.GrpHdr.SttlmInf.SttlmMtd') == 'COVE'",
+        "expression": "any(k.startswith('Document.FICdtTrf.GrpHdr.SttlmInf.InstgRmbrsmntAgt') or k.startswith('Document.FICdtTrf.GrpHdr.SttlmInf.InstdRmbrsmntAgt') for k in DATA.keys())",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "GrpHdr/SttlmInf: when SttlmMtd is COVE, at least one of <InstgRmbrsmntAgt> or <InstdRmbrsmntAgt> must be present.",
+        "fix": "Add <InstgRmbrsmntAgt><FinInstnId><BICFI>BANKBICXXX</BICFI></FinInstnId></InstgRmbrsmntAgt> inside <SttlmInf>."
+    },
+    {
         "rule_id": "ADV_MSG_ID_NOT_BLANK",
         "description": "Message ID (MsgId) must not be blank.",
         "selector": ".*\\.MsgId$",
