@@ -85,7 +85,8 @@
             "Document.CstmrCdtTrfInitn.GrpHdr.InitgPty.Nm"
         ],
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "fix": "Add <Nm>Initiating Party Name</Nm> inside <InitgPty>."
     },
     {
         "rule_id": "PAIN001_PMTMTD_MUST_BE_TRF",

@@ -513,11 +513,18 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                     # promotes it to mandatory for cross-border direct debits.
                     self._validate_pain008_fwdgagt_rule(xml_content, report)
 
+                    # CBPR+ Rule: pain.001 structural constraints — max 1 CdtTrfTxInf
+                    # per PmtInf, UETR required in every CdtTrfTxInf/PmtId, and
+                    # NbOfTxs must equal the number of PmtInf blocks.
+                    if "pain.001" in detected_type:
+                        self._validate_pain001_cbprplus(xml_content, report)
+
                     # CBPR+ Rule: pain.002 OrgnlPmtInfAndSts must contain at
                     # least one TxInfAndSts — base XSD has minOccurs=0 but
                     # SWIFT MyStandards rejects the block without it.
                     if "pain.002" in detected_type:
                         self._validate_pain002_txinf_rule(xml_content, report)
+                        self._validate_pain002_sequence_rules(xml_content, report)
 
                     # CBPR+ Rule: pacs.002 TxInfAndSts must contain at least one
                     # of OrgnlInstrId or OrgnlEndToEndId before TxSts. The base
@@ -1126,6 +1133,8 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             'AcctId':            "<IBAN> or <Othr> with an identifier",
             # ── Party identification (camt.056 Cretr, etc.) ──
             'Pty':               "Nm (party name) and PstlAdr (postal address with Ctry)",
+            # ── Contact details — optional element, must not be submitted empty ──
+            'CtctDtls':          "Nm, PhneNb, MobNb, FaxNb, EmailAdr, or other contact fields",
         }
 
         # Party/agent wrappers — must contain *some* identifying child
@@ -1576,6 +1585,87 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                     "Add at least one <TxInfAndSts> block inside <OrgnlPmtInfAndSts> "
                     "containing <OrgnlEndToEndId>, <TxSts> and, when TxSts is RJCT, "
                     "<StsRsnInf><Rsn><Cd>REASON_CODE</Cd></Rsn></StsRsnInf>."
+                ))
+
+    def _validate_pain002_sequence_rules(self, xml_content: str, report: ValidationReport) -> None:
+        """
+        CBPR+ pain.002.001.10 element-sequence constraints not enforced by the
+        base XSD (which marks elements optional) but required by SWIFT MyStandards:
+
+        1. GrpHdr/InitgPty — mandatory in pain.002.001.10 CBPR+. The XSD
+           sequence places InitgPty before FwdgAgt; omitting it causes
+           MyStandards to emit: "The element 'FwdgAgt' is not expected here …
+           One of the following elements is expected: 'InitgPty'."
+
+        2. TxInfAndSts/OrgnlUETR — mandatory in CBPR+ pain.002 when the
+           original transaction carried a UETR. The XSD sequence places
+           OrgnlUETR before TxSts; omitting it causes: "The element 'TxSts' is
+           not expected here … One of the following elements is expected:
+           'OrgnlUETR'."
+        """
+        def _local(el) -> str:
+            return etree.QName(el.tag).localname if isinstance(el.tag, str) and '}' in el.tag else (el.tag or "")
+
+        try:
+            parser = etree.XMLParser(recover=True, no_network=True, resolve_entities=False)
+            root = etree.fromstring(xml_content.encode("utf-8"), parser)
+        except Exception:
+            return
+        if root is None:
+            return
+
+        # Rule 1: InitgPty mandatory in pain.002 GrpHdr
+        for grp_hdr in root.iter():
+            if not isinstance(grp_hdr.tag, str) or _local(grp_hdr) != "GrpHdr":
+                continue
+            child_names = [_local(c) for c in grp_hdr if isinstance(c.tag, str)]
+            has_initg_pty = "InitgPty" in child_names
+            has_fwdg_agt = "FwdgAgt" in child_names
+            if not has_initg_pty:
+                line_num = grp_hdr.sourceline or "?"
+                if has_fwdg_agt:
+                    # FwdgAgt present but InitgPty missing before it — exact
+                    # MyStandards sequence error
+                    fwdg_el = next(
+                        (c for c in grp_hdr
+                         if isinstance(c.tag, str) and _local(c) == "FwdgAgt"),
+                        None
+                    )
+                    line_num = (fwdg_el.sourceline if fwdg_el is not None else grp_hdr.sourceline) or "?"
+                report.add_issue(ValidationIssue(
+                    "ERROR", 3, "PAIN002_GRPHDR_INITGPTY_REQUIRED", str(line_num),
+                    "The element 'FwdgAgt' is not expected here — "
+                    "<InitgPty> is mandatory in pain.002 GrpHdr and must appear "
+                    "before <FwdgAgt>.",
+                    "Add <InitgPty><Nm>Initiating Party Name</Nm></InitgPty> "
+                    "inside <GrpHdr> before <FwdgAgt>. InitgPty is required by "
+                    "SWIFT CBPR+ pain.002.001.10.",
+                    line=line_num if isinstance(line_num, int) else None
+                ))
+
+        # Rule 2: OrgnlUETR mandatory in pain.002 TxInfAndSts before TxSts
+        for tx_el in root.iter():
+            if not isinstance(tx_el.tag, str) or _local(tx_el) != "TxInfAndSts":
+                continue
+            child_names = [_local(c) for c in tx_el if isinstance(c.tag, str)]
+            has_tx_sts = "TxSts" in child_names
+            has_orgnl_uetr = "OrgnlUETR" in child_names
+            if has_tx_sts and not has_orgnl_uetr:
+                tx_sts_el = next(
+                    (c for c in tx_el
+                     if isinstance(c.tag, str) and _local(c) == "TxSts"),
+                    None
+                )
+                line_num = (tx_sts_el.sourceline if tx_sts_el is not None else tx_el.sourceline) or "?"
+                report.add_issue(ValidationIssue(
+                    "ERROR", 3, "PAIN002_ORGNLUETR_REQUIRED", str(line_num),
+                    "The element 'TxSts' is not expected here — "
+                    "<OrgnlUETR> is expected before <TxSts> in pain.002 "
+                    "TxInfAndSts.",
+                    "Add <OrgnlUETR>xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx</OrgnlUETR> "
+                    "inside <TxInfAndSts> before <TxSts>. OrgnlUETR must be the "
+                    "UUID v4 of the original transaction (lowercase hex).",
+                    line=line_num if isinstance(line_num, int) else None
                 ))
 
     def _validate_pacs002_txinf_orig_id(self, xml_content: str, report: ValidationReport) -> None:
@@ -2397,6 +2487,96 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                 f"Update <NbOfTxs> to {actual_count} to match the actual number of transactions.",
                 line=line_num if isinstance(line_num, int) else None
             ))
+
+    def _validate_pain001_cbprplus(self, xml_content: str, report: ValidationReport) -> None:
+        """
+        CBPR+ pain.001 structural constraints not enforced by the base XSD:
+
+        1. Each PmtInf block must contain exactly 1 CdtTrfTxInf (maxOccurs=1
+           in CBPR+ restricted profile). Extra transactions must each get their
+           own PmtInf wrapper.
+
+        2. Every CdtTrfTxInf/PmtId must carry a <UETR> (UUID v4). UETR is
+           optional in base pain.001.001.09 but mandatory in CBPR+ SR2022+.
+
+        3. NbOfTxs must equal the number of PmtInf blocks (not the raw
+           CdtTrfTxInf count). When multiple CdtTrfTxInf share one PmtInf the
+           CBPR+ profile only counts valid transactions (1 per PmtInf), so a
+           message with 1 PmtInf and NbOfTxs=2 is structurally wrong.
+        """
+        def _local(el) -> str:
+            return etree.QName(el.tag).localname if isinstance(el.tag, str) and '}' in el.tag else (el.tag or "")
+
+        try:
+            parser = etree.XMLParser(recover=True, no_network=True, resolve_entities=False)
+            root = etree.fromstring(xml_content.encode("utf-8"), parser)
+        except Exception:
+            return
+        if root is None:
+            return
+
+        pmt_inf_els = [el for el in root.iter() if _local(el) == "PmtInf"]
+        if not pmt_inf_els:
+            return
+
+        # Rule 1 & 2: per-PmtInf checks
+        for pmt_inf in pmt_inf_els:
+            cdt_txs = [c for c in pmt_inf.iter() if _local(c) == "CdtTrfTxInf" and c.getparent() is pmt_inf]
+            # Rule 1: max 1 CdtTrfTxInf per PmtInf
+            if len(cdt_txs) > 1:
+                for extra in cdt_txs[1:]:
+                    line_num = extra.sourceline or "?"
+                    report.add_issue(ValidationIssue(
+                        "ERROR", 3, "PAIN001_MAX_ONE_TX_PER_PMTINF", str(line_num),
+                        f"<CdtTrfTxInf> is not expected here — CBPR+ pain.001 allows "
+                        f"only 1 CdtTrfTxInf per PmtInf block.",
+                        "Move each additional <CdtTrfTxInf> into its own <PmtInf> "
+                        "block. One payment instruction per payment-information block "
+                        "is required by the CBPR+ restricted profile.",
+                        line=line_num if isinstance(line_num, int) else None
+                    ))
+
+            # Rule 2: UETR required in each CdtTrfTxInf/PmtId
+            for cdt_tx in cdt_txs:
+                pmt_id_el = next(
+                    (c for c in cdt_tx if isinstance(c.tag, str) and _local(c) == "PmtId"),
+                    None
+                )
+                if pmt_id_el is None:
+                    continue
+                has_uetr = any(_local(c) == "UETR" and (c.text or "").strip()
+                               for c in pmt_id_el.iter())
+                if not has_uetr:
+                    line_num = pmt_id_el.sourceline or "?"
+                    report.add_issue(ValidationIssue(
+                        "ERROR", 3, "PAIN001_UETR_REQUIRED", str(line_num),
+                        "The content of element <PmtId> is not complete — "
+                        "<UETR> is expected.",
+                        "Add <UETR>xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx</UETR> "
+                        "inside <PmtId>. UETR is mandatory in CBPR+ pain.001 "
+                        "(UUID v4 format, lowercase hex).",
+                        line=line_num if isinstance(line_num, int) else None
+                    ))
+
+        # Rule 3: NbOfTxs must equal the number of PmtInf blocks
+        nb_el = next((el for el in root.iter() if _local(el) == "NbOfTxs"), None)
+        if nb_el is not None:
+            txt = (nb_el.text or "").strip()
+            if txt.isdigit():
+                declared = int(txt)
+                pmtinf_count = len(pmt_inf_els)
+                if declared != pmtinf_count:
+                    line_num = nb_el.sourceline or "?"
+                    report.add_issue(ValidationIssue(
+                        "ERROR", 3, "PAIN001_NBOFTXS_MISMATCH", str(line_num),
+                        f"<NbOfTxs> value '{declared}' does not match the number of "
+                        f"<PmtInf> blocks ({pmtinf_count}). In CBPR+ pain.001 each "
+                        f"PmtInf carries exactly 1 transaction, so NbOfTxs must equal "
+                        f"the number of PmtInf blocks.",
+                        f"Set <NbOfTxs>{pmtinf_count}</NbOfTxs> to match the "
+                        f"{pmtinf_count} PmtInf block(s) present.",
+                        line=line_num if isinstance(line_num, int) else None
+                    ))
 
     def _validate_duplicate_ids(self, xml_content: str, report: ValidationReport) -> None:
         """

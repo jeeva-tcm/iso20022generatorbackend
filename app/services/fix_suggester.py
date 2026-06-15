@@ -4414,6 +4414,151 @@ class FixSuggester:
             if _r3_fix is not None:
                 return _r3_fix
 
+        # ── Route: pain.002 party elements misplaced in GrpHdr ────────────────
+        # Rule L3-PAIN002-PARTY-PLACEMENT: <Dbtr>, <Cdtr>, <DbtrAgt>, <CdtrAgt>
+        # must live under TxInfAndSts/OrgnlTxRef, NOT inside GrpHdr.
+        # Fix: remove misplaced party elements from GrpHdr and inject them into
+        # OrgnlTxRef inside each TxInfAndSts (creating OrgnlTxRef if absent).
+        if code == "L3-PAIN002-PARTY-PLACEMENT":
+            _PARTY_TAGS = {"Dbtr", "Cdtr", "DbtrAgt", "CdtrAgt"}
+            try:
+                import copy as _copy_mod
+                _parser = etree.XMLParser(remove_blank_text=False, no_network=True, recover=True)
+                _r2 = etree.fromstring(xml.encode("utf-8"), _parser)
+                _ns = ""
+
+                def _ln(el) -> str:
+                    return etree.QName(el.tag).localname if isinstance(el.tag, str) else ""
+
+                # Collect misplaced party elements from GrpHdr
+                _grp_hdr = next(
+                    (el for el in _r2.iter() if _ln(el) == "GrpHdr"), None
+                )
+                _misplaced: list = []
+                if _grp_hdr is not None:
+                    _ns = etree.QName(_grp_hdr.tag).namespace or ""
+                    for _ch in list(_grp_hdr):
+                        if isinstance(_ch.tag, str) and _ln(_ch) in _PARTY_TAGS:
+                            _misplaced.append(_copy_mod.deepcopy(_ch))
+                            _grp_hdr.remove(_ch)
+
+                if not _misplaced:
+                    # Nothing misplaced found — nothing to fix
+                    raise ValueError("no misplaced party elements detected")
+
+                # Inject into OrgnlTxRef under each TxInfAndSts
+                _tx_inf_els = [el for el in _r2.iter() if _ln(el) == "TxInfAndSts"]
+                for _tx in _tx_inf_els:
+                    _orig_ref = next(
+                        (c for c in _tx if isinstance(c.tag, str) and _ln(c) == "OrgnlTxRef"),
+                        None
+                    )
+                    if _orig_ref is None:
+                        _orig_ref = etree.SubElement(
+                            _tx,
+                            f"{{{_ns}}}OrgnlTxRef" if _ns else "OrgnlTxRef"
+                        )
+                    # Avoid duplicating party elements already present
+                    _existing_party_names = {_ln(c) for c in _orig_ref if isinstance(c.tag, str)}
+                    for _party_el in _misplaced:
+                        if _ln(_party_el) not in _existing_party_names:
+                            _to_insert = _copy_mod.deepcopy(_party_el)
+                            # Re-namespace element and all descendants to match document ns
+                            if _ns:
+                                for _sub in _to_insert.iter():
+                                    if isinstance(_sub.tag, str) and not _sub.tag.startswith("{"):
+                                        _sub.tag = f"{{{_ns}}}{etree.QName(_sub.tag).localname}"
+                            _orig_ref.append(_to_insert)
+
+                _decl = '<?xml version="1.0" encoding="UTF-8"?>\n'
+                _fixed = etree.tostring(_r2, encoding="unicode", pretty_print=True)
+                if not _fixed.startswith("<?"):
+                    _fixed = _decl + _fixed
+                return FixSuggestion("/", xml, _fixed, code, msg, "high")
+            except Exception:
+                pass
+
+        # ── Route: pain.002 GrpHdr missing InitgPty before FwdgAgt ────────────
+        # PAIN002_GRPHDR_INITGPTY_REQUIRED: insert <InitgPty> before <FwdgAgt>.
+        if code == "PAIN002_GRPHDR_INITGPTY_REQUIRED":
+            try:
+                import copy as _copy_mod
+                _parser = etree.XMLParser(remove_blank_text=False, no_network=True, recover=True)
+                _r3 = etree.fromstring(xml.encode("utf-8"), _parser)
+
+                def _ln3(el) -> str:
+                    return etree.QName(el.tag).localname if isinstance(el.tag, str) else ""
+
+                _grp = next((el for el in _r3.iter() if _ln3(el) == "GrpHdr"), None)
+                if _grp is not None:
+                    _ns3 = etree.QName(_grp.tag).namespace or ""
+                    # Only insert if InitgPty is truly absent
+                    _has_initg = any(_ln3(c) == "InitgPty" for c in _grp if isinstance(c.tag, str))
+                    if not _has_initg:
+                        _initg_el = etree.fromstring(
+                            (f'<InitgPty xmlns="{_ns3}"><Nm>Initiating Party</Nm></InitgPty>'
+                             if _ns3 else '<InitgPty><Nm>Initiating Party</Nm></InitgPty>'
+                             ).encode("utf-8")
+                        )
+                        # Find insertion position: before FwdgAgt, or after CreDtTm
+                        _fwdg = next(
+                            (i for i, c in enumerate(_grp) if isinstance(c.tag, str) and _ln3(c) == "FwdgAgt"),
+                            None
+                        )
+                        if _fwdg is not None:
+                            _grp.insert(_fwdg, _initg_el)
+                        else:
+                            _grp.append(_initg_el)
+                        _decl = '<?xml version="1.0" encoding="UTF-8"?>\n'
+                        _fixed3 = etree.tostring(_r3, encoding="unicode", pretty_print=True)
+                        if not _fixed3.startswith("<?"):
+                            _fixed3 = _decl + _fixed3
+                        return FixSuggestion("/", xml, _fixed3, code, msg, "high")
+            except Exception:
+                pass
+
+        # ── Route: pain.002 TxInfAndSts missing OrgnlUETR before TxSts ────────
+        # PAIN002_ORGNLUETR_REQUIRED: insert <OrgnlUETR> before <TxSts>.
+        if code == "PAIN002_ORGNLUETR_REQUIRED":
+            try:
+                import copy as _copy_mod
+                _parser = etree.XMLParser(remove_blank_text=False, no_network=True, recover=True)
+                _r4 = etree.fromstring(xml.encode("utf-8"), _parser)
+                _lh4 = getattr(self, "_line_hint", None)
+
+                def _ln4(el) -> str:
+                    return etree.QName(el.tag).localname if isinstance(el.tag, str) else ""
+
+                _tx_els = [el for el in _r4.iter() if _ln4(el) == "TxInfAndSts"]
+                _target_tx = self._pick_nearest(_tx_els, _lh4) if _tx_els else None
+                if _target_tx is not None:
+                    _ns4 = etree.QName(_target_tx.tag).namespace or ""
+                    _has_uetr = any(_ln4(c) == "OrgnlUETR" for c in _target_tx if isinstance(c.tag, str))
+                    if not _has_uetr:
+                        _new_uetr_val = str(uuid.uuid4())
+                        _uetr_el = etree.fromstring(
+                            (f'<OrgnlUETR xmlns="{_ns4}">{_new_uetr_val}</OrgnlUETR>'
+                             if _ns4 else f'<OrgnlUETR>{_new_uetr_val}</OrgnlUETR>'
+                             ).encode("utf-8")
+                        )
+                        # Insert before TxSts (or before OrgnlTxRef if present)
+                        _txsts_idx = next(
+                            (i for i, c in enumerate(_target_tx)
+                             if isinstance(c.tag, str) and _ln4(c) == "TxSts"),
+                            None
+                        )
+                        if _txsts_idx is not None:
+                            _target_tx.insert(_txsts_idx, _uetr_el)
+                        else:
+                            _target_tx.append(_uetr_el)
+                        _decl = '<?xml version="1.0" encoding="UTF-8"?>\n'
+                        _fixed4 = etree.tostring(_r4, encoding="unicode", pretty_print=True)
+                        if not _fixed4.startswith("<?"):
+                            _fixed4 = _decl + _fixed4
+                        return FixSuggestion("/", xml, _fixed4, code, msg, "high")
+            except Exception:
+                pass
+
         # ── Route: NbOfTxs count mismatch ─────────────────────────────────────
         # Path is a line number; element value is numeric-valid so _fix_value
         # won't update it. Route directly to count-aware fixer.
@@ -4422,6 +4567,77 @@ class FixSuggester:
             _nb_fix = self._fix_nb_of_txs(root, code, msg)
             if _nb_fix is not None:
                 return _nb_fix
+
+        # ── Route: pain.001 CBPR+ NbOfTxs must equal PmtInf block count ───────
+        if code == "PAIN001_NBOFTXS_MISMATCH":
+            _nb_el = next(
+                (el for el in root.iter()
+                 if isinstance(el.tag, str)
+                 and etree.QName(el.tag).localname == "NbOfTxs"),
+                None
+            )
+            if _nb_el is not None:
+                _pmtinf_count = sum(
+                    1 for el in root.iter()
+                    if isinstance(el.tag, str)
+                    and etree.QName(el.tag).localname == "PmtInf"
+                )
+                if _pmtinf_count > 0 and str(_pmtinf_count) != (_nb_el.text or "").strip():
+                    _orig = self._serialize(_nb_el)
+                    _copy = self._copy(_nb_el)
+                    _copy.text = str(_pmtinf_count)
+                    return FixSuggestion(
+                        self._xpath_of(_nb_el), _orig, self._serialize(_copy),
+                        code, msg, "high"
+                    )
+
+        # ── Route: pain.001 UETR missing inside CdtTrfTxInf/PmtId ─────────────
+        if code == "PAIN001_UETR_REQUIRED":
+            _lh = getattr(self, "_line_hint", None)
+            _pmtid_els = [
+                el for el in root.iter()
+                if isinstance(el.tag, str)
+                and etree.QName(el.tag).localname == "PmtId"
+                and not any(
+                    etree.QName(c.tag).localname == "UETR"
+                    for c in el
+                    if isinstance(c.tag, str)
+                )
+            ]
+            if _pmtid_els:
+                _target_pmtid = self._pick_nearest(_pmtid_els, _lh)
+                if _target_pmtid is not None:
+                    _ns = etree.QName(_target_pmtid.tag).namespace or ""
+                    _new_uetr = str(uuid.uuid4())
+                    _orig = self._serialize(_target_pmtid)
+                    _copy = self._copy(_target_pmtid)
+                    _uetr_el = etree.SubElement(
+                        _copy,
+                        f"{{{_ns}}}UETR" if _ns else "UETR"
+                    )
+                    _uetr_el.text = _new_uetr
+                    return FixSuggestion(
+                        self._xpath_of(_target_pmtid), _orig,
+                        self._serialize(_copy), code, msg, "high"
+                    )
+
+        # ── Route: pain.001 extra CdtTrfTxInf inside a PmtInf ─────────────────
+        # Structural split (move extra CdtTrfTxInf to its own PmtInf) is too
+        # complex to auto-apply safely; return a descriptive low-confidence hint.
+        if code == "PAIN001_MAX_ONE_TX_PER_PMTINF":
+            _lh = getattr(self, "_line_hint", None)
+            _extra_txs = [
+                el for el in root.iter()
+                if isinstance(el.tag, str)
+                and etree.QName(el.tag).localname == "CdtTrfTxInf"
+            ]
+            _target_tx = self._pick_nearest(_extra_txs, _lh) if _extra_txs else None
+            if _target_tx is not None:
+                _orig = self._serialize(_target_tx)
+                return FixSuggestion(
+                    self._xpath_of(_target_tx), _orig, _orig,
+                    code, msg, "low"
+                )
 
         # ── Route: pacs.009 COV SttlmMtd must be INDA/INGA (CBPR_COV_R31) ──────
         # The CBPR+ COV usage guideline (SWIFT MyStandards) REJECTS 'COVE' for
@@ -4776,6 +4992,7 @@ class FixSuggester:
                 "Cdtr": "<Cdtr><Nm>Creditor Name</Nm><PstlAdr><AdrLine>456 Oak Ave</AdrLine><Ctry>GB</Ctry></PstlAdr></Cdtr>",
                 "SttlmInf": "<SttlmInf><SttlmMtd>INDA</SttlmMtd></SttlmInf>",
                 "PmtId": "<PmtId><EndToEndId>E2E-NOTPROVIDED</EndToEndId></PmtId>",
+                "InitgPty": "<InitgPty><Nm>Initiating Party</Nm></InitgPty>",
             }
 
             def _ec_fill(_ecel) -> Optional["FixSuggestion"]:
@@ -4846,6 +5063,14 @@ class FixSuggester:
                             _rem = self._remove_element_fix(_eel, code, msg)
                             if _rem is not None:
                                 return _rem
+                    # Known-optional elements that are always safe to remove when
+                    # empty (their XSD minOccurs=0 is not tmap-reachable in all
+                    # message families).
+                    _ALWAYS_REMOVABLE_EMPTY = {"CtctDtls"}
+                    if _ec_name in _ALWAYS_REMOVABLE_EMPTY:
+                        _rem = self._remove_element_fix(_eel, code, msg)
+                        if _rem is not None:
+                            return _rem
 
             # Fallback (message didn't name the container): first fillable empty.
             for _ecel in root.iter():
