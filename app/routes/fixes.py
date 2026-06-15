@@ -6,9 +6,9 @@ POST /fixes/suggest-batch  → multi-issue fix suggestions (max 20)
 POST /fixes/apply          → apply a single fix to XML
 POST /fixes/apply-batch    → apply multiple fixes to XML
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
 
-from typing import Dict
+from typing import Dict, Optional
 
 from app.schemas.fixes import (
     SuggestRequest,
@@ -39,8 +39,16 @@ def _suggestion_to_response(s) -> FixSuggestionResponse:
     )
 
 
+def _resolve_sr_version(header_value: Optional[str]) -> str:
+    """Active SWIFT release for a fix request. Reads the same x-sr-version
+    header as validation; defaults to SR2025 (optional here for back-compat —
+    older clients that don't send it keep working)."""
+    v = (header_value or "").strip()
+    return v if v in ("SR2025", "SR2026") else "SR2025"
+
+
 @router.post("/suggest", response_model=FixSuggestionResponse)
-def suggest_fix(req: SuggestRequest):
+def suggest_fix(req: SuggestRequest, x_sr_version: Optional[str] = Header(default=None)):
     """Generate a fix suggestion for a single validation issue.
 
     Uses the verified path: the suggestion is applied to a throwaway copy and
@@ -48,17 +56,19 @@ def suggest_fix(req: SuggestRequest):
     `verified` flag tells the UI whether the fix actually holds up.
     """
     issue_dict = req.issue.model_dump()
-    suggestion = fix_suggester.suggest_verified(req.xml, issue_dict)
+    suggestion = fix_suggester.suggest_verified(
+        req.xml, issue_dict, version=_resolve_sr_version(x_sr_version))
     return _suggestion_to_response(suggestion)
 
 
 @router.post("/suggest-batch", response_model=SuggestBatchResponse)
-def suggest_fix_batch(req: SuggestBatchRequest):
+def suggest_fix_batch(req: SuggestBatchRequest, x_sr_version: Optional[str] = Header(default=None)):
     """Generate fix suggestions for up to 20 validation issues."""
     if len(req.issues) > 20:
         raise HTTPException(status_code=400, detail="Maximum 20 issues per batch request.")
     issues_list = [i.model_dump() for i in req.issues]
-    suggestions = fix_suggester.suggest_batch(req.xml, issues_list)
+    suggestions = fix_suggester.suggest_batch(
+        req.xml, issues_list, version=_resolve_sr_version(x_sr_version))
     return SuggestBatchResponse(fixes=[_suggestion_to_response(s) for s in suggestions])
 
 
