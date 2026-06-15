@@ -12,43 +12,241 @@ class Layer2Mixin:
     # Cache: xsd_path → parsed (xsd_doc, schema) — avoids re-parsing the XSD on every
     # validation call. XSD files are large and parsing them dominated the L2 wall time.
     _xsd_schema_cache: dict = {}
+    # Cache: head xsd_path → ordered list of mandatory direct children of AppHdr
+    _hdr_mandatory_cache: dict = {}
+
+    def _mandatory_header_children(self, xsd_path: str) -> list:
+        """
+        Parse a head.001 (BAH) XSD and return the ORDERED list of mandatory
+        direct children of AppHdr — e.g. ['Fr','To','BizMsgIdr','MsgDefIdr',
+        'CreDt']. Used to report EVERY missing mandatory header field at once,
+        instead of relying on libxml2 which stops at the first sequence error.
+        """
+        if xsd_path in Layer2Mixin._hdr_mandatory_cache:
+            return Layer2Mixin._hdr_mandatory_cache[xsd_path]
+        XS = 'http://www.w3.org/2001/XMLSchema'
+        result: list = []
+        try:
+            root = etree.parse(xsd_path).getroot()
+            # <xs:element name="AppHdr" type="BusinessApplicationHeaderVxx"/>
+            type_name = None
+            for el in root.iter(f'{{{XS}}}element'):
+                if el.get('name') == 'AppHdr':
+                    type_name = (el.get('type') or '').split(':')[-1]
+                    break
+            ctype = None
+            if type_name:
+                for ct in root.iter(f'{{{XS}}}complexType'):
+                    if ct.get('name') == type_name:
+                        ctype = ct
+                        break
+            seq = ctype.find(f'{{{XS}}}sequence') if ctype is not None else None
+            if seq is not None:
+                for el in seq.findall(f'{{{XS}}}element'):
+                    nm = el.get('name')
+                    if nm and el.get('minOccurs', '1') != '0':
+                        result.append(nm)
+        except Exception as ex:
+            print(f'[DEBUG] header mandatory parse failed: {ex}')
+        Layer2Mixin._hdr_mandatory_cache[xsd_path] = result
+        return result
+
+    def _validate_swift_characters(self, xml_content: str) -> list:
+        """
+        Check for forbidden SWIFT characters (,#;@{}[]()!) that appear:
+          1. In element.text when the element HAS child elements (mixed-content junk)
+          2. In element.tail (text after a closing tag — always inter-element junk)
+          3. In leaf element text for CBPR+ RestrictedFINXMax35Text fields
+             (MsgId, BizMsgIdr, EndToEndId, InstrId, TxId, etc.) where '!' and
+             other forbidden chars are not allowed even inside the tag value.
+        """
+        # Characters genuinely forbidden in SWIFT/ISO 20022 CBPR+ messages.
+        # Excludes . : ' because those appear legitimately in amounts, timestamps,
+        # BizSvc values (swift.cbprplus.02), and address content.
+        FORBIDDEN = set(',#;@{}[]()!')
+        issues = []
+
+        # Leaf ID fields that use CBPR+ RestrictedFINXMax35Text / Max16Text.
+        # Address/name tags (Nm, StrtNm, TwnNm, AdrLine, etc.) are already
+        # covered by _validate_charsets_in_xml (Step 4.16, code INVALID_CHARSET)
+        # so they are intentionally excluded here to avoid double-reporting.
+        LEAF_CHECKED_TAGS = {
+            "MsgId", "BizMsgIdr", "EndToEndId", "InstrId", "TxId", "ClrSysRef",
+            "OrgnlMsgId", "OrgnlEndToEndId", "OrgnlInstrId", "PmtInfId",
+            "Ustrd", "AddtlInf",
+        }
+
+        try:
+            parser = etree.XMLParser(remove_blank_text=False, no_network=True, recover=True)
+            root = etree.fromstring(xml_content.encode('utf-8'), parser)
+        except Exception:
+            # If the XML can't be parsed at all, skip — XML_SYNTAX will catch it.
+            return issues
+
+        def _bad_chars(text: str) -> list:
+            """Return the unique forbidden characters found in text (ignoring whitespace)."""
+            non_ws = ''.join(c for c in text if not c.isspace())
+            return sorted({c for c in non_ws if c in FORBIDDEN})
+
+        for elem in root.iter():
+            if not isinstance(elem.tag, str):
+                continue
+            local = etree.QName(elem.tag).localname
+            line_num = getattr(elem, 'sourceline', None) or 0
+
+            # 1. Leaf element text for CBPR+ restricted fields.
+            #    Only for known tags where FORBIDDEN chars are never valid.
+            if len(elem) == 0 and elem.text and local in LEAF_CHECKED_TAGS:
+                bad = _bad_chars(elem.text)
+                if bad:
+                    chars_str = ', '.join(f"'{c}'" for c in bad)
+                    issues.append(ValidationIssue(
+                        "ERROR", 2, "SWIFT_FORBIDDEN_CHAR", str(line_num),
+                        f"Element <{local}> contains forbidden character(s) {chars_str}. "
+                        f"SWIFT/CBPR+ RestrictedFINXText fields must not contain these characters.",
+                        f"Remove the character(s) {chars_str} from <{local}>. "
+                        f"Allowed characters: A-Z a-z 0-9 space / - ? : ( ) . , ' +",
+                        line=line_num
+                    ))
+
+            # 2. parent.text — text before the first child element.
+            #    Only flag when the element HAS children (mixed content = junk).
+            if len(elem) > 0 and elem.text:
+                bad = _bad_chars(elem.text)
+                if bad:
+                    chars_str = ', '.join(f"'{c}'" for c in bad)
+                    issues.append(ValidationIssue(
+                        "ERROR", 2, "SWIFT_FORBIDDEN_CHAR", str(line_num),
+                        f"Element <{local}> contains forbidden character(s) {chars_str} "
+                        f"in text content before its child elements. "
+                        f"SWIFT/ISO 20022 messages must not contain these characters outside of tag values.",
+                        f"Remove the character(s) {chars_str} from the text content "
+                        f"inside <{local}> that appears before its child elements.",
+                        line=line_num
+                    ))
+
+            # 3. child.tail — text after a closing tag (</Child>) before the
+            #    next sibling or parent close.  This is always inter-element junk.
+            if elem.tail:
+                bad = _bad_chars(elem.tail)
+                if bad:
+                    parent = elem.getparent()
+                    parent_name = etree.QName(parent.tag).localname if parent is not None and isinstance(parent.tag, str) else 'root'
+                    tail_line = getattr(elem, 'sourceline', None) or line_num
+                    chars_str = ', '.join(f"'{c}'" for c in bad)
+                    issues.append(ValidationIssue(
+                        "ERROR", 2, "SWIFT_FORBIDDEN_CHAR", str(tail_line),
+                        f"Forbidden character(s) {chars_str} found after closing tag </{local}> "
+                        f"inside <{parent_name}>. "
+                        f"SWIFT/ISO 20022 messages must not contain these characters between elements.",
+                        f"Remove the character(s) {chars_str} that appear after </{local}> "
+                        f"inside <{parent_name}>.",
+                        line=tail_line
+                    ))
+
+        return issues
 
     async def _run_layer_2(self, xml_content: str, report: ValidationReport, message_type: str) -> bool:
         """
         LAYER 2 — ISO Structure Validation (XSD)
-        Strict implementation of the 10-Step Execution Order
+        Strict implementation of the 10-Step Execution Order.
+
+        A <BulkMessages> file bundles several messages; EVERY <Document> and
+        every <AppHdr> is validated independently (validating only the first let
+        a broken 2nd+ message — missing namespace, misplaced element — pass with
+        zero errors, which MyStandards correctly flags).
         """
         start = time.time()
         issues = []
-        
-        try:
-            # Step 1 — Load Schema Set
-            xsd_full_path = self._get_xsd_path(message_type)
-            if not xsd_full_path or not os.path.exists(xsd_full_path):
-                report.add_issue(ValidationIssue("ERROR", 2, "Schema Not Found", "Missing Validation Template", f"Cannot find the validation template for message type '{message_type}'.", "The schema file (.xsd) for this message type is not available in the system. Contact support if this message type should be supported."))
-                report.layer_status["2"] = {"status": "FAIL", "time": 0}
-                return False
 
+        try:
             # IMPORTANT: remove_blank_text MUST be False to preserve user's original line numbers
             parser = etree.XMLParser(remove_blank_text=False, no_network=True)
             full_xml_doc = etree.fromstring(xml_content.encode('utf-8'), parser)
-            
-            # Step 2 — Validate Root + Namespace
-            # Check for <Document> or <BusMsg>
+
+            # Step 2 — Locate ALL payload <Document>/<BusMsg> containers.
             target_node = full_xml_doc.xpath("//*[local-name()='Document' or local-name()='BusMsg']")
             if not target_node:
-                # Check if root itself is Document/BusMsg
-                if any(x in full_xml_doc.tag for x in ['Document', 'BusMsg']):
+                # Check if root itself is Document/BusMsg — use exact localname,
+                # NOT substring, so 'BusMsgEnvlp' never false-matches 'BusMsg'.
+                root_local = etree.QName(full_xml_doc.tag).localname if isinstance(full_xml_doc.tag, str) else ""
+                if root_local in ('Document', 'BusMsg'):
                     target_node = [full_xml_doc]
-            
+
             if not target_node:
                 report.add_issue(ValidationIssue("ERROR", 2, "Missing Document", "No Root Element", "Cannot find the main <Document> or <BusMsg> container in your XML.", "Your message structure is incorrect. ISO 20022 messages must have a <Document> wrapper element."))
                 report.layer_status["2"] = {"status": "", "time": (time.time() - start) * 1000}
                 return False
 
-            main_node = target_node[0]
-            line_offset = main_node.sourceline or 1
-            
+            # Step 3 to 9 — validate every payload document against its own schema.
+            for _doc_node in target_node:
+                issues.extend(self._validate_payload_node(_doc_node, message_type, xml_content))
+
+            # Step 11 — validate every Business Application Header (head.001).
+            for _app_hdr_node in full_xml_doc.findall(".//{*}AppHdr"):
+                issues.extend(self._validate_header_node(_app_hdr_node, xml_content))
+
+        except etree.XMLSyntaxError as e:
+             issues.append(ValidationIssue("ERROR", 2, "XML_SYNTAX", "/", f"XML Markup Error: {str(e)}", line=e.lineno))
+        except Exception as e:
+             issues.append(ValidationIssue("ERROR", 2, "VAL_ERR", "/", f"Internal Layer 2 Error: {str(e)}"))
+
+        # Step 10 — SWIFT Character Validation (forbidden chars outside tags)
+        try:
+            swift_issues = self._validate_swift_characters(xml_content)
+            issues.extend(swift_issues)
+        except Exception as e:
+            pass  # Non-blocking; SWIFT char validation doesn't fail validation
+
+        # Final Collection & Success Assessment
+        for issue in issues:
+            report.add_issue(issue)
+
+        success = not any(i.severity == "ERROR" for i in issues)
+        report.layer_status["2"] = {"status": "PASS" if success else "FAIL", "time": round((time.time() - start) * 1000, 2)}
+        return success
+
+    def _validate_payload_node(self, doc_node, message_type: str, xml_content: str) -> list:
+        """XSD-validate ONE <Document>/<BusMsg> payload node and return its issues.
+
+        Each message in a bulk container is validated independently: the message
+        type comes from THIS node's own namespace (so a bulk mixing families is
+        each checked against the right schema). A node with no / non-ISO
+        namespace is flagged ("a valid document must be present" — what
+        MyStandards reports) and then STILL masked to the fallback schema so any
+        structural error inside it (e.g. a misplaced element) also surfaces.
+        Never raises — internal failures are turned into issues.
+        """
+        issues = []
+        try:
+            # Step 1 — message type + schema for THIS document.
+            doc_ns = (etree.QName(doc_node).namespace or "") if isinstance(doc_node.tag, str) else ""
+            _ns_m = re.match(r'^urn:iso:std:iso:20022:tech:xsd:([a-z]{4}\.\d{3}\.\d{3}\.\d{2})$', doc_ns)
+            if _ns_m:
+                effective_type = _ns_m.group(1)
+            else:
+                # Missing/non-ISO namespace on a bare <Document> — flag it, then
+                # fall back to the bulk's detected type so the structural check
+                # below still runs and reveals any other defects in this message.
+                effective_type = message_type
+                _ns_line = doc_node.sourceline or 1
+                issues.append(ValidationIssue(
+                    "ERROR", 2, "DOC_NAMESPACE_MISSING", str(_ns_line),
+                    f"The <Document> at line {_ns_line} has no valid ISO 20022 namespace "
+                    f"(found '{doc_ns or 'none'}'). A valid document must declare its namespace, "
+                    f"e.g. xmlns=\"urn:iso:std:iso:20022:tech:xsd:{effective_type}\".",
+                    f"Add the namespace to the <Document>: "
+                    f"<Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:{effective_type}\">.",
+                    line=_ns_line,
+                ))
+
+            # Step 1b — Load Schema Set for the resolved type.
+            xsd_full_path = self._get_xsd_path(effective_type)
+            if not xsd_full_path or not os.path.exists(xsd_full_path):
+                issues.append(ValidationIssue("ERROR", 2, "Schema Not Found", "Missing Validation Template", f"Cannot find the validation template for message type '{effective_type}'.", "The schema file (.xsd) for this message type is not available in the system. Contact support if this message type should be supported."))
+                return issues
+
+            main_node = doc_node
             # CRITICAL: Use deepcopy to preserve original sourcelines for exact error mapping.
             # Re-parsing via tostring/fromstring was shifting lines by 1 and losing blank lines.
             validation_doc = copy.deepcopy(main_node)
@@ -200,9 +398,18 @@ class Layer2Mixin:
                         pass
 
                     issues.append(ValidationIssue("ERROR", effective_layer, "SCHEMA_VAL", node_path, friendly_msg.strip(), suggestion, line=real_line))
+        except etree.XMLSyntaxError as e:
+            issues.append(ValidationIssue("ERROR", 2, "XML_SYNTAX", "/", f"XML Markup Error: {str(e)}", line=getattr(e, "lineno", None)))
+        except Exception as e:
+            issues.append(ValidationIssue("ERROR", 2, "VAL_ERR", "/", f"Internal Layer 2 Error: {str(e)}"))
+        return issues
 
-            # Step 11 — Mandatory Header Logic (head.001)
-            app_hdr_node = full_xml_doc.find(".//{*}AppHdr")
+    def _validate_header_node(self, app_hdr_node, xml_content) -> list:
+        """XSD-validate ONE Business Application Header (<AppHdr>) and return its
+        issues. Called once per message in a bulk so a broken header on the 2nd+
+        message is caught too. Never raises."""
+        issues = []
+        try:
             if app_hdr_node is not None:
                 h_line_offset = app_hdr_node.sourceline or 1
                 h_ns = etree.QName(app_hdr_node).namespace or ""
@@ -239,31 +446,36 @@ class Layer2Mixin:
                         # 2. Validate
                         h_schema.assertValid(h_val_doc)
                     except etree.DocumentInvalid as deh:
+                        # Collect libxml2's own header errors first. libxml2 stops at
+                        # the FIRST content-model violation, so on a missing Fr it only
+                        # complains that the NEXT element "is not expected" — hiding any
+                        # other missing mandatory fields.
+                        hdr_libxml_issues = []
                         for error in deh.error_log:
                             # 1. Simplify
                             friendly_msg, suggestion = self._simplify_error_message(error.message, h_tag_info, xml_content=xml_content)
-                            
+
                             # 2. Estimate
                             h_real_line = h_line_offset + error.line - 1
                             best_n = None
-                            
+
                             # 3. High-Precision correction for AppHdr
                             try:
                                 tag_m = re.search(r"Element '([^']+)'", error.message)
                                 val_m = re.search(r"[Vv]alue '([^']*)'", error.message)
-                                
+
                                 if tag_m:
                                     t_full = tag_m.group(1)
                                     t_name = t_full.split('}')[-1] if '}' in t_full else t_full
-                                    
+
                                     is_empty_h = "Empty" in friendly_msg or "minLength" in error.message
-                                    
+
                                     # Find in AppHdr specifically
                                     h_candidates = app_hdr_node.xpath(f"descendant-or-self::*[local-name()='{t_name}']")
                                     if h_candidates:
                                         if is_empty_h:
                                             h_candidates = [c for c in h_candidates if not (c.text or "").strip()]
-                                            
+
                                         if h_candidates:
                                             best_n = min(h_candidates, key=lambda c: abs((c.sourceline or 0) - h_real_line))
                                             h_real_line = best_n.sourceline
@@ -281,22 +493,45 @@ class Layer2Mixin:
                             except:
                                 pass
 
-                            issues.append(ValidationIssue("ERROR", 2, "HEADER_VAL", h_node_path, friendly_msg, suggestion, line=h_real_line))
+                            hdr_libxml_issues.append(ValidationIssue("ERROR", 2, "HEADER_VAL", h_node_path, friendly_msg, suggestion, line=h_real_line))
+
+                        # Completeness scan — report EVERY missing mandatory direct
+                        # child of AppHdr at once, so the user sees all of them in a
+                        # single pass instead of one-per-revalidation.
+                        present_children = {etree.QName(c.tag).localname for c in app_hdr_node
+                                            if isinstance(c.tag, str)}
+                        hdr_missing_issues = []
+                        for tag in self._mandatory_header_children(h_path):
+                            if tag not in present_children:
+                                label = (h_tag_info.get(tag, {}) or {}).get('label', tag)
+                                hdr_missing_issues.append(ValidationIssue(
+                                    "ERROR", 2, "HEADER_VAL", f"/AppHdr/{tag}",
+                                    f"The mandatory header element '{tag}' is missing from the Business Application Header (AppHdr).",
+                                    f"Add a <{tag}> element inside <AppHdr>. {label} is required by the ISO 20022 BAH (head.001) schema.",
+                                    line=h_line_offset))
+
+                        if hdr_missing_issues:
+                            # The clear per-field "missing" issues supersede libxml2's
+                            # confusing single "X is not expected / is expected" error,
+                            # so drop those structural complaints but keep genuine
+                            # value/format errors on header fields that ARE present.
+                            def _is_structural(it):
+                                m = (it.message or "").lower()
+                                return any(s in m for s in (
+                                    "is not expected", "not expected here",
+                                    "not expected at this position",
+                                    "is expected", "is not complete",
+                                    "content is incomplete", "not complete",
+                                ))
+                            issues.extend(hdr_missing_issues)
+                            issues.extend(it for it in hdr_libxml_issues if not _is_structural(it))
+                        else:
+                            issues.extend(hdr_libxml_issues)
                     except Exception as eh:
                          issues.append(ValidationIssue("WARNING", 2, "HEADER_ERR", "/", f"AppHdr Warning: {str(eh)}"))
-
-        except etree.XMLSyntaxError as e:
-             issues.append(ValidationIssue("ERROR", 2, "XML_SYNTAX", "/", f"XML Markup Error: {str(e)}", line=e.lineno))
-        except Exception as e:
-             issues.append(ValidationIssue("ERROR", 2, "VAL_ERR", "/", f"Internal Layer 2 Error: {str(e)}"))
-
-        # Final Collection & Success Assessment
-        for issue in issues:
-            report.add_issue(issue)
-
-        success = not any(i.severity == "ERROR" for i in issues)
-        report.layer_status["2"] = {"status": "PASS" if success else "FAIL", "time": round((time.time() - start) * 1000, 2)}
-        return success
+        except Exception as _he:
+            issues.append(ValidationIssue("WARNING", 2, "HEADER_ERR", "/", f"AppHdr check error: {str(_he)}"))
+        return issues
 
     # ──────────────────────────────────────────────────────────────────────────
     # DYNAMIC XSD TAG ANALYSER
@@ -713,8 +948,15 @@ class Layer2Mixin:
 
         # ── 2. BIC / BICFI ────────────────────────────────────────────────
         if any(x in msg.upper() for x in ["BICFI", "BICBE", "ANYBIC", "BIC"]):
-            bic_val = bad_value()
+            bic_val = bad_value().strip()  # strip whitespace — XSD reports raw element text incl. newlines
             if "pattern" in msg.lower() or "facet" in msg.lower():
+                # Whitespace-only difference: stripped value is a valid BIC but raw had whitespace
+                _BIC_PAT = re.compile(r'^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$')
+                if bic_val and _BIC_PAT.match(bic_val):
+                    return (
+                        f"BIC '{bic_val}' contains leading/trailing whitespace.",
+                        f"Remove the whitespace inside the <BICFI> element. The value should be exactly '{bic_val}' with no spaces or newlines."
+                    )
                 if bic_val and len(bic_val) >= 6 and not (bic_val[4].isalpha() and bic_val[5].isalpha()):
                     return (
                         f"Invalid BIC — bad country code: '{bic_val[4:6]}'.",
@@ -733,6 +975,11 @@ class Layer2Mixin:
                     "and optional 3-char branch code. Example: 'BNKGB2LXXX'."
                 )
             if "length" in msg.lower() or "atomic type" in msg.lower():
+                if bic_val and re.compile(r'^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$').match(bic_val):
+                    return (
+                        f"BIC '{bic_val}' contains leading/trailing whitespace.",
+                        f"Remove the whitespace inside the <BICFI> element. The value should be exactly '{bic_val}' with no spaces or newlines."
+                    )
                 return (
                     "BIC has incorrect length.",
                     "A BIC (Bank Identifier Code) must be exactly 8 or 11 characters long."
@@ -911,8 +1158,9 @@ class Layer2Mixin:
             if "datetime" in msg.lower():
                 return (
                     f"Invalid date/time value: '{dv}'.",
-                    "Date-time fields must use the format YYYY-MM-DDThh:mm:ss (e.g. 2026-11-20T14:30:00). "
-                    "Ensure there is no trailing space and the 'T' separator is present."
+                    "Date-time fields must use the format YYYY-MM-DDThh:mm:ss+HH:MM with a timezone offset "
+                    "(e.g. 2026-11-20T14:30:00+00:00). Ensure the 'T' separator is present and append "
+                    "an explicit offset such as +00:00 or +05:30."
                 )
             return (
                 f"Invalid date value: '{dv}'.",
@@ -1108,6 +1356,52 @@ class Layer2Mixin:
                     f" Empty elements found in '{name}'",
                     f"The field '{name}' cannot be left blank. Please enter a valid value before submitting."
                 )
+            m_max = re.search(r"allowed maximum length of '(\d+)'", msg)
+            m_min = re.search(r"allowed minimum length of '(\d+)'", msg)
+            m_act = re.search(r"length of '(\d+)'", msg)
+
+            # lv may be a length digit extracted from the XSD error (e.g. '179') rather
+            # than the actual field text. Try to recover the real value from the XML line.
+            if lv.isdigit() and xml_content and error_line:
+                lines = xml_content.splitlines()
+                for idx in [error_line - 1, error_line, error_line - 2]:
+                    if 0 <= idx < len(lines):
+                        xml_m = re.search(f"<{re.escape(name)}[^>]*>([^<]+)</{re.escape(name)}>", lines[idx])
+                        if xml_m:
+                            lv = xml_m.group(1).strip()
+                            break
+
+            if m_max and m_act:
+                max_len = m_max.group(1)
+                act_len = m_act.group(1)
+                # If lv is still a pure digit (couldn't find actual text), omit it from message
+                if lv.isdigit():
+                    return (
+                        f"Field '{name}' has an invalid length.",
+                        f"This field must be maximum {max_len} characters long. "
+                        f"The current value is {act_len} characters long, which exceeds the limit by "
+                        f"{int(act_len) - int(max_len)} characters. Please shorten the value."
+                    )
+                return (
+                    f"Field '{name}' has an invalid length.",
+                    f"This field must be maximum {max_len} characters long. "
+                    f"The current value is {act_len} characters long. Please shorten it."
+                )
+            elif m_min and m_act:
+                min_len = m_min.group(1)
+                act_len = m_act.group(1)
+                if lv.isdigit():
+                    return (
+                        f"Field '{name}' has an invalid length.",
+                        f"This field must be at least {min_len} characters long. "
+                        f"The current value is only {act_len} characters long."
+                    )
+                return (
+                    f"Field '{name}' has an invalid length.",
+                    f"This field must be at least {min_len} characters long. "
+                    f"The current value is only {act_len} characters long."
+                )
+
             return (
                 f"Field '{name}' has an invalid length: '{lv}'.",
                 f"The value '{lv}' is either too long or too short for '{name}'. "

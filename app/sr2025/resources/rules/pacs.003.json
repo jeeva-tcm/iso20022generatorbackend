@@ -1,0 +1,273 @@
+[
+    {
+        "rule_id": "PACS003_UETR_REQUIRED",
+        "description": "CBPR+: UETR is mandatory in pacs.003 even though the XSD declares it optional.",
+        "condition": "exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrDrctDbt.DrctDbtTxInf.PmtId.UETR"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "UETR (Unique End-to-End Transaction Reference) is mandatory in pacs.003 under CBPR+.",
+        "fix": "Add a valid UUID v4 to <PmtId><UETR> (e.g., 4a1a0945-5772-409a-83ba-240e666e0267)."
+    },
+    {
+        "rule_id": "PACS003_PMTID_REQUIRED",
+        "description": "CBPR+: InstrId and EndToEndId are mandatory in pacs.003 PmtId.",
+        "condition": "exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf.PmtId)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrDrctDbt.DrctDbtTxInf.PmtId.InstrId",
+            "Document.FIToFICstmrDrctDbt.DrctDbtTxInf.PmtId.EndToEndId"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "InstrId and EndToEndId are mandatory in pacs.003 PmtId under CBPR+.",
+        "fix": "Add <InstrId> and <EndToEndId> inside <PmtId> (Max16Text / Max35Text identifiers)."
+    },
+    {
+        "rule_id": "PACS003_DBTR_REQUIRED",
+        "description": "CBPR+: Debtor is mandatory in pacs.003.",
+        "condition": "exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrDrctDbt.DrctDbtTxInf.Dbtr"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Debtor information is mandatory in pacs.003.",
+        "fix": "Add <Dbtr><Nm>Sample Name</Nm></Dbtr> inside DrctDbtTxInf."
+    },
+    {
+        "rule_id": "PACS003_CDTR_REQUIRED",
+        "description": "CBPR+: Creditor is mandatory in pacs.003.",
+        "condition": "exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrDrctDbt.DrctDbtTxInf.Cdtr"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Creditor information is mandatory in pacs.003.",
+        "fix": "Add <Cdtr><Nm>Sample Name</Nm></Cdtr> inside DrctDbtTxInf."
+    },
+    {
+        "rule_id": "PACS003_DBTR_NM_REQUIRED",
+        "description": "CBPR+: Debtor Name is mandatory in pacs.003.",
+        "condition": "exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf.Dbtr) and not exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf.Dbtr.Id.OrgId.AnyBIC)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrDrctDbt.DrctDbtTxInf.Dbtr.Nm"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Debtor Name is mandatory in pacs.003 unless debtor is identified by AnyBIC.",
+        "fix": "Add <Nm>Sample Name</Nm> as first child of <Dbtr>."
+    },
+    {
+        "rule_id": "PACS003_CDTR_NM_REQUIRED",
+        "description": "CBPR+: Creditor Name is mandatory in pacs.003.",
+        "condition": "exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf.Cdtr) and not exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf.Cdtr.Id.OrgId.AnyBIC)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrDrctDbt.DrctDbtTxInf.Cdtr.Nm"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Creditor Name is mandatory in pacs.003 unless creditor is identified by AnyBIC.",
+        "fix": "Add <Nm>Sample Name</Nm> as first child of <Cdtr>."
+    },
+    {
+        "rule_id": "PACS003_DBTRACCT_REQUIRED",
+        "description": "CBPR+: Debtor Account is mandatory in pacs.003.",
+        "condition": "exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrDrctDbt.DrctDbtTxInf.DbtrAcct"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "DbtrAcct is mandatory in pacs.003 — every direct debit must reference a debtor account.",
+        "fix": "Add <DbtrAcct><Id><IBAN>...</IBAN></Id></DbtrAcct> (or <Othr><Id>...</Id></Othr> for non-IBAN accounts)."
+    },
+    {
+        "rule_id": "PACS003_CDTRACCT_REQUIRED",
+        "description": "CBPR+: Creditor Account is mandatory in pacs.003.",
+        "condition": "exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrDrctDbt.DrctDbtTxInf.CdtrAcct"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "CdtrAcct is mandatory in pacs.003 — every direct debit must reference a creditor account.",
+        "fix": "Add <CdtrAcct><Id><IBAN>...</IBAN></Id></CdtrAcct> (or <Othr><Id>...</Id></Othr> for non-IBAN accounts)."
+    },
+    {
+        "rule_id": "PACS003_CHRGBR_REQUIRED",
+        "description": "CBPR+: ChrgBr (Charge Bearer) is mandatory in pacs.003.",
+        "condition": "exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrDrctDbt.DrctDbtTxInf.ChrgBr"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "ChrgBr (Charge Bearer) is mandatory in pacs.003.",
+        "fix": "Add <ChrgBr>SLEV</ChrgBr> inside DrctDbtTxInf. CBPR+ direct debits typically use SLEV."
+    },
+    {
+        "rule_id": "PACS003_MANDATE_REQUIRED",
+        "description": "CBPR+: MndtRltdInf (Mandate Related Information) is mandatory when DrctDbtTx is present.",
+        "condition": "exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf.DrctDbtTx)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrDrctDbt.DrctDbtTxInf.DrctDbtTx.MndtRltdInf"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "MndtRltdInf is mandatory in pacs.003 when DrctDbtTx is present.",
+        "fix": "Add <MndtRltdInf><MndtId>...</MndtId><DtOfSgntr>YYYY-MM-DD</DtOfSgntr></MndtRltdInf>."
+    },
+    {
+        "rule_id": "PACS003_INTR_BK_STTLM_AMT_REQUIRED",
+        "description": "CBPR+: IntrBkSttlmAmt is mandatory in pacs.003.",
+        "condition": "exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrDrctDbt.DrctDbtTxInf.IntrBkSttlmAmt"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "IntrBkSttlmAmt (Interbank Settlement Amount) is mandatory in pacs.003."
+    },
+    {
+        "rule_id": "PACS003_CHARGES_CURRENCY_MISMATCH",
+        "description": "Charges currency must match the Interbank Settlement Amount currency. If ChrgsInf is present, ChrgsInf/Amt/@Ccy must equal IntrBkSttlmAmt/@Ccy.",
+        "condition": "exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf.ChrgsInf.Amt) and exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf.IntrBkSttlmAmt)",
+        "cross_field_rules": [
+            {
+                "type": "currency_match",
+                "field1": "Document.FIToFICstmrDrctDbt.DrctDbtTxInf.ChrgsInf.Amt",
+                "field2": "Document.FIToFICstmrDrctDbt.DrctDbtTxInf.IntrBkSttlmAmt",
+                "comparison": "currency_attribute_match"
+            }
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Charges currency does not match the transaction currency. ChrgsInf/Amt currency does not match IntrBkSttlmAmt currency.",
+        "fix": "Update ChrgsInf/Amt/@Ccy to match IntrBkSttlmAmt/@Ccy. Example: If IntrBkSttlmAmt Ccy='SEK' but ChrgsInf/Amt Ccy='USD', change ChrgsInf/Amt Ccy to 'SEK'."
+    },
+    {
+        "rule_id": "PACS003_XCHGRATE_REQUIRED_WHEN_INSTD_DIFF",
+        "description": "Exchange rate is mandatory when InstdAmt currency differs from IntrBkSttlmAmt currency. If InstdAmt.Ccy != IntrBkSttlmAmt.Ccy, then XchgRate must be present.",
+        "condition": "exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf.InstdAmt) and exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf.IntrBkSttlmAmt) and not_equal_currency(Document.FIToFICstmrDrctDbt.DrctDbtTxInf.InstdAmt, Document.FIToFICstmrDrctDbt.DrctDbtTxInf.IntrBkSttlmAmt)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrDrctDbt.DrctDbtTxInf.XchgRate"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Invalid message content for exchange rate when instructed amount is present. InstdAmt currency differs from IntrBkSttlmAmt currency but XchgRate is absent.",
+        "fix": "Insert <XchgRate>{rate}</XchgRate> inside DrctDbtTxInf after InstdAmt when InstdAmt.Ccy differs from IntrBkSttlmAmt.Ccy. The exchange rate value must be a positive decimal (e.g., 1.1234) with up to 10 fraction digits. Alternatively, if the currencies should be the same, remove InstdAmt element entirely."
+    },
+    {
+        "rule_id": "PACS003_XCHGRATE_FORBIDDEN_WHEN_INSTD_SAME",
+        "description": "Exchange rate must NOT be present when InstdAmt currency equals IntrBkSttlmAmt currency.",
+        "condition": "exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf.XchgRate) and exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf.InstdAmt) and equal_currency(Document.FIToFICstmrDrctDbt.DrctDbtTxInf.InstdAmt, Document.FIToFICstmrDrctDbt.DrctDbtTxInf.IntrBkSttlmAmt)",
+        "forbidden_fields": [
+            "Document.FIToFICstmrDrctDbt.DrctDbtTxInf.XchgRate"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "XchgRate must not be present when InstdAmt currency equals IntrBkSttlmAmt currency.",
+        "fix": "Remove the <XchgRate> element. XchgRate is only required when currencies differ."
+    },
+    {
+        "rule_id": "PACS003_CHRG_BR_VALID_VALUES",
+        "description": "ChrgBr must be one of the valid CBPR+ values: SHAR, SLEV, CRED, DEBT.",
+        "condition": "exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf.ChrgBr)",
+        "allowed_values": [
+            "SHAR",
+            "SLEV",
+            "CRED",
+            "DEBT"
+        ],
+        "target_field": "Document.FIToFICstmrDrctDbt.DrctDbtTxInf.ChrgBr",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "ChrgBr must be one of: SHAR, SLEV, CRED, DEBT.",
+        "selector": ".*DrctDbtTxInf(\\[\\d+\\])?\\.ChrgBr$",
+        "fix": "Set <ChrgBr> to one of: SHAR, SLEV, CRED, DEBT. CBPR+ direct debits: SLEV recommended."
+    },
+    {
+        "rule_id": "PACS003_MANDATE_ID_REQUIRED",
+        "description": "CBPR+: MndtId is mandatory in MndtRltdInf when present.",
+        "condition": "exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf.MndtRltdInf)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrDrctDbt.DrctDbtTxInf.MndtRltdInf.MndtId"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "MndtId is mandatory in MndtRltdInf."
+    },
+    {
+        "rule_id": "PACS003_MANDATE_SIGN_DATE_REQUIRED",
+        "description": "CBPR+: DtOfSgntr is mandatory in MndtRltdInf when present.",
+        "condition": "exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf.MndtRltdInf)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrDrctDbt.DrctDbtTxInf.MndtRltdInf.DtOfSgntr"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "DtOfSgntr (Date of Signature) is mandatory in MndtRltdInf."
+    },
+    {
+        "rule_id": "PACS003_CHRG_BR_CRED_CHRGS_INF",
+        "description": "If ChrgBr = CRED, ChrgsInf block must be present with Amt and Agt.",
+        "condition": "exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf) and string_equals(Document.FIToFICstmrDrctDbt.DrctDbtTxInf.ChrgBr, 'CRED')",
+        "mandatory_fields": [
+            "Document.FIToFICstmrDrctDbt.DrctDbtTxInf.ChrgsInf"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "When ChrgBr = CRED, ChrgsInf block must be present.",
+        "fix": "Insert <ChrgsInf><Amt Ccy=\"{CCY}\">0.00</Amt><Agt><FinInstnId><BICFI>{BIC}</BICFI></FinInstnId></Agt></ChrgsInf>."
+    },
+    {
+        "rule_id": "PACS003_CHRG_INF_AGT_REQUIRED",
+        "description": "If ChrgsInf is present, Agt (Agent Details) must be included.",
+        "condition": "exists(Document.FIToFICstmrDrctDbt.DrctDbtTxInf.ChrgsInf)",
+        "mandatory_fields": [
+            "Document.FIToFICstmrDrctDbt.DrctDbtTxInf.ChrgsInf.Agt"
+        ],
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "ChrgsInf is present but the Agt element is absent.",
+        "fix": "Add <Agt><FinInstnId><BICFI>{agent_BIC}</BICFI></FinInstnId></Agt> inside ChrgsInf."
+    },
+    {
+        "rule_id": "PACS003_CREDTTM_DATE_FORMAT",
+        "name": "PACS003_CreDtTm_Date_Format_Invalid",
+        "description": "GrpHdr/CreDtTm contains an invalid ISO 8601 datetime. Common errors: 'Z' suffix, milliseconds (.123), missing timezone offset.",
+        "selector": "Document.FIToFICstmrDrctDbt.GrpHdr.CreDtTm",
+        "type": "expression",
+        "expression": "re.match(r'^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}([+-]\\d{2}:\\d{2})$', str(VALUE).strip())",
+        "severity": "ERROR",
+        "layer": 2,
+        "errorMessage": "GrpHdr/CreDtTm has an invalid datetime format. Must be YYYY-MM-DDTHH:MM:SS+HH:MM (no Z, no milliseconds).",
+        "fix": "Replace with a valid ISO 8601 datetime. Format: YYYY-MM-DDTHH:MM:SS+00:00 (e.g. 2026-06-09T10:00:00+00:00). Never use 'Z' suffix or milliseconds."
+    },
+    {
+        "rule_id": "PACS003_APPHDR_CREDT_FORMAT",
+        "name": "PACS003_AppHdr_CreDt_Format_Invalid",
+        "description": "AppHdr/CreDt contains an invalid datetime. Must be YYYY-MM-DDTHH:MM:SS+HH:MM. Z suffix and milliseconds are forbidden under CBPR+.",
+        "selector": "AppHdr.CreDt",
+        "type": "expression",
+        "expression": "re.match(r'^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}([+-]\\d{2}:\\d{2})$', str(VALUE).strip())",
+        "severity": "ERROR",
+        "layer": 2,
+        "errorMessage": "AppHdr/CreDt has an invalid datetime format. Must be YYYY-MM-DDTHH:MM:SS+HH:MM (no Z, no milliseconds).",
+        "fix": "Replace with a valid ISO 8601 datetime with timezone. Example: 2026-06-09T10:00:00+00:00."
+    },
+    {
+        "rule_id": "PACS003_CHARSET",
+        "name": "PACS003_Character_Set_Usage",
+        "description": "All text values must comply with the CBPR+ permitted character set. Standard fields: A-Z a-z 0-9 space /\\-?:().,'+. Extended fields (Nm, Adr, RmtInf): additionally !#$&%*=^_{{|}}~\";<>@[\\]. Use &lt; for < and &gt; for >.",
+        "type": "expression",
+        "expression": "all(re.match(r'^[A-Za-z0-9 /\\-?:().,\\'+]*$', str(v)) for k, v in DATA.items() if isinstance(v, str) and not k.endswith('@Ccy') and not k.endswith('@Tp') and not re.search(r'(IBAN|BIC|LEI|UETR|MsgId|BizMsgIdr|CreDtTm|IntrBkSttlmDt|Nm|AdrLine|StrtNm|TwnNm|Ustrd|AddtlInf)', k))",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "Character set used does not comply with CBPR+ UHB specifications. Only A-Z a-z 0-9 space and /\\-?:().,\\' are permitted in standard fields. Nm/Adr/RmtInf fields allow extended charset including !#$&%*=^_{{|}}~\";<>@[\\].",
+        "fix": "Remove characters outside the CBPR+ permitted set. For Nm/Adr/RmtInf fields use the extended charset. Replace < with &lt; and > with &gt;."
+    }
+]

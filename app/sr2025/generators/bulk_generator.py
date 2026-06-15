@@ -667,7 +667,6 @@ MESSAGE_BLOCKS: Dict[str, List[Dict]] = {
         {"id": "intermediary_agent_3",       "label": "Intermediary Agent 3",        "mandatory": False, "requires": ["intermediary_agent_2"]},
         {"id": "intermediary_agent_3_account","label": "Intermediary Agent 3 Account","mandatory": False, "requires": ["intermediary_agent_3"]},
         {"id": "payment_type_information",   "label": "Payment Type Information",    "mandatory": False},
-        {"id": "remittance_information",     "label": "Remittance Information",      "mandatory": False},
         {"id": "settlement_time_request",    "label": "Settlement Time Request",     "mandatory": False},
     ],
     "pacs.009.adv": [
@@ -691,7 +690,6 @@ MESSAGE_BLOCKS: Dict[str, List[Dict]] = {
         {"id": "intermediary_agent_3",       "label": "Intermediary Agent 3",        "mandatory": False, "requires": ["intermediary_agent_2"]},
         {"id": "intermediary_agent_3_account","label": "Intermediary Agent 3 Account","mandatory": False, "requires": ["intermediary_agent_3"]},
         {"id": "payment_type_information",   "label": "Payment Type Information",    "mandatory": False},
-        {"id": "remittance_information",     "label": "Remittance Information",      "mandatory": False},
         {"id": "settlement_time_request",    "label": "Settlement Time Request",     "mandatory": False},
     ],
     "pacs.009.cov": [
@@ -744,7 +742,7 @@ MESSAGE_BLOCKS: Dict[str, List[Dict]] = {
         {"id": "creditor",                   "label": "Creditor",                    "mandatory": True},
         {"id": "creditor_account",           "label": "Creditor Account",            "mandatory": True,  "requires": ["creditor"]},
         {"id": "creditor_agent_account",     "label": "Creditor Agent Account",      "mandatory": False, "requires": ["creditor_agent"]},
-        {"id": "direct_debit_transaction",   "label": "Direct Debit Transaction",    "mandatory": False},
+        {"id": "direct_debit_transaction",   "label": "Direct Debit Transaction",    "mandatory": True},
         {"id": "intermediary_agent_1",       "label": "Intermediary Agent 1",        "mandatory": False},
         {"id": "intermediary_agent_2",       "label": "Intermediary Agent 2",        "mandatory": False, "requires": ["intermediary_agent_1"]},
         {"id": "intermediary_agent_3",       "label": "Intermediary Agent 3",        "mandatory": False, "requires": ["intermediary_agent_2"]},
@@ -856,7 +854,6 @@ MESSAGE_BLOCKS: Dict[str, List[Dict]] = {
         {"id": "original_group_information","label": "Original Group Information",  "mandatory": True},
         {"id": "original_payment_information","label": "Original Payment Info",     "mandatory": True},
         {"id": "status_reason",             "label": "Status Reason Information",   "mandatory": False},
-        {"id": "original_transaction",      "label": "Original Transaction Info",   "mandatory": False},
     ],
     "pain.008": [
         {"id": "group_header",              "label": "Group Header",                "mandatory": True},
@@ -1126,21 +1123,27 @@ def _gen_pacs009(selected: set, idx: int, is_cov: bool = False, is_adv: bool = F
     uetr = scenario.uetr
     cre_dt = rng_datetime()
     sttlm_dt = rng_date(1)
-    if is_adv or is_cov:
+    # SWIFT CBPR+ pacs.009 settlement method per variant (verified vs MyStandards):
+    #   ADV  → COVE (reimbursement-agent settlement)
+    #   COV  → INDA/INGA (cover settled on accounts; COVE is REJECTED for COV)
+    #   CORE → INDA/INGA
+    if is_adv:
         sttlm_mtd = "COVE"
     else:
         sttlm_mtd = random.choice(SETTLEMENT_METHODS)
     amount = rng_amount(ccy)
 
     sttlm_inf = f"\t\t\t\t\t<SttlmMtd>{xe(sttlm_mtd)}</SttlmMtd>"
-    if sttlm_mtd == "COVE":
-        rmbrs_choice = random.choice(["instg", "instd", "both"])
-        if rmbrs_choice in ["instg", "both"]:
-            sttlm_inf += f"\n\t\t\t\t\t<InstgRmbrsmntAgt>\n\t\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t\t<BICFI>{xe(scenario.make_intermediary_agent().bic)}</BICFI>\n\t\t\t\t\t\t</FinInstnId>\n\t\t\t\t\t</InstgRmbrsmntAgt>"
-        if rmbrs_choice in ["instd", "both"]:
-            sttlm_inf += f"\n\t\t\t\t\t<InstdRmbrsmntAgt>\n\t\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t\t<BICFI>{xe(scenario.make_intermediary_agent().bic)}</BICFI>\n\t\t\t\t\t\t</FinInstnId>\n\t\t\t\t\t</InstdRmbrsmntAgt>"
-    elif sttlm_mtd in ["INDA", "INGA"] and random.random() < 0.5:
+    if not is_adv and sttlm_mtd in ["INDA", "INGA"] and random.random() < 0.5:
         sttlm_inf += f"\n\t\t\t\t\t<SttlmAcct>\n\t\t\t\t\t\t<Id>\n\t\t\t\t\t\t\t<IBAN>{xe(scenario.debtor.iban)}</IBAN>\n\t\t\t\t\t\t</Id>\n\t\t\t\t\t</SttlmAcct>"
+    # Reimbursement agents (InstgRmbrsmntAgt/InstdRmbrsmntAgt) belong to SttlmMtd=COVE,
+    # i.e. ADV only. COV uses SttlmAcct, NOT reimbursement agents (MyStandards rejects them).
+    if is_adv:
+        _adv_choice = random.choice(["instg", "instd", "both"])
+        if _adv_choice in ("instg", "both"):
+            sttlm_inf += "\n" + agent_xml("InstgRmbrsmntAgt", scenario.make_intermediary_agent().bic, 5).rstrip("\n")
+        if _adv_choice in ("instd", "both"):
+            sttlm_inf += "\n" + agent_xml("InstdRmbrsmntAgt", scenario.make_intermediary_agent().bic, 5).rstrip("\n")
 
     tx = ""
 
@@ -1218,7 +1221,9 @@ def _gen_pacs009(selected: set, idx: int, is_cov: bool = False, is_adv: bool = F
     if "creditor_account" in selected:
         tx += account_xml("CdtrAcct", scenario.creditor.iban, 4)
 
-    # 16. RmtInf (optional)
+    # 16. RmtInf (optional) — permitted at CdtTrfTxInf level for all pacs.009
+    # variants (CORE, ADV, COV). COV additionally carries remittance info
+    # inside UndrlygCstmrCdtTrf (see below).
     if "remittance_information" in selected:
         tx += f"\t\t\t\t<RmtInf>\n\t\t\t\t\t<Ustrd>{xe(rng_id('REF', 16))}</Ustrd>\n\t\t\t\t</RmtInf>\n"
 
@@ -2193,7 +2198,7 @@ def _gen_camt055(selected: set, idx: int) -> str:
 \t<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.055.001.08">
 \t\t<CstmrPmtCxlReq>
 \t\t\t<Assgnmt>
-\t\t\t\t<Id>{xe(rng_id("ASSGNMT", 10))}</Id>
+\t\t\t\t<Id>{xe(rng_id("ASGN", 12, 16))}</Id>
 \t\t\t\t<Assgnr><Agt><FinInstnId><BICFI>{xe(from_bic)}</BICFI></FinInstnId></Agt></Assgnr>
 \t\t\t\t<Assgne><Agt><FinInstnId><BICFI>{xe(to_bic)}</BICFI></FinInstnId></Agt></Assgne>
 \t\t\t\t<CreDtTm>{cre_dt}</CreDtTm>
@@ -2302,7 +2307,7 @@ def _gen_camt056(selected: set, idx: int) -> str:
 \t<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.056.001.08">
 \t\t<FIToFIPmtCxlReq>
 \t\t\t<Assgnmt>
-\t\t\t\t<Id>{xe(rng_id("ASSGNMT", 10))}</Id>
+\t\t\t\t<Id>{xe(rng_id("ASGN", 12, 16))}</Id>
 \t\t\t\t<Assgnr><Agt><FinInstnId><BICFI>{xe(from_bic)}</BICFI></FinInstnId></Agt></Assgnr>
 \t\t\t\t<Assgne><Agt><FinInstnId><BICFI>{xe(to_bic)}</BICFI></FinInstnId></Agt></Assgne>
 \t\t\t\t<CreDtTm>{cre_dt}</CreDtTm>
@@ -2465,15 +2470,15 @@ def _gen_pain002(selected: set, idx: int) -> str:
     body += f"""\t\t\t\t<OrgnlPmtInfAndSts>
 \t\t\t\t\t<OrgnlPmtInfId>{xe(rng_id("ORIGPMT", 10))}</OrgnlPmtInfId>
 """
-    if "original_transaction" in selected or status == "RJCT":
-        # If status is RJCT we must also emit a StsRsnInf block (PAIN002_RJCT_REQUIRES_RSN).
-        tx_rsn = ""
-        if status == "RJCT":
-            reasons = ["AM04", "AC01", "FF01", "AG01"]
-            tx_rsn = (f"\t\t\t\t\t\t<StsRsnInf>\n"
-                      f"\t\t\t\t\t\t\t<Rsn><Cd>{random.choice(reasons)}</Cd></Rsn>\n"
-                      f"\t\t\t\t\t\t</StsRsnInf>\n")
-        body += f"""\t\t\t\t\t<TxInfAndSts>
+    # CBPR+ mandates at least one TxInfAndSts per OrgnlPmtInfAndSts; omitting it
+    # produces "content not complete" in SWIFT MyStandards (PAIN002_ORGNLPMT_NO_TXINF).
+    tx_rsn = ""
+    if status == "RJCT":
+        reasons = ["AM04", "AC01", "FF01", "AG01"]
+        tx_rsn = (f"\t\t\t\t\t\t<StsRsnInf>\n"
+                  f"\t\t\t\t\t\t\t<Rsn><Cd>{random.choice(reasons)}</Cd></Rsn>\n"
+                  f"\t\t\t\t\t\t</StsRsnInf>\n")
+    body += f"""\t\t\t\t\t<TxInfAndSts>
 \t\t\t\t\t\t<OrgnlEndToEndId>{xe(rng_id("ORIE2E", 10))}</OrgnlEndToEndId>
 \t\t\t\t\t\t<OrgnlUETR>{rng_uetr()}</OrgnlUETR>
 \t\t\t\t\t\t<TxSts>{status}</TxSts>

@@ -57,7 +57,9 @@
         "type": "expression",
         "expression": "not (exists('SvcLvl.Cd') and 'URGT' in str(DATA.get('SvcLvl.Cd'))) or DATA.get('IntrBkSttlmDt') == datetime.now().strftime('%Y-%m-%d')",
         "severity": "WARNING",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "Urgent payment settlement date should be today or in the future.",
+        "fix": "Set <IntrBkSttlmDt> to today ISO date (YYYY-MM-DD). Urgent payments must settle on the current business day."
     },
     {
         "rule_id": "L3-PURPOSE-LIMIT",
@@ -124,10 +126,12 @@
     {
         "rule_id": "L3_STTLM_CLRG_001",
         "description": "If Settlement Method is CLRG (Clearing System), Clearing System (ClrSys) identity must be present.",
-        "condition": "any(k.endswith('.GrpHdr.SttlmInf.SttlmMtd') and DATA[k] == 'CLRG' for k in DATA.keys())",
-        "expression": "any(k.endswith('.GrpHdr.SttlmInf.ClrSys') for k in DATA.keys()) or any(k.endswith('.CdtTrfTxInf.SttlmInf.ClrSys') for k in DATA.keys())",
+        "condition": "any(k.endswith('.SttlmInf.SttlmMtd') and DATA[k] == 'CLRG' for k in DATA.keys())",
+        "expression": "any('.SttlmInf.ClrSys.' in k or k.endswith('.SttlmInf.ClrSys') for k in DATA.keys())",
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "Settlement Method is CLRG but Clearing System (ClrSys) identity is missing.",
+        "fix": "Add <ClrSys><Cd>GBDSC</Cd></ClrSys> inside <SttlmInf> when SttlmMtd is CLRG. Choose the appropriate clearing system code (e.g., CHIPS, FED, GBDSC, T2)."
     },
     {
         "rule_id": "L3_PARTY_EXCLUSIVITY",
@@ -319,13 +323,13 @@
     },
     {
         "rule_id": "L3_NM_NOT_EQ_BIC",
-        "description": "Party Name (Nm) should not be a BIC code \u2014 likely a mapping error.",
+        "description": "Party Name (Nm) should not be a BIC code — likely a mapping error.",
         "type": "expression",
         "selector": ".*\\.Nm$",
         "expression": "not (len(str(VALUE).strip()) in (8, 11) and __import__('re').match(r'^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$', str(VALUE).strip()) is not None)",
         "severity": "WARNING",
         "layer": 3,
-        "errorMessage": "Party <Nm> looks like a BIC code rather than a name \u2014 verify the mapping.",
+        "errorMessage": "Party <Nm> looks like a BIC code rather than a name — verify the mapping.",
         "fix": "Move the BIC value into <BICFI> and put the actual party name in <Nm>."
     },
     {

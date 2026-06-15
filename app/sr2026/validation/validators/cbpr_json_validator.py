@@ -41,7 +41,8 @@ TAG_TO_REF: Dict[str, str] = {
     # Generic max-N text identifiers
     "MsgId": "CBPR_RestrictedFINXMax35Text",
     "BizMsgIdr": "CBPR_RestrictedFINXMax35Text",
-    "InstrId": "CBPR_RestrictedFINXMax35Text",
+    # InstrId is restricted to Max16 under CBPR+ (PaymentIdentification/InstrId).
+    "InstrId": "CBPR_RestrictedFINXMax16Text",
     "EndToEndId": "CBPR_RestrictedFINXMax35Text",
     "TxId": "CBPR_RestrictedFINXMax35Text",
     "OrgnlMsgId": "CBPR_RestrictedFINXMax35Text",

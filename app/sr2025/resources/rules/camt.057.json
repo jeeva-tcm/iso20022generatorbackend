@@ -7,7 +7,9 @@
             "Document.NtfctnToRcv.Ntfctn.Agt.FinInstnId"
         ],
         "severity": "ERROR",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "Notification Agent must use FinInstnId identification in camt.057.",
+        "fix": "Add <FinInstnId><BICFI>BANKGB2LXXX</BICFI></FinInstnId> inside <Agt>."
     },
     {
         "rule_id": "CAMT057_ITM_REQUIRED",
@@ -39,7 +41,9 @@
         "type": "regex",
         "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
         "severity": "WARNING",
-        "layer": 3
+        "layer": 3,
+        "errorMessage": "Expected Value Date should not be in the past.",
+        "fix": "Set <XpctdValDt> to today or a future date (ISO 8601 YYYY-MM-DD)."
     },
     {
         "rule_id": "CBPR_Character_Set_Usage_TextualRule",

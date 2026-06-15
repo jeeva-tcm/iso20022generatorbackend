@@ -45,6 +45,10 @@ env/
 *.sqlite3
 iso_validator.db
 
+# Generated startup caches (regenerated from source on first run)
+*.cache.pkl
+bics/entities.ftm.cache.pkl
+
 # Environment variables
 .env
 .env.local
