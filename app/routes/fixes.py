@@ -8,6 +8,8 @@ POST /fixes/apply-batch    → apply multiple fixes to XML
 """
 from fastapi import APIRouter, HTTPException
 
+from typing import Dict
+
 from app.schemas.fixes import (
     SuggestRequest,
     SuggestBatchRequest,
@@ -16,8 +18,11 @@ from app.schemas.fixes import (
     ApplyRequest,
     ApplyBatchRequest,
     ApplyResponse,
+    FeedbackRequest,
+    FeedbackResponse,
 )
 from app.services.fix_suggester import fix_suggester, FixApplyError
+from app.services import fix_feedback, fix_metrics
 
 router = APIRouter(prefix="/fixes", tags=["fixes"])
 
@@ -30,14 +35,20 @@ def _suggestion_to_response(s) -> FixSuggestionResponse:
         issue_code=s.issue_code,
         issue_message=s.issue_message,
         confidence=s.confidence,
+        verified=getattr(s, "verified", None),
     )
 
 
 @router.post("/suggest", response_model=FixSuggestionResponse)
 def suggest_fix(req: SuggestRequest):
-    """Generate a fix suggestion for a single validation issue."""
+    """Generate a fix suggestion for a single validation issue.
+
+    Uses the verified path: the suggestion is applied to a throwaway copy and
+    self-checked (well-formed + no XSD regression) before returning, so the
+    `verified` flag tells the UI whether the fix actually holds up.
+    """
     issue_dict = req.issue.model_dump()
-    suggestion = fix_suggester.suggest(req.xml, issue_dict)
+    suggestion = fix_suggester.suggest_verified(req.xml, issue_dict)
     return _suggestion_to_response(suggestion)
 
 
@@ -70,3 +81,30 @@ def apply_fix_batch(req: ApplyBatchRequest):
         return ApplyResponse(new_xml=new_xml)
     except FixApplyError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/feedback", response_model=FeedbackResponse)
+def fix_feedback_record(req: FeedbackRequest):
+    """Record a user's accept / edit / reject of a suggested fix.
+
+    Accepted and edited fixes are surfaced back to the LLM fallback as
+    high-signal context for the same (issue_code, tag) next time — so the
+    engine learns the shapes users actually want. Best-effort: a storage
+    failure returns ok=false rather than erroring the request.
+    """
+    ok = fix_feedback.record_feedback(
+        issue_code=req.issue_code,
+        tag=req.tag,
+        original_fragment=req.original_fragment,
+        fragment_xml=req.fragment_xml,
+        action=req.action,
+        edited_xml=req.edited_xml,
+    )
+    return FeedbackResponse(ok=ok)
+
+
+@router.get("/metrics")
+def fix_metrics_snapshot() -> Dict[str, int]:
+    """Read-only counters: confidence buckets, verify pass/fail, LLM
+    invocations + cache hit/miss, self-consistency outcomes."""
+    return fix_metrics.snapshot()

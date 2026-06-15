@@ -645,7 +645,9 @@
             "Maximum 18 digits total with up to 5 fraction digits."
           ]
         }
-      ]
+      ],
+      "cbpr_plus_status": "FORBIDDEN",
+      "cbpr_plus_note": "Not permitted in CBPR+ pacs.009 GroupHeader. MyStandards expects NbOfTxs -> SttlmInf with no CtrlSum. Remove if present."
     },
     {
       "tag": "GrpHdr/SttlmInf/SttlmMtd",
@@ -4178,7 +4180,6 @@
       "CreDtTm",
       "BtchBookg",
       "NbOfTxs",
-      "CtrlSum",
       "TtlIntrBkSttlmAmt",
       "IntrBkSttlmDt",
       "SttlmInf",

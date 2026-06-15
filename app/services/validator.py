@@ -499,6 +499,10 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                     # different schemas; this is a frequent integration/routing bug.
                     self._validate_apphdr_payload_match(xml_content, report)
 
+                    # CBPR+ Rule: BAH Fr/To BICs must match InstgAgt/InstdAgt BICs.
+                    # Only enforced when CpyDplct is absent (copies may legitimately differ).
+                    self._validate_bah_agent_bic_match(xml_content, report)
+
                     # KB-driven cross-tag dependency rules (resources/KB/<family>.json),
                     # e.g. BizMsgIdr must equal GrpHdr/MsgId. Enforces documented CBPR+
                     # rules not covered elsewhere; dedup-guarded so it never double-reports.
@@ -508,6 +512,19 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                     # Base XSD declares FwdgAgt optional, but SWIFT MyStandards
                     # promotes it to mandatory for cross-border direct debits.
                     self._validate_pain008_fwdgagt_rule(xml_content, report)
+
+                    # CBPR+ Rule: pain.002 OrgnlPmtInfAndSts must contain at
+                    # least one TxInfAndSts — base XSD has minOccurs=0 but
+                    # SWIFT MyStandards rejects the block without it.
+                    if "pain.002" in detected_type:
+                        self._validate_pain002_txinf_rule(xml_content, report)
+
+                    # CBPR+ Rule: pacs.002 TxInfAndSts must contain at least one
+                    # of OrgnlInstrId or OrgnlEndToEndId before TxSts. The base
+                    # XSD marks both optional (minOccurs=0) but MyStandards rejects
+                    # without at least one original identifier present.
+                    if "pacs.002" in detected_type:
+                        self._validate_pacs002_txinf_orig_id(xml_content, report)
 
                     # SWIFT MyStandards Rule: camt.053 LastPgInd=true requires
                     # exactly one Bal/Tp/CdOrPrtry/Cd='CLBD', and if SubType/Cd
@@ -1242,19 +1259,53 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
         except Exception:
             return
 
-        app_hdr = root.find(".//{*}AppHdr")
-        document = root.find(".//{*}Document")
-        if app_hdr is None or document is None:
-            # Nothing to compare — either header or payload missing; other rules will handle it
-            return
+        root_local = etree.QName(root.tag).localname if isinstance(root.tag, str) else ""
 
+        # Build list of (app_hdr, document) pairs to validate.
+        # BulkMessages → iterate each BusMsgEnvlp; bare Document in bulk → flag missing envelope.
+        pairs: list[tuple] = []  # (app_hdr_el | None, document_el)
+        if root_local == "BulkMessages":
+            for child in root:
+                if not isinstance(child.tag, str):
+                    continue
+                child_local = etree.QName(child.tag).localname
+                if child_local == "BusMsgEnvlp":
+                    hdr = child.find(".//{*}AppHdr")
+                    doc = child.find(".//{*}Document")
+                    if doc is not None:
+                        pairs.append((hdr, doc))
+                elif child_local == "Document":
+                    # Bare Document — no AppHdr; flag missing envelope
+                    line_no = str(child.sourceline or "?")
+                    report.add_issue(ValidationIssue(
+                        "ERROR", 3, "BAH_ENVELOPE_MISSING", line_no,
+                        f"The <Document> at line {line_no} has no <BusMsgEnvlp> wrapper. "
+                        "CBPR+ requires each message in a bulk to be enclosed in a "
+                        "<BusMsgEnvlp> containing an <AppHdr> and a <Document>.",
+                        "Wrap the bare <Document> in a <BusMsgEnvlp> with a matching "
+                        "<AppHdr> (Fr, To, BizMsgIdr, MsgDefIdr, BizSvc, CreDt)."
+                    ))
+                    pairs.append((None, child))
+        else:
+            # Single message — keep existing first-AppHdr / first-Document behaviour.
+            app_hdr = root.find(".//{*}AppHdr")
+            document = root.find(".//{*}Document")
+            if app_hdr is None or document is None:
+                return
+            pairs.append((app_hdr, document))
+
+        for app_hdr, document in pairs:
+            if app_hdr is None or document is None:
+                continue
+            self._check_apphdr_document_pair(app_hdr, document, report)
+
+    def _check_apphdr_document_pair(self, app_hdr, document, report: ValidationReport) -> None:
+        """Run the 3 AppHdr↔Document cross-checks for ONE envelope pair."""
         # 1. MsgDefIdr vs Document namespace
         msg_def_idr_el = app_hdr.find(".//{*}MsgDefIdr")
         msg_def_idr = (msg_def_idr_el.text or "").strip() if msg_def_idr_el is not None else ""
 
         doc_ns = etree.QName(document).namespace or ""
-        # Extract the trailing message identifier from the namespace
-        # e.g. urn:iso:std:iso:20022:tech:xsd:pacs.008.001.13 → pacs.008.001.13
         doc_msg_id = doc_ns.split(":")[-1] if ":" in doc_ns else doc_ns
 
         if msg_def_idr and doc_msg_id and msg_def_idr != doc_msg_id:
@@ -1268,20 +1319,10 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                 f"Header and payload must reference the same ISO 20022 message definition."
             ))
 
-        # 2. BizSvc — MANDATORY under CBPR+ / SWIFT MyStandards.
-        #    The base head.001 XSD declares <BizSvc> as minOccurs="0", so a message
-        #    WITHOUT it is XSD-valid yet REJECTED by MyStandards ("CreDt not
-        #    expected here … expected BizSvc", because MyStandards makes BizSvc
-        #    mandatory before CreDt). That is exactly the "passes in our validator
-        #    but fails in MyStandards" gap — so we enforce presence as a hard error
-        #    here, then validate the format when it IS present.
+        # 2. BizSvc mandatory under CBPR+/MyStandards
         biz_svc_el = app_hdr.find(".//{*}BizSvc")
         biz_svc = (biz_svc_el.text or "").strip() if biz_svc_el is not None else ""
         if not biz_svc:
-            # Anchor the error to MsgDefIdr (BizSvc must immediately follow it) or
-            # the AppHdr itself when MsgDefIdr is also absent. Use an /AppHdr/BizSvc
-            # path (not a bare line number) so the fix-suggester's namespace-aware,
-            # KB-ordered AppHdr inserter places <BizSvc> in the correct slot.
             anchor = msg_def_idr_el if msg_def_idr_el is not None else app_hdr
             line_no = (anchor.sourceline if anchor is not None else None)
             report.add_issue(ValidationIssue(
@@ -1303,16 +1344,13 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                 "'swift.cbprplus.01', 'swift.hvps.01', or 'swift.csp.02'."
             ))
 
-        # 3. Timezone consistency (warning) — both header CreDt and payload CreDtTm should
-        # carry the same offset for downstream timing/cut-off calculations to be correct.
+        # 3. Timezone consistency (warning)
         cre_dt_el = app_hdr.find(".//{*}CreDt")
-        # First CreDtTm under Document (typically in GrpHdr)
         cre_dt_tm_el = document.find(".//{*}CreDtTm")
 
         def _extract_offset(value: str) -> str:
             if not value:
                 return ""
-            # Match ±HH:MM or 'Z'
             m = re.search(r'(Z|[+-]\d{2}:\d{2})$', value)
             return m.group(1) if m else ""
 
@@ -1327,6 +1365,77 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                     f"CreDtTm timezone offset '{p_off}'.",
                     "For consistency, use the same UTC offset in both header and payload "
                     "timestamps (e.g. both '+00:00' or both '+05:30')."
+                ))
+
+    def _validate_bah_agent_bic_match(self, xml_content: str, report: ValidationReport) -> None:
+        """CBPR+ rule: AppHdr Fr/To BICs must match InstgAgt/InstdAgt BICs.
+
+        Per CBPR+ guidelines, when <CpyDplct> is absent:
+          • AppHdr/Fr/.../BICFI  ==  first InstgAgt/.../BICFI in the payload.
+          • AppHdr/To/.../BICFI  ==  first InstdAgt/.../BICFI in the payload.
+
+        Applies per BusMsgEnvlp in a bulk; skips envelopes where CpyDplct is present.
+        Family-agnostic: walks first InstgAgt / InstdAgt descendant regardless of
+        message type, so it covers pacs.008/009/010/002 and future types.
+        """
+        try:
+            parser = etree.XMLParser(recover=True, no_network=True, resolve_entities=False)
+            root = etree.fromstring(xml_content.encode("utf-8"), parser)
+        except Exception:
+            return
+
+        def _first_bicfi(node, tag_local: str) -> str:
+            """Return BICFI text from the first descendant matching tag_local, or ''."""
+            # Use local-name xpath so namespace-agnostic
+            results = node.xpath(f".//*[local-name()='{tag_local}']/*[local-name()='FinInstnId']/*[local-name()='BICFI']")
+            return (results[0].text or "").strip() if results else ""
+
+        root_local = etree.QName(root.tag).localname if isinstance(root.tag, str) else ""
+
+        # Collect envelopes to check
+        if root_local == "BulkMessages":
+            envelopes = [c for c in root
+                         if isinstance(c.tag, str) and etree.QName(c.tag).localname == "BusMsgEnvlp"]
+        elif root_local == "BusMsgEnvlp":
+            envelopes = [root]
+        else:
+            return  # No envelope — BAH BIC rule not applicable
+
+        for env in envelopes:
+            app_hdr = env.find(".//{*}AppHdr")
+            document = env.find(".//{*}Document")
+            if app_hdr is None or document is None:
+                continue
+
+            # Skip if CpyDplct present — copies may legitimately differ
+            if app_hdr.find(".//{*}CpyDplct") is not None:
+                continue
+
+            fr_bic = _first_bicfi(app_hdr, "Fr")
+            to_bic = _first_bicfi(app_hdr, "To")
+            instg_bic = _first_bicfi(document, "InstgAgt")
+            instd_bic = _first_bicfi(document, "InstdAgt")
+
+            if fr_bic and instg_bic and fr_bic != instg_bic:
+                fr_el = app_hdr.xpath(".//*[local-name()='Fr']//*[local-name()='BICFI']")
+                line_no = str(fr_el[0].sourceline if fr_el else (app_hdr.sourceline or "?"))
+                report.add_issue(ValidationIssue(
+                    "ERROR", 3, "BAH_FR_INSTGAGT_MISMATCH", line_no,
+                    f"AppHdr <Fr> BIC '{fr_bic}' does not match the payload <InstgAgt> BIC "
+                    f"'{instg_bic}'. CBPR+ requires these to be identical when <CpyDplct> is absent.",
+                    f"Update AppHdr <Fr>...<BICFI> to '{instg_bic}', or update <InstgAgt>...<BICFI> "
+                    f"to '{fr_bic}' in the payload."
+                ))
+
+            if to_bic and instd_bic and to_bic != instd_bic:
+                to_el = app_hdr.xpath(".//*[local-name()='To']//*[local-name()='BICFI']")
+                line_no = str(to_el[0].sourceline if to_el else (app_hdr.sourceline or "?"))
+                report.add_issue(ValidationIssue(
+                    "ERROR", 3, "BAH_TO_INSTDAGT_MISMATCH", line_no,
+                    f"AppHdr <To> BIC '{to_bic}' does not match the payload <InstdAgt> BIC "
+                    f"'{instd_bic}'. CBPR+ requires these to be identical when <CpyDplct> is absent.",
+                    f"Update AppHdr <To>...<BICFI> to '{instd_bic}', or update <InstdAgt>...<BICFI> "
+                    f"to '{to_bic}' in the payload."
                 ))
 
     def _validate_kb_dependency_rules(self, xml_content: str, report: ValidationReport,
@@ -1431,6 +1540,86 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             "FwdgAgt is mandatory in SWIFT CBPR+ pain.008 messages even though "
             "the base ISO 20022 XSD declares it optional."
         ))
+
+    def _validate_pain002_txinf_rule(self, xml_content: str, report: ValidationReport) -> None:
+        """
+        CBPR+ Rule — pain.002 OrgnlPmtInfAndSts must contain TxInfAndSts.
+
+        The base ISO 20022 XSD marks TxInfAndSts as minOccurs="0" inside
+        OriginalPaymentInstruction51, but SWIFT MyStandards / CBPR+ requires
+        at least one TxInfAndSts per OrgnlPmtInfAndSts block so the payment
+        status is operationally resolvable. Without it MyStandards rejects
+        with: "The content of element 'OrgnlPmtInfAndSts' is not complete.
+        One of the following elements is expected: 'TxInfAndSts'."
+        """
+        try:
+            parser = etree.XMLParser(recover=True, no_network=True, resolve_entities=False)
+            root = etree.fromstring(xml_content.encode('utf-8'), parser)
+        except Exception:
+            return
+
+        for el in root.iter():
+            if not isinstance(el.tag, str):
+                continue
+            if etree.QName(el.tag).localname != "OrgnlPmtInfAndSts":
+                continue
+            has_txinf = any(
+                isinstance(c.tag, str) and etree.QName(c.tag).localname == "TxInfAndSts"
+                for c in el
+            )
+            if not has_txinf:
+                line = str(el.sourceline or "?")
+                report.add_issue(ValidationIssue(
+                    "ERROR", 2, "PAIN002_ORGNLPMT_NO_TXINF", line,
+                    "The content of element 'OrgnlPmtInfAndSts' is not complete. "
+                    "One of the following elements is expected: 'TxInfAndSts'.",
+                    "Add at least one <TxInfAndSts> block inside <OrgnlPmtInfAndSts> "
+                    "containing <OrgnlEndToEndId>, <TxSts> and, when TxSts is RJCT, "
+                    "<StsRsnInf><Rsn><Cd>REASON_CODE</Cd></Rsn></StsRsnInf>."
+                ))
+
+    def _validate_pacs002_txinf_orig_id(self, xml_content: str, report: ValidationReport) -> None:
+        """
+        CBPR+ Rule — pacs.002 TxInfAndSts must have OrgnlInstrId or OrgnlEndToEndId.
+
+        MyStandards rejects a TxInfAndSts block that contains <TxSts> but has
+        neither <OrgnlInstrId> nor <OrgnlEndToEndId>. The base XSD marks both
+        minOccurs="0", so XSD validation passes silently.
+        Error: "The element 'TxSts' is not expected here … One of the following
+        elements is expected: 'OrgnlInstrId, OrgnlEndToEndId'."
+        """
+        try:
+            parser = etree.XMLParser(recover=True, no_network=True, resolve_entities=False)
+            root = etree.fromstring(xml_content.encode('utf-8'), parser)
+        except Exception:
+            return
+
+        for el in root.iter():
+            if not isinstance(el.tag, str):
+                continue
+            if etree.QName(el.tag).localname != "TxInfAndSts":
+                continue
+            child_locals = {etree.QName(c.tag).localname for c in el if isinstance(c.tag, str)}
+            has_orig_id = bool(child_locals & {"OrgnlInstrId", "OrgnlEndToEndId"})
+            has_txsts   = "TxSts" in child_locals
+            if has_txsts and not has_orig_id:
+                # Anchor error to TxSts element for precise line number
+                txsts_el = next(
+                    (c for c in el if isinstance(c.tag, str)
+                     and etree.QName(c.tag).localname == "TxSts"),
+                    el,
+                )
+                line = str(txsts_el.sourceline or el.sourceline or "?")
+                report.add_issue(ValidationIssue(
+                    "ERROR", 2, "PACS002_TXINF_NO_ORIG_ID", line,
+                    "The element 'TxSts' is not expected here. Either it is not allowed "
+                    "in this specification, or another mandatory element is missing before "
+                    "this one. One of the following elements is expected: "
+                    "'OrgnlInstrId, OrgnlEndToEndId'.",
+                    "Add <OrgnlEndToEndId> (or <OrgnlInstrId>) before <TxSts> inside "
+                    "<TxInfAndSts>. CBPR+ requires at least one original identifier so "
+                    "the status can be correlated to the originating transaction.",
+                ))
 
     def _validate_uetr_in_xml(self, xml_content: str, report: ValidationReport) -> None:
         """
@@ -2155,36 +2344,58 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
     def _validate_nboftxs(self, xml_content: str, report: ValidationReport) -> None:
         """
         Step 4.9 — NbOfTxs Count Validation
-        Verifies that the <NbOfTxs> value matches the actual number of
-        transaction elements in the message.
+        Verifies that each <NbOfTxs> value matches the actual number of
+        transaction elements in ITS OWN message.
+
+        Counting is scoped per message: a bulk wrapper (e.g. <BulkMessages>
+        holding several <Document>s) has one NbOfTxs per message. The old
+        regex read only the FIRST <NbOfTxs> but counted transaction tags across
+        the WHOLE file, so a valid first message was flagged against the total
+        of every message — which then fought the per-message fixer forever.
         """
-        # Extract NbOfTxs value
-        nb_match = re.search(r'<NbOfTxs>\s*(\d+)\s*</NbOfTxs>', xml_content)
-        if not nb_match:
+        TX_TAGS = {"CdtTrfTxInf", "DrctDbtTxInf", "TxInfAndSts"}
+
+        def _local(el) -> str:
+            return etree.QName(el.tag).localname if isinstance(el.tag, str) and '}' in el.tag else (el.tag or "")
+
+        try:
+            parser = etree.XMLParser(recover=True, no_network=True, resolve_entities=False)
+            root = etree.fromstring(xml_content.encode("utf-8"), parser)
+        except Exception:
+            return
+        if root is None:
+            return
+
+        nb_els = [el for el in root.iter() if _local(el) == "NbOfTxs"]
+        if not nb_els:
             return  # NbOfTxs not present, XSD will catch if mandatory
 
-        declared_count = int(nb_match.group(1))
+        for nb_el in nb_els:
+            txt = (nb_el.text or "").strip()
+            if not txt.isdigit():
+                continue
+            declared_count = int(txt)
 
-        # Count transaction elements — covers pacs.008, pacs.009, pacs.002, pain, camt
-        tx_tags = ['CdtTrfTxInf', 'DrctDbtTxInf', 'TxInfAndSts', 'PmtInf']
-        actual_count = 0
-        for tag in tx_tags:
-            count = len(re.findall(rf'<{tag}[\s>]', xml_content))
-            if count > 0:
-                actual_count = count
-                break
+            # Scope the transaction count to this NbOfTxs's own message: walk up
+            # to the enclosing GrpHdr, then count transaction tags that descend
+            # from the GrpHdr's parent (the message root) only. Fall back to the
+            # whole document when there is no GrpHdr ancestor (single message).
+            grp = nb_el
+            while grp is not None and _local(grp) != "GrpHdr":
+                grp = grp.getparent()
+            scope = grp.getparent() if grp is not None and grp.getparent() is not None else root
 
-        if actual_count > 0 and declared_count != actual_count:
-            try:
-                line_num = xml_content.count('\n', 0, nb_match.start()) + 1
-            except Exception:
-                line_num = "Unknown"
+            actual_count = sum(1 for n in scope.iter() if _local(n) in TX_TAGS)
+            if actual_count <= 0 or declared_count == actual_count:
+                continue
 
+            line_num = nb_el.sourceline or "Unknown"
             report.add_issue(ValidationIssue(
                 "ERROR", 2, "NBOFTXS_MISMATCH", str(line_num),
                 f"NbOfTxs declares {declared_count} transaction(s) but the message "
                 f"actually contains {actual_count}.",
-                f"Update <NbOfTxs> to {actual_count} to match the actual number of transactions."
+                f"Update <NbOfTxs> to {actual_count} to match the actual number of transactions.",
+                line=line_num if isinstance(line_num, int) else None
             ))
 
     def _validate_duplicate_ids(self, xml_content: str, report: ValidationReport) -> None:
@@ -2531,6 +2742,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             # Check structured fields for length and content
             has_structured = False
             has_ctry = False
+            has_twnnm = False
             for child in addr:
                 if not isinstance(child.tag, str):
                     continue
@@ -2538,6 +2750,9 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
 
                 if child_local == 'Ctry':
                     has_ctry = True
+
+                if child_local == 'TwnNm' and child.text and child.text.strip():
+                    has_twnnm = True
 
                 if child_local in FIELD_MAX_LENGTHS and child.text:
                     has_structured = True
@@ -2577,6 +2792,22 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                             f"Remove hidden control characters from {child_local}."
                         ))
 
+            # ISO 20022 / CBPR+ — Postal Address Coexistence Rule (E001):
+            # If AddressLine (AdrLine) is absent, both Town Name (TwnNm) and
+            # Country (Ctry) MUST be present in the PstlAdr block.
+            if len(adr_lines) == 0 and (not has_twnnm or not has_ctry):
+                missing = []
+                if not has_twnnm:
+                    missing.append("Town Name <TwnNm>")
+                if not has_ctry:
+                    missing.append("Country <Ctry>")
+                report.add_issue(ValidationIssue(
+                    "ERROR", 3, "ADDR_COEXISTENCE", str(line),
+                    f"Postal Address in {parent_name} has no <AdrLine>; when AddressLine is absent, "
+                    f"both Town Name and Country must be present. Missing: {', '.join(missing)}.",
+                    "Add structured <TwnNm> and <Ctry> to the PstlAdr block, or provide an <AdrLine>."
+                ))
+
             # CBPR+ — Country (Ctry) is mandatory in PstlAdr
             if not has_ctry:
                 report.add_issue(ValidationIssue(
@@ -2608,30 +2839,33 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
         except Exception:
             return
 
-        # Determine if this is a pacs.009 standard vs COV
+        # Detect message family by scanning all element namespaces in the tree —
+        # BusMsgEnvlp-wrapped messages have root tag 'BulkMessages' (no NS), so
+        # checking only root.tag misses the Document namespace.
         message_type = "Unknown"
-        if root.tag and '}' in root.tag:
-            ns = root.tag.split('}')[0]
-            if 'pacs.008' in ns: message_type = 'pacs.008'
-            elif 'pacs.009' in ns: message_type = 'pacs.009'
-            elif 'pacs.004' in ns: message_type = 'pacs.004'
-            elif 'pacs.002' in ns: message_type = 'pacs.002'
-            elif 'camt.056' in ns: message_type = 'camt.056'
-            elif 'camt.029' in ns: message_type = 'camt.029'
-            elif 'camt.053' in ns: message_type = 'camt.053'
-            elif 'camt.052' in ns: message_type = 'camt.052'
-            elif 'camt.054' in ns: message_type = 'camt.054'
-            elif 'pain.001' in ns: message_type = 'pain.001'
-            elif 'pain.002' in ns: message_type = 'pain.002'
-
-        # Special logic to determine if it is pacs.009 COV
-        if message_type and message_type.startswith('pacs.009'):
-            # Fast check if it is COV by looking for UndrlygCstmrCdtTrf
-            is_cov = False
-            for _ in root.iter(f"{{{root.tag.split('}')[0]}}}UndrlygCstmrCdtTrf"):
-                is_cov = True
+        _NS_MAP = {
+            'pacs.008': 'pacs.008', 'pacs.009': 'pacs.009',
+            'pacs.004': 'pacs.004', 'pacs.002': 'pacs.002',
+            'camt.056': 'camt.056', 'camt.029': 'camt.029',
+            'camt.053': 'camt.053', 'camt.052': 'camt.052',
+            'camt.054': 'camt.054', 'pain.001': 'pain.001',
+            'pain.002': 'pain.002',
+        }
+        for _el in root.iter():
+            if not isinstance(_el.tag, str) or '}' not in _el.tag:
+                continue
+            _ns = _el.tag.split('}')[0].lstrip('{')
+            for _key, _val in _NS_MAP.items():
+                if _key in _ns:
+                    message_type = _val
+                    break
+            if message_type != "Unknown":
                 break
-            if is_cov:
+
+        # Detect COV variant: UndrlygCstmrCdtTrf element present
+        if message_type.startswith('pacs.009'):
+            if any(True for _ in root.iter() if isinstance(_.tag, str)
+                   and _.tag.split('}')[-1] == 'UndrlygCstmrCdtTrf'):
                 message_type += '.cov'
         
         # Helper for ISO 11649 Creditor Reference validation
@@ -2660,12 +2894,27 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             ns_prefix = f"{{{elem.tag.split('}')[0]}}}" if '}' in elem.tag else ""
             tag_local = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
 
+            if tag_local == 'CtrlSum' and message_type.startswith('pacs.009'):
+                # CBPR+ SR2025: CtrlSum is not part of GroupHeader93 in any pacs.009
+                # variant (core/adv/cov). MyStandards expects NbOfTxs → SttlmInf directly.
+                parent = elem.getparent()
+                parent_local = (parent.tag.split('}')[-1] if parent is not None
+                                and isinstance(parent.tag, str) else "")
+                if parent_local == 'GrpHdr':
+                    report.add_issue(ValidationIssue(
+                        "ERROR", 3, "CBPR_CTRLSUM_FORBIDDEN",
+                        str(elem.sourceline or 1),
+                        "GrpHdr/CtrlSum is not permitted in CBPR+ pacs.009. "
+                        "Remove <CtrlSum> — MyStandards expects NbOfTxs followed "
+                        "directly by SttlmInf."
+                    ))
+
             if tag_local == 'RmtInf':
                 rm_ln = elem.sourceline or 1
-                
-                if message_type == 'pacs.009':
-                    report.add_issue(ValidationIssue("ERROR", 3, "PACS009-RMT-001", str(rm_ln), "Remittance information is not permitted in standard pacs.009. Use pacs.009 COV variant."))
-                    
+
+                # RmtInf is permitted in pacs.009 CORE and ADV (and in COV, where
+                # it also appears inside UndrlygCstmrCdtTrf) — no variant restriction.
+
                 if message_type in ['pacs.002', 'pain.002']:
                     report.add_issue(ValidationIssue("ERROR", 3, f"{message_type.upper().replace('.', '')}-RMT-001", str(rm_ln), f"Remittance information is not permitted in {message_type} status report messages."))
 

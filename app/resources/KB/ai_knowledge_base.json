@@ -691,6 +691,13 @@
             "applies_to": "camt.052, camt.053, camt.054, and any camt message containing Ntry, TxDtls, or Bal elements",
             "example": "Empty <CdtDbtInd/> in Ntry → <CdtDbtInd>CRDT</CdtDbtInd>"
         },
+        "MISSING_CDTDBTIND": {
+            "root_cause": "CdtDbtInd element is entirely absent from a parent that requires it (Ntry, TxDtls, Bal, Rpt, TxInf). CreditDebitCode is mandatory in these contexts per ISO 20022 XSD — its absence causes a 'missing mandatory element' or 'element not found' validation error.",
+            "fix": "Insert <CdtDbtInd> as a child of the affected parent element. Inference priority: (1) if a sibling CdtDbtInd exists elsewhere in the same parent, borrow its value; (2) if parent is Bal with a Tp/CdOrPrtry/Cd of OPBD/PRCD, prefer CRDT; (3) default to 'CRDT' when context is ambiguous. Valid values: CRDT (credit/money received) or DBIT (debit/money sent). Element must appear in the correct XSD sequence position — after Amt and before ValDt in Ntry/TxDtls; after Amt in Bal.",
+            "auto_fixable": true,
+            "applies_to": "camt.052, camt.053, camt.054, and any camt/pain/pacs message where Ntry, TxDtls, or Bal requires CdtDbtInd",
+            "example": "<Ntry> missing CdtDbtInd → insert <CdtDbtInd>CRDT</CdtDbtInd> after <Amt>"
+        },
         "EMPTY_NBOFNTRIES": {
             "root_cause": "NbOfNtries element is present but empty or whitespace-only. Occurs in camt.052/053/054 when the user manually deleted the entry count value. XSD type is Max15NumericText ([0-9]{1,15}) — empty string is invalid.",
             "fix": "Count the number of <Ntry> elements in the entire document and set NbOfNtries to that count. If no Ntry elements exist, set to '0'. Do NOT delete the element — it is required to be non-empty when present.",
@@ -752,8 +759,8 @@
             "fix": "Add a BICFI child element inside FinInstnId using an appropriate BIC from dummy_data.banks."
         },
         "MISSING_UETR": {
-            "root_cause": "UETR is required under CBPR+ for pacs.008 and pacs.009 but is absent.",
-            "fix": "Insert <UETR>4a1a0945-5772-409a-83ba-240e666e0267</UETR> inside PmtId, after EndToEndId."
+            "root_cause": "UETR is required under CBPR+ for pacs.008, pacs.009, pacs.003, and pacs.010 but is absent from PmtId.",
+            "fix": "Insert <UETR>{fresh UUID v4}</UETR> inside PmtId, after EndToEndId. Never reuse a static UUID. Use str(uuid.uuid4()) to generate a new one."
         },
         "SANCTIONS_BLOCKED": {
             "root_cause": "A party field contains a sanctioned country code or name.",
@@ -1375,6 +1382,17 @@
             "fix": "This is a warning. Optionally migrate AdrLine content to structured fields. At minimum ensure Ctry is always present.",
             "severity": "WARNING"
         },
+        "ADDR_COEXISTENCE": {
+            "root_cause": "Postal Address Coexistence Rule (E001): a PstlAdr block has NO <AdrLine>, but when AddressLine is absent both Town Name <TwnNm> and Country <Ctry> are mandatory. One or both are missing. Applies to every party/agent PstlAdr across all message types (pacs.004, pacs.008, pacs.009, pacs.003, pacs.010, pain.001/002/008, camt.0xx).",
+            "fix": "Add the missing structured fields inside PstlAdr: insert <TwnNm>{city}</TwnNm> and/or <Ctry>{ISO 3166-1 alpha-2}</Ctry>. Respect ISO 20022 child order: ...StrtNm, BldgNb, BldgNm, Flr, PstBx, Room, PstCd, TwnNm, TwnLctnNm, DstrctNm, CtrySubDvsn, Ctry, AdrLine. If the real city is unknown use a sensible value derived from Ctry; if Ctry is unknown default to GB. Alternatively, if a free-form address exists, add an <AdrLine>{address}</AdrLine> instead, which also satisfies the rule.",
+            "affected_tags": [
+                "PstlAdr/TwnNm",
+                "PstlAdr/Ctry",
+                "PstlAdr/AdrLine"
+            ],
+            "do_not": "Do NOT add Nm/PstlAdr content inside a FinInstnId that carries a BICFI (BICFI is exclusive). Do NOT insert an empty <TwnNm> or <Ctry> placeholder.",
+            "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>"
+        },
         "SCHEME_CONFLICT": {
             "root_cause": "SchmeNm contains both Cd and Prtry children, which are mutually exclusive.",
             "fix": "Remove Prtry and keep Cd. If Cd is empty, remove Cd and keep Prtry.",
@@ -1508,16 +1526,6 @@
             "root_cause": "Advisory: Payment routed via RTGS clearing system but SttlmPrty is NORM or absent. HIGH is recommended for RTGS.",
             "fix": "This is a warning. Consider setting SttlmPrty to HIGH.",
             "severity": "WARNING"
-        },
-        "PACS009_RMT_001": {
-            "aliases": [
-                "PACS009-RMT-001"
-            ],
-            "root_cause": "RmtInf (remittance information) is present in a pacs.009 CORE message. RmtInf is forbidden in the standard FI-to-FI credit transfer; it is only allowed in the COV (cover) variant.",
-            "fix": "Remove the RmtInf element entirely. If the payment is a cover for an underlying customer transfer, ensure BizSvc is 'swift.cbprplus.cov.03' and add UndrlygCstmrCdtTrf instead of bare RmtInf.",
-            "affected_tags": [
-                "CdtTrfTxInf/RmtInf"
-            ]
         },
         "PACS002_RMT_001": {
             "aliases": [
@@ -1945,6 +1953,7 @@
             "pacs.008": "<PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId>",
             "pacs.009": "<PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId>",
             "pacs.003": "<PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><MndtId>MNDT-001</MndtId><UETR>$UETR</UETR></PmtId>",
+            "pacs.010": "<PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><UETR>$UETR</UETR></PmtId>",
             "default": "<PmtId><EndToEndId>$E2E_ID</EndToEndId><UETR>$UETR</UETR></PmtId>",
             "pain.001": "<PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId>",
             "pain.008": "<PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId>"
@@ -3643,6 +3652,40 @@
                 "exclusive_with": "BICFI",
                 "fix_action": "coexist_or_remove",
                 "description": "Nm and PstlAdr must both be present; if the block also has BICFI, remove the lone one (exclusivity wins), else add the missing counterpart."
+            },
+            {
+                "id": "ADDR_COEXISTENCE",
+                "codes": [
+                    "ADDR_COEXISTENCE",
+                    "E001"
+                ],
+                "message_pattern": "AddressLine is absent|no <AdrLine>|Town Name and Country must be present",
+                "elements": [
+                    "PstlAdr/TwnNm",
+                    "PstlAdr/Ctry",
+                    "PstlAdr/AdrLine"
+                ],
+                "fix_action": "insert_missing_address_fields",
+                "insertion_order": [
+                    "StrtNm",
+                    "BldgNb",
+                    "BldgNm",
+                    "Flr",
+                    "PstBx",
+                    "Room",
+                    "PstCd",
+                    "TwnNm",
+                    "TwnLctnNm",
+                    "DstrctNm",
+                    "CtrySubDvsn",
+                    "Ctry",
+                    "AdrLine"
+                ],
+                "defaults": {
+                    "TwnNm": "London",
+                    "Ctry": "GB"
+                },
+                "description": "Postal Address Coexistence Rule (E001): when a PstlAdr has no AdrLine, both TwnNm and Ctry are mandatory. Insert whichever of <TwnNm>/<Ctry> is missing, in correct ISO 20022 child order. Applies to ALL message types and every party/agent PstlAdr. Skip blocks under a FinInstnId that carries a BICFI (BICFI is exclusive). Never insert empty placeholder tags."
             }
         ],
         "value_replacement": [
@@ -4920,13 +4963,13 @@
         "structural_edit_behaviors": [
             {
                 "id": "UNCLOSED_TAG_MESSAGE_FORMAT_B",
-                "description": "The surgical unclosed-tag fix (_try_surgical_unclosed_tag_fix) and the recovery router both only triggered on lxml-style messages like 'Unclosed tag <X> before the closing tag </Y> at line N'. A second message format exists from user-facing validators: 'Add </X> to close the open tag at line N before the </FIId> closing tag at line N'. This format was NOT matched by either the routing condition or the surgical regex.",
-                "behavior": "Message format B caused the XML recovery pipeline to be skipped entirely — the broken XML fell through to _parse_xml, which silently recovered via lxml recover=True and discarded the malformed FinInstnId structure, producing wrong output.",
-                "root_cause": "Routing condition checked only 'unclosed' in msg.lower(). Format B contains 'close the open tag' and 'add </' — neither matched.",
-                "fix_engine_guidance": "Routing condition now also checks: 'close the open tag' in msg.lower() and ('add </' in msg.lower() and 'closing tag' in msg.lower()). The surgical regex now matches both format A and format B.",
-                "format_a": "Unclosed tag <FinInstnId> ... before the closing tag </FIId> ... at line 13",
-                "format_b": "Add </FinInstnId> to close the open tag at line 13 before the </FIId> closing tag at line 13",
-                "detection_pattern": "Check both formats when routing XML recovery. Both map to: missing_tag=FinInstnId, conflict_tag=FIId, conflict_line=13."
+                "description": "Two separate issues around unclosed AppHdr BICFI tags. (1) RESOLVED: Format B error messages ('Add </X> to close the open tag...') were not matched by the routing condition or surgical regex. (2) RESOLVED: Even after format B was fixed, the balance engine (_balance_xml_tags) produced structurally wrong XML when two empty <BICFI> elements existed in AppHdr Fr/To blocks — BizMsgIdr/MsgDefIdr/BizSvc/CreDt and the <To> block were nested inside Fr's <BICFI> instead of being AppHdr siblings.",
+                "behavior": "(1) Format B caused XML recovery to be skipped, XML fell through to lxml recover=True which discarded malformed structure. (2) Balance engine closed unclosed tags but nested subsequent siblings (<To>, AppHdr fields) inside the unclosed <BICFI>, producing parseable-but-structurally-wrong XML. _normalize_busmsgenvlp was not called on the balance result, and even if it were, it exited immediately for BulkMessages root and did not handle elements nested 3+ levels deep in Fr/BICFI.",
+                "root_cause": "(1) Routing checked only 'unclosed' in msg.lower(). (2) _try_surgical_unclosed_tag_fix did not call _normalize_busmsgenvlp on _balance_xml_tags result. _normalize_busmsgenvlp exited for BulkMessages root (only handled BusMsgEnvlp as root). Problem 3b only lifted elements from Fr/FIId level, not from Fr/FIId/FinInstnId/BICFI level.",
+                "fix_engine_guidance": "(1) Routing condition now also checks: 'close the open tag' in msg.lower() and ('add </' in msg.lower() and 'closing tag' in msg.lower()). Surgical regex now matches both format A and format B. (2) _normalize_busmsgenvlp now handles BulkMessages root by recursing into inner BusMsgEnvlp children. Problem 3c added to lift AppHdr-level elements and misplaced Fr/To from inside Fr/To > FIId > FinInstnId > BICFI. _try_surgical_unclosed_tag_fix now calls _normalize_busmsgenvlp on the _balance_xml_tags result before returning.",
+                "format_a": "Unclosed tag <BICFI> at line 12. The tag <BICFI> must be closed with </BICFI> before the closing tag </AppHdr> at line 17.",
+                "format_b": "Add </BICFI> to close the open tag at line 12 before the </AppHdr> closing tag at line 17.",
+                "detection_pattern": "Two empty unclosed <BICFI> in AppHdr (Fr block line ~8, To block line ~12), followed by BizMsgIdr/MsgDefIdr/BizSvc/CreDt at AppHdr level. Root element is BulkMessages wrapping BusMsgEnvlp."
             },
             {
                 "id": "EXCL_BANG_REMOVES_TAG",

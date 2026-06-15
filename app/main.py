@@ -140,8 +140,43 @@ _AUTOFIX_WARNING_CODES = {
 }
 
 
+def _priority_sort_issues(issues: list[dict]) -> list[dict]:
+    """Sort issues so structural/mandatory errors are fixed before ordering/value errors.
+
+    Processing order matters: fixing a missing mandatory element first can resolve
+    several downstream ordering errors in the same round, improving convergence.
+
+    Priority buckets (lower = earlier):
+      0 — well-formedness: XML_SYNTAX, XML_WELLFORMED, STRUCTURE_ERROR
+      1 — mandatory elements: MISSING_MANDATORY_FIELD, MISSING_UETR, CBPR_MANDATORY_FIELD,
+          CBPR_R3, PACS010_*, L3-MANDATORY-*, L3-PAIN-*, L3-PACS-*
+      2 — schema ordering/position: NOT_EXPECTED, SEQUENCE, WRONG_ORDER, WRONG_POSITION
+      3 — everything else (value rules, business rules, warnings)
+    """
+    _P0 = {"XML_SYNTAX", "XML_WELLFORMED", "STRUCTURE_ERROR", "MALFORMED_XML",
+           "UNCLOSED_TAG", "PARSE_ERROR"}
+    _P1 = {"MISSING_MANDATORY_FIELD", "MISSING_UETR", "CBPR_MANDATORY_FIELD",
+           "MANDATORY_FIELD_MISSING", "MISSING_FIELD", "CBPR_R3",
+           "PACS010_AGENTS_REQUIRED", "L3-MANDATORY-PAYMENT-PARTIES",
+           "L3-PAIN-MANDATORY-PARTIES", "L3-PACS-MATCH-FR", "L3-PACS-MATCH-TO"}
+    _P2 = {"NOT_EXPECTED", "SEQUENCE", "WRONG_ORDER", "WRONG_POSITION",
+           "STTLMPRTY_WRONG_PARENT"}
+
+    def _prio(issue: dict) -> int:
+        code = str(issue.get("code", ""))
+        if code in _P0:
+            return 0
+        if code in _P1 or code.startswith(("L3-MANDATORY", "L3-PAIN", "L3-PACS", "PACS010")):
+            return 1
+        if code in _P2:
+            return 2
+        return 3
+
+    return sorted(issues, key=_prio)
+
+
 async def _auto_fix_iterative(original_xml: str, message_type: str = "Auto-detect",
-                              max_rounds: int = 8):
+                              max_rounds: int = 12):
     """
     Iteratively validate → fix → re-validate until the document is clean, no
     further actionable fix can be produced, or no progress is made.
@@ -177,9 +212,10 @@ async def _auto_fix_iterative(original_xml: str, message_type: str = "Auto-detec
     applied_total = 0
     seen_signatures = {hash(cur)}
     best_xml = cur
-    best_errors = None  # fewest ERROR count seen so far
+    best_err_sigs = None  # (code, path) signatures of the best state's ERRORs
     best_wf = None      # well-formedness of the best state (None until 1st round)
-    prev_round_errors = None  # error count at the END of the previous round (for stall-exit)
+    prev_err_sigs = None  # signatures at the END of the previous well-formed round
+    stall_count = 0       # consecutive well-formed rounds with no resolved errors
 
     for _ in range(max_rounds):
         report = await validator.validate(
@@ -188,6 +224,7 @@ async def _auto_fix_iterative(original_xml: str, message_type: str = "Auto-detec
         report_dict = report.to_dict()
         details = report_dict.get("details", []) or []
         errors = [d for d in details if d.get("severity") in ("ERROR", "CRITICAL")]
+        err_sigs = {(d.get("code"), d.get("path")) for d in errors}
 
         # A few codelist-validity rules are WARNINGs (their external code lists may
         # be incomplete, so we don't hard-fail), but a value that's definitively
@@ -208,25 +245,26 @@ async def _auto_fix_iterative(original_xml: str, message_type: str = "Auto-detec
         # well-formed, Layers 2-3 are SKIPPED, so a malformed doc reports
         # artificially FEW errors (often just the single syntax error).
         # Recovering it to well-formed lets those layers run and reveal the real
-        # schema/business errors — a HIGHER count that is nonetheless real
-        # progress. Comparing error counts across that boundary is meaningless, so
-        # a well-formed state ALWAYS beats a malformed one regardless of count.
-        # Without this, the count-based logic reverted an "unclosed tag" fix back
-        # to the malformed original (the syntax error appeared "unfixable").
+        # schema/business errors — a state that is nonetheless real progress.
+        # Comparing across that boundary is meaningless, so a well-formed state
+        # ALWAYS beats a malformed one regardless of error signatures.
         #
-        # Rule 2 — within the same well-formedness, fewer errors is better. Use
-        # "<=" (not "<") so that when the count TIES we still advance to the
-        # more-recently-fixed state: XSD surfaces only ONE sequence error per
-        # container, so re-inserting a deleted mandatory element (e.g.
-        # <EndToEndId>) clears the ordering error but REVEALS a previously-hidden,
-        # possibly-unfixable error, keeping the count constant. A fix that
-        # INCREASES the count within the same well-formedness is still rejected.
-        # Layer 1 already parsed the XML — read well-formedness from its status.
+        # Rule 2 — within the same well-formedness, compare ERROR *signatures*
+        # ((code, path) pairs), not raw counts. A fix that removes an invalid
+        # element can simultaneously RESOLVE its error and UNMASK a different,
+        # previously-hidden sibling/parent error (XSD reports only one sequence
+        # error per container), which can RAISE the count even though the fix
+        # was correct. So `cur` is "no worse than" `best` if it resolves at
+        # least one of best's signatures (even while revealing new ones), or if
+        # its signature set is unchanged (a tie still advances to the
+        # more-recently-fixed state). Only a pure regression — new signatures
+        # with NOTHING resolved — is rejected.
         cur_wf = report_dict.get("layer_status", {}).get("1", {}).get("status") == "✅"
-        if (best_errors is None
+        resolved_vs_best = (best_err_sigs - err_sigs) if best_err_sigs is not None else set()
+        if (best_err_sigs is None
                 or (cur_wf and not best_wf)
-                or (cur_wf == best_wf and len(errors) <= best_errors)):
-            best_errors = len(errors)
+                or (cur_wf == best_wf and (resolved_vs_best or err_sigs == best_err_sigs))):
+            best_err_sigs = err_sigs
             best_wf = cur_wf
             best_xml = cur
 
@@ -234,28 +272,50 @@ async def _auto_fix_iterative(original_xml: str, message_type: str = "Auto-detec
             break  # clean — no errors and no auto-fixable warnings remain
 
         # ── Diminishing-returns early-exit ───────────────────────────────────
-        # Once the document is well-formed, a round that fails to REDUCE the
-        # ERROR count vs. the previous WELL-FORMED round is spending compute (a
-        # full validate + suggest_batch + apply_batch pass) for no net gain — the
-        # remaining errors are ones the fixer can't resolve. Stop early instead
-        # of grinding the remaining rounds.
+        # Once the document is well-formed, a round that fails to RESOLVE any
+        # ERROR signature seen at the end of the previous well-formed round is
+        # spending compute (a full validate + suggest_batch + apply_batch pass)
+        # for no net gain — the remaining errors are ones the fixer can't
+        # resolve. New signatures revealed by THIS round's fixes don't trigger
+        # the stall — that's XSD unmasking previously-hidden errors, which is
+        # real progress as long as something old also went away. Stop early
+        # instead of grinding the remaining rounds.
         #
-        # CRITICAL: prev_round_errors is only recorded on WELL-FORMED rounds, so
-        # the malformed→well-formed transition (which legitimately RAISES the
-        # count by revealing previously-hidden Layer 2-3 errors) can never be the
+        # CRITICAL: prev_err_sigs is only recorded on WELL-FORMED rounds, so the
+        # malformed→well-formed transition (which legitimately introduces a
+        # batch of previously-hidden Layer 2-3 errors) can never be the
         # baseline — we never falsely "stall-exit" on that jump. The
         # oscillation/no-progress guards below still cover everything else.
         if cur_wf:
-            if (prev_round_errors is not None
-                    and len(errors) >= prev_round_errors):
-                break
-            prev_round_errors = len(errors)
+            if prev_err_sigs is not None and not (prev_err_sigs - err_sigs):
+                stall_count += 1
+                if stall_count >= 2:
+                    break
+            else:
+                stall_count = 0
+            prev_err_sigs = err_sigs
 
         rounds_used += 1
+
+        # ── XSD completeness pass: insert missing mandatory elements ─────────
+        # Scans the XSD for minOccurs≥1 children, adds any that are absent,
+        # and removes extras beyond maxOccurs.  Runs BEFORE suggest_batch so
+        # the batch receives a structurally more complete document, yielding
+        # better ordering-fix success rates in the same round.
+        try:
+            _xsd_complete = fix_suggester.xsd_completeness_pass(cur)
+            if _xsd_complete != cur:
+                cur = _xsd_complete
+                applied_total += 1
+        except Exception as _xsd_e:
+            print(f"[auto-fix] xsd_completeness_pass failed: {_xsd_e}")
+
+        # Sort issues: structural/mandatory first so fundamental fixes run before
+        # ordering/value fixes — improves convergence within each batch.
         # Fix up to 20 per round; the next round re-validates and continues,
         # so >20 issues are handled across rounds rather than dropped.
         try:
-            suggestions = fix_suggester.suggest_batch(cur, fixable[:20])
+            suggestions = fix_suggester.suggest_batch(cur, _priority_sort_issues(fixable)[:20])
         except Exception as e:
             print(f"[auto-fix] suggest_batch failed: {e}")
             break
@@ -277,7 +337,7 @@ async def _auto_fix_iterative(original_xml: str, message_type: str = "Auto-detec
         applied_total += len(fixes_list)
         cur = new_xml
 
-    # Return the best (fewest-error) state we validated, never a worse one.
+    # Return the best state we validated (Rule 1/2 above), never a worse one.
     return best_xml, rounds_used, applied_total
 
 
@@ -285,11 +345,11 @@ async def _apply_auto_fixes(report_dict, original_xml, message_type="Auto-detect
     if report_dict.get("errors", 0) > 0 and report_dict.get("details"):
         try:
             # This runs inline on EVERY /validate to produce the preview banner's
-            # fixed_xml. Cap rounds low for speed — the preview only needs the bulk
-            # of fixes; the explicit "Fix All" endpoint (/fixes/auto-fix) still
-            # runs the full 8 rounds when the user commits.
+            # fixed_xml. Cap rounds for speed — the preview needs most fixes;
+            # the explicit "Fix All" endpoint (/fixes/auto-fix) still runs the
+            # full cap when the user commits.
             fixed_xml, rounds, applied = await _auto_fix_iterative(
-                original_xml, message_type, max_rounds=4
+                original_xml, message_type, max_rounds=6
             )
             report_dict["fixed_xml"] = fixed_xml
             report_dict["auto_fix_rounds"] = rounds

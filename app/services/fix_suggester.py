@@ -28,15 +28,39 @@ import re
 import os
 import json
 import uuid
+from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
 from lxml import etree
 
 from app.services.openai_client import complete
+from app.services import fix_metrics, fix_feedback, pii_scrub
 
 logger = logging.getLogger(__name__)
 
 XS = "http://www.w3.org/2001/XMLSchema"
+
+# Compiled XSD schemas cached by path for the closed-loop self-verify. Compiling
+# a full ISO 20022 schema is expensive; verification only runs on the interactive
+# single-suggest path, and after the first compile every check is a fast in-memory
+# validate.
+_XSD_SCHEMA_CACHE: dict = {}
+
+# ── LLM negative cache ────────────────────────────────────────────────────────
+# The positive side (successful completions) is cached in openai_client by
+# (model, system, user). The *failure* side has no memory there because whether
+# a completion is acceptable is only known AFTER _validate_llm_fragment runs in
+# _llm_fallback. Without this, a field the LLM cannot fix re-hits the API on
+# EVERY auto-fix round: temp-0 returns the (cached, still-invalid) answer, then
+# self-consistency resamples temp 0.4/0.7 — uncached — again and again across
+# all 6 rounds. We record prompts that already exhausted self-consistency with
+# no valid fix and short-circuit them to the same low-confidence decline,
+# skipping the API entirely. Keyed on (system, user) — identical to the positive
+# cache — so it only fires when the broken fragment + context are byte-identical;
+# any earlier fix that mutated the element changes the prompt and re-runs fresh,
+# so convergence is unaffected. Bounded LRU; process-wide like the positive cache.
+_LLM_NEG_CACHE: "OrderedDict[tuple, bool]" = OrderedDict()
+_LLM_NEG_CACHE_MAX = 512
 
 # ── Codelists loader (cached) ─────────────────────────────────────────────────
 
@@ -299,8 +323,8 @@ def _cbpr_bizsvc_value(msg_type: str, xml: str = "") -> Optional[str]:
       • ADV  → swift.cbprplus.adv.03   (carries <Prtry>ADV</Prtry>)
       • COV  → swift.cbprplus.cov.03   (carries UndrlygCstmrCdtTrf)
     For every other family the per-message KB 'expected_value' is authoritative
-    (pacs.008/pacs.003 → .03; camt.052-055/camt.057 → .03; camt.056/pain.*/
-    pacs.010 → .02). NOTE: the value MUST agree with the message's own validator
+    (pacs.008 → .02 per its CBPR_R8 rule; camt.052-055/camt.057 → .03;
+    camt.056/pain.*/pacs.010 → .02). NOTE: the value MUST agree with the message's own validator
     rule (e.g. camt.057 CBPR_R8 enforces .03 as an ERROR) — a mismatch makes the
     auto-fix loop oscillate forever, so KB expected_value and the rule JSON must
     stay in lockstep.
@@ -562,6 +586,7 @@ class _KBContext:
         self.valid_by_tag: Dict[str, list] = {}  # leaf local-name → [valid enum codes]
         self.dependency_rules: list = []
         self.formal_rules: list = []
+        self.insertion_order: Dict[str, list] = {}  # parent tag → ordered child tags
         self._load()
 
     # Common KB files that are NOT per-message context catalogues.
@@ -649,6 +674,10 @@ class _KBContext:
         self.dependency_rules = _as_list(data.get("cross_tag_dependency_rules"))
         self.formal_rules = (_as_list(data.get("cbpr_plus_formal_rules"))
                              + _as_list(data.get("iso_20022_rules")))
+        io = data.get("tag_insertion_order")
+        if isinstance(io, dict):
+            self.insertion_order = {k: v for k, v in io.items()
+                                    if isinstance(v, list) and v}
 
     def _matching_records(self, code: str = "", leaf: str = "") -> list:
         """Records matching the issue's error_code first, then the element tag."""
@@ -765,6 +794,108 @@ def _extract_literal_from_fix(fix_text: str, leaf: str) -> Optional[str]:
         if _ok(first):
             return first
     return None
+
+
+# ── Cross-message KB fix index (built once) ───────────────────────────────────
+# The per-message validation KBs (resources/KB/<msg>_cbprplus_*.json) each
+# document `possible_fixes` recipes for the errors that message can raise. A
+# recipe for a tag shared across families (e.g. a charset/datetime/BIC repair)
+# is, however, only ever consulted for the message it happens to be filed under
+# (_KBContext is per-family). So an error the AI fixes in pacs.008 — because
+# pacs.008's KB documents it — can go unfixed in camt.054 purely because camt.054's
+# KB lacks that entry. This index aggregates every per-message KB's recipes so the
+# LLM fallback can borrow a sibling message's documented fix when the current
+# message's KB is silent. RECIPE TEXT ONLY — never literal values (those are
+# element/message-specific; borrowing them is unsafe) — and only as advisory LLM
+# context that still passes _validate_llm_fragment + re-validation downstream.
+_CROSS_KB_INDEX: Optional[Dict[str, Dict[Any, list]]] = None
+
+
+def _build_cross_kb_index() -> Dict[str, Dict[Any, list]]:
+    global _CROSS_KB_INDEX
+    if _CROSS_KB_INDEX is not None:
+        return _CROSS_KB_INDEX
+    by_code_leaf: Dict[Any, list] = {}
+    by_leaf: Dict[Any, list] = {}
+    valid_leaf: Dict[Any, list] = {}     # leaf → deduped enum allow-list across families
+    kb_dir = os.path.normpath(os.path.join(
+        os.path.dirname(__file__), "..", "resources", "KB"))
+    try:
+        files = [f for f in os.listdir(kb_dir)
+                 if f.endswith("_validation_kb.json")
+                 and f not in _KBContext._COMMON_KB_FILES
+                 and "syntactic" not in f]
+    except Exception:
+        files = []
+    for fn in files:
+        # Derive a family key the _KBContext file-matcher recognises
+        # ('pacs008', 'pacs009_cov', 'camt054', …).
+        key = fn.split("_cbprplus")[0] if "_cbprplus" in fn \
+            else fn.replace("_validation_kb.json", "")
+        try:
+            ctx = _KBContext(key)
+        except Exception:
+            continue
+        for recs in ctx.by_tag.values():
+            for r in recs:
+                leaf = r.get("leaf", "")
+                code = r.get("error_code", "")
+                for fx in r.get("possible_fixes", []) or []:
+                    if not fx or "{" in fx:        # skip placeholder recipes
+                        continue
+                    pair = (key, fx)
+                    if leaf:
+                        by_leaf.setdefault(leaf, []).append(pair)
+                        if code:
+                            by_code_leaf.setdefault((code, leaf), []).append(pair)
+        for leaf, codes in ctx.valid_by_tag.items():
+            bucket = valid_leaf.setdefault(leaf, [])
+            for c in codes:
+                if c not in bucket:
+                    bucket.append(c)
+    _CROSS_KB_INDEX = {"code_leaf": by_code_leaf, "leaf": by_leaf,
+                       "valid_leaf": valid_leaf}
+    return _CROSS_KB_INDEX
+
+
+def _cross_message_possible_fixes(code: str, leaf: str, limit: int = 4) -> list:
+    """Documented `possible_fixes` for (code, leaf) drawn from OTHER message
+    families' KBs. Code+leaf matches are preferred over leaf-only. Each recipe is
+    prefixed with its source family for provenance. Returns [] when nothing
+    applies. Only meaningful to call when the current message's KB had no recipe
+    — at that point the current family contributes nothing here either, so no
+    self-pollution check is needed."""
+    if not leaf:
+        return []
+    idx = _build_cross_kb_index()
+    out: list = []
+    seen: set = set()
+
+    def _take(pairs: list) -> None:
+        for fam, fx in pairs:
+            key = fx.strip()
+            if key and key not in seen:
+                seen.add(key)
+                out.append(f"[{fam}] {fx}")
+                if len(out) >= limit:
+                    return
+
+    if code:
+        _take(idx["code_leaf"].get((code, leaf), []))
+    if len(out) < limit:
+        _take(idx["leaf"].get(leaf, []))
+    return out
+
+
+def _cross_message_valid_codes(leaf: str) -> list:
+    """Enum allow-list for `leaf` aggregated across ALL per-message KBs. Used as a
+    deterministic, offline (no-LLM) source for fixing an invalid enum value when
+    neither ai_knowledge_base nor the current message's own KB documents the
+    allowed set. Enum allow-lists for a given leaf (e.g. ChrgBr → DEBT/CRED/SHAR/
+    SLEV, CdtDbtInd → CRDT/DBIT) are message-agnostic, so borrowing them is safe."""
+    if not leaf:
+        return []
+    return list(_build_cross_kb_index()["valid_leaf"].get(leaf, []))
 
 
 def _detect_family_from_tree(root: "etree._Element") -> str:
@@ -985,6 +1116,26 @@ def _verify_iban_mod97(iban: str) -> bool:
         return int(numeric) % 97 == 1
     except Exception:
         return False
+
+
+def _dedupe_id_value(text: str) -> str:
+    """Return a same-length, distinct value derived from `text` for de-duplicating
+    a repeated ID — increments a trailing numeric run (zero-padded, same width),
+    or tweaks the last character if there is no trailing digit run.
+
+    Same length matters: a "-2" suffix can exceed tight max-length constraints
+    (e.g. InstrId capped at 16 chars) when the original already uses the max.
+    """
+    m = re.search(r"(\d+)$", text)
+    if m:
+        num_str = m.group(1)
+        new_num = str(int(num_str) + 1).zfill(len(num_str))
+        if len(new_num) > len(num_str):
+            new_num = new_num[-len(num_str):]
+        return text[:m.start()] + new_num
+    if len(text) >= 1:
+        return text[:-1] + ("0" if text[-1] != "0" else "1")
+    return text
 
 
 def _iban_for_ccy(root: Optional["etree._Element"],
@@ -1543,6 +1694,12 @@ class FixSuggestion:
     issue_code: str
     issue_message: str
     confidence: str
+    # Closed-loop self-check result, attached by suggest_verified():
+    #   True  = applying the fix stays well-formed and does not worsen XSD validity
+    #   False = the fix fails to apply / breaks well-formedness / adds schema errors
+    #   None  = not judged (no actionable fix, or no XSD available to judge it)
+    # Optional with a default so every existing positional constructor is unaffected.
+    verified: Optional[bool] = None
 
 
 class FixApplyError(Exception):
@@ -1635,6 +1792,30 @@ class FixSuggester:
             return xml  # not parseable — leave unchanged
 
         root_local = etree.QName(root.tag).localname
+        if root_local == "BulkMessages":
+            # BulkMessages container — normalize each inner BusMsgEnvlp in-place
+            _any_changed = False
+            for _envlp in list(root):
+                if not isinstance(_envlp.tag, str):
+                    continue
+                if etree.QName(_envlp.tag).localname != "BusMsgEnvlp":
+                    continue
+                _inner_xml = etree.tostring(_envlp, encoding="unicode")
+                _fixed_inner = self._normalize_busmsgenvlp(_inner_xml)
+                if _fixed_inner != _inner_xml:
+                    try:
+                        _fixed_envlp = etree.fromstring(_fixed_inner.encode("utf-8"))
+                        _envlp.getparent().replace(_envlp, _fixed_envlp)
+                        _any_changed = True
+                    except Exception:
+                        pass
+            if not _any_changed:
+                return xml
+            decl = ""
+            m = re.match(r"(<\?xml[^?]*\?>)", xml.strip())
+            if m:
+                decl = m.group(1) + "\n"
+            return decl + etree.tostring(root, encoding="unicode", pretty_print=True)
         if root_local != "BusMsgEnvlp":
             return xml
 
@@ -1764,6 +1945,33 @@ class FixSuggester:
                     _fiid.remove(_absorbed)
                     if _local in ("Fr", "To") and len(_absorbed) == 0:
                         pass  # discard empty stray Fr/To
+                    else:
+                        apphdr.insert(_lift_pos, _absorbed)
+                        _lift_pos += 1
+                    _changed = True
+
+            # (iii) Children of BICFI inside Fr/To > FIId > FinInstnId — caused
+            # when _balance_xml_tags closes an unclosed empty <BICFI> by nesting
+            # subsequent siblings (<To>, AppHdr-level tags) inside it instead of
+            # leaving them as siblings. Lift those misplaced elements to AppHdr.
+            _fininstnid = next((c for c in _fiid
+                                if isinstance(c.tag, str)
+                                and etree.QName(c.tag).localname == "FinInstnId"), None)
+            if _fininstnid is None:
+                continue
+            _bicfi_el = next((c for c in _fininstnid
+                              if isinstance(c.tag, str)
+                              and etree.QName(c.tag).localname == "BICFI"), None)
+            if _bicfi_el is None:
+                continue
+            for _absorbed in list(_bicfi_el):
+                if not isinstance(_absorbed.tag, str):
+                    continue
+                _local = etree.QName(_absorbed.tag).localname
+                if _local in self._APPHDR_ONLY_TAGS or _local in ("Fr", "To"):
+                    _bicfi_el.remove(_absorbed)
+                    if _local in ("Fr", "To") and len(_absorbed) == 0:
+                        pass  # discard empty stray Fr/To shells
                     else:
                         apphdr.insert(_lift_pos, _absorbed)
                         _lift_pos += 1
@@ -1930,6 +2138,32 @@ class FixSuggester:
 
     # ── Walk dot-path ─────────────────────────────────────────────────────────
 
+    @staticmethod
+    def _path_candidate_children(node: etree._Element,
+                                 unwrap_envelope: bool) -> list[etree._Element]:
+        """Children of `node` to match the next path segment against.
+
+        Normally just the direct children, in document order. For the FIRST
+        path segment (`unwrap_envelope`) we ALSO expose the children of any
+        <BusMsgEnvlp> wrapper at its position. Validator paths are
+        envelope-agnostic — they start at "Document"/"AppHdr" — but inside a
+        <BulkMessages> container (and in a single enveloped file) each message's
+        Document is nested one level down under <BusMsgEnvlp> alongside <AppHdr>.
+        Without this, a path like Document.FIDrctDbt… walked from <BulkMessages>
+        only sees Documents that are DIRECT children (bare messages) and silently
+        resolves against the wrong sibling. The wrapper element itself is kept in
+        the list too, so a path that genuinely starts with "BusMsgEnvlp" still
+        matches. Deeper segments stay strict."""
+        if not unwrap_envelope:
+            return list(node)
+        out: list[etree._Element] = []
+        for child in node:
+            out.append(child)
+            if (isinstance(child.tag, str)
+                    and etree.QName(child.tag).localname == "BusMsgEnvlp"):
+                out.extend(list(child))
+        return out
+
     def _find_all_paths(self, root: etree._Element, parts: list[str]) -> list[etree._Element]:
         if not parts:
             return [root]
@@ -1937,17 +2171,17 @@ class FixSuggester:
         first_tag = re.sub(r'\[\d+\]', '', parts[0])
         start = 1 if root_local == first_tag else 0
         current = [root]
-        for part in parts[start:]:
+        for depth, part in enumerate(parts[start:]):
             m = re.match(r'^([^\[]+)(?:\[(\d+)\])?$', part)
             if not m:
                 return []
             tag_name = m.group(1)
             target_idx = int(m.group(2)) if m.group(2) else None
-            
+
             next_nodes = []
             for node in current:
                 count = 0
-                for child in node:
+                for child in self._path_candidate_children(node, depth == 0):
                     if isinstance(child.tag, str) and etree.QName(child.tag).localname == tag_name:
                         count += 1
                         if target_idx is None or count == target_idx:
@@ -2184,16 +2418,14 @@ class FixSuggester:
                         if tok and tok not in exp_candidates:
                             exp_candidates.append(tok)
 
-            # 3. Locate the offending element in the live document (line-nearest).
+            # 3. Locate the offending element in the live document — issue-path
+            #    aware first (line numbers drift across batch roll-forward).
             matches = [el for el in root.iter()
                        if isinstance(el.tag, str)
                        and etree.QName(el.tag).localname == found_elem]
             if not matches:
                 return None
-            if line_hint is None:
-                found_el = matches[0]
-            else:
-                found_el = min(matches, key=lambda e: abs((e.sourceline or 0) - line_hint))
+            found_el = self._pick_candidate(matches)
 
             parent = found_el.getparent()
             if parent is None:
@@ -2277,15 +2509,42 @@ class FixSuggester:
         # mandatory tag come back, not just the hand-listed ones.
         _xsd_children = []
         _xsd_order_names: list[str] = []
+        # ALL children of the parent's type regardless of kind — choice parents
+        # (e.g. Party50Choice Assgnr/Assgne: Pty | Agt) need the same
+        # wrong-nesting protection and validity gating as sequences.
+        _pchildren_all: list = []
+        _pchild_names: list[str] = []
         if tmap is not None and _parent_type:
             _pinfo = tmap.type_info.get(_parent_type, {})
+            _pchildren_all = _pinfo.get("children", []) or []
+            _pchild_names = [c["name"] for c in _pchildren_all]
             if _pinfo.get("kind") == "sequence":
-                _xsd_children = _pinfo.get("children", []) or []
-                _xsd_order_names = [c["name"] for c in _xsd_children]
+                _xsd_children = _pchildren_all
+                _xsd_order_names = _pchild_names
         _xsd_mandatory_absent = [
             c["name"] for c in _xsd_children
             if c.get("min", "1") != "0" and c["name"] not in present
         ]
+
+        # `found_elem` is not a valid direct child of `parent` at all (e.g.
+        # PrvsInstgAgt2 stranded in FICdtTrf, or a bare FinInstnId inside the
+        # Assgne CHOICE) — check whether it's a valid child of one of parent's
+        # OTHER child container types (e.g. CdtTrfTxInf / the Agt choice
+        # member). If so this is a wrong-nesting-level error: the element
+        # belongs inside an EXISTING sibling container, not a missing
+        # predecessor at this level. Decline so _try_wrap_orphaned_block can
+        # relocate it correctly instead of us inserting unrelated noise
+        # (e.g. SplmtryData) that doesn't fix the real placement issue.
+        if (not explicit_missing and tmap is not None and _parent_type
+                and _pchild_names and found_elem not in _pchild_names):
+            for _c in _pchildren_all:
+                _ctype = tmap.get_child_type(_parent_type, _c["name"])
+                if not _ctype:
+                    continue
+                _cchildren = {g["name"] for g in
+                              tmap.type_info.get(_ctype, {}).get("children", [])}
+                if found_elem in _cchildren:
+                    return None
 
         if explicit_missing:
             candidate_tags = list(exp_candidates)
@@ -2305,6 +2564,14 @@ class FixSuggester:
         wanted: list[str] = []
         for tag in candidate_tags:
             if tag in wanted or tag in present or not _buildable(tag):
+                continue
+            # XSD-validity gate: never insert a tag the parent's resolved type
+            # does not accept AT ALL. KB mandatory lists are keyed by LOCAL
+            # name, and generic names (Agt, Id, Nm) collide across contexts —
+            # e.g. parent Agt = BranchAndFinancialInstitutionIdentification
+            # must not receive the Pty/Agt children of a Party-choice "Agt".
+            if (not explicit_missing and _pchild_names
+                    and tag not in _pchild_names):
                 continue
             # Allow optional tags only when the validator explicitly named them
             # (user removed them) or when explicit_missing mode is active.
@@ -2707,10 +2974,14 @@ class FixSuggester:
 
         if tag_l in ("svccd", "cd") and "svcl" in fix_hint.lower():
             codes = _codelist_codes("service_level")
-            for preferred in ("SEPA", "SDVA", "NURG"):
+            # Avoid SEPA as a blind default — it is only valid for EUR payments
+            # (CBPR_COV_R32). Prefer currency-agnostic service levels so repairing
+            # an invalid code never introduces a SEPA/non-EUR violation.
+            for preferred in ("SDVA", "NURG", "G001", "URGP"):
                 if preferred in codes:
                     return preferred
-            return codes[0] if codes else "SEPA"
+            return next((c for c in codes if c != "SEPA"),
+                        codes[0] if codes else "SDVA")
 
         if tag_l == "cd" and "lcl" in fix_hint.lower():
             codes = _codelist_codes("local_instrument")
@@ -3182,6 +3453,10 @@ class FixSuggester:
         except (TypeError, ValueError):
             line_hint = None
         self._line_hint = line_hint  # consumed by _recover_target_from_message
+        # The validator's slash/dot path (when it isn't just a line number) —
+        # consumed by _pick_candidate so candidate selection survives the
+        # line-number drift introduced by suggest_batch's roll-forward applies.
+        self._issue_path = path if not str(path).strip().isdigit() else ""
 
         # ── SWIFT / CBPR+ Character Set Repair ───────────────────────────────────
         # Handles three codes:
@@ -3312,18 +3587,102 @@ class FixSuggester:
             root = self._parse_xml(xml)
         except FixApplyError:
             # XML cannot be parsed at all — recovery already ran above and
-            # couldn't fix it. Do NOT call LLM with a truncated fragment
-            # (xml[:500]) as that produces partial output which overwrites the
-            # whole document when xpath="/". Return unavailable instead.
+            # couldn't fix it. Never call the LLM with a truncated fragment
+            # (partial output would overwrite the whole document at xpath="/");
+            # instead send the FULL document for a markup-only repair, accepted
+            # only if the answer parses and preserves the content.
+            whole = self._llm_whole_doc_repair(xml, code, msg)
+            if whole is not None:
+                return whole
             return self._unavail(path, code, msg)
+
+        # Message family for this document — lets _llm_fallback pull the full
+        # per-message KB (enum allow-lists, dependency/formal rules, child
+        # order) regardless of which handler routed to it.
+        try:
+            self._kb_family = _detect_family_from_tree(root)
+        except Exception:
+            self._kb_family = ""
 
         # ── Duplicate element → keep the first valid occurrence, remove extras ─
         # Runs before the ordering/insert guards so a duplicate (e.g. a second
         # <BICFI>, which the schema reports as "not expected here") is removed
         # rather than mis-repaired by inserting the other expected siblings.
-        dup_fix = self._try_remove_duplicate(root, code, msg)
+        dup_fix = self._try_remove_duplicate(root, code, msg, xml)
         if dup_fix is not None:
             return dup_fix
+
+        # ── pacs.002 CBPR+: TxInfAndSts missing OrgnlInstrId/OrgnlEndToEndId ──
+        # MyStandards requires at least one original identifier before TxSts.
+        # Insert <OrgnlEndToEndId> immediately before <TxSts>.
+        if code == "PACS002_TXINF_NO_ORIG_ID":
+            for _txinf in root.iter():
+                if not isinstance(_txinf.tag, str):
+                    continue
+                if etree.QName(_txinf.tag).localname != "TxInfAndSts":
+                    continue
+                _child_locals = {etree.QName(c.tag).localname for c in _txinf
+                                 if isinstance(c.tag, str)}
+                if _child_locals & {"OrgnlInstrId", "OrgnlEndToEndId"}:
+                    continue  # already has one — skip
+                _txsts_child = next(
+                    (c for c in _txinf if isinstance(c.tag, str)
+                     and etree.QName(c.tag).localname == "TxSts"),
+                    None,
+                )
+                if _txsts_child is None:
+                    continue
+                _txinf_copy = self._copy(_txinf)
+                # Find TxSts in copy and insert OrgnlEndToEndId before it
+                _txsts_copy = next(
+                    (c for c in _txinf_copy if isinstance(c.tag, str)
+                     and etree.QName(c.tag).localname == "TxSts"),
+                    None,
+                )
+                if _txsts_copy is not None:
+                    _ns = etree.QName(_txinf.tag).namespace or ""
+                    _e2e_tag = f"{{{_ns}}}OrgnlEndToEndId" if _ns else "OrgnlEndToEndId"
+                    # Harvest an existing EndToEndId from the document as the value
+                    _e2e_val = None
+                    for _cand in root.iter():
+                        if not isinstance(_cand.tag, str):
+                            continue
+                        if etree.QName(_cand.tag).localname in ("EndToEndId", "OrgnlEndToEndId"):
+                            _v = (_cand.text or "").strip()
+                            if _v:
+                                _e2e_val = _v
+                                break
+                    if not _e2e_val:
+                        import uuid as _uuid
+                        _e2e_val = "E2E-" + _uuid.uuid4().hex[:12].upper()
+                    _new_el = etree.Element(_e2e_tag)
+                    _new_el.text = _e2e_val
+                    # Insert at the correct sequence position: OrgnlEndToEndId must
+                    # come before OrgnlTxId, OrgnlUETR, and TxSts (CBPR+ sequence).
+                    # Find the first element that must follow OrgnlEndToEndId.
+                    _AFTER_E2E = {"OrgnlTxId", "OrgnlUETR", "TxSts", "StsRsnInf",
+                                  "InstgAgt", "InstdAgt", "OrgnlTxRef"}
+                    _anchor = next(
+                        (c for c in _txinf_copy if isinstance(c.tag, str)
+                         and etree.QName(c.tag).localname in _AFTER_E2E),
+                        None,
+                    )
+                    if _anchor is not None:
+                        _new_el.tail = _anchor.tail
+                        _anchor.addprevious(_new_el)
+                    else:
+                        _txinf_copy.append(_new_el)
+                    return FixSuggestion(
+                        self._xpath_of(_txinf), self._serialize(_txinf),
+                        self._serialize(_txinf_copy), code, msg, "high",
+                    )
+
+        # ── Structural rescue: elements absorbed into account <Id> ──────────────
+        # Handles large-deletion collapse where balance engine nests DrctDbtTxInf-
+        # level elements (Dbtr, DbtrAcct, DbtrAgt, RmtInf…) inside CdtrAcct/Id.
+        _rescued = self._try_rescue_collapsed_account_id(root, xml)
+        if _rescued is not None:
+            return _rescued
 
         # ── IBAN format/pattern error: replace with a valid IBAN ────────────────
         # L2 reports "Invalid IBAN format: 'XXXX'" when the value lacks the
@@ -3599,7 +3958,7 @@ class FixSuggester:
             msg, re.I | re.S
         )
         if code in ("SCHEMA_VAL", "XML_SYNTAX", "WF_STRAY_TEXT_BETWEEN_ELEMENTS") and _eo_m:
-            _eo_fix = self._fix_stray_text_element_only(root, _eo_m.group(1), code, msg)
+            _eo_fix = self._fix_stray_text_element_only(root, _eo_m.group(1), code, msg, xml)
             if _eo_fix is not None:
                 return _eo_fix
 
@@ -3607,7 +3966,7 @@ class FixSuggester:
         # non-whitespace text/tail from any element-only container when the
         # error fingerprint matches.
         if code == "SCHEMA_VAL" and "element-only" in msg.lower() and "character content" in msg.lower():
-            _eo_fix2 = self._fix_stray_text_element_only(root, "", code, msg)
+            _eo_fix2 = self._fix_stray_text_element_only(root, "", code, msg, xml)
             if _eo_fix2 is not None:
                 return _eo_fix2
 
@@ -3619,6 +3978,12 @@ class FixSuggester:
         # Fix: strip all child elements, keep only the text content. Use line
         # hint to pick the right element when multiple same-name elements exist.
         if code == "SCHEMA_VAL" and "element content is not allowed" in msg.lower() and "simple" in msg.lower():
+            # All-at-once variant first: repairs EVERY corrupted simple leaf in
+            # one fix (common-ancestor targeted) so the loop converges in one
+            # round instead of one round per leaf.
+            _all_leaf_fix = self._fix_elements_inside_simple_leaf(root, xml, code, msg)
+            if _all_leaf_fix is not None:
+                return _all_leaf_fix
             _st_m = re.search(r"[Ff]ield '([\w:{}.\-]+)'", msg)
             _st_tag = _st_m.group(1).split('}')[-1].split(':')[-1] if _st_m else ""
             if _st_tag:
@@ -3767,6 +4132,16 @@ class FixSuggester:
                         return _rcv
             except Exception:
                 pass
+            # ── Choice over-population: a Choice container holds MORE THAN ONE
+            # mutually-exclusive member, so the parser flags the extra one as
+            # "not expected". Canonical case: AccountIdentification4Choice — an
+            # <Id> carrying BOTH <IBAN> and <Othr> (only one is allowed). Unlike
+            # a blind choice-member removal (which the code below rightly refuses
+            # to guess), this is unambiguous: exactly one must go. Keep whichever
+            # member is VALID, preferring IBAN, and drop the competing member.
+            _choice_fix = self._try_collapse_choice(root, code, msg)
+            if _choice_fix is not None:
+                return _choice_fix
             # ── CBPR+ forbidden element → remove it outright ──────────────────
             # When the flagged element is one CBPR+ doesn't permit in its parent
             # (e.g. <ClrSys> in <SttlmInf>), it can't be reordered or completed
@@ -3931,6 +4306,41 @@ class FixSuggester:
         if cbpr_agent_fix is not None:
             return cbpr_agent_fix
 
+        # ── Route: MISSING_MANDATORY_FIELD — path-driven insertion ───────────────
+        # CBPR+ validators emit code="MISSING_MANDATORY_FIELD" (not an XSD error)
+        # for pacs.010 DrctDbtTxInf missing UETR/EndToEndId/IntrBkSttlmAmt/Dbtr/
+        # DbtrAgt.  The path points at the absent element, not an existing one, so
+        # _find_target returns None and the implicit _try_insert_missing_sibling
+        # (which relies on XSD "not expected here" messages) never fires.
+        # Route: parse path → derive parent_tag + missing_tag → explicit insert.
+        _is_missing_field_code = code in (
+            "MISSING_MANDATORY_FIELD", "CBPR_MANDATORY_FIELD",
+            "MANDATORY_FIELD_MISSING", "MISSING_FIELD",
+        )
+        _missing_in_msg = (
+            any(w in msg.lower() for w in ("absent", "missing", "not present", "required"))
+            and any(w in msg.lower() for w in ("mandatory", "required", "cbpr"))
+        )
+        if (_is_missing_field_code or _missing_in_msg) and path and path != "/":
+            _pp = [p for p in re.split(r'[/.]', path)
+                   if p and _VALID_XML_NAME.match(p)]
+            if len(_pp) >= 2:
+                _missing_tag = _pp[-1]
+                _parent_tag  = _pp[-2]
+                _parent_cands = [el for el in root.iter()
+                                 if isinstance(el.tag, str)
+                                 and etree.QName(el.tag).localname == _parent_tag]
+                if _parent_cands:
+                    _pe = (min(_parent_cands, key=lambda e: abs((e.sourceline or 0) - (line_hint or 0)))
+                           if line_hint is not None else _parent_cands[0])
+                    if self._child_exists(_pe, _missing_tag) is None:
+                        _mf_res = self._try_insert_missing_sibling(
+                            root, xml, code, msg, fix_hint,
+                            explicit_parent=_pe, explicit_missing=_missing_tag,
+                        )
+                        if _mf_res is not None:
+                            return _mf_res
+
         dep_fix = self._try_dependency_fix(root, path, code, msg, msg_type, tmap)
         if dep_fix is not None:
             return dep_fix
@@ -4007,10 +4417,70 @@ class FixSuggester:
         # ── Route: NbOfTxs count mismatch ─────────────────────────────────────
         # Path is a line number; element value is numeric-valid so _fix_value
         # won't update it. Route directly to count-aware fixer.
-        if code in ("NBOFTXS_MISMATCH", "PACS008_NBOFTXS_EQ_TX_COUNT"):
+        if code in ("NBOFTXS_MISMATCH", "PACS008_NBOFTXS_EQ_TX_COUNT",
+                    "CBPR_COV_R30"):
             _nb_fix = self._fix_nb_of_txs(root, code, msg)
             if _nb_fix is not None:
                 return _nb_fix
+
+        # ── Route: pacs.009 COV SttlmMtd must be INDA/INGA (CBPR_COV_R31) ──────
+        # The CBPR+ COV usage guideline (SWIFT MyStandards) REJECTS 'COVE' for
+        # the COV variant — it must be INDA or INGA (cover settled on accounts).
+        # Path is a line number so _fix_value's path-walk never lands on the
+        # GrpHdr SttlmMtd — find it directly and set a permitted value.
+        if code == "CBPR_COV_R31":
+            for _sm_el in root.iter():
+                if (isinstance(_sm_el.tag, str)
+                        and etree.QName(_sm_el.tag).localname == "SttlmMtd"
+                        and (_sm_el.text or "").strip() not in ("INDA", "INGA")):
+                    _sm_copy = self._copy(_sm_el)
+                    _sm_copy.text = "INGA"
+                    return FixSuggestion(
+                        self._xpath_of(_sm_el), self._serialize(_sm_el),
+                        self._serialize(_sm_copy), code, msg, "high")
+
+        # ── Route: SEPA service level requires EUR (CBPR_COV_R32) ─────────────
+        # SEPA is only valid for EUR. On a non-EUR pacs.009 the SvcLvl is the
+        # erroneous element — removing it is the safe minimal fix (changing the
+        # IntrBkSttlmAmt currency would alter the payment's monetary value). If
+        # the enclosing PmtTpInf is left childless, drop PmtTpInf instead so no
+        # empty (schema-invalid) container remains.
+        if code == "CBPR_COV_R32":
+            for _sl_el in root.iter():
+                if not isinstance(_sl_el.tag, str):
+                    continue
+                if etree.QName(_sl_el.tag).localname != "SvcLvl":
+                    continue
+                _cd = next((c for c in _sl_el
+                            if isinstance(c.tag, str)
+                            and etree.QName(c.tag).localname == "Cd"), None)
+                if _cd is None or (_cd.text or "").strip() != "SEPA":
+                    continue
+                _ptp = _sl_el.getparent()
+                _ptp_children = [c for c in _ptp if isinstance(c.tag, str)] \
+                    if _ptp is not None else []
+                _target = _ptp if (_ptp is not None
+                                   and etree.QName(_ptp.tag).localname == "PmtTpInf"
+                                   and len(_ptp_children) == 1) else _sl_el
+                _r32_fix = self._remove_element_fix(_target, code, msg)
+                if _r32_fix is not None:
+                    return _r32_fix
+
+        # ── Route: pacs.009 COV reimbursement agents not allowed (CBPR_COV_R33) ─
+        # Reimbursement agents belong to SttlmMtd=COVE (pacs.009 ADV). The CBPR+
+        # COV usage guideline rejects them — remove each one (and its paired
+        # account) from SttlmInf. One removal per call; the loop re-fires until
+        # all are gone.
+        if code == "CBPR_COV_R33":
+            _RMB = {"InstgRmbrsmntAgt", "InstgRmbrsmntAgtAcct",
+                    "InstdRmbrsmntAgt", "InstdRmbrsmntAgtAcct",
+                    "ThrdRmbrsmntAgt", "ThrdRmbrsmntAgtAcct"}
+            for _rb_el in root.iter():
+                if (isinstance(_rb_el.tag, str)
+                        and etree.QName(_rb_el.tag).localname in _RMB):
+                    _r33_fix = self._remove_element_fix(_rb_el, code, msg)
+                    if _r33_fix is not None:
+                        return _r33_fix
 
         # ── Route: Wrong Namespace — strip extra version components ───────────
         # Layer 1 emits "Wrong Namespace" when xmlns has extra dot-segments
@@ -4023,7 +4493,7 @@ class FixSuggester:
         # ── Route: CURR_IBAN_MISMATCH — currency doesn't match IBAN country ──
         # Path may be the IBAN key (no @Ccy suffix), so attr routing misses it.
         if code == "CURR_IBAN_MISMATCH":
-            _ccy_fix = self._fix_iban_currency_mismatch(root, code, msg, fix_hint)
+            _ccy_fix = self._fix_iban_currency_mismatch(root, code, msg, fix_hint, path)
             if _ccy_fix is not None:
                 return _ccy_fix
 
@@ -4127,14 +4597,29 @@ class FixSuggester:
         if code == "DUPLICATE_ID_VALUE":
             _pp = [p for p in path.replace("/", ".").split(".") if p and _VALID_XML_NAME.match(p)]
             _tgt_tag = _pp[-1] if _pp else ""
+            if not _tgt_tag:
+                # path="/" (document-level dup check) — recover the tag from
+                # the message text, e.g. "...found for tag <UETR>."
+                _tag_m = re.search(r"<(\w+)>", f"{msg} {fix_hint}")
+                _tgt_tag = _tag_m.group(1) if _tag_m else ""
             if _tgt_tag:
                 _dups = [el for el in root.iter()
                          if isinstance(el.tag, str) and etree.QName(el.tag).localname == _tgt_tag]
                 if len(_dups) >= 2:
-                    _el = _dups[-1]  # fix the last duplicate
+                    _lh = getattr(self, "_line_hint", None)
+                    # fix the duplicate closest to the reported line; default to the last one
+                    _el = (min(_dups, key=lambda e: abs((e.sourceline or 0) - _lh))
+                           if _lh is not None else _dups[-1])
                     _el_copy = self._copy(_el)
-                    _base = (_el.text or "").strip()[:33]
-                    _el_copy.text = _base + "-2" if _base else str(uuid.uuid4())[:35]
+                    if _tgt_tag in ("UETR", "OrgnlUETR"):
+                        # UETR is a strict UUIDv4 — a "-2" suffix would break its format
+                        _el_copy.text = str(uuid.uuid4())
+                    else:
+                        _base = (_el.text or "").strip()
+                        # Keep the SAME length — a "-2" suffix can blow past tight
+                        # max-length constraints (e.g. InstrId capped at 16 chars
+                        # where the original value already uses all 16).
+                        _el_copy.text = _dedupe_id_value(_base) if _base else str(uuid.uuid4())[:35]
                     return FixSuggestion(self._xpath_of(_el), self._serialize(_el),
                                          self._serialize(_el_copy), code, msg, "high")
 
@@ -4289,27 +4774,86 @@ class FixSuggester:
                 "PstlAdr": "<PstlAdr><AdrLine>123 Main Street</AdrLine><Ctry>US</Ctry></PstlAdr>",
                 "Dbtr": "<Dbtr><Nm>Debtor Name</Nm><PstlAdr><AdrLine>123 Main St</AdrLine><Ctry>US</Ctry></PstlAdr></Dbtr>",
                 "Cdtr": "<Cdtr><Nm>Creditor Name</Nm><PstlAdr><AdrLine>456 Oak Ave</AdrLine><Ctry>GB</Ctry></PstlAdr></Cdtr>",
+                "SttlmInf": "<SttlmInf><SttlmMtd>INDA</SttlmMtd></SttlmInf>",
+                "PmtId": "<PmtId><EndToEndId>E2E-NOTPROVIDED</EndToEndId></PmtId>",
             }
+
+            def _ec_fill(_ecel) -> Optional["FixSuggestion"]:
+                """Fill an empty container from the canned map, in the doc's ns."""
+                _ln = etree.QName(_ecel.tag).localname
+                _tmpl = _CONTAINER_FILLS.get(_ln)
+                if _tmpl is None:
+                    return None
+                # Never fill an element that carries text — it is a populated
+                # LEAF, not an empty container. Appending elements next to text
+                # corrupts it (the <Othr><Id>ACCT…<IBAN>dummy</IBAN></Id> bug).
+                if (_ecel.text or "").strip():
+                    return None
+                # The "Id" recipe is for ACCOUNT-level Id (child of *Acct) only.
+                # Generic <Id> leaves (Othr/Id, ClrSysMmbId/MmbId-style) share
+                # the tag name but are simple-type leaves — filling them with
+                # an <IBAN> child produces invalid XML.
+                if _ln == "Id":
+                    _ec_par = _ecel.getparent()
+                    _ec_par_ln = (etree.QName(_ec_par.tag).localname
+                                  if _ec_par is not None
+                                  and isinstance(_ec_par.tag, str) else "")
+                    if not _ec_par_ln.endswith("Acct"):
+                        return None
+                try:
+                    _ecel_ns = etree.QName(_ecel.tag).namespace or ""
+                    _wrap = (f'<w xmlns="{_ecel_ns}">{_tmpl}</w>' if _ecel_ns
+                             else f"<w>{_tmpl}</w>")
+                    _new_el = etree.fromstring(_wrap.encode("utf-8"))[0]
+                    _orig_ec = self._serialize(_ecel)
+                    _ec_copy = self._copy(_ecel)
+                    for _child in list(_new_el):
+                        _ec_copy.append(self._copy(_child))
+                    if self._serialize(_ec_copy) != _orig_ec:
+                        return FixSuggestion(self._xpath_of(_ecel), _orig_ec,
+                                              self._serialize(_ec_copy), code, msg, "low")
+                except Exception:
+                    pass
+                return None
+
+            # The message names the offending container; target THAT element
+            # rather than the first map-hit anywhere in the document.
+            _ec_name_m = re.search(
+                r"<(\w+)>\s+(?:is present but empty|is present but carries no"
+                r"|contains no identifying)", msg)
+            _ec_name = _ec_name_m.group(1) if _ec_name_m else None
+            if _ec_name:
+                _ec_cands = [el for el in root.iter()
+                             if isinstance(el.tag, str)
+                             and etree.QName(el.tag).localname == _ec_name
+                             and not any(isinstance(c.tag, str) for c in el)
+                             and not (el.text or "").strip()]
+                _eel = self._pick_nearest(_ec_cands, getattr(self, "_line_hint", None))
+                if _eel is not None:
+                    _filled = _ec_fill(_eel)
+                    if _filled is not None:
+                        return _filled
+                    # No fill recipe — if the XSD says this container is optional
+                    # in its parent, the safe repair is to drop the empty wrapper.
+                    _ec_parent = _eel.getparent()
+                    if _ec_parent is not None and tmap is not None:
+                        _ecp_type = tmap.type_of_path(self._local_name_path(_ec_parent))
+                        _ec_min = next(
+                            (c.get("min", "1") for c in
+                             tmap.type_info.get(_ecp_type, {}).get("children", [])
+                             if c.get("name") == _ec_name), None)
+                        if _ec_min == "0":
+                            _rem = self._remove_element_fix(_eel, code, msg)
+                            if _rem is not None:
+                                return _rem
+
+            # Fallback (message didn't name the container): first fillable empty.
             for _ecel in root.iter():
                 if not isinstance(_ecel.tag, str): continue
-                _ln = etree.QName(_ecel.tag).localname
-                if not list(_ecel) and _ln in _CONTAINER_FILLS:
-                    _tmpl = _CONTAINER_FILLS[_ln]
-                    try:
-                        _new_el = etree.fromstring(_tmpl.encode("utf-8"))
-                        _ecel_ns = etree.QName(_ecel.tag).namespace or ""
-                        if _ecel_ns:
-                            # Re-namespace template to match document
-                            _ser = re.sub(r'<([A-Za-z])', f'<{{{_ecel_ns}}}\\1', _tmpl)
-                        _orig_ec = self._serialize(_ecel)
-                        _ec_copy = self._copy(_ecel)
-                        for _child in list(_new_el):
-                            _ec_copy.append(self._copy(_child))
-                        if self._serialize(_ec_copy) != _orig_ec:
-                            return FixSuggestion(self._xpath_of(_ecel), _orig_ec,
-                                                  self._serialize(_ec_copy), code, msg, "low")
-                    except Exception:
-                        pass
+                if not list(_ecel):
+                    _filled = _ec_fill(_ecel)
+                    if _filled is not None:
+                        return _filled
 
         # ── ACCT_MISSING_ID — account has no Id child → add IBAN ─────────────
         if code == "ACCT_MISSING_ID":
@@ -4329,6 +4873,25 @@ class FixSuggester:
                         _ac_copy.insert(0, _id_el)
                         return FixSuggestion(self._xpath_of(_acct_el), _orig_ac,
                                               self._serialize(_ac_copy), code, msg, "low")
+
+        # ── CBPR_CTRLSUM_FORBIDDEN — CtrlSum not permitted in pacs.009 GrpHdr ──
+        if code == "CBPR_CTRLSUM_FORBIDDEN":
+            lh = getattr(self, "_line_hint", None)
+            cs_els = [el for el in root.iter()
+                      if isinstance(el.tag, str)
+                      and etree.QName(el.tag).localname == "CtrlSum"
+                      and el.getparent() is not None
+                      and isinstance(el.getparent().tag, str)
+                      and etree.QName(el.getparent().tag).localname == "GrpHdr"]
+            if cs_els:
+                cs_el = (min(cs_els, key=lambda e: abs((e.sourceline or 0) - lh))
+                         if lh is not None else cs_els[0])
+                _rem = self._remove_element_fix(cs_el, code, msg)
+                if _rem is not None:
+                    return _rem
+            # CtrlSum already absent — return a no-op so callers don't fall
+            # through to unrelated handlers that may alter unrelated content.
+            return FixSuggestion("", "", "", code, msg, "low")
 
         # ── ACCT_MUTUAL_EXCLUSIVITY — both IBAN and Othr present → keep IBAN ──
         if code == "ACCT_MUTUAL_EXCLUSIVITY":
@@ -4850,6 +5413,35 @@ class FixSuggester:
                         return FixSuggestion(self._xpath_of(_tx_el), _orig_tx,
                                               self._serialize(_tx_copy), code, msg, "low")
 
+        # ── PAIN002_ORGNLPMT_NO_TXINF — add TxInfAndSts to OrgnlPmtInfAndSts ───
+        if code == "PAIN002_ORGNLPMT_NO_TXINF":
+            for _el in root.iter():
+                if not isinstance(_el.tag, str):
+                    continue
+                if etree.QName(_el.tag).localname != "OrgnlPmtInfAndSts":
+                    continue
+                _has_txinf = any(
+                    isinstance(c.tag, str) and etree.QName(c.tag).localname == "TxInfAndSts"
+                    for c in _el
+                )
+                if not _has_txinf:
+                    _orig = self._serialize(_el)
+                    _copy = self._copy(_el)
+                    _ons = etree.QName(_el.tag).namespace or ns
+                    def _mk2(tag, parent, text=None):
+                        _e = etree.SubElement(
+                            parent,
+                            f"{{{_ons}}}{tag}" if _ons else tag
+                        )
+                        if text is not None:
+                            _e.text = text
+                        return _e
+                    _txi = _mk2("TxInfAndSts", _copy)
+                    _mk2("OrgnlEndToEndId", _txi, "NOTPROVIDED")
+                    _mk2("TxSts", _txi, "ACSP")
+                    return FixSuggestion(self._xpath_of(_el), _orig,
+                                          self._serialize(_copy), code, msg, "low")
+
         # ── CAMT053_LASTPGIND_CLBD_MISSING — add CLBD closing balance ───────────
         if code == "CAMT053_LASTPGIND_CLBD_MISSING":
             for _stmt in root.iter():
@@ -4955,7 +5547,7 @@ class FixSuggester:
                                     _gp_copy.remove(_ch)
                             _iban_el = etree.SubElement(_gp_copy,
                                 f"{{{_gp_ns}}}IBAN" if _gp_ns else "IBAN")
-                            _iban_el.text = "GB29NWBK60161331926819"
+                            _iban_el.text = _iban_for_ccy(root, _bel)
                             return FixSuggestion(self._xpath_of(_b_gp), _orig_gp,
                                                   self._serialize(_gp_copy), code, msg, "low")
 
@@ -4975,11 +5567,15 @@ class FixSuggester:
                                               self._serialize(_ma_copy), code, msg, "high")
 
         # ── INVALID_IBAN_CTRY / IBAN_VALIDATION_ERROR — replace with valid IBAN
+        # whose country matches the transaction currency (via _iban_for_ccy),
+        # not a hardcoded GB IBAN — a fixed GB replacement turns e.g. a SEK
+        # transaction's IBAN into a GBP-country IBAN, which just trades
+        # INVALID_IBAN_CTRY for a fresh CURR_IBAN_MISMATCH.
         if code in ("INVALID_IBAN_CTRY", "IBAN_VALIDATION_ERROR"):
             for _ibel in root.iter():
                 if isinstance(_ibel.tag, str) and etree.QName(_ibel.tag).localname == "IBAN":
                     _ib_copy = self._copy(_ibel)
-                    _ib_copy.text = "GB29NWBK60161331926819"
+                    _ib_copy.text = _iban_for_ccy(root, _ibel)
                     return FixSuggestion(self._xpath_of(_ibel), self._serialize(_ibel),
                                           self._serialize(_ib_copy), code, msg, "high")
 
@@ -5057,6 +5653,28 @@ class FixSuggester:
                             _cs_copy.text = _cs_el.text.strip()[:5]
                             return FixSuggestion(self._xpath_of(_cs_el), self._serialize(_cs_el),
                                                   self._serialize(_cs_copy), code, msg, "high")
+
+        # ── GLOBAL-RMT-001 / CBPR_R34 — RmtInf Strd and Ustrd are mutually
+        # exclusive in CBPR+. Keep Ustrd (the form CBPR+ prefers and the one
+        # the generators emit) and remove Strd — mirrors the XSD-driven fix
+        # already applied for message types (e.g. pacs.009) whose schema
+        # forbids Strd outright.
+        if code in ("GLOBAL-RMT-001", "CBPR_R34"):
+            for _rmt_el in root.iter():
+                if not isinstance(_rmt_el.tag, str):
+                    continue
+                if etree.QName(_rmt_el.tag).localname != "RmtInf":
+                    continue
+                _children_local = [etree.QName(c.tag).localname
+                                    for c in _rmt_el if isinstance(c.tag, str)]
+                if "Strd" in _children_local and "Ustrd" in _children_local:
+                    _orig_rmt = self._serialize(_rmt_el)
+                    _rmt_copy = self._copy(_rmt_el)
+                    for _ch in list(_rmt_copy):
+                        if etree.QName(_ch.tag).localname == "Strd":
+                            _rmt_copy.remove(_ch)
+                    return FixSuggestion(self._xpath_of(_rmt_el), _orig_rmt,
+                                          self._serialize(_rmt_copy), code, msg, "high")
 
         # ── DTD_FORBIDDEN / ENTITY_FORBIDDEN — strip DTD/entity declarations ──
         if code in ("DTD_FORBIDDEN", "ENTITY_FORBIDDEN"):
@@ -5445,25 +6063,57 @@ class FixSuggester:
         Fix NBOFTXS_MISMATCH / PACS008_NBOFTXS_EQ_TX_COUNT: update NbOfTxs to
         match actual transaction element count. Preferred over _fix_value because
         the path is a line number so the normal path-walk never finds NbOfTxs.
+
+        Counting is SCOPED to the message container that owns this NbOfTxs (the
+        parent of its GrpHdr). A multi-message bulk wrapper (e.g. <BulkMessages>
+        holding several <Document>s) has one NbOfTxs per message; a whole-tree
+        count would sum every message's transactions and falsely "match", so the
+        mismatch must be resolved per message.
         """
-        TX_TAGS = {"CdtTrfTxInf", "DrctDbtTxInf", "TxInfAndSts", "PmtInf", "TxInf"}
+        # PmtInf is a container (groups transactions), never a countable
+        # transaction unit for NbOfTxs. Including it double-counts pain.001/
+        # pain.008 (1 PmtInf + 1 CdtTrfTxInf = 2) and prevents fixing NbOfTxs=2.
+        TX_TAGS = {"CdtTrfTxInf", "DrctDbtTxInf", "TxInfAndSts", "TxInf"}
+
+        # Collect every NbOfTxs; in a bulk wrapper there may be several.
+        nb_els = [
+            el for el in root.iter()
+            if isinstance(el.tag, str) and etree.QName(el.tag).localname == "NbOfTxs"
+        ]
+        if not nb_els:
+            return None
+
+        # When the issue carries a source line, pick the NbOfTxs on (or nearest
+        # at-or-before) that line so the fix lands on the message that triggered
+        # the error rather than the first message in the bulk file.
+        nb_el = nb_els[0]
+        _hint = getattr(self, "_line_hint", None)
+        if _hint is not None and len(nb_els) > 1:
+            _candidates = [e for e in nb_els if (e.sourceline or 0) <= _hint]
+            nb_el = max(_candidates, key=lambda e: e.sourceline or 0) if _candidates \
+                else min(nb_els, key=lambda e: abs((e.sourceline or 0) - _hint))
+
+        # Scope the transaction count to this NbOfTxs's message container: walk
+        # up GrpHdr → message root (e.g. FICdtTrf / FIToFICstmrCdtTrf), then count
+        # transaction blocks that descend from THAT container only.
+        grp_hdr = nb_el.getparent()
+        msg_root = grp_hdr.getparent() if grp_hdr is not None else None
+        scope = msg_root if msg_root is not None else root
         count = sum(
-            1 for n in root.iter()
+            1 for n in scope.iter()
             if isinstance(n.tag, str) and etree.QName(n.tag).localname in TX_TAGS
         )
-        # Also trust the count stated in the error message (more precise for edge
-        # cases where TX_TAGS might not cover all message families).
-        msg_count_m = re.search(r"actually contains (\d+)", msg)
-        if msg_count_m:
-            count = int(msg_count_m.group(1))
+        # The scoped structural count is authoritative. Only fall back to the
+        # count stated in the error message when no transaction tag matched this
+        # message family (count == 0) — never let a message-stated total override
+        # a good per-message count, or a whole-document total (from a single-
+        # message-only validator) would revert a correctly scoped fix.
+        if count == 0:
+            msg_count_m = re.search(r"actually contains (\d+)", msg)
+            if msg_count_m:
+                count = int(msg_count_m.group(1))
 
-        nb_el = None
-        for el in root.iter():
-            if isinstance(el.tag, str) and etree.QName(el.tag).localname == "NbOfTxs":
-                nb_el = el
-                break
-
-        if nb_el is None or count == 0:
+        if count == 0:
             return None
         if str(count) == (nb_el.text or "").strip():
             return None
@@ -5478,8 +6128,17 @@ class FixSuggester:
         self, xml: str, code: str, msg: str
     ) -> Optional["FixSuggestion"]:
         """
-        Fix Wrong Namespace: truncate extra version components from an ISO 20022
-        namespace (e.g. pacs.004.001.09.12.12.12 → pacs.004.001.09).
+        Fix Wrong Namespace. Two distinct shapes:
+
+        A. Extra version components on an ISO 20022 namespace
+           (e.g. pacs.004.001.09.12.12.12 → pacs.004.001.09) — truncate to 4.
+
+        B. Body orphaned in the SWIFT envelope namespace. When the
+           <Document xmlns="urn:iso:…"> wrapper open+close tags are deleted, the
+           payload elements inherit BusMsgEnvlp's default ns
+           (urn:swift:xsd:envelope) and the validator flags every body element.
+           Rebuild the <Document> wrapper from MsgDefIdr and re-namespace the body.
+
         Returns a whole-document replacement (xpath="/").
         """
         ns_m = re.search(r"namespace '([^']+)'", msg)
@@ -5488,6 +6147,14 @@ class FixSuggester:
         bad_ns = ns_m.group(1)
 
         ISO_PREFIX = "urn:iso:std:iso:20022:tech:xsd:"
+
+        # ── Shape B: orphaned body in the SWIFT envelope namespace ────────────
+        # Specific to the deleted-<Document>-wrapper case. Healthy messages always
+        # carry <Document>, so the guard below never fires on them.
+        if bad_ns == "urn:swift:xsd:envelope":
+            return self._rebuild_missing_document_wrapper(xml, bad_ns, code, msg)
+
+        # ── Shape A: extra version components on an ISO namespace ─────────────
         if not bad_ns.startswith(ISO_PREFIX):
             return None
 
@@ -5507,8 +6174,97 @@ class FixSuggester:
 
         return FixSuggestion("/", xml, fixed_xml, code, msg, "high")
 
+    def _rens_subtree(self, el, old_ns: str, new_ns: str):
+        """Deep-copy `el`, moving any element in `old_ns` (or no namespace) into
+        `new_ns`. Elements already in some other explicit namespace are kept as-is
+        (defensive — the orphaned ISO body never legitimately contains one)."""
+        q = etree.QName(el.tag)
+        cur_ns = q.namespace or ""
+        tgt_ns = new_ns if cur_ns in (old_ns, "") else cur_ns
+        new_el = etree.Element(f"{{{tgt_ns}}}{q.localname}" if tgt_ns else q.localname)
+        new_el.text = el.text
+        new_el.tail = el.tail
+        for k, v in el.attrib.items():
+            new_el.set(k, v)
+        for child in el:
+            if isinstance(child.tag, str):  # skip comments / PIs
+                new_el.append(self._rens_subtree(child, old_ns, new_ns))
+        return new_el
+
+    def _rebuild_missing_document_wrapper(
+        self, xml: str, env_ns: str, code: str, msg: str
+    ) -> Optional["FixSuggestion"]:
+        """Reconstruct a deleted <Document> wrapper.
+
+        Fires ONLY when every guard holds, so no healthy document is touched:
+          • root is <BusMsgEnvlp>
+          • an <AppHdr> child is present
+          • NO <Document> child exists (the wrapper really is gone)
+          • there are non-AppHdr body elements sitting in the envelope namespace
+          • <MsgDefIdr> is present and is a valid ISO message id (pacs.010.001.03)
+
+        The correct ISO namespace is recoverable because MsgDefIdr survives in the
+        AppHdr. We wrap the orphaned body in <Document xmlns="urn:iso:…{MsgDefIdr}">
+        and re-namespace it so the validator's Layer-1 namespace check passes.
+        """
+        try:
+            root = etree.fromstring(xml.encode("utf-8"))
+        except Exception:
+            return None
+        if etree.QName(root.tag).localname != "BusMsgEnvlp":
+            return None
+
+        children = [c for c in root if isinstance(c.tag, str)]
+        apphdr = next((c for c in children
+                       if etree.QName(c.tag).localname == "AppHdr"), None)
+        if apphdr is None:
+            return None
+        if any(etree.QName(c.tag).localname == "Document" for c in children):
+            return None  # Document already present — not the deleted-wrapper case.
+
+        mdi = None
+        for el in apphdr.iter():
+            if isinstance(el.tag, str) and etree.QName(el.tag).localname == "MsgDefIdr":
+                mdi = (el.text or "").strip()
+                break
+        if not mdi or not re.match(r"^[a-z]+\.\d{3}\.\d{3}\.\d{2}$", mdi):
+            return None
+        iso_ns = "urn:iso:std:iso:20022:tech:xsd:" + mdi
+
+        body_els = [c for c in children
+                    if c is not apphdr
+                    and (etree.QName(c.tag).namespace or "") == env_ns]
+        if not body_els:
+            return None
+
+        # Declare the ISO namespace as the DEFAULT (prefix-free) on <Document> so
+        # Layer-1's `doc_node.nsmap.get(None)` reads the ISO ns, not the inherited
+        # envelope ns. Without nsmap={None: iso_ns} lxml emits <ns0:Document …>,
+        # leaving the node's default ns = the envelope ns → check still fails.
+        doc = etree.Element(f"{{{iso_ns}}}Document", nsmap={None: iso_ns})
+        for be in body_els:
+            doc.append(self._rens_subtree(be, env_ns, iso_ns))
+        for be in body_els:
+            root.remove(be)
+        root.insert(list(root).index(apphdr) + 1, doc)
+
+        decl = ""
+        m = re.match(r"(<\?xml[^?]*\?>)", xml.strip())
+        if m:
+            decl = m.group(1) + "\n"
+        fixed_xml = decl + etree.tostring(root, encoding="unicode")
+        if fixed_xml == xml:
+            return None
+        try:
+            etree.fromstring(fixed_xml.encode("utf-8"))
+        except etree.XMLSyntaxError:
+            return None
+
+        return FixSuggestion("/", xml, fixed_xml, code, msg, "high")
+
     def _fix_iban_currency_mismatch(
-        self, root: "etree._Element", code: str, msg: str, fix_hint: str
+        self, root: "etree._Element", code: str, msg: str, fix_hint: str,
+        path: str = "",
     ) -> Optional["FixSuggestion"]:
         """
         Fix CURR_IBAN_MISMATCH.
@@ -5586,7 +6342,7 @@ class FixSuggester:
                     code, msg, "high",
                 )
 
-        # ── Case B: fix the currency attribute on the amount element ──
+        # ── Case B: fix the currency attribute(s) on the amount element(s) ────
         combined = f"{msg} {fix_hint}"
         ccy_m = re.search(
             r"(?:expected\s+currency|update.*?currency\s+to|currency\s+to)\s+([A-Z]{3})\b",
@@ -5599,30 +6355,97 @@ class FixSuggester:
         expected_ccy = ccy_m.group(1).upper()
 
         PREF_TAGS = {"IntrBkSttlmAmt", "RtrdIntrBkSttlmAmt", "InstdAmt",
-                     "RtrdInstdAmt", "TtlIntrBkSttlmAmt"}
+                     "RtrdInstdAmt", "TtlIntrBkSttlmAmt", "EqvtAmt"}
+
+        # Resolve the EXACT element the validator flagged via `path` first —
+        # the validator picks one currency field as authoritative (e.g.
+        # InstdAmt before IntrBkSttlmAmt), and re-validation re-checks that
+        # SAME field. Falling back to a document-order scan can pick a
+        # different sibling, leave the flagged field untouched, and the issue
+        # re-fires after the fix is "applied".
         target_el = None
-        for _el in root.iter():
-            if not isinstance(_el.tag, str):
-                continue
-            local = etree.QName(_el.tag).localname
-            ccy = _el.get("Ccy")
-            if ccy is None:
-                continue
-            if local in PREF_TAGS and (not actual_ccy or ccy == actual_ccy):
-                target_el = _el
-                break
+
+        # Multi-message disambiguation: when the issue carries a source line
+        # (e.g. a <BulkMessages> wrapper with several messages), the dotted
+        # `path` is ambiguous — the same Document.FICdtTrf.CdtTrfTxInf path
+        # exists in every message and the walk resolves to the wrong one,
+        # producing a no-op fix that re-fires forever. Prefer the amount element
+        # whose source line is nearest at-or-before the hinted line.
+        _hint = getattr(self, "_line_hint", None)
+        if _hint is not None:
+            _amts = [
+                _el for _el in root.iter()
+                if isinstance(_el.tag, str)
+                and etree.QName(_el.tag).localname in PREF_TAGS
+                and _el.get("Ccy") is not None
+            ]
+            if len(_amts) > 1:
+                _at = [e for e in _amts if (e.sourceline or 0) <= _hint]
+                target_el = max(_at, key=lambda e: e.sourceline or 0) if _at \
+                    else min(_amts, key=lambda e: abs((e.sourceline or 0) - _hint))
+
+        if target_el is None and path:
+            attr_path = re.sub(r"@\w+\s*$", "", path).strip().rstrip(".")
+            parts = [p for p in attr_path.replace("/", ".").split(".") if p]
+            if parts:
+                _candidate = self._walk_dot_path(root, parts)
+                if _candidate is not None and _candidate.get("Ccy") is not None:
+                    target_el = _candidate
+
+        if target_el is None:
+            for _el in root.iter():
+                if not isinstance(_el.tag, str):
+                    continue
+                local = etree.QName(_el.tag).localname
+                ccy = _el.get("Ccy")
+                if ccy is None:
+                    continue
+                if local in PREF_TAGS and (not actual_ccy or ccy == actual_ccy):
+                    target_el = _el
+                    break
         if target_el is None and actual_ccy:
             for _el in root.iter():
                 if isinstance(_el.tag, str) and _el.get("Ccy") == actual_ccy:
                     target_el = _el
                     break
 
-        if target_el is None or target_el.get("Ccy") == expected_ccy:
+        if target_el is None:
             return None
 
-        return self._fix_attribute(
-            target_el, "Ccy", code, msg,
-            f"Update the transaction currency to {expected_ccy}",
+        bad_ccy = target_el.get("Ccy")
+        if bad_ccy == expected_ccy:
+            return None
+
+        # Walk up to the enclosing transaction container (…TxInf, …PmtInf) so
+        # sibling amount fields sharing the same wrong currency (e.g. both
+        # IntrBkSttlmAmt AND InstdAmt set to NOK) are corrected together —
+        # fixing only one leaves the other stale and the same
+        # CURR_IBAN_MISMATCH re-triggers on it after "applying" the fix.
+        container = target_el
+        for _ in range(4):
+            _parent = container.getparent()
+            if _parent is None:
+                break
+            container = _parent
+            if (isinstance(container.tag, str)
+                    and etree.QName(container.tag).localname.endswith(("TxInf", "PmtInf"))):
+                break
+
+        original_fragment = self._serialize(container)
+        container_copy = self._copy(container)
+        changed = False
+        for _el in container_copy.iter():
+            if (isinstance(_el.tag, str)
+                    and etree.QName(_el.tag).localname in PREF_TAGS
+                    and _el.get("Ccy") == bad_ccy):
+                _el.set("Ccy", expected_ccy)
+                changed = True
+        if not changed:
+            return None
+
+        return FixSuggestion(
+            self._xpath_of(container), original_fragment,
+            self._serialize(container_copy), code, msg, "high",
         )
 
     def _fix_bah_assgnr_assgne_bic(
@@ -6467,6 +7290,42 @@ class FixSuggester:
             if valid:
                 return valid[0]
 
+        # 3a. Per-message KB authoritative value (OFFLINE, no LLM). When the
+        #     ai_knowledge_base constraint above produced nothing, the message's
+        #     own validation KB — or, failing that, a sibling message's KB —
+        #     frequently documents the expected value or an enum allow-list for
+        #     this leaf. Consulting it here keeps many enum/value fixes working
+        #     WITHOUT the LLM (the main offline-coverage gap). All candidates are
+        #     re-checked against the constraint before use.
+        if root is not None:
+            try:
+                _xml_r = self._serialize(root)
+                _mt_r = _detect_msg_type(_xml_r)
+                _kb_val = _kb_folder_leaf_value(tag_name, _mt_r, _xml_r)
+                if (_kb_val and _kb_val != cur_txt
+                        and not self._violates_constraint(_kb_val, constraint)):
+                    return _kb_val
+                _kbc = _KBContext.get(_mt_r)
+                _codes = ((_kbc.valid_codes(tag_name) if _kbc else [])
+                          or _cross_message_valid_codes(tag_name))
+                if _codes:
+                    _hint_l = f"{fix_hint} {msg}"
+                    # A code named in the hint/message is an explicit signal — use
+                    # it. Otherwise only fall back to the allow-list's first entry
+                    # when the curated ai_knowledge_base constraint offers no
+                    # preferred/example of its own (so a curated default still wins).
+                    _hinted = next(
+                        (c for c in _codes
+                         if re.search(rf"\b{re.escape(c)}\b", _hint_l)), None)
+                    _has_curated = bool(constraint.get("preferred")
+                                        or constraint.get("example"))
+                    _pick = _hinted or (None if _has_curated else _codes[0])
+                    if (_pick and _pick != cur_txt
+                            and not self._violates_constraint(_pick, constraint)):
+                        return _pick
+            except Exception:
+                pass
+
         # 3. Constraint preferred / example
         if constraint.get("preferred"):
             return constraint["preferred"]
@@ -6491,12 +7350,180 @@ class FixSuggester:
 
     # ── Stray-text / element-only fix ────────────────────────────────────────
 
+    def _fix_elements_inside_simple_leaf(
+        self, root: etree._Element, xml: str, code: str, msg: str
+    ) -> Optional["FixSuggestion"]:
+        """Remove element children that were wrongly injected into SIMPLE-type
+        leaves (e.g. <Othr><Id>ACCT…<IBAN>dummy</IBAN></Id></Othr>).
+
+        A simple-type leaf (Max34Text, identifiers, …) may carry only text.
+        Element children inside one are always repair artifacts — an earlier
+        fix or lxml recovery landed elements in the wrong same-named tag
+        (the generic-<Id> collision). The leaf's TEXT is the real user data:
+        keep it, drop the injected children. All affected leaves are repaired
+        in ONE fix targeted at their deepest common ancestor, so the loop
+        converges in a single round instead of one round per leaf.
+        """
+        xsd_path = self._get_xsd_path(xml)
+        tmap = _XsdTypeMap.get(xsd_path) if xsd_path else None
+        if tmap is None:
+            return None
+
+        def _is_simple_type(el) -> bool:
+            t = tmap.type_of_path(self._local_name_path(el))
+            if not t:
+                return False
+            info = tmap.type_info.get(t)
+            if info is not None:
+                return info.get("kind") == "simple"
+            # Type not parsed locally (xs built-ins / external simple types):
+            # recognise the standard ISO 20022 simple-type naming.
+            return bool(re.match(
+                r"^(Max\d+\w*Text|.*Identifier|.*Code|ISO\w*|.*Indicator"
+                r"|.*Amount|.*Rate|.*Number)$", t))
+
+        corrupted = [el for el in root.iter()
+                     if isinstance(el.tag, str)
+                     and any(isinstance(c.tag, str) for c in el)
+                     and (el.text or "").strip()
+                     and _is_simple_type(el)]
+        if not corrupted:
+            return None
+
+        # Deepest common ancestor of all corrupted leaves.
+        def _chain(el):
+            out = []
+            while el is not None:
+                out.append(el)
+                el = el.getparent()
+            return list(reversed(out))
+
+        chains = [_chain(el) for el in corrupted]
+        anc = None
+        for level in zip(*chains):
+            if all(e is level[0] for e in level):
+                anc = level[0]
+            else:
+                break
+        if anc is None:
+            return None
+        # Target the ancestor's PARENT-side fragment only if anc is a corrupted
+        # leaf itself (single-leaf case) — fragment must contain the children.
+        if anc in corrupted and anc.getparent() is not None:
+            anc = anc.getparent()
+
+        original_fragment = self._serialize(anc)
+        anc_copy = self._copy(anc)
+        changed = False
+        for leaf in corrupted:
+            idx_path = self._index_path_to(anc, leaf)
+            if idx_path is None:
+                continue
+            leaf_copy = self._navigate_to(anc_copy, idx_path)
+            if leaf_copy is None:
+                continue
+            for ch in list(leaf_copy):
+                if isinstance(ch.tag, str):
+                    leaf_copy.remove(ch)
+                    changed = True
+            leaf_copy.text = (leaf_copy.text or "").strip()
+        if not changed:
+            return None
+
+        return FixSuggestion(
+            xpath=self._xpath_of(anc),
+            original_fragment=original_fragment,
+            fragment_xml=self._serialize(anc_copy),
+            issue_code=code,
+            issue_message=msg,
+            confidence="high",
+        )
+
+    def _rewrap_stray_text(self, target: etree._Element,
+                           target_copy: etree._Element, xml: str) -> bool:
+        """Re-wrap orphaned text inside an element-only container into the XSD
+        children MISSING at that position.
+
+        When an element's open+close tags are both deleted, its text value is
+        left behind as stray text in the parent (e.g. PmtId carrying bare lines
+        'INSTR…', 'E2E…', 'TX…' where InstrId/EndToEndId/TxId used to be).
+        Plain stripping discards that user data; instead, map each orphan line
+        to the XSD child slots between the surrounding surviving children:
+          • exact fit (lines == missing slots in the gap) → assign in sequence
+            order;
+          • otherwise, assign only when the lines match the gap's MANDATORY
+            missing children exactly.
+        Lines that can't be placed are left for the caller's strip pass.
+        Returns True when at least one line was re-wrapped (in target_copy).
+        """
+        if not xml:
+            try:
+                xml = self._serialize(target.getroottree().getroot())
+            except Exception:
+                return False
+        xsd_path = self._get_xsd_path(xml)
+        tmap = _XsdTypeMap.get(xsd_path) if xsd_path else None
+        if tmap is None:
+            return False
+        t_type = tmap.type_of_path(self._local_name_path(target))
+        t_children = tmap.type_info.get(t_type, {}).get("children", [])
+        seq = [c["name"] for c in t_children]
+        if not seq:
+            return False
+        seq_pos = {n: i for i, n in enumerate(seq)}
+        min_of = {c["name"]: c.get("min", "1") for c in t_children}
+        ns = etree.QName(target_copy.tag).namespace or ""
+
+        kids = [c for c in target_copy if isinstance(c.tag, str)]
+        exist = [etree.QName(c.tag).localname for c in kids]
+        present = set(exist)
+
+        changed = False
+        # Slot 0 = target_copy.text (before first child); slot i+1 = kids[i].tail.
+        for slot in range(len(kids) + 1):
+            raw = target_copy.text if slot == 0 else kids[slot - 1].tail
+            if not raw or not raw.strip():
+                continue
+            lines = [ln.strip() for ln in raw.splitlines()
+                     if ln.strip() and len(ln.strip()) <= 140]
+            if not lines:
+                continue
+            # XSD window for this gap: names after the preceding survivor and
+            # before the nearest following survivor, not already present.
+            lo = seq_pos.get(exist[slot - 1], -1) if slot > 0 else -1
+            hi = min((seq_pos[e] for e in exist[slot:] if e in seq_pos),
+                     default=len(seq))
+            window = [n for n in seq[lo + 1:hi] if n not in present]
+            if len(lines) == len(window):
+                chosen = window
+            else:
+                mand = [n for n in window if min_of.get(n, "1") != "0"]
+                if mand and len(lines) == len(mand):
+                    chosen = mand
+                else:
+                    continue
+            insert_at = (list(target_copy).index(kids[slot - 1]) + 1
+                         if slot > 0 else 0)
+            for j, (val, name) in enumerate(zip(lines, chosen)):
+                tag = f"{{{ns}}}{name}" if ns else name
+                new_child = etree.Element(tag)
+                new_child.text = val
+                target_copy.insert(insert_at + j, new_child)
+                present.add(name)
+            if slot == 0:
+                target_copy.text = None
+            else:
+                kids[slot - 1].tail = None
+            changed = True
+        return changed
+
     def _fix_stray_text_element_only(
         self,
         root: etree._Element,
         container_name: str,
         code: str,
         msg: str,
+        xml: str = "",
     ) -> Optional[FixSuggestion]:
         """
         Strip non-whitespace text/tail nodes from every element-only container
@@ -6578,7 +7605,17 @@ class FixSuggester:
 
         original_fragment = self._serialize(target)
         target_copy = self._copy(target)
-        if not _strip_stray(target_copy):
+
+        # Data-preserving pass first: orphan text lines are usually the VALUES
+        # of children whose tags were deleted — re-wrap them into the missing
+        # XSD children instead of discarding user data. Whatever cannot be
+        # placed is then stripped as before.
+        try:
+            _rw_changed = self._rewrap_stray_text(target, target_copy, xml)
+        except Exception:
+            _rw_changed = False
+        _st_changed = _strip_stray(target_copy)
+        if not (_rw_changed or _st_changed):
             return None
 
         return FixSuggestion(
@@ -6588,6 +7625,222 @@ class FixSuggester:
             issue_code=code,
             issue_message=msg,
             confidence="high",
+        )
+
+    # Tags that are valid children of an account <Id> element
+    # (AccountIdentification4Choice / GenericAccountIdentification1)
+    _VALID_ACCT_ID_CHILDREN: frozenset = frozenset({
+        "IBAN", "Othr", "PrtryAcct", "BBAN", "UPIC",
+    })
+
+    # Account container tags whose <Id> must only hold account identifiers.
+    # Any other child absorbed by the balance engine belongs in the parent tx block.
+    _ACCT_CONTAINERS: frozenset = frozenset({
+        "CdtrAcct", "DbtrAcct", "CdtrAgtAcct", "DbtrAgtAcct",
+        "IntrmyAgt1Acct", "IntrmyAgt2Acct", "IntrmyAgt3Acct",
+    })
+
+    # Correct child order inside DrctDbtTxInf (pacs.010)
+    _DRCT_DBT_TX_INF_ORDER: tuple = (
+        "PmtId", "PmtTpInf", "IntrBkSttlmAmt", "IntrBkSttlmDt",
+        "SttlmPrty", "SttlmTmIndctn", "SttlmTmReq", "AccptncDtTm",
+        "PoolgAdjstmntDt", "InstdAmt", "XchgRate", "ChrgBr", "ChrgsInf",
+        "CdtrAgt", "CdtrAgtAcct", "Cdtr", "CdtrAcct",
+        "DbtrAgt", "DbtrAgtAcct", "DrctDbtTx", "Dbtr", "DbtrAcct", "RmtInf",
+        "SplmtryData",
+    )
+
+    # Correct child order inside CdtTrfTxInf (pacs.008/pacs.009)
+    _CDT_TRF_TX_INF_ORDER: tuple = (
+        "PmtId", "PmtTpInf", "IntrBkSttlmAmt", "IntrBkSttlmDt",
+        "SttlmPrty", "SttlmTmIndctn", "SttlmTmReq", "AccptncDtTm",
+        "PoolgAdjstmntDt", "InstdAmt", "XchgRate", "ChrgBr", "ChrgsInf",
+        "PrvsInstgAgt1", "PrvsInstgAgt1Acct", "PrvsInstgAgt2", "PrvsInstgAgt2Acct",
+        "PrvsInstgAgt3", "PrvsInstgAgt3Acct",
+        "InstgAgt", "InstdAgt",
+        "IntrmyAgt1", "IntrmyAgt1Acct", "IntrmyAgt2", "IntrmyAgt2Acct",
+        "IntrmyAgt3", "IntrmyAgt3Acct",
+        "Dbtr", "DbtrAcct", "DbtrAgt", "DbtrAgtAcct",
+        "CdtrAgt", "CdtrAgtAcct", "Cdtr", "CdtrAcct",
+        "InstrForCdtrAgt", "InstrForNxtAgt", "Purp", "RmtInf",
+        "UndrlygCstmrCdtTrf", "SplmtryData",
+    )
+
+    # Tags that signal a transaction-level container (elements should route here)
+    _TX_CONTAINER_TAGS: frozenset = frozenset({
+        "CdtTrfTxInf", "DrctDbtTxInf", "CdtInstr", "TxInf", "OrgnlTxRef",
+    })
+
+    def _try_rescue_collapsed_account_id(
+        self, root: etree._Element, xml: str,
+    ) -> Optional[FixSuggestion]:
+        """Rescue elements absorbed into any account container's <Id> during
+        structural collapse (large deletion → balance engine nests subsequent
+        siblings inside an unclosed <Id>).
+
+        Handles: CdtrAcct, DbtrAcct, CdtrAgtAcct, DbtrAgtAcct, IntrmyAgt*Acct.
+        Valid children of <Id>: IBAN, Othr, PrtryAcct, BBAN, UPIC.
+        Anything else is extracted to the nearest transaction-level parent
+        (CdtTrfTxInf, DrctDbtTxInf, …), then re-ordered per XSD sequence.
+        """
+        root_copy = self._copy(root)
+        changed = False
+
+        for acct_el in list(root_copy.iter()):
+            if not isinstance(acct_el.tag, str):
+                continue
+            acct_local = etree.QName(acct_el.tag).localname
+            if acct_local not in self._ACCT_CONTAINERS:
+                continue
+            id_el = next(
+                (c for c in acct_el
+                 if isinstance(c.tag, str) and etree.QName(c.tag).localname == "Id"),
+                None,
+            )
+            if id_el is None:
+                continue
+
+            misplaced = [
+                c for c in list(id_el)
+                if isinstance(c.tag, str)
+                and etree.QName(c.tag).localname not in self._VALID_ACCT_ID_CHILDREN
+            ]
+            if not misplaced:
+                continue
+
+            # Walk up to find the nearest transaction-level container
+            target = None
+            cur = acct_el.getparent()
+            while cur is not None:
+                if isinstance(cur.tag, str) and etree.QName(cur.tag).localname in self._TX_CONTAINER_TAGS:
+                    target = cur
+                    break
+                cur = cur.getparent()
+
+            if target is None:
+                # Fallback: use direct parent of the account element
+                target = acct_el.getparent()
+            if target is None:
+                continue
+
+            target_local = etree.QName(target.tag).localname if isinstance(target.tag, str) else ""
+            order_tuple = (
+                self._DRCT_DBT_TX_INF_ORDER if target_local == "DrctDbtTxInf"
+                else self._CDT_TRF_TX_INF_ORDER
+            )
+
+            for el in misplaced:
+                el_local = etree.QName(el.tag).localname
+                # Drop empty tx-container shells — balance-engine artefacts
+                if (el_local in self._TX_CONTAINER_TAGS
+                        and len(el) == 0 and not (el.text or "").strip()):
+                    id_el.remove(el)
+                    changed = True
+                    continue
+                # Drop empty UndrlygCstmrCdtTrf shells (COV artefact)
+                if el_local == "UndrlygCstmrCdtTrf" and len(el) == 0 and not (el.text or "").strip():
+                    id_el.remove(el)
+                    changed = True
+                    continue
+                id_el.remove(el)
+                target.append(el)
+                changed = True
+
+            if changed:
+                order_map = {name: i for i, name in enumerate(order_tuple)}
+                children = list(target)
+                children.sort(
+                    key=lambda c: order_map.get(
+                        etree.QName(c.tag).localname if isinstance(c.tag, str) else "", 999
+                    )
+                )
+                for ch in children:
+                    target.remove(ch)
+                for ch in children:
+                    target.append(ch)
+
+        if not changed:
+            return None
+
+        fixed_xml = etree.tostring(root_copy, encoding="unicode", pretty_print=True)
+        decl_m = re.match(r"(<\?xml[^?]*\?>)", xml.strip())
+        if decl_m:
+            fixed_xml = decl_m.group(1) + "\n" + fixed_xml
+        return FixSuggestion(
+            xpath="/",
+            original_fragment=xml,
+            fragment_xml=fixed_xml,
+            issue_code="STRUCTURE_ERROR",
+            issue_message=(
+                "Structural rescue: elements absorbed into account <Id> during deletion "
+                "moved to correct transaction container."
+            ),
+            confidence="high",
+        )
+
+    def _try_collapse_choice(self, root: etree._Element, code: str,
+                             msg: str) -> Optional[FixSuggestion]:
+        """Collapse an over-populated XML Choice container to a single member.
+
+        AccountIdentification4Choice (<Id> under any *Acct) permits EXACTLY ONE
+        of <IBAN> or <Othr>. When an edit leaves BOTH, the validator flags the
+        second as "element 'X' is not expected at this position". Unlike a blind
+        choice-member deletion (which the caller refuses to guess), this is
+        unambiguous — one member must go. Keep whichever member is VALID (an
+        IBAN passing MOD-97, else an <Othr> with a populated <Id>), preferring
+        IBAN when both are valid, and drop the competing member.
+
+        Returns one fix for the single <Id> tied to this error (nearest the
+        reported line); the iterative loop handles any further occurrences.
+        """
+        m = re.search(r"element '([\w:{}.\-]+)' is not expected", msg, re.I)
+        off_local = m.group(1).split('}')[-1].split(':')[-1] if m else ""
+        if off_local not in ("IBAN", "Othr"):
+            return None
+
+        # AccountIdentification4Choice == an <Id> carrying BOTH IBAN and Othr.
+        cands = []
+        for el in root.iter():
+            if not isinstance(el.tag, str) or etree.QName(el.tag).localname != "Id":
+                continue
+            kids = [etree.QName(c.tag).localname for c in el if isinstance(c.tag, str)]
+            if "IBAN" in kids and "Othr" in kids:
+                cands.append(el)
+        if not cands:
+            return None
+
+        lh = getattr(self, "_line_hint", None)
+        if lh is not None:
+            def _near(el):
+                lines = [c.sourceline or 0 for c in el] + [el.sourceline or 0]
+                return min(abs(l - lh) for l in lines)
+            target = min(cands, key=_near)
+        else:
+            target = cands[0]
+
+        iban_el = next((c for c in target if isinstance(c.tag, str)
+                        and etree.QName(c.tag).localname == "IBAN"), None)
+        othr_el = next((c for c in target if isinstance(c.tag, str)
+                        and etree.QName(c.tag).localname == "Othr"), None)
+        iban_ok = iban_el is not None and _verify_iban_mod97((iban_el.text or "").strip())
+        othr_ok = othr_el is not None and any(
+            isinstance(g.tag, str) and etree.QName(g.tag).localname == "Id"
+            and (g.text or "").strip() for g in othr_el)
+        # Keep whichever member is valid; prefer IBAN when both are valid;
+        # default to IBAN when neither validates cleanly.
+        keep = "IBAN" if iban_ok else ("Othr" if othr_ok else "IBAN")
+
+        pcopy = self._copy(target)
+        for c in list(pcopy):
+            if (isinstance(c.tag, str)
+                    and etree.QName(c.tag).localname in ("IBAN", "Othr")
+                    and etree.QName(c.tag).localname != keep):
+                pcopy.remove(c)
+        if self._serialize(pcopy) == self._serialize(target):
+            return None
+        return FixSuggestion(
+            self._xpath_of(target), self._serialize(target),
+            self._serialize(pcopy), code, msg, "high",
         )
 
     def _try_reposition_element(self, root: etree._Element, xml: str, code: str,
@@ -6615,13 +7868,11 @@ class FixSuggester:
         if not offending:
             return None
 
-        line_hint = getattr(self, "_line_hint", None)
         matches = [el for el in root.iter()
                    if isinstance(el.tag, str) and etree.QName(el.tag).localname == offending]
         if not matches:
             return None
-        off_el = (matches[0] if line_hint is None
-                  else min(matches, key=lambda e: abs((e.sourceline or 0) - line_hint)))
+        off_el = self._pick_candidate(matches)
         parent = off_el.getparent()
         if parent is None:
             return None
@@ -6685,7 +7936,7 @@ class FixSuggester:
         return None
 
     def _try_remove_duplicate(self, root: etree._Element, code: str,
-                              msg: str) -> Optional[FixSuggestion]:
+                              msg: str, xml: str = "") -> Optional[FixSuggestion]:
         """Resolve duplicate-element errors (rules: auto_fix_rules.duplicate).
 
         Handles both the explicit "Duplicate tag detected: <BICFI>" error and a
@@ -6738,6 +7989,83 @@ class FixSuggester:
                     parent_copy.remove(c)
             return FixSuggestion(self._xpath_of(parent), self._serialize(parent),
                                  self._serialize(parent_copy), code, msg, "high")
+
+        # ── Parent-child nesting: tag T nested directly inside another T ──────
+        # Handles <FIId><FIId>...</FIId><FinInstnId/></FIId> — the inner T is
+        # an extra wrapper layer. Remove it; non-T siblings of the outer T are
+        # kept untouched. Only fires when the message explicitly signals a
+        # duplicate (is_dup=True) so it never triggers on unrelated sequence errors.
+        if is_dup:
+            for el in root.iter():
+                if not isinstance(el.tag, str) or local(el.tag) != tag:
+                    continue
+                parent = el.getparent()
+                if parent is None or not isinstance(parent.tag, str):
+                    continue
+                if local(parent.tag) != tag:
+                    continue
+                # el is tag T directly inside another T — remove the inner wrapper
+                parent_copy = self._copy(parent)
+                inner_copies = [c for c in parent_copy
+                                if isinstance(c.tag, str) and local(c.tag) == tag]
+                for inner in inner_copies:
+                    parent_copy.remove(inner)
+                return FixSuggestion(
+                    self._xpath_of(parent), self._serialize(parent),
+                    self._serialize(parent_copy), code, msg, "high",
+                )
+
+        # ── Cross-parent duplicate: no single parent holds two <tag> children ──
+        # The "duplicate" is really a STRAY element at the wrong nesting level
+        # (e.g. a bare <BICFI> under CdtTrfTxInf after its agent wrappers were
+        # deleted, duplicating the BICFI inside a sibling agent's FinInstnId).
+        # Two repairs, data-preserving first:
+        #   1. strip repair-artifact children out of simple-type leaves
+        #      (the <Othr><Id>ACCT…<IBAN>dummy</IBAN></Id> corruption);
+        #   2. wrap the stray into the missing container the XSD expects
+        #      (PrvsInstgAgt1 → FinInstnId → BICFI).
+        if is_dup:
+            if not xml:
+                try:
+                    xml = self._serialize(root)
+                except Exception:
+                    return None
+            leaf_fix = self._fix_elements_inside_simple_leaf(root, xml, code, msg)
+            if leaf_fix is not None:
+                return leaf_fix
+            # Point the wrap at the STRAY occurrence — the one whose parent
+            # does not accept it — rather than whichever same-named element
+            # the validator's line number happens to sit closest to. The issue
+            # path (if any) describes the duplicate report, not the stray, so
+            # it is cleared for the scoped call.
+            _saved_lh = getattr(self, "_line_hint", None)
+            _saved_ip = getattr(self, "_issue_path", "")
+            _xsd_path = self._get_xsd_path(xml)
+            _tmap = _XsdTypeMap.get(_xsd_path) if _xsd_path else None
+            if _tmap is not None:
+                for el in root.iter():
+                    if not isinstance(el.tag, str) or local(el.tag) != tag:
+                        continue
+                    par = el.getparent()
+                    if par is None or not isinstance(par.tag, str):
+                        continue
+                    ptype = _tmap.type_of_path(self._local_name_path(par))
+                    if not ptype:
+                        continue
+                    pkids = {c["name"] for c in
+                             _tmap.type_info.get(ptype, {}).get("children", [])}
+                    if pkids and tag not in pkids:
+                        self._line_hint = el.sourceline or _saved_lh
+                        self._issue_path = ""
+                        break
+            wrap_msg = f"The element '{tag}' is not expected at this position."
+            try:
+                wrap_fix = self._try_wrap_orphaned_block(root, xml, code, wrap_msg)
+            finally:
+                self._line_hint = _saved_lh
+                self._issue_path = _saved_ip
+            if wrap_fix is not None:
+                return wrap_fix
         return None
 
     def _index_path_to(self, ancestor: etree._Element, descendant: etree._Element) -> Optional[list]:
@@ -6813,9 +8141,7 @@ class FixSuggester:
                       and etree.QName(el.tag).localname == offending]
         if not _off_cands:
             return None
-        _lh = getattr(self, "_line_hint", None)
-        off_el = (min(_off_cands, key=lambda e: abs((e.sourceline or 0) - _lh))
-                  if _lh is not None else _off_cands[0])
+        off_el = self._pick_candidate(_off_cands)
         parent = off_el.getparent()
         if parent is None:
             return None
@@ -6866,6 +8192,23 @@ class FixSuggester:
 
         original_fragment = self._serialize(parent)
         xpath = self._xpath_of(parent)
+
+        # `offending` is not a direct child of `parent` at all (e.g.
+        # PrvsInstgAgt2 stranded in FICdtTrf) but IS a valid child of one of
+        # parent's OTHER child container types (e.g. CdtTrfTxInf). This is a
+        # wrong-nesting-level error — the element belongs inside an EXISTING
+        # sibling container. Decline so _try_wrap_orphaned_block /
+        # _try_relocate_to_ancestor can move it there, instead of Case 1b
+        # deleting it or Case 2 masking the issue with an unrelated insert.
+        if tmap and parent_type and offending not in order:
+            for _vc in tmap.type_info.get(parent_type, {}).get("children", []):
+                _vc_type = tmap.get_child_type(parent_type, _vc["name"])
+                if not _vc_type:
+                    continue
+                _vc_children = {g["name"] for g in
+                               tmap.type_info.get(_vc_type, {}).get("children", [])}
+                if offending in _vc_children:
+                    return None
 
         # ── Case 1: misnamed element. The offending tag is not a valid child but
         #    is a near-match of one (e.g. <BIC> where <BICFI> is expected) — a
@@ -7113,14 +8456,12 @@ class FixSuggester:
             return None
         offending = m_off.group(1).strip()
 
-        _lh = getattr(self, "_line_hint", None)
         _cands = [el for el in root.iter()
                   if isinstance(el.tag, str)
                   and etree.QName(el.tag).localname == offending]
         if not _cands:
             return None
-        off_el = (min(_cands, key=lambda e: abs((e.sourceline or 0) - _lh))
-                  if _lh is not None else _cands[0])
+        off_el = self._pick_candidate(_cands)
 
         parent = off_el.getparent()
         if parent is None:
@@ -7159,8 +8500,13 @@ class FixSuggester:
             return None
 
         # Find the container type: a valid parent child whose XSD type includes
-        # the offending element as a child.
-        container_name = None
+        # the offending element as a child — DIRECTLY, or (deep case) one level
+        # down via a single intermediate child. The deep case covers a bare
+        # <BICFI> stranded in CdtTrfTxInf after its agent AND FinInstnId
+        # wrappers were both ripped: it belongs in
+        # PrvsInstgAgt1 → FinInstnId → BICFI, which no direct search finds.
+        direct_cands: list = []
+        deep_cands: list = []   # (container_name, intermediate_name)
         for child_info in tmap.type_info.get(parent_type, {}).get("children", []):
             cname = child_info["name"]
             ctype = tmap.get_child_type(parent_type, cname)
@@ -7169,18 +8515,79 @@ class FixSuggester:
             ctype_children = {c["name"] for c in
                                tmap.type_info.get(ctype, {}).get("children", [])}
             if offending in ctype_children:
-                container_name = cname
-                break
-        if not container_name:
+                direct_cands.append(cname)
+                continue
+            for mid_info in tmap.type_info.get(ctype, {}).get("children", []):
+                mtype = tmap.get_child_type(ctype, mid_info["name"])
+                if not mtype:
+                    continue
+                mtype_children = {c["name"] for c in
+                                   tmap.type_info.get(mtype, {}).get("children", [])}
+                if offending in mtype_children:
+                    deep_cands.append((cname, mid_info["name"]))
+                    break
+
+        inter_of: dict = {}
+        if direct_cands:
+            candidates = direct_cands
+        elif deep_cands:
+            candidates = [c for c, _m in deep_cands]
+            inter_of = dict(deep_cands)
+        else:
             return None
+
+        # Choose the container slot, occupancy-aware:
+        #   1. a preceding sibling instance that does NOT already carry the
+        #      offending child → merge into it (classic camt.056 TxInf case);
+        #   2. else the first candidate slot still MISSING from the parent →
+        #      create it (so consecutive stray fragments land in consecutive
+        #      free agent slots instead of piling into the same one);
+        #   3. else the first candidate (original behavior).
+        present_locals = {etree.QName(s.tag).localname for s in siblings
+                          if isinstance(s.tag, str)}
+        container_name = None
+        preceding_container_idx = None
+        for i in range(off_idx - 1, -1, -1):
+            sib = siblings[i]
+            if not isinstance(sib.tag, str):
+                continue
+            sib_local = etree.QName(sib.tag).localname
+            if sib_local in candidates:
+                sib_children = {etree.QName(ch.tag).localname for ch in sib
+                                if isinstance(ch.tag, str)}
+                if offending not in sib_children and sib_local not in inter_of:
+                    container_name = sib_local
+                    preceding_container_idx = i
+                break  # nearest preceding candidate decides; occupied → create
+        if container_name is None:
+            container_name = next((c for c in candidates
+                                   if c not in present_locals), candidates[0])
+        intermediate_name = inter_of.get(container_name)
+
+        container_type = tmap.get_child_type(parent_type, container_name)
+        container_order = tmap.order_for_type(container_type) if container_type else []
+        inter_type = (tmap.get_child_type(container_type, intermediate_name)
+                      if (container_type and intermediate_name) else None)
+        inter_children = ({c["name"] for c in
+                           tmap.type_info.get(inter_type, {}).get("children", [])}
+                          if inter_type else set())
 
         # Collect all elements from off_idx onwards that are either:
         #   a) the offending element, or
         #   b) not a valid parent child (clearly orphaned TxInf-level fields)
+        # Deep case: only take consecutive strays the INTERMEDIATE accepts —
+        # a following stray of a different shape (e.g. a complete FinInstnId
+        # after a bare BICFI) is a remnant of a DIFFERENT ripped wrapper and
+        # must go to its own slot on a later round.
         orphan_indices = []
         for i, sib in enumerate(siblings[off_idx:], start=off_idx):
             sib_local = etree.QName(sib.tag).localname if isinstance(sib.tag, str) else ""
-            if sib_local == offending or sib_local not in valid_parent_children:
+            if intermediate_name:
+                if sib_local in inter_children and sib_local not in valid_parent_children:
+                    orphan_indices.append(i)
+                else:
+                    break
+            elif sib_local == offending or sib_local not in valid_parent_children:
                 orphan_indices.append(i)
             else:
                 break
@@ -7195,23 +8602,53 @@ class FixSuggester:
         parent_copy = self._copy(parent)
         copy_kids = list(parent_copy)
 
-        # Detach orphans from the copy (in reverse order to keep indices valid)
-        orphan_els = [copy_kids[i] for i in orphan_indices]
-        for el in reversed(orphan_els):
-            parent_copy.remove(el)
+        if preceding_container_idx is not None:
+            # Merge into the preceding container — move ONLY the orphans it can
+            # actually take (its locals don't clash); the rest stay in place
+            # for later rounds instead of being silently dropped.
+            prec_copy = copy_kids[preceding_container_idx]
+            existing_locals = {etree.QName(ch.tag).localname
+                               for ch in prec_copy
+                               if isinstance(ch.tag, str)}
+            merged_any = False
+            for i in orphan_indices:
+                el = copy_kids[i]
+                el_local = etree.QName(el.tag).localname if isinstance(el.tag, str) else ""
+                if el_local and el_local not in existing_locals:
+                    parent_copy.remove(el)
+                    prec_copy.append(el)
+                    existing_locals.add(el_local)
+                    merged_any = True
+            if not merged_any:
+                return None
 
-        # Build new container and populate with orphans (already in XML order)
-        new_container = etree.SubElement(parent_copy, container_tag)
-        for el in orphan_els:
-            new_container.append(el)
+            if container_order:
+                self._reorder_children(prec_copy, container_order)
+        else:
+            # Detach orphans from the copy (in reverse order to keep indices valid)
+            orphan_els = [copy_kids[i] for i in orphan_indices]
+            for el in reversed(orphan_els):
+                parent_copy.remove(el)
 
-        # Reorder new container's children to XSD sequence
-        container_type = tmap.get_child_type(parent_type, container_name)
-        container_order = tmap.order_for_type(container_type) if container_type else []
-        if container_order:
-            self._reorder_children(new_container, container_order)
+            # Build new container and populate with orphans (already in XML
+            # order); deep case nests them inside the intermediate wrapper.
+            new_container = etree.SubElement(parent_copy, container_tag)
+            receiver = new_container
+            if intermediate_name:
+                inter_tag = (f"{{{ns}}}{intermediate_name}" if ns
+                             else intermediate_name)
+                receiver = etree.SubElement(new_container, inter_tag)
+            for el in orphan_els:
+                receiver.append(el)
 
-        # Reorder parent so any valid OrgnlGrpInf etc. appear before TxInf
+            if intermediate_name and inter_type:
+                inter_order = tmap.order_for_type(inter_type)
+                if inter_order:
+                    self._reorder_children(receiver, inter_order)
+            elif container_order:
+                self._reorder_children(new_container, container_order)
+
+        # Reorder parent so any valid elements appear in XSD sequence
         parent_order = tmap.order_for_type(parent_type)
         if parent_order:
             self._reorder_children(parent_copy, parent_order)
@@ -7248,9 +8685,7 @@ class FixSuggester:
                      if isinstance(el.tag, str) and etree.QName(el.tag).localname == offending]
         if not off_cands:
             return None
-        lh = getattr(self, "_line_hint", None)
-        off_el = (min(off_cands, key=lambda e: abs((e.sourceline or 0) - lh))
-                  if lh is not None else off_cands[0])
+        off_el = self._pick_candidate(off_cands)
 
         current_parent = off_el.getparent()
         if current_parent is None:
@@ -7366,6 +8801,39 @@ class FixSuggester:
         for j, el_mv in enumerate(elements_to_move):
             ta_copy.insert(insert_pos + j, el_mv)
 
+        # Resolve [maxOccurs=1] collisions introduced by the relocation.
+        # When a moved element has the same local-name as an element already
+        # present in ta_copy, and the XSD caps that element at 1, keep the
+        # occurrence with more child content (the richer one) and drop the
+        # other.  This prevents a spurious DUPLICATE_TAG error on the next
+        # validation round that would otherwise drop the wrong occurrence.
+        if anc_type:
+            _max_map = {c["name"]: c.get("max", "1")
+                        for c in tmap.type_info.get(anc_type, {}).get("children", [])}
+            _moved_locals = {etree.QName(e.tag).localname for e in elements_to_move
+                             if isinstance(e.tag, str)}
+            for _mv_local in _moved_locals:
+                if _max_map.get(_mv_local, "1") not in ("unbounded", "0"):
+                    try:
+                        _max_val = int(_max_map.get(_mv_local, "1"))
+                    except (TypeError, ValueError):
+                        _max_val = 1
+                    if _max_val == 1:
+                        # Collect all occurrences of this tag in ta_copy.
+                        _dups = [c for c in list(ta_copy)
+                                 if isinstance(c.tag, str)
+                                 and etree.QName(c.tag).localname == _mv_local]
+                        if len(_dups) > 1:
+                            # Keep the richest (most descendant nodes); on tie keep
+                            # the one that came from the relocation (has a non-empty
+                            # subtree), else keep the first.
+                            def _richness(e):
+                                return sum(1 for _ in e.iter())
+                            _keeper = max(_dups, key=_richness)
+                            for _d in _dups:
+                                if _d is not _keeper:
+                                    ta_copy.remove(_d)
+
         # Reorder both modified levels per XSD sequence.
         ta_order = tmap.order_for_type(anc_type)
         if ta_order:
@@ -7402,6 +8870,45 @@ class FixSuggester:
         if line_hint is None:
             return elems[0]
         return min(elems, key=lambda e: abs((e.sourceline or 0) - line_hint))
+
+    def _pick_candidate(self, cands: list):
+        """Pick the most plausible element among same-named candidates.
+
+        Preference order:
+          1. longest ancestor-chain suffix match against the validator's
+             slash/dot path for THIS issue (set in suggest()) — immune to the
+             line-number drift suggest_batch's roll-forward applies introduce
+             (a stale line hint otherwise lands on the WRONG same-named
+             element, e.g. Assgnr/Agt/FinInstnId instead of Assgne/FinInstnId);
+          2. proximity to the reported line number;
+          3. first candidate.
+        """
+        if not cands:
+            return None
+        lh = getattr(self, "_line_hint", None)
+        p = getattr(self, "_issue_path", "") or ""
+        parts = [t.split("[")[0] for t in re.split(r"[/.]", p)
+                 if t and not re.fullmatch(r"\d+|\*", t.split("[")[0] or "*")]
+        if len(parts) >= 2:
+            want = parts[:-1]  # the path's ancestors (last token = the element)
+
+            def _suffix_score(el) -> int:
+                chain = self._local_name_path(el)[:-1]
+                score = 0
+                for a, b in zip(reversed(chain), reversed(want)):
+                    if a == b:
+                        score += 1
+                    else:
+                        break
+                return score
+
+            best = max((_suffix_score(el) for el in cands), default=0)
+            if best > 0:
+                top = [el for el in cands if _suffix_score(el) == best]
+                if len(top) == 1:
+                    return top[0]
+                cands = top  # disambiguate further by line proximity
+        return self._pick_nearest(cands, lh)
 
     # Full ISO 20022 element names → their XML tag stems (validator messages
     # sometimes use the long names). Used to normalise dependency-rule wording.
@@ -7541,13 +9048,26 @@ class FixSuggester:
             or (excl_rule is None and (code in ("CBPR_COM_R9", "CBPR_AGENT_BICFI_EXCLUSIVE", "DEP_013")
                 or ("bicfi is present" in msg_l and "not allowed" in msg_l)))
         is_name_addr   = (coex_rule is not None) \
-            or (code in ("NAME_ADDRESS_COEXISTENCE", "DEP_014") or "present together" in msg_l)
+            or (code in ("NAME_ADDRESS_COEXISTENCE", "DEP_014") or "present together" in msg_l
+                # CBPR_R56-style wording: "<Nm> and <PstlAdr> must both be
+                # present or both absent." Match on the message (codes like
+                # R56 are numbered per message family and not stable).
+                or ("both be present" in msg_l and "nm" in msg_l
+                    and "pstladr" in msg_l))
         # Schema-level manifestation of BICFI exclusivity: a forbidden sibling
         # (Nm/PstlAdr) reported by the XSD as "not expected" while BICFI/AnyBIC is
         # present in the same block (e.g. "The element 'Nm' is not expected here.
         # No child element is expected at this point."). Target-finding below
         # only acts when such a block actually exists, so this is safe.
-        if (not (is_bicfi_excl or is_anybic_excl or is_name_addr)
+        # Whether the rule was matched EXPLICITLY (KB rule / dedicated code /
+        # unambiguous wording) — as opposed to the schema-message fallback
+        # below. Explicit matches own the issue: if no block violates the rule
+        # any more (a stale batch issue — an earlier fix already repaired it),
+        # we return a no-op instead of declining, so the caller never falls
+        # through to value/insert routes that would RE-ADD the very element a
+        # previous fix just removed (the <Nm>Sample Name</Nm> resurrection bug).
+        explicit_rule = bool(is_bicfi_excl or is_anybic_excl or is_name_addr)
+        if (not explicit_rule
                 and re.search(r"element '(Nm|PstlAdr|CtryOfRes|CtrySubDvsn)' is not expected", msg, re.I)
                 and not re.search(r"following element", msg, re.I)):
             is_bicfi_excl = True
@@ -7619,7 +9139,11 @@ class FixSuggester:
                        if local(el.tag) in containers and has_desc(el, id_tag)
                        and any(child(el, t) is not None for t in remove_tags)]
             target = self._pick_nearest(targets, line_hint)
-            return emit(target) if target is not None else None
+            fixed = emit(target) if target is not None else None
+            if fixed is not None:
+                return fixed
+            return (FixSuggestion("", "", "", code, msg, "low")
+                    if explicit_rule else None)
 
         # ── Name/Address coexistence: blocks with exactly one of the pair ─────
         a = coex_tags[0]
@@ -7627,7 +9151,11 @@ class FixSuggester:
         targets = [el for el in root.iter()
                    if (child(el, a) is not None) != (child(el, b) is not None)]
         target = self._pick_nearest(targets, line_hint)
-        return emit(target) if target is not None else None
+        fixed = emit(target) if target is not None else None
+        if fixed is not None:
+            return fixed
+        return (FixSuggestion("", "", "", code, msg, "low")
+                if explicit_rule else None)
 
     def _fix_attribute(self, el: etree._Element, attr_name: str, code: str,
                         msg: str, fix_hint: str, _ns: str = "") -> FixSuggestion:
@@ -7669,7 +9197,7 @@ class FixSuggester:
             if new_value is None:
                 _direct_m = re.search(
                     r"(?:expected\s+currency|transaction\s+currency\s+(?:is\s+)?|"
-                    r"update\s+(?:\S+\s+)?to\s+|set\s+(?:\S+\s+)?to\s+)'?([A-Z]{3})'?",
+                    r"update\s+(?:\S+\s+)?to\s+|set\s+(?:\S+\s+)?to\s+)\s*'?([A-Z]{3})'?",
                     _combined, re.I,
                 )
                 if _direct_m:
@@ -7924,7 +9452,9 @@ class FixSuggester:
             elif _parname == "LclInstrm":
                 _cl, _prefs = "local_instrument", ("CORE", "INST", "B2B")
             elif _parname == "SvcLvl":
-                _cl, _prefs = "service_level", ("SEPA", "NURG", "URGP", "SDVA")
+                # SEPA omitted from defaults — EUR-only (CBPR_COV_R32); a blind
+                # enum repair must not introduce a SEPA/non-EUR violation.
+                _cl, _prefs = "service_level", ("SDVA", "NURG", "URGP", "G001")
             elif _parname == "Rsn" and _gpname == "CxlRsnInf":
                 _cl, _prefs = "cancellation_reason", ("DUPL", "CUST", "NARR", "FRAD", "CNCL")
             elif _parname == "Rsn" and _gpname in ("RtrInf", "StsRsnInf"):
@@ -8375,7 +9905,7 @@ class FixSuggester:
             except Exception:
                 root = None
             if root is not None:
-                TX_TAGS = {"CdtTrfTxInf", "DrctDbtTxInf", "TxInfAndSts", "PmtInf", "TxInf"}
+                TX_TAGS = {"CdtTrfTxInf", "DrctDbtTxInf", "TxInfAndSts", "TxInf"}
                 if el_local == "NbOfTxs":
                     count = sum(
                         1 for n in root.iter()
@@ -8646,6 +10176,13 @@ class FixSuggester:
                     except Exception:
                         _dup_root = _dup_xml = None
                     if _dup_root is not None:
+                        # Cross-parent duplicates of IBAN/Id are usually repair
+                        # artifacts injected INTO a simple-type leaf (Othr/Id
+                        # carrying an <IBAN> child) — clean those first.
+                        _leaf_fix = self._fix_elements_inside_simple_leaf(
+                            _dup_root, _dup_xml, code, msg)
+                        if _leaf_fix is not None:
+                            return _leaf_fix
                         _wrap_msg = f"The element '{dup}' is not expected at this position."
                         _wrap = self._try_wrap_orphaned_block(_dup_root, _dup_xml,
                                                               code, _wrap_msg)
@@ -8792,21 +10329,157 @@ class FixSuggester:
                     return FixSuggestion(xpath, original_fragment,
                                          self._serialize(el_copy), code, msg, "high")
 
+        # Cross-message borrow: when THIS message's KB documents no recipe for the
+        # error, surface a sibling message family's documented fix (advisory only).
+        cross_fixes: list = []
+        if not kb_fixes and not list(el):
+            cross_fixes = _cross_message_possible_fixes(code, el_local)
+
+        # Parent/sibling context: the ordered child tags already present in the
+        # element's parent, so the model places a returned fragment correctly and
+        # never re-introduces a sibling that already exists.
+        parent_ctx = self._parent_sibling_context(el)
+
         # Fall through to LLM (enriched with the KB's documented fix recipes)
-        return self._llm_fallback(xpath, original_fragment, code, msg, fix_hint, kb_fixes)
+        return self._llm_fallback(xpath, original_fragment, code, msg, fix_hint,
+                                  kb_fixes, cross_fixes, parent_ctx)
+
+    def _parent_sibling_context(self, el: etree._Element) -> str:
+        """One-line description of the element's parent and its existing children
+        in document order — context that lets the LLM keep sibling ordering and
+        avoid duplicating an element that is already present. Empty when there is
+        no parent or no siblings to report."""
+        try:
+            parent = el.getparent()
+            if parent is None:
+                return ""
+            pname = etree.QName(parent.tag).localname
+            kids = [etree.QName(c.tag).localname for c in parent
+                    if isinstance(c.tag, str)]
+            if not kids:
+                return ""
+            return (f"Parent <{pname}> currently contains these children in order: "
+                    + ", ".join(kids))
+        except Exception:
+            return ""
+
+    # Documents larger than this are never sent for whole-doc LLM repair: the
+    # answer would risk output-token truncation, which the 80% size guard in
+    # apply() would then reject anyway.
+    _WHOLE_DOC_LLM_MAX_CHARS = 20000
+
+    def _llm_whole_doc_repair(self, xml: str, code: str,
+                              msg: str) -> Optional[FixSuggestion]:
+        """Last-resort LLM repair of a document that cannot be parsed at all.
+
+        Runs only after _try_xml_recovery failed, so no element-level handler
+        can operate. Sends the FULL document (never a truncated fragment) and
+        accepts the answer only when it parses strictly, keeps the original
+        root element, and is not significantly shorter than the original —
+        apply() rejects whole-doc replacements that shrink more than 20%.
+        Returns None when no acceptable repair was produced.
+        """
+        if not xml.strip() or len(xml) > self._WHOLE_DOC_LLM_MAX_CHARS:
+            return None
+        _root_m = re.search(r"<\s*(?:[\w.-]+:)?([A-Za-z][\w.-]*)", xml)
+        orig_root = _root_m.group(1) if _root_m else ""
+        system = (
+            "You are an XML repair expert for ISO 20022 / CBPR+ messages. "
+            "The document you receive is malformed and cannot be parsed. "
+            "Return the ENTIRE corrected document with every element and text "
+            "value preserved, fixing ONLY the markup: balance/close tags, fix "
+            "mismatched or misspelled closing tags, escape stray & < > "
+            "characters, fix attribute quoting, remove illegal characters. "
+            "Do NOT add, remove, reorder or rename elements. Do NOT change "
+            "any text values. Return ONLY the XML — no prose, no markdown "
+            "fences."
+        )
+        scrubbed_xml, _pii_map = pii_scrub.scrub(xml)
+        user = f"Error ({code}): {msg}\n\nMalformed document:\n{scrubbed_xml}"
+
+        # Same negative cache as _llm_fallback: an unchanged broken doc that
+        # already exhausted repair attempts must not re-hit the API on every
+        # auto-fix round / batch issue.
+        _neg_key = (system, user)
+        if _LLM_NEG_CACHE.get(_neg_key):
+            _LLM_NEG_CACHE.move_to_end(_neg_key)
+            return None
+
+        try:
+            fix_metrics.record_llm_invoked()
+        except Exception:
+            pass
+
+        accepted: Optional[str] = None
+        last_available = False
+        for _temp in (0.0, 0.4):
+            text, available = complete(
+                system, user,
+                max_tokens=min(12000, max(1000, len(xml) // 2)),
+                temperature=_temp,
+            )
+            last_available = available
+            if not available or not text.strip():
+                break
+            frag = re.sub(r"^```[a-z]*\n?", "", text.strip(), flags=re.I)
+            frag = re.sub(r"\n?```$",        "", frag,         flags=re.I).strip()
+            frag = pii_scrub.restore(frag, _pii_map)
+            try:
+                _new_root = etree.fromstring(frag.encode("utf-8"))
+            except Exception:
+                continue
+            if orig_root and etree.QName(_new_root.tag).localname != orig_root:
+                continue
+            if len(frag.strip()) < len(xml.strip()) * 0.8:
+                continue  # content lost — apply() would reject it anyway
+            if xml.lstrip().startswith("<?xml") and not frag.lstrip().startswith("<?xml"):
+                _decl_m = re.match(r"\s*(<\?xml[^?]*\?>)", xml)
+                if _decl_m:
+                    frag = _decl_m.group(1) + "\n" + frag
+            accepted = frag
+            break
+
+        if accepted is not None:
+            return FixSuggestion("/", xml, accepted, code, msg, "high")
+        if last_available:
+            _LLM_NEG_CACHE[_neg_key] = True
+            _LLM_NEG_CACHE.move_to_end(_neg_key)
+            if len(_LLM_NEG_CACHE) > _LLM_NEG_CACHE_MAX:
+                _LLM_NEG_CACHE.popitem(last=False)
+            logger.warning(
+                f"[FixSuggester] whole-doc LLM repair produced no valid document for {code}")
+        return None
 
     def _llm_fallback(self, xpath: str, original_fragment: str,
                       code: str, msg: str, fix_hint: str = "",
-                      kb_fixes: Optional[list] = None) -> FixSuggestion:
+                      kb_fixes: Optional[list] = None,
+                      cross_fixes: Optional[list] = None,
+                      parent_context: str = "") -> FixSuggestion:
         """Last-resort LLM call with rich context. max_tokens=400, temperature=0."""
         # Build context: include rule hint, codelists, field constraints, deps
         context_lines = []
+
+        # ── Parent/sibling context: existing children + their order ─────────────
+        if parent_context:
+            context_lines.append(
+                parent_context
+                + ". Keep the corrected element consistent with this sibling "
+                  "order and do NOT re-introduce a sibling that is already present."
+            )
 
         # ── Per-message KB (resources/KB/<family>.json): documented fix recipes ──
         if kb_fixes:
             context_lines.append(
                 "CBPR+ KB documented fixes for this field:\n"
                 + "\n".join(f"- {fx}" for fx in kb_fixes[:6]))
+        # ── Cross-message borrow: same error documented under OTHER families ────
+        # Only present when this message's own KB had no recipe. Advisory — the
+        # model must confirm it applies to the current message/namespace.
+        elif cross_fixes:
+            context_lines.append(
+                "Documented fixes for this same error in related ISO 20022 "
+                "message types (verify it applies to THIS message before using):\n"
+                + "\n".join(f"- {fx}" for fx in cross_fixes[:4]))
 
         # ── Enterprise KB: error-specific fix recipe (highest priority context) ──
         if code:
@@ -8897,6 +10570,67 @@ class FixSuggester:
                 if parts:
                     context_lines.append(f"Field constraints for <{target_tag}>: " + ", ".join(parts))
 
+        # ── Per-message KB: enum allow-list, dependency/formal rules, child order ──
+        # The per-message KB carries more than the possible_fixes already passed
+        # in as kb_fixes — surface ALL of it: valid_values enum allow-lists,
+        # cross_tag_dependency_rules, formal rules, and tag_insertion_order.
+        try:
+            _kb_ctx = _KBContext.get(getattr(self, "_kb_family", "") or "")
+        except Exception:
+            _kb_ctx = None
+        if _kb_ctx is not None:
+            if target_tag:
+                _enum = _kb_ctx.valid_codes(target_tag)
+                if _enum:
+                    context_lines.append(
+                        f"KB allowed values for <{target_tag}> (use ONLY these): "
+                        + ", ".join(str(c) for c in _enum[:25]))
+                _dep_lines: list = []
+                for _d in _kb_ctx.dependency_rules:
+                    if not isinstance(_d, dict):
+                        continue
+                    _aff = _d.get("affected_tags") or []
+                    _hit = any(str(a).split("/")[-1] == target_tag for a in _aff) \
+                        or target_tag in str(_d.get("rule", ""))
+                    if _hit:
+                        _txt = str(_d.get("rule", "")).strip()
+                        _fx  = str(_d.get("fix", "")).strip()
+                        if _txt:
+                            _dep_lines.append(
+                                f"- {_txt}" + (f" (fix: {_fx})" if _fx else ""))
+                    if len(_dep_lines) >= 4:
+                        break
+                if _dep_lines:
+                    context_lines.append(
+                        "KB cross-tag dependency rules involving this field "
+                        "(the fix must satisfy these):\n" + "\n".join(_dep_lines))
+                _frm_lines = [
+                    f"- {str(_r.get('description', '')).strip()}"
+                    for _r in _kb_ctx.formal_rules
+                    if isinstance(_r, dict)
+                    and target_tag in str(_r.get("description", ""))
+                ][:3]
+                if _frm_lines:
+                    context_lines.append(
+                        "KB formal rules involving this field:\n" + "\n".join(_frm_lines))
+            # Correct child order: for the target's parent (from the xpath), or
+            # for the target itself when the broken element is a container —
+            # prevents the LLM re-introducing sequence errors.
+            _ord_tags = []
+            _xp_parts = [p.split("[")[0] for p in (xpath or "").split("/") if p]
+            if len(_xp_parts) >= 2:
+                _ord_tags.append(_xp_parts[-2])
+            if target_tag:
+                _ord_tags.append(target_tag)
+            for _ot in _ord_tags:
+                _order = _kb_ctx.insertion_order.get(_ot)
+                if _order:
+                    context_lines.append(
+                        f"KB child element order inside <{_ot}> "
+                        "(emit children in exactly this order, skipping absent "
+                        "ones): " + ", ".join(_order))
+                    break
+
         # ── Cross-field dependency context ────────────────────────────────────
         try:
             dep_map = _enterprise_shared("cross_field_dependencies", {})
@@ -8947,6 +10681,17 @@ class FixSuggester:
                     + ", ".join(_bic_entries)
                 )
 
+        # ── Learned-fix context: fixes a user already accepted for this (code, tag) ──
+        try:
+            examples = fix_feedback.accepted_examples(code, target_tag, limit=3)
+            if examples:
+                context_lines.append(
+                    "Previously-accepted fixes for this error (prefer this shape):\n"
+                    + "\n".join(f"- {ex}" for ex in examples)
+                )
+        except Exception:
+            pass
+
         context = "\n".join(context_lines)
         system = (
             "You are an ISO 20022 / CBPR+ XML expert. "
@@ -8959,34 +10704,322 @@ class FixSuggester:
         user = f"Rule code: {code}\nError: {msg}"
         if context:
             user += f"\n\nContext:\n{context}"
-        user += f"\n\nBroken element:\n{original_fragment}"
+        # Scrub PII (IBANs / account numbers) from the broken fragment before it
+        # leaves the process. No-op unless FIXSUGGESTER_SCRUB_PII is enabled.
+        scrubbed_fragment, _pii_map = pii_scrub.scrub(original_fragment)
+        user += f"\n\nBroken element:\n{scrubbed_fragment}"
 
-        text, available = complete(system, user, max_tokens=400)
-        if not available or not text.strip():
-            logger.warning(f"[FixSuggester] LLM unavailable for {code}; returning low-confidence original")
-            return FixSuggestion(xpath, original_fragment, original_fragment, code, msg, "low")
-
-        frag = re.sub(r"^```[a-z]*\n?", "", text.strip(), flags=re.I)
-        frag = re.sub(r"\n?```$",        "", frag,         flags=re.I).strip()
+        # ── Negative-cache short-circuit ──────────────────────────────────────
+        # This exact prompt already exhausted self-consistency with no valid fix
+        # (e.g. an earlier auto-fix round on the same unchanged element). Skip the
+        # API round-trips and return the identical low-confidence decline.
+        _neg_key = (system, user)
+        if _LLM_NEG_CACHE.get(_neg_key):
+            _LLM_NEG_CACHE.move_to_end(_neg_key)
+            return FixSuggestion(xpath, original_fragment, original_fragment,
+                                 code, msg, "low")
 
         try:
+            fix_metrics.record_llm_invoked()
+        except Exception:
+            pass
+
+        # ── Self-consistency: temperature 0 first (deterministic + cached); if the
+        # answer fails structural/constraint validation, resample a couple of times
+        # and keep the first candidate that passes. This only ever runs on the path
+        # that previously returned a low-confidence decline, so it can raise the
+        # hit-rate on hard cases without changing any already-successful outcome.
+        _temps = (0.0, 0.4, 0.7)
+        last_available = False
+        accepted_xml: Optional[str] = None
+        for _i, _temp in enumerate(_temps):
+            text, available = complete(system, user, max_tokens=400, temperature=_temp)
+            last_available = available
+            if not available or not text.strip():
+                break  # API unreachable — no point resampling
+            frag = re.sub(r"^```[a-z]*\n?", "", text.strip(), flags=re.I)
+            frag = re.sub(r"\n?```$",        "", frag,         flags=re.I).strip()
+            frag = pii_scrub.restore(frag, _pii_map)
+            candidate = self._validate_llm_fragment(frag, original_fragment, target_tag)
+            if candidate is not None:
+                accepted_xml = candidate
+                if _i > 0:
+                    try:
+                        fix_metrics.record_self_consistency(True)
+                    except Exception:
+                        pass
+                break
+            if _i == len(_temps) - 1:
+                try:
+                    fix_metrics.record_self_consistency(False)
+                except Exception:
+                    pass
+
+        if accepted_xml is not None:
+            return FixSuggestion(xpath, original_fragment, accepted_xml,
+                                 code, msg, "high")
+
+        if not last_available:
+            logger.warning(f"[FixSuggester] LLM unavailable for {code}; returning low-confidence original")
+        else:
+            # API answered but no candidate passed validation. Remember this exact
+            # prompt so a later round on the same unchanged element declines
+            # instantly instead of resampling. Only cache genuine exhaustion —
+            # never transient unreachability (last_available False above).
+            _LLM_NEG_CACHE[_neg_key] = True
+            _LLM_NEG_CACHE.move_to_end(_neg_key)
+            if len(_LLM_NEG_CACHE) > _LLM_NEG_CACHE_MAX:
+                _LLM_NEG_CACHE.popitem(last=False)
+            logger.warning(f"[FixSuggester] LLM returned no valid fix for {code}; declining")
+        return FixSuggestion(xpath, original_fragment, original_fragment, code, msg, "low")
+
+    def _validate_llm_fragment(self, frag: str, original_fragment: str,
+                               target_tag: str) -> Optional[str]:
+        """Structurally validate an LLM fragment before trusting it.
+
+        Returns the serialised XML when acceptable, else None. Enforces:
+          • well-formed XML,
+          • root local-name matches the broken element (no off-topic answer),
+          • <BIC> renamed to <BICFI> (CBPR+ requirement),
+          • KB field constraints for the target tag (pattern / max_length /
+            enum) — the model is checked against the same rules we already know,
+            so a fix that violates a known constraint is rejected, not shown.
+        """
+        try:
             new_el = etree.fromstring(frag.encode("utf-8"))
-            if original_fragment.strip():
+        except Exception:
+            return None
+        if original_fragment.strip():
+            try:
                 orig_local = etree.QName(
                     etree.fromstring(original_fragment.encode("utf-8")).tag
                 ).localname
                 if etree.QName(new_el.tag).localname != orig_local:
-                    raise ValueError("root tag mismatch")
-            # Rename any <BIC> elements to <BICFI>
-            for _el in new_el.iter():
-                if etree.QName(_el.tag).localname == "BIC":
-                    ns = etree.QName(_el.tag).namespace
-                    _el.tag = f"{{{ns}}}BICFI" if ns else "BICFI"
-            return FixSuggestion(xpath, original_fragment,
-                                  self._serialize(new_el), code, msg, "high")
-        except (etree.XMLSyntaxError, ValueError) as e:
-            logger.warning(f"[FixSuggester] LLM returned invalid XML for {code}: {e}")
-            return FixSuggestion(xpath, original_fragment, original_fragment, code, msg, "low")
+                    return None
+            except Exception:
+                pass
+        for _el in new_el.iter():
+            if isinstance(_el.tag, str) and etree.QName(_el.tag).localname == "BIC":
+                ns = etree.QName(_el.tag).namespace
+                _el.tag = f"{{{ns}}}BICFI" if ns else "BICFI"
+        if target_tag and not self._fragment_satisfies_constraints(new_el, target_tag):
+            return None
+        return self._serialize(new_el)
+
+    def _fragment_satisfies_constraints(self, new_el: etree._Element,
+                                        target_tag: str) -> bool:
+        """Check the target tag's leaf value against KB field constraints.
+        Conservative: returns True whenever there is nothing concrete to fail on
+        (no KB entry, structural element, unparsable pattern)."""
+        try:
+            constraint = _kb_field_constraint(target_tag)
+        except Exception:
+            return True
+        if not isinstance(constraint, dict) or not constraint:
+            return True
+        el = new_el if etree.QName(new_el.tag).localname == target_tag else next(
+            (e for e in new_el.iter()
+             if isinstance(e.tag, str) and etree.QName(e.tag).localname == target_tag),
+            None,
+        )
+        if el is None:
+            return True
+        val = (el.text or "").strip()
+        if not val:
+            return True  # structural element — no leaf value to constrain
+        pat = constraint.get("pattern")
+        if pat:
+            try:
+                if not re.fullmatch(pat, val):
+                    return False
+            except re.error:
+                pass
+        mx = constraint.get("max_length")
+        if isinstance(mx, int) and mx > 0 and len(val) > mx:
+            return False
+        valid = constraint.get("valid")
+        if isinstance(valid, list) and valid and val not in valid:
+            return False
+        return True
+
+    # ── XSD completeness pass ─────────────────────────────────────────────────
+
+    def xsd_completeness_pass(self, xml: str) -> str:
+        """Proactively insert missing mandatory elements and remove excess/invalid
+        elements by scanning the document against its XSD.
+
+        Uses _XsdTypeMap (already loaded from XSD) to enumerate every sequence
+        container's children with minOccurs / maxOccurs.  For each container in the
+        live document:
+          • missing mandatory child (minOccurs >= 1, absent) → _build_child inserts it
+          • excess children beyond maxOccurs → extras removed (keep first N)
+          • simple-type element with child elements (mixed content) → children stripped
+          • empty optional container where mandatory children can't be built → removed
+
+        Only acts on sequence types for insertion/removal (not choice — can't auto-
+        select the right member). Mixed-content and empty-container cleanup is XSD-
+        type-driven. Silently returns original xml if XSD unavailable or parse fails.
+        """
+        try:
+            xsd_path = self._get_xsd_path(xml)
+            tmap = _XsdTypeMap.get(xsd_path) if xsd_path else None
+            if not tmap:
+                return xml
+            parser = etree.XMLParser(remove_blank_text=False, no_network=True, recover=False)
+            try:
+                root = etree.fromstring(xml.encode("utf-8"), parser)
+            except etree.XMLSyntaxError:
+                return xml  # not well-formed — syntax fixer should run first
+            msg_type = _detect_msg_type(xml) or ""
+            changed = False
+
+            def local(tag: str) -> str:
+                return etree.QName(tag).localname if isinstance(tag, str) else ""
+
+            # ── Pass 1: mixed-content cleanup ────────────────────────────────
+            # Simple-type or simpleContent elements must not have child elements.
+            # Pattern: <Id>TEXT<IBAN>VALUE</IBAN></Id> inside Othr — strip the
+            # child elements, keep the text content (plain account ID string).
+            for el in list(root.iter()):
+                if not isinstance(el.tag, str):
+                    continue
+                if len(el) == 0:
+                    continue  # no children — nothing to fix
+                el_path = self._local_name_path(el)
+                el_type = tmap.type_of_path(el_path)
+                if not el_type:
+                    continue
+                kind = tmap.type_info.get(el_type, {}).get("kind", "")
+                if kind not in ("simple", "simpleContent"):
+                    continue
+                # This element should be text-only; child elements are invalid.
+                # Strip all child elements — preserve text content.
+                for child in list(el):
+                    el.remove(child)
+                changed = True
+
+            # ── Pass 2: sequence completeness (insert/remove/clean) ──────────
+            for el in list(root.iter()):
+                if not isinstance(el.tag, str):
+                    continue
+                el_path = self._local_name_path(el)
+                el_type = tmap.type_of_path(el_path)
+                if not el_type:
+                    continue
+                type_info = tmap.type_info.get(el_type, {})
+                if type_info.get("kind") != "sequence":
+                    continue
+                ns = etree.QName(el.tag).namespace or ""
+                children_schema = type_info.get("children", [])
+
+                # Collect which child names are mandatory in this container
+                mandatory_names: set[str] = set()
+                for cs in children_schema:
+                    try:
+                        if int(cs.get("min", "1")) >= 1:
+                            mandatory_names.add(cs["name"])
+                    except (ValueError, TypeError):
+                        pass
+
+                for cs in children_schema:
+                    cname = cs["name"]
+                    try:
+                        min_int = int(cs.get("min", "1"))
+                        max_raw = cs.get("max", "1")
+                        max_int = 9999 if max_raw == "unbounded" else int(max_raw)
+                    except (ValueError, TypeError):
+                        continue
+
+                    existing = [c for c in el if isinstance(c.tag, str) and local(c.tag) == cname]
+                    count = len(existing)
+
+                    # Remove excess beyond maxOccurs (keep the first max_int)
+                    if max_int < 9999 and count > max_int:
+                        for extra in existing[max_int:]:
+                            el.remove(extra)
+                        changed = True
+                        count = max_int
+
+                    # Insert missing mandatory elements
+                    if min_int >= 1 and count == 0:
+                        built = self._build_child(
+                            cname, "", ns, tmap,
+                            path_parts=el_path + [cname],
+                            root=root, msg_type=msg_type,
+                        )
+                        if built is None:
+                            continue
+                        idx = self._find_insert_index(el, cname, tmap, parent_path=el_path)
+                        if idx is None:
+                            el.append(built)
+                        else:
+                            el.insert(idx, built)
+                        changed = True
+
+            # ── Pass 3: remove empty optional containers ──────────────────────
+            # An element that is optional in its parent (min=0) AND completely
+            # empty (no children, no text) is a placeholder/artefact — remove it
+            # when either:
+            #   a) its own type requires mandatory children (incomplete skeleton), OR
+            #   b) it is a CashAccount-type element (Acct) — these are always
+            #      meaningless when empty (the XSD may declare Id as optional, but
+            #      an account with zero identification is invalid in practice).
+            for el in list(root.iter()):
+                if not isinstance(el.tag, str):
+                    continue
+                if len(el) > 0 or (el.text or "").strip():
+                    continue  # has content — leave alone
+                parent = el.getparent()
+                if parent is None:
+                    continue
+                # Check if this element is optional in its parent schema
+                parent_path = self._local_name_path(parent)
+                parent_type = tmap.type_of_path(parent_path)
+                if not parent_type:
+                    continue
+                parent_info = tmap.type_info.get(parent_type, {})
+                if parent_info.get("kind") != "sequence":
+                    continue
+                el_local = local(el.tag)
+                cs_match = next(
+                    (c for c in parent_info.get("children", []) if c["name"] == el_local),
+                    None,
+                )
+                if cs_match is None:
+                    continue
+                try:
+                    el_min_in_parent = int(cs_match.get("min", "1"))
+                except (ValueError, TypeError):
+                    continue
+                if el_min_in_parent >= 1:
+                    continue  # mandatory in parent — don't remove
+                # Condition a): own type requires mandatory children
+                el_path = self._local_name_path(el)
+                el_type = tmap.type_of_path(el_path)
+                el_type_info = tmap.type_info.get(el_type or "", {})
+                el_mandatory_children = [
+                    c["name"] for c in el_type_info.get("children", [])
+                    if c.get("min", "1") not in ("0",) and c.get("min", "1") != 0
+                ]
+                # Condition b): empty CashAccount-type element (Acct suffix)
+                is_empty_acct = (
+                    el_local.endswith("Acct")
+                    and (el_type or "").startswith("CashAccount")
+                )
+                if el_mandatory_children or is_empty_acct:
+                    parent.remove(el)
+                    changed = True
+
+            if not changed:
+                return xml
+            fixed = etree.tostring(root, encoding="unicode", pretty_print=True)
+            decl_m = re.match(r"(<\?xml[^?]*\?>)", xml.strip())
+            if decl_m:
+                fixed = decl_m.group(1) + "\n" + fixed
+            return fixed
+        except Exception as e:
+            logger.debug(f"[xsd_completeness_pass] skipped: {e}")
+            return xml
 
     # ── Batch suggestion ──────────────────────────────────────────────────────
 
@@ -9097,6 +11130,66 @@ class FixSuggester:
         fixed = re.sub(pattern, '&amp;', xml)
         return fixed if fixed != xml else None
 
+    def _try_surgical_missing_opening_tag_fix(self, xml: str, msg: str) -> Optional[str]:
+        """
+        Surgical repair for a missing OPENING tag (the inverse of
+        _try_surgical_unclosed_tag_fix, which fixes a missing CLOSING tag).
+
+        lxml reports both situations with the identical message shape:
+          "Unclosed tag <PmtId> at line 34. The tag <PmtId> must be closed
+           with </PmtId> before the closing tag </EndToEndId> at line 36."
+
+        Here <PmtId> itself is fine — the real defect is that <EndToEndId>
+        was never opened, so its orphaned </EndToEndId> forces lxml to close
+        the still-open <PmtId> early (and reparents PmtId's remaining
+        children as PmtId's siblings, producing duplicate-tag errors on
+        later rounds).
+
+        Distinguish from a genuinely-missing closing tag by counting
+        <conflict_tag>/</conflict_tag> occurrences in the whole document: if
+        there are MORE closes than opens, the orphaned close has no matching
+        open anywhere — insert <conflict_tag> immediately before the
+        orphaned text on its line, restoring the original structure.
+        """
+        m = re.search(
+            r"Unclosed\s+tag\s+<?([\w:]+)>?.*?"
+            r"before\s+the\s+closing\s+tag\s+</?([\w:]+)>?.*?at\s+line\s+(\d+)",
+            msg, re.I | re.S,
+        )
+        if not m:
+            return None
+
+        conflict_tag = m.group(2)
+        conflict_ln = int(m.group(3))
+
+        n_open = len(re.findall(r"<" + re.escape(conflict_tag) + r"(?=[\s/>])", xml))
+        n_close = len(re.findall(r"</" + re.escape(conflict_tag) + r"\s*>", xml))
+        if n_close <= n_open:
+            return None  # not an orphaned-close situation; let Stage 2 handle it
+
+        lines = xml.splitlines(keepends=True)
+        if not (1 <= conflict_ln <= len(lines)):
+            return None
+        target_line = lines[conflict_ln - 1]
+
+        # [optional preceding tags/whitespace][orphaned text]</conflict_tag>
+        m2 = re.match(
+            r"^(.*?)([^<>\r\n]+)(</" + re.escape(conflict_tag) + r"\s*>)",
+            target_line,
+        )
+        if not m2 or not m2.group(2).strip():
+            return None
+
+        fixed_line = (m2.group(1) + f"<{conflict_tag}>" + m2.group(2) + m2.group(3)
+                       + target_line[m2.end():])
+        fixed_lines = lines[:conflict_ln - 1] + [fixed_line] + lines[conflict_ln:]
+        fixed_xml = "".join(fixed_lines)
+        try:
+            etree.fromstring(fixed_xml.encode("utf-8"))
+            return fixed_xml
+        except etree.XMLSyntaxError:
+            return None
+
     def _try_surgical_unclosed_tag_fix(self, xml: str, msg: str) -> Optional[str]:
         """
         Surgical Stage-0 repair for a missing closing tag.
@@ -9181,7 +11274,8 @@ class FixSuggester:
             _cleaned = self._strip_split_tags(_partial) or _partial
             _balanced = self._balance_xml_tags(_cleaned)
             if _balanced is not None and _balanced != xml:
-                return _balanced
+                _normalized = self._normalize_busmsgenvlp(_balanced)
+                return _normalized if _normalized != _balanced else _balanced
 
         return None
 
@@ -9716,6 +11810,129 @@ class FixSuggester:
             # stages (balance engine, surgical fix) will handle remaining issues
             return fixed if fixed != xml else None
 
+    # Header tags whose damage the generic balancer cannot reliably reconstruct,
+    # because <Fr> and <To> share identical FIId/FinInstnId/BICFI nesting so an
+    # orphaned close is ambiguous, and the AppHdr scalar fields often lose their
+    # opening tags together (a cluster of orphaned closes). Used to gate the
+    # canonical-rebuild stage so it never touches a body-only syntax error.
+    _APPHDR_REBUILD_TAGS = (
+        "AppHdr", "Fr", "To", "FIId", "FinInstnId", "BICFI",
+        "BizMsgIdr", "MsgDefIdr", "BizSvc", "CreDt", "CreDtTm",
+        "Document",
+    )
+
+    def _rebuild_canonical_apphdr(self, xml: str, msg: str) -> Optional[str]:
+        """Reconstruct a structurally-broken CBPR+ AppHdr from surviving data.
+
+        The CBPR+ Business Application Header is fixed boilerplate:
+
+            <AppHdr xmlns="…head.001…">
+              <Fr><FIId><FinInstnId><BICFI>{fr}</BICFI></FinInstnId></FIId></Fr>
+              <To><FIId><FinInstnId><BICFI>{to}</BICFI></FinInstnId></FIId></To>
+              <BizMsgIdr>…</BizMsgIdr><MsgDefIdr>…</MsgDefIdr>
+              <BizSvc>…</BizSvc><CreDt>…</CreDt>
+            </AppHdr>
+
+        Only the two BICs and the scalar values carry data; every wrapper tag is
+        boilerplate. So when heavy damage leaves the header unparseable (deleted
+        Fr/To/FIId opens, or a cluster of orphaned BizMsgIdr/MsgDefIdr closes), we
+        extract the surviving values and re-emit a clean canonical header.
+
+        GATED: caller only invokes this for a parse-failure whose error is in the
+        header region, and the method itself returns None unless it finds the
+        AppHdr open tag, a region boundary, and at least one BIC — so a healthy or
+        body-only document is never altered.
+        """
+        ah_open_m = re.search(r"<AppHdr\b[^>]*>", xml)
+        if not ah_open_m:
+            # AppHdr open tag was deleted; recover using </AppHdr> as boundary.
+            ah_close_m = re.search(r"</AppHdr\s*>", xml)
+            if not ah_close_m:
+                return None
+            envlp_m = re.search(r"<BusMsgEnvlp\b[^>]*>", xml)
+            insert_at = envlp_m.end() if envlp_m else 0
+            ah_open = '<AppHdr xmlns="urn:iso:std:iso:20022:tech:xsd:head.001.001.02">'
+            content_start = insert_at
+            after = xml[content_start:]
+            # Region is everything between BusMsgEnvlp end and </AppHdr>.
+            pos_close = after.find("</AppHdr")
+            if pos_close == -1:
+                return None
+            region = after[:pos_close]
+            gt = after.find(">", pos_close)
+            if gt == -1:
+                return None
+            splice_end = content_start + gt + 1
+        else:
+            ah_open = ah_open_m.group(0)
+            insert_at = ah_open_m.start()
+            content_start = ah_open_m.end()
+            after = xml[content_start:]
+
+            # Region boundary: earliest of </AppHdr> or the start of <Document>.
+            pos_close = after.find("</AppHdr")
+            doc_m = re.search(r"<(?:\w+:)?Document\b", after)
+            pos_doc = doc_m.start() if doc_m else -1
+            cands = [p for p in (pos_close, pos_doc) if p != -1]
+            if not cands:
+                return None
+            b = min(cands)
+            region = after[:b]
+            if b == pos_close:
+                gt = after.find(">", pos_close)
+                if gt == -1:
+                    return None
+                splice_end = content_start + gt + 1  # consume the </AppHdr>
+            else:
+                splice_end = content_start + b       # boundary is <Document>; we add close
+
+        # ── Extract surviving data ────────────────────────────────────────────
+        bics = re.findall(r"<BICFI>\s*([A-Z0-9]{8,11})\s*</BICFI>", region)
+        if len(bics) < 2:
+            # Tolerate damaged BICFI tags: take any BIC-format token in the region.
+            loose = re.findall(r"\b([A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)\b", region)
+            for tok in loose:
+                if tok not in bics:
+                    bics.append(tok)
+        if not bics:
+            return None  # nothing BIC-like survived — don't fabricate a header
+        fr_bic = bics[0]
+        to_bic = bics[1] if len(bics) > 1 else bics[0]
+
+        def _scalar(tag: str) -> Optional[str]:
+            for pat in (rf"<{tag}>\s*([^<>]+?)\s*</{tag}>",   # both tags intact
+                        rf"<{tag}>\s*([^<>]+)",               # open only
+                        rf"([^<>\n]+?)\s*</{tag}>"):          # close only
+                m = re.search(pat, region)
+                if m and m.group(1).strip():
+                    return m.group(1).strip()
+            return None
+
+        biz = _scalar("BizMsgIdr")
+        mdi = _scalar("MsgDefIdr") or (re.search(r"<MsgDefIdr>([^<]+)", xml) or [None, None])[1]
+        svc = _scalar("BizSvc")
+        date_tag = "CreDtTm" if re.search(r"</?CreDtTm\b", region) else "CreDt"
+        cre = _scalar("CreDtTm") or _scalar("CreDt")
+
+        # ── Emit canonical header (omit absent optional scalars) ──────────────
+        nl = "\n        "
+        lines = [
+            f"{nl}<Fr><FIId><FinInstnId><BICFI>{fr_bic}</BICFI></FinInstnId></FIId></Fr>",
+            f"{nl}<To><FIId><FinInstnId><BICFI>{to_bic}</BICFI></FinInstnId></FIId></To>",
+        ]
+        if biz:
+            lines.append(f"{nl}<BizMsgIdr>{biz}</BizMsgIdr>")
+        if mdi:
+            lines.append(f"{nl}<MsgDefIdr>{mdi}</MsgDefIdr>")
+        if svc:
+            lines.append(f"{nl}<BizSvc>{svc}</BizSvc>")
+        if cre:
+            lines.append(f"{nl}<{date_tag}>{cre}</{date_tag}>")
+        new_apphdr = ah_open + "".join(lines) + "\n    </AppHdr>"
+
+        fixed = xml[:insert_at] + new_apphdr + xml[splice_end:]
+        return fixed if fixed != xml else None
+
     def _try_xml_recovery(self, xml: str, code: str, msg: str) -> Optional[FixSuggestion]:
         """Attempt document-level XML syntax repairs. Returns FixSuggestion("/", ...) or None."""
         # Stage -1: entirely missing XML declaration — just prepend it.
@@ -9756,6 +11973,13 @@ class FixSuggester:
                 _final_close = self._normalize_busmsgenvlp(_final_close)
                 return FixSuggestion("/", xml, _final_close, code, msg, "high")
 
+        # Stage 1.7: surgical missing-OPENING-tag repair. Must run before
+        # Stage 2, which assumes the "Unclosed tag <X> ... before </Y>"
+        # message means X is missing its close — here Y is missing its open.
+        fixed = self._try_surgical_missing_opening_tag_fix(xml, msg)
+        if fixed is not None:
+            return FixSuggestion("/", xml, fixed, code, msg, "high")
+
         # Stage 2: surgical unclosed-tag repair
         fixed = self._try_surgical_unclosed_tag_fix(xml, msg)
         if fixed is not None:
@@ -9784,6 +12008,31 @@ class FixSuggester:
         if _bare_lt_fixed != xml:
             xml = _bare_lt_fixed
 
+        # Stage 2.26: open tag whose '>' was deleted along with its content and
+        # own closing tag, immediately followed by whitespace/newline then
+        # '/OtherTag>' (a closing tag missing its '<'). e.g.
+        #   <RmtInf>
+        #       <Ustrd
+        #   /RmtInf></DrctDbtTxInf>
+        # lxml fails with "error parsing attribute name" because '<Ustrd' has no
+        # '>' and 'RmtInf' (after the stray '/') looks like a bogus attribute.
+        # Nothing recoverable remains of <Ustrd>'s content, so collapse it to an
+        # empty self-closing element and restore the '<' on the closing tag that
+        # follows: '<Ustrd/></RmtInf>'. A later round may flag the now-empty
+        # element on schema grounds (e.g. Max140Text minLength) — that is a
+        # separate, normal fixable issue, not a well-formedness one.
+        _open_tag_eaten_fixed = re.sub(
+            r'<([A-Za-z][\w]*)((?:[ \t]*\r?\n[ \t]*)+)/([A-Za-z][\w]*)>',
+            r'<\1/></\3>',
+            xml,
+        )
+        if _open_tag_eaten_fixed != xml:
+            try:
+                etree.fromstring(_open_tag_eaten_fixed.encode("utf-8"))
+                return FixSuggestion("/", xml, _open_tag_eaten_fixed, code, msg, "high")
+            except etree.XMLSyntaxError:
+                xml = _open_tag_eaten_fixed
+
         # Stage 2.3: strip split/truncated tags whose name spans a newline.
         # e.g. ``</CdtrAg\n\t\t\t\t\tNm>`` — the partial closing tag is not a
         # valid XML token so neither lxml nor _balance_xml_tags can tokenize it.
@@ -9804,6 +12053,24 @@ class FixSuggester:
             # version so at least the untokenizable fragment is removed.
             if _split_stripped != xml:
                 return FixSuggestion("/", xml, _split_stripped, code, msg, "high")
+
+        # Stage 2.4: canonical AppHdr rebuild.
+        # When the unclosed-tag error names a header element (AppHdr/Fr/To/FIId/
+        # FinInstnId/BICFI or an AppHdr scalar), the damage is in the CBPR+
+        # Business Application Header — fixed boilerplate the generic balancer
+        # can't reconstruct (Fr/To share identical nesting; scalar opens are
+        # deleted in clusters). Rebuild it from the surviving BICs + scalar values,
+        # then hand the result to the balance engine to clean up any body damage.
+        if re.search(
+            r"Unclosed tag <(" + "|".join(self._APPHDR_REBUILD_TAGS) + r")\b", msg or ""
+        ):
+            _ah = self._rebuild_canonical_apphdr(xml, msg)
+            if _ah is not None and _ah != xml:
+                _ah_bal = self._balance_xml_tags(_ah)
+                _ah_final = _ah_bal if _ah_bal is not None else _ah
+                _ah_final = self._normalize_busmsgenvlp(_ah_final)
+                if _ah_final != xml:
+                    return FixSuggestion("/", xml, _ah_final, code, msg, "high")
 
         # Stage 2.5: full tag-balance engine
         # Scans every tag token across the entire document, detects any orphaned
@@ -9860,6 +12127,85 @@ class FixSuggester:
             issue_message=message,
             confidence="unavailable",
         )
+
+    # ── Closed-loop verification ──────────────────────────────────────────────
+    def suggest_verified(self, xml: str, issue: dict) -> FixSuggestion:
+        """suggest() plus a synchronous closed-loop self-check.
+
+        Used by the interactive single-issue endpoint. The verification result
+        is attached as `.verified`; `.confidence` is deliberately LEFT UNCHANGED
+        so every existing consumer (the auto-fix loop, the golden corpus, the
+        batch path) behaves exactly as before. Verification is best-effort and
+        can never raise out of here.
+        """
+        sug = self.suggest(xml, issue)
+        try:
+            sug.verified = self._self_verify(xml, sug)
+        except Exception as e:
+            logger.debug(f"[FixSuggester] self-verify failed (ignored): {e}")
+            sug.verified = None
+        try:
+            fix_metrics.record_suggestion(sug.confidence, sug.verified)
+        except Exception:
+            pass
+        return sug
+
+    def _compiled_schema(self, xsd_path: str):
+        sch = _XSD_SCHEMA_CACHE.get(xsd_path)
+        if sch is None:
+            sch = etree.XMLSchema(etree.parse(xsd_path))
+            _XSD_SCHEMA_CACHE[xsd_path] = sch
+        return sch
+
+    def _xsd_error_count(self, xml_str: str, schema) -> Optional[int]:
+        """Validate the Document body and return its XSD error count, or None
+        when the doc can't be parsed/located (so the caller can abstain)."""
+        try:
+            doc = etree.fromstring(xml_str.encode("utf-8"),
+                                   parser=etree.XMLParser(recover=True))
+        except Exception:
+            return None
+        body = doc if etree.QName(doc.tag).localname == "Document" \
+            else doc.find(".//{*}Document")
+        if body is None:
+            return None
+        schema.validate(body)
+        return len(schema.error_log)
+
+    def _self_verify(self, original_xml: str, sug: FixSuggestion) -> Optional[bool]:
+        """Apply the suggestion to a throwaway copy and confirm it is safe.
+
+        True  → applies cleanly, stays well-formed, and does NOT increase the
+                XSD error count (a duplicate that breaches maxOccurs, or any new
+                schema error, shows up here as a higher count → not verified).
+        False → fails to apply, breaks well-formedness, or worsens XSD validity.
+        None  → not judgeable (no actionable fragment, or no XSD on disk).
+        Side-effect-free: operates on returned strings only.
+        """
+        if (sug.confidence not in ("high", "low")
+                or not sug.xpath or not sug.fragment_xml
+                or sug.fragment_xml == sug.original_fragment):
+            return None
+        try:
+            patched = self.apply(original_xml, sug.xpath, sug.fragment_xml)
+        except Exception:
+            return False                      # a fix that won't apply isn't verified
+        try:
+            etree.fromstring(patched.encode("utf-8"))
+        except Exception:
+            return False                      # broke well-formedness
+        xsd_path = self._get_xsd_path(patched)
+        if not xsd_path:
+            return True                       # structurally sound; no schema to judge deeper
+        try:
+            schema = self._compiled_schema(xsd_path)
+            before = self._xsd_error_count(original_xml, schema)
+            after = self._xsd_error_count(patched, schema)
+            if before is None or after is None:
+                return True
+            return after <= before
+        except Exception:
+            return None
 
     def apply(self, xml: str, xpath: str, fragment_xml: str) -> str:
         """

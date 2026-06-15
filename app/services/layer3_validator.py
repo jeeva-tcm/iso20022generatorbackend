@@ -558,7 +558,28 @@ class Layer3Mixin:
             # Count only exact occurrences of the element itself, not its descendants.
             # A key matches if it IS the element (with optional index) but NOT a child path.
             pattern = re.compile(f"^{regex_path}(\\[\\d+\\])?$")
-            return len([k for k in data.keys() if pattern.match(k)])
+            exact = [k for k in data.keys() if pattern.match(k)]
+            if exact:
+                return len(exact)
+            # The element is a container with no text of its own (e.g. ChrgsInf,
+            # whose value lives entirely in its children) — no key for the
+            # element itself exists in `data`, only for its descendants.
+            # Count distinct occurrences via the indices on its children's paths.
+            child_pattern = re.compile(f"^{regex_path}(?:\\[(?P<idx>\\d+)\\])?[.@]")
+            indices = set()
+            found_unindexed = False
+            for k in data.keys():
+                cm = child_pattern.match(k)
+                if not cm:
+                    continue
+                idx = cm.group("idx")
+                if idx is not None:
+                    indices.add(int(idx))
+                else:
+                    found_unindexed = True
+            if indices:
+                return len(indices)
+            return 1 if found_unindexed else 0
 
         def exists_any_paths(base_path, elements):
             base_path = base_path.strip("\"'")
@@ -760,11 +781,27 @@ class Layer3Mixin:
                 return "True" if any(re.match(f"^{regex_path}(\\[\\d+\\])?(\\..*)?$", k) for k in data.keys()) else "False"
             return match.group(0)
 
+        def count_sub(match):
+            path_expr = match.group(1).strip()
+            # Already a quoted string literal — leave as-is.
+            if (len(path_expr) >= 2
+                    and path_expr[0] == path_expr[-1]
+                    and path_expr[0] in ("'", '"')):
+                return match.group(0)
+            # Quote bare literal dotted paths (e.g. count(Document.X.Y)) so
+            # eval() doesn't try to resolve `Document` / `FIToFICstmrCdtTrf`
+            # etc as names (which raised NameError, was swallowed, and made
+            # these rules always report a false-positive failure).
+            if re.match(r'^[A-Za-z0-9._\[\]]+$', path_expr):
+                return f"count('{path_expr}')"
+            return match.group(0)
+
         try:
             # Pre-evaluate robust_exists('literal.path') first so the variable
             # substitution loop cannot corrupt the path string inside the quotes.
             temp_expr = re.sub(r'robust_exists\(([^)]+)\)', robust_exists_sub, expr)
             temp_expr = re.sub(r'(?<!robust_)exists\(([^)]+)\)', exists_sub, temp_expr)
+            temp_expr = re.sub(r'count\(([^)]+)\)', count_sub, temp_expr)
             
             mandate_date_str = self.config.get("validation_rules", {}).get("cbpr_plus_mandate_date", "2026-11-01T00:00:00")
             try:
@@ -852,7 +889,7 @@ class Layer3Mixin:
         # 1. Search for currency in common locations (InstdAmt, IntrBkSttlmAmt)
         # We prioritize tags in the same transaction block if possible
         tx_path = iban_key.rsplit('.DbtrAcct', 1)[0] if '.DbtrAcct' in iban_key else None
-        
+
         if tx_path:
              for tag in ["InstdAmt", "IntrBkSttlmAmt", "Amt.InstdAmt"]:
                   k = f"{tx_path}.{tag}@Ccy"
@@ -860,15 +897,30 @@ class Layer3Mixin:
                        currency = data[k]
                        ccy_key = k
                        break
-        
-        # Fallback: Search anywhere
-        if not currency:
+
+        # Fallback: search for an amount WITHIN the IBAN's own transaction branch
+        # only. A cross-branch fallback is wrong for cover (pacs.009 COV) messages:
+        # the underlying customer DbtrAcct (e.g. a CH IBAN under UndrlygCstmrCdtTrf)
+        # has no amount of its own, and matching it against the interbank cover
+        # IntrBkSttlmAmt makes the cover and underlying debtor IBANs demand two
+        # different currencies for the SAME amount field — an unsatisfiable
+        # conflict that oscillates the auto-fixer forever. If no amount exists in
+        # this IBAN's scope, skip the check rather than borrow an unrelated one.
+        if not currency and tx_path:
+            for k, v in data.items():
+                if (k.startswith(tx_path + ".") and k.endswith("@Ccy")
+                        and ("InstdAmt" in k or "IntrBkSttlmAmt" in k)):
+                    currency = v
+                    ccy_key = k
+                    break
+        elif not currency and tx_path is None:
+            # IBAN not under a DbtrAcct path we recognise — fall back to any amount.
             for k, v in data.items():
                 if k.endswith("@Ccy") and ("InstdAmt" in k or "IntrBkSttlmAmt" in k):
                     currency = v
                     ccy_key = k
                     break
-        
+
         if not currency:
             return True # Cannot validate if currency attribute is missing from standard tags
 

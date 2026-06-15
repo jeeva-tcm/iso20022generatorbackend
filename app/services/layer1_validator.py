@@ -116,11 +116,14 @@ class Layer1Mixin:
                     "Ensure your message is wrapped in a standard ISO 20022 container."
                 ))
             else:
-                # 8. Namespace Validation
+                # 8. Namespace Validation — check first Document/BusMsg only.
+                # 2nd+ Documents in a BulkMessages file are validated per-node in Layer 2
+                # (which flags DOC_NAMESPACE_MISSING there). Checking all here would cause
+                # a Layer 1 failure that skips Layer 2 for the whole bulk.
                 payload_node = root.xpath("//*[local-name()='Document' or local-name()='BusMsg']")
                 doc_node = payload_node[0] if payload_node else iso_nodes[0]
                 ns = doc_node.nsmap.get(None) or ""
-                
+
                 if not re.match(r'^urn:iso:std:iso:20022:tech:xsd:[a-z]{4}\.\d{3}\.\d{3}\.\d{2}$', ns) and "head.001" not in ns:
                     report.add_issue(ValidationIssue(
                         "ERROR", 1, "Wrong Namespace", str(doc_node.sourceline or 1),

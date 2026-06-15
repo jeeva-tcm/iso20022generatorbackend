@@ -408,6 +408,15 @@
             "fix": "Insert the matching end tag immediately before the conflicting closing tag named in the error message. The lxml parser names the unclosed tag and the line of the conflicting close — use both to place </X> precisely. Self-close only if the element is genuinely empty and the schema permits.",
             "auto_fixable": true
         },
+        "WF_OPEN_TAG_SWALLOWED": {
+            "root_cause": "A start tag's '>' was deleted along with the element's content and its own end tag, leaving '<TagName' run directly into whitespace/newline then '/OtherTag>' (a sibling/parent close tag missing its '<'). e.g. '<Ustrd\\n            /RmtInf></DrctDbtTxInf>'. lxml reports 'error parsing attribute name' because '<TagName' has no '>' and the text after the stray '/' looks like a bogus attribute.",
+            "detect": "Parser error 'error parsing attribute name' (or 'expected attribute name'). The line contains '<TagName' with no '>' before end-of-line, followed on the next line by '/OtherTag>'.",
+            "fix": "Nothing recoverable remains of <TagName>'s content — collapse to an empty self-closing element and restore the '<' on the close tag that follows: '<TagName/></OtherTag>'. The now-empty element may then fail schema validation if its type forbids empty content (e.g. Max140Text minLength=1) — fix that as a normal, separate content-population step in the next round.",
+            "examples": [
+                "'<Ustrd\\n    /RmtInf></DrctDbtTxInf>' → '<Ustrd/></RmtInf></DrctDbtTxInf>', then populate <Ustrd> with remittance text"
+            ],
+            "auto_fixable": true
+        },
         "WF_MISSING_OPENING_TAG": {
             "root_cause": "A closing tag </X> appears in the document but the corresponding opening tag <X> was never written. This is the inverse of WF_UNCLOSED_TAG. Common in CBPR+ messages when the opening tag of a structural container (AppHdr, Document, GrpHdr, TxInf, Ntfctn, Ntry, Acct, BkTxCd, Fr, To, FinInstnId, PstlAdr, etc.) is accidentally deleted while its closing tag remains. The XML parser reports this as 'Unclosed tag <PARENT> ... before the closing tag </X>'.",
             "detect": "Parser error says 'Unclosed tag <PARENT> ... before the closing tag </X> at line N'. Confirm that <X> (without attributes) does NOT appear anywhere earlier in the document. If <X> is absent, this is WF_MISSING_OPENING_TAG; if it is present but mis-nested, it is WF_OVERLAPPING_TAGS.",
@@ -688,6 +697,11 @@
         "WF_UNCLOSED_TAG": {
             "root_cause": "Start tag with no matching end tag.",
             "fix": "Insert the matching end tag immediately before the conflicting closing tag named in the parser error.",
+            "auto_fixable": true
+        },
+        "WF_OPEN_TAG_SWALLOWED": {
+            "root_cause": "Start tag's '>' deleted along with its content and end tag, run directly into a sibling close tag missing its '<' (e.g. '<Ustrd\\n  /RmtInf>'). lxml reports 'error parsing attribute name'.",
+            "fix": "Collapse to '<TagName/></OtherTag>' (empty self-close + restored close tag). Populate the now-empty element in a later round if schema requires non-empty content.",
             "auto_fixable": true
         },
         "WF_MISSING_OPENING_TAG": {

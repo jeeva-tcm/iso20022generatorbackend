@@ -30,11 +30,28 @@ class FixSuggestionResponse(BaseModel):
     fragment_xml: str
     issue_code: str
     issue_message: str
-    confidence: str  # 'high' | 'low' | 'unavailable'
+    confidence: str  # 'high' | 'low' | 'unavailable' | 'resolved'
+    # Closed-loop self-check (set on single /suggest only): True=verified safe,
+    # False=fix regressed/failed, None=not judged. Optional so existing clients
+    # that don't read it are unaffected.
+    verified: Optional[bool] = None
 
 
 class SuggestBatchResponse(BaseModel):
     fixes: List[FixSuggestionResponse]
+
+
+class FeedbackRequest(BaseModel):
+    issue_code: str = ""
+    tag: str = ""
+    original_fragment: str = ""
+    fragment_xml: str = ""
+    action: str = ""               # 'accept' | 'edit' | 'reject'
+    edited_xml: Optional[str] = None
+
+
+class FeedbackResponse(BaseModel):
+    ok: bool
 
 
 class ApplyRequest(BaseModel):

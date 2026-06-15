@@ -18,7 +18,7 @@
     "PaymentTypeInformationRule": "If GrpHdr/PmtTpInf is present, CdtTrfTxInf/PmtTpInf is not allowed.",
     "NumberOfTransactionsAndCreditTransfersRule": "GrpHdr/NbOfTxs must equal the number of CdtTrfTxInf occurrences.",
     "UndrlygCstmrCdtTrfRule": "In COV usage, CdtTrfTxInf/UndrlygCstmrCdtTrf MUST be present and carry the underlying pacs.008 customer credit transfer details.",
-    "CoverSettlementMethodRule": "GrpHdr/SttlmInf/SttlmMtd MUST be COVE for pacs.009 COV messages."
+    "CoverSettlementMethodRule": "GrpHdr/SttlmInf/SttlmMtd MUST be INDA or INGA for CBPR+ pacs.009 COV messages (cover settled on accounts). COVE is NOT permitted for COV — it belongs to pacs.009 ADV. Verified against SWIFT MyStandards."
   },
   "cbpr_plus_formal_rules": [
     "AppHdr/Priority must equal CdtTrfTxInf/PmtTpInf/InstrPrty when both are present.",
@@ -604,7 +604,9 @@
             "Maximum 18 digits total with up to 5 fraction digits."
           ]
         }
-      ]
+      ],
+      "cbpr_plus_status": "FORBIDDEN",
+      "cbpr_plus_note": "Not permitted in CBPR+ pacs.009 GroupHeader. MyStandards expects NbOfTxs -> SttlmInf with no CtrlSum. Remove if present."
     },
     {
       "tag": "GrpHdr/SttlmInf/SttlmMtd",
@@ -613,11 +615,12 @@
       "occurrence": "[1..1]",
       "mandatory": true,
       "valid_values": [
-        "COVE"
+        "INDA",
+        "INGA"
       ],
-      "preferred": "COVE",
-      "note": "pacs.009 COV MUST use SttlmMtd = COVE. Other values (INDA, INGA, CLRG) are not permitted in COV usage.",
-      "description": "Settlement method. MUST be COVE for pacs.009 COV (Cover) messages. Indicates the payment is a cover for an underlying customer credit transfer.",
+      "preferred": "INGA",
+      "note": "CBPR+ pacs.009 COV MUST use SttlmMtd = INDA or INGA (cover settled on accounts). COVE is NOT permitted for COV — it belongs to pacs.009 ADV with reimbursement agents. Verified against SWIFT MyStandards.",
+      "description": "Settlement method. MUST be INDA or INGA for pacs.009 COV (Cover) messages. The cover is settled on the agents' accounts; reimbursement agents (COVE) are not used.",
       "errors": [
         {
           "error_id": "STTLMMTD_MISSING",
@@ -628,20 +631,20 @@
             "GrpHdr/SttlmInf/SttlmMtd"
           ],
           "possible_fixes": [
-            "Insert <SttlmMtd>COVE</SttlmMtd> as first child of SttlmInf."
+            "Insert <SttlmMtd>INGA</SttlmMtd> (or INDA) as first child of SttlmInf."
           ]
         },
         {
-          "error_id": "STTLMMTD_NOT_COVE",
+          "error_id": "STTLMMTD_COVE_NOT_ALLOWED",
           "error_code": "X00301",
           "severity": "Fatal",
-          "description": "SttlmMtd is present but not 'COVE'; pacs.009 COV requires COVE as the settlement method.",
+          "description": "SttlmMtd is 'COVE', which the CBPR+ COV usage guideline rejects (SWIFT MyStandards). pacs.009 COV must use INDA or INGA.",
           "affected_tags": [
             "GrpHdr/SttlmInf/SttlmMtd"
           ],
           "possible_fixes": [
-            "Replace with <SttlmMtd>COVE</SttlmMtd>.",
-            "If INGA/INDA/CLRG is intended, use pacs.009 non-COV message type instead."
+            "Replace with <SttlmMtd>INGA</SttlmMtd> (or INDA), and remove any InstgRmbrsmntAgt/InstdRmbrsmntAgt.",
+            "If COVE with reimbursement agents is intended, use the pacs.009 ADV message type instead."
           ]
         }
       ]
@@ -2520,11 +2523,11 @@
     },
     {
       "rule_id": "DEP_016",
-      "rule": "GrpHdr/SttlmInf/SttlmMtd MUST be COVE in pacs.009 COV (R13)",
+      "rule": "GrpHdr/SttlmInf/SttlmMtd MUST be INDA or INGA in CBPR+ pacs.009 COV (COVE not permitted)",
       "affected_tags": [
         "GrpHdr/SttlmInf/SttlmMtd"
       ],
-      "fix": "Set SttlmMtd to COVE; if another value is required, use pacs.009 non-COV."
+      "fix": "Set SttlmMtd to INGA (or INDA). COVE is only for pacs.009 ADV; remove reimbursement agents if present."
     },
     {
       "rule_id": "DEP_017",
@@ -5008,6 +5011,64 @@
         "pacs.009.001.08_COV"
       ],
       "note": "Textual/informational rule — manual review required, no automated fix."
+    },
+    {
+      "rule_id": "CBPR_COV_R30",
+      "rule": "GrpHdr/NbOfTxs must equal the actual number of CdtTrfTxInf blocks (NumberOfTransactionsAndCreditTransfersRule / X00062).",
+      "affected_tags": [
+        "GrpHdr/NbOfTxs"
+      ],
+      "fix": "Set <NbOfTxs> to the actual number of CdtTrfTxInf blocks present. For CBPR+ single-transaction messages the value must be '1'.",
+      "xml_example": "<NbOfTxs>1</NbOfTxs>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.009.001.08_COV"
+      ],
+      "note": "Auto-fixable: fixer counts CdtTrfTxInf occurrences and rewrites NbOfTxs to match (deterministic)."
+    },
+    {
+      "rule_id": "CBPR_COV_R31",
+      "rule": "For CBPR+ pacs.009 COV, GrpHdr/SttlmInf/SttlmMtd MUST be 'INDA' or 'INGA'. 'COVE' is NOT permitted (it belongs to pacs.009 ADV). Verified against SWIFT MyStandards.",
+      "affected_tags": [
+        "GrpHdr/SttlmInf/SttlmMtd"
+      ],
+      "fix": "Replace the SttlmMtd value with 'INGA' (or 'INDA') and remove any InstgRmbrsmntAgt/InstdRmbrsmntAgt. If COVE + reimbursement agents are intended, use the pacs.009 ADV message type instead.",
+      "xml_example": "<SttlmInf><SttlmMtd>INGA</SttlmMtd></SttlmInf>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.009.001.08_COV"
+      ]
+    },
+    {
+      "rule_id": "CBPR_COV_R32",
+      "rule": "SEPA service level (SvcLvl/Cd=SEPA) requires EUR currency in IntrBkSttlmAmt. Non-EUR currencies are incompatible with SEPA.",
+      "affected_tags": [
+        "CdtTrfTxInf/PmtTpInf/SvcLvl/Cd",
+        "CdtTrfTxInf/IntrBkSttlmAmt"
+      ],
+      "fix": "Remove the SEPA <SvcLvl> block — SEPA is only valid for EUR, so on a non-EUR pacs.009 it is the erroneous element. If <PmtTpInf> is left with no children it is removed too. Alternatively, if SEPA is intended, change IntrBkSttlmAmt Ccy to 'EUR' by bilateral agreement.",
+      "xml_example": "<!-- SEPA SvcLvl removed; IntrBkSttlmAmt currency preserved -->",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.009.001.08_COV"
+      ],
+      "note": "Auto-fixable: fixer deletes the invalid SEPA SvcLvl (and an emptied PmtTpInf) rather than altering the monetary currency (deterministic, value-preserving)."
+    },
+    {
+      "rule_id": "CBPR_COV_R33",
+      "rule": "pacs.009 COV must NOT contain reimbursement agents (InstgRmbrsmntAgt/InstdRmbrsmntAgt/ThrdRmbrsmntAgt). They belong to SttlmMtd=COVE (pacs.009 ADV). COV settles on accounts (SttlmAcct). Verified against SWIFT MyStandards.",
+      "affected_tags": [
+        "GrpHdr/SttlmInf/InstgRmbrsmntAgt",
+        "GrpHdr/SttlmInf/InstdRmbrsmntAgt",
+        "GrpHdr/SttlmInf/ThrdRmbrsmntAgt"
+      ],
+      "fix": "Remove all reimbursement agent elements from SttlmInf. Use <SttlmAcct> if a settlement account is required.",
+      "xml_example": "<SttlmInf><SttlmMtd>INGA</SttlmMtd></SttlmInf>",
+      "severity": "ERROR",
+      "applies_to": [
+        "pacs.009.001.08_COV"
+      ],
+      "note": "Auto-fixable: fixer removes each reimbursement agent (and paired account) from SttlmInf."
     }
   ],
   "pacs008_to_pacs009_cov_field_mapping": [
@@ -5029,7 +5090,7 @@
     {
       "source_xpath": "/Document/FIToFICstmrCdtTrf/GrpHdr/SttlmInf/SttlmMtd",
       "target_xpath": "/Document/FIToFICdtTrf/GrpHdr/SttlmInf/SttlmMtd",
-      "transformation": "HARDCODE — must be 'COVE' in pacs.009 COV regardless of pacs.008 SttlmMtd value"
+      "transformation": "HARDCODE — must be 'INGA' (or 'INDA') in CBPR+ pacs.009 COV; COVE is NOT permitted (it belongs to pacs.009 ADV)"
     },
     {
       "source_xpath": "/Document/FIToFICstmrCdtTrf/CdtTrfTxInf/PmtId/EndToEndId",
@@ -5133,7 +5194,6 @@
       "CreDtTm",
       "BtchBookg",
       "NbOfTxs",
-      "CtrlSum",
       "TtlIntrBkSttlmAmt",
       "IntrBkSttlmDt",
       "SttlmInf",

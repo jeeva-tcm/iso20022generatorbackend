@@ -667,7 +667,6 @@ MESSAGE_BLOCKS: Dict[str, List[Dict]] = {
         {"id": "intermediary_agent_3",       "label": "Intermediary Agent 3",        "mandatory": False, "requires": ["intermediary_agent_2"]},
         {"id": "intermediary_agent_3_account","label": "Intermediary Agent 3 Account","mandatory": False, "requires": ["intermediary_agent_3"]},
         {"id": "payment_type_information",   "label": "Payment Type Information",    "mandatory": False},
-        {"id": "remittance_information",     "label": "Remittance Information",      "mandatory": False},
         {"id": "settlement_time_request",    "label": "Settlement Time Request",     "mandatory": False},
     ],
     "pacs.009.adv": [
@@ -691,7 +690,6 @@ MESSAGE_BLOCKS: Dict[str, List[Dict]] = {
         {"id": "intermediary_agent_3",       "label": "Intermediary Agent 3",        "mandatory": False, "requires": ["intermediary_agent_2"]},
         {"id": "intermediary_agent_3_account","label": "Intermediary Agent 3 Account","mandatory": False, "requires": ["intermediary_agent_3"]},
         {"id": "payment_type_information",   "label": "Payment Type Information",    "mandatory": False},
-        {"id": "remittance_information",     "label": "Remittance Information",      "mandatory": False},
         {"id": "settlement_time_request",    "label": "Settlement Time Request",     "mandatory": False},
     ],
     "pacs.009.cov": [
@@ -856,7 +854,6 @@ MESSAGE_BLOCKS: Dict[str, List[Dict]] = {
         {"id": "original_group_information","label": "Original Group Information",  "mandatory": True},
         {"id": "original_payment_information","label": "Original Payment Info",     "mandatory": True},
         {"id": "status_reason",             "label": "Status Reason Information",   "mandatory": False},
-        {"id": "original_transaction",      "label": "Original Transaction Info",   "mandatory": False},
     ],
     "pain.008": [
         {"id": "group_header",              "label": "Group Header",                "mandatory": True},
@@ -1126,8 +1123,10 @@ def _gen_pacs009(selected: set, idx: int, is_cov: bool = False, is_adv: bool = F
     uetr = scenario.uetr
     cre_dt = rng_datetime()
     sttlm_dt = rng_date(1)
-    # pacs.009.adv XSD (SettlementInstruction7__1) restricts SttlmMtd to COVE
-    # only, and has no SttlmAcct child at all.  Base / COV use INDA/INGA.
+    # SWIFT CBPR+ pacs.009 settlement method per variant (verified vs MyStandards):
+    #   ADV  → COVE (reimbursement-agent settlement)
+    #   COV  → INDA/INGA (cover settled on accounts; COVE is REJECTED for COV)
+    #   CORE → INDA/INGA
     if is_adv:
         sttlm_mtd = "COVE"
     else:
@@ -1137,7 +1136,8 @@ def _gen_pacs009(selected: set, idx: int, is_cov: bool = False, is_adv: bool = F
     sttlm_inf = f"\t\t\t\t\t<SttlmMtd>{xe(sttlm_mtd)}</SttlmMtd>"
     if not is_adv and sttlm_mtd in ["INDA", "INGA"] and random.random() < 0.5:
         sttlm_inf += f"\n\t\t\t\t\t<SttlmAcct>\n\t\t\t\t\t\t<Id>\n\t\t\t\t\t\t\t<IBAN>{xe(scenario.debtor.iban)}</IBAN>\n\t\t\t\t\t\t</Id>\n\t\t\t\t\t</SttlmAcct>"
-    # CBPR+ ADV rule: SttlmMtd=COVE requires at least one reimbursement agent
+    # Reimbursement agents (InstgRmbrsmntAgt/InstdRmbrsmntAgt) belong to SttlmMtd=COVE,
+    # i.e. ADV only. COV uses SttlmAcct, NOT reimbursement agents (MyStandards rejects them).
     if is_adv:
         _adv_choice = random.choice(["instg", "instd", "both"])
         if _adv_choice in ("instg", "both"):
@@ -1221,7 +1221,9 @@ def _gen_pacs009(selected: set, idx: int, is_cov: bool = False, is_adv: bool = F
     if "creditor_account" in selected:
         tx += account_xml("CdtrAcct", scenario.creditor.iban, 4)
 
-    # 16. RmtInf (optional)
+    # 16. RmtInf (optional) — permitted at CdtTrfTxInf level for all pacs.009
+    # variants (CORE, ADV, COV). COV additionally carries remittance info
+    # inside UndrlygCstmrCdtTrf (see below).
     if "remittance_information" in selected:
         tx += f"\t\t\t\t<RmtInf>\n\t\t\t\t\t<Ustrd>{xe(rng_id('REF', 16))}</Ustrd>\n\t\t\t\t</RmtInf>\n"
 
@@ -2470,15 +2472,15 @@ def _gen_pain002(selected: set, idx: int) -> str:
     body += f"""\t\t\t\t<OrgnlPmtInfAndSts>
 \t\t\t\t\t<OrgnlPmtInfId>{xe(rng_id("ORIGPMT", 10))}</OrgnlPmtInfId>
 """
-    if "original_transaction" in selected or status == "RJCT":
-        # If status is RJCT we must also emit a StsRsnInf block (PAIN002_RJCT_REQUIRES_RSN).
-        tx_rsn = ""
-        if status == "RJCT":
-            reasons = ["AM04", "AC01", "FF01", "AG01"]
-            tx_rsn = (f"\t\t\t\t\t\t<StsRsnInf>\n"
-                      f"\t\t\t\t\t\t\t<Rsn><Cd>{random.choice(reasons)}</Cd></Rsn>\n"
-                      f"\t\t\t\t\t\t</StsRsnInf>\n")
-        body += f"""\t\t\t\t\t<TxInfAndSts>
+    # CBPR+ mandates at least one TxInfAndSts per OrgnlPmtInfAndSts; omitting it
+    # produces "content not complete" in SWIFT MyStandards (PAIN002_ORGNLPMT_NO_TXINF).
+    tx_rsn = ""
+    if status == "RJCT":
+        reasons = ["AM04", "AC01", "FF01", "AG01"]
+        tx_rsn = (f"\t\t\t\t\t\t<StsRsnInf>\n"
+                  f"\t\t\t\t\t\t\t<Rsn><Cd>{random.choice(reasons)}</Cd></Rsn>\n"
+                  f"\t\t\t\t\t\t</StsRsnInf>\n")
+    body += f"""\t\t\t\t\t<TxInfAndSts>
 \t\t\t\t\t\t<OrgnlEndToEndId>{xe(rng_id("ORIE2E", 10))}</OrgnlEndToEndId>
 \t\t\t\t\t\t<OrgnlUETR>{rng_uetr()}</OrgnlUETR>
 \t\t\t\t\t\t<TxSts>{status}</TxSts>
