@@ -160,7 +160,7 @@ def _priority_sort_issues(issues: list[dict]) -> list[dict]:
            "PACS010_AGENTS_REQUIRED", "L3-MANDATORY-PAYMENT-PARTIES",
            "L3-PAIN-MANDATORY-PARTIES", "L3-PACS-MATCH-FR", "L3-PACS-MATCH-TO"}
     _P2 = {"NOT_EXPECTED", "SEQUENCE", "WRONG_ORDER", "WRONG_POSITION",
-           "STTLMPRTY_WRONG_PARENT"}
+           "STTLMPRTY_WRONG_PARENT", "PACS010_ELEMENT_FORBIDDEN"}
 
     def _prio(issue: dict) -> int:
         code = str(issue.get("code", ""))

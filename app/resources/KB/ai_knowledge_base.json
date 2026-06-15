@@ -1501,10 +1501,24 @@
             ]
         },
         "STTLMPRTY_WRONG_PARENT": {
-            "root_cause": "SttlmPrty is placed outside CdtTrfTxInf (e.g., directly in GrpHdr or Document). CBPR+ requires it inside the transaction block.",
-            "fix": "Move SttlmPrty to be a child of CdtTrfTxInf, immediately after IntrBkSttlmDt.",
+            "root_cause": "SttlmPrty is placed outside its transaction container (e.g., directly in GrpHdr or Document). CBPR+ requires it inside the transaction container: CdtTrfTxInf for credit transfers (pacs.008/009, pain.001) or DrctDbtTxInf for pacs.003 direct debits. (Note: pacs.010 does not permit SttlmPrty at all — see PACS010_STTLMPRTY_FORBIDDEN.)",
+            "fix": "Move SttlmPrty to be a child of the transaction container, immediately after IntrBkSttlmDt — CdtTrfTxInf for credit transfers, DrctDbtTxInf for pacs.003.",
             "affected_tags": [
-                "CdtTrfTxInf/SttlmPrty"
+                "CdtTrfTxInf/SttlmPrty",
+                "DrctDbtTxInf/SttlmPrty"
+            ]
+        },
+        "PACS010_ELEMENT_FORBIDDEN": {
+            "aliases": [
+                "PACS010-ELEMENT-FORBIDDEN",
+                "PACS010_STTLMPRTY_FORBIDDEN"
+            ],
+            "root_cause": "An element that the .06 base schema allows in DrctDbtTxInf is present in a CBPR+ pacs.010 (FinancialInstitutionDirectDebit) where the usage guideline forbids it. Verified against SWIFT MyStandards: SttlmPrty, SttlmTmIndctn and UltmtDbtr are NOT permitted in the CBPR+ pacs.010 DrctDbtTxInf (the expected sequence after IntrBkSttlmDt is only SttlmTmReq then Dbtr).",
+            "fix": "Remove the forbidden element (named in the validation message) from DrctDbtTxInf. It is not part of the CBPR+ pacs.010 structure and has no valid position.",
+            "affected_tags": [
+                "DrctDbtTxInf/SttlmPrty",
+                "DrctDbtTxInf/SttlmTmIndctn",
+                "DrctDbtTxInf/UltmtDbtr"
             ]
         },
         "STTLMPRTY_DUPLICATE": {

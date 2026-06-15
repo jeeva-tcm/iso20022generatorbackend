@@ -5023,6 +5023,26 @@ class FixSuggester:
         # ── STTLMPRTY_WRONG_PARENT / WRONG_POSITION — route to LLM with context
         # (element must be moved; LLM handles structural moves better)
 
+        # ── PACS010_ELEMENT_FORBIDDEN — remove the element not permitted in
+        # CBPR+ pacs.010 (deterministic removal, no relocation needed). The
+        # offending element's tag is named in the message, e.g. "<UltmtDbtr>".
+        if code == "PACS010_ELEMENT_FORBIDDEN":
+            _pacs010_forbidden = {"SttlmPrty", "SttlmTmIndctn", "UltmtDbtr"}
+            _fb_match = re.search(r"<(\w+)>", msg)
+            _fb_target = _fb_match.group(1) if _fb_match else None
+            if _fb_target in _pacs010_forbidden:
+                for _fbel in root.iter():
+                    if isinstance(_fbel.tag, str) and etree.QName(_fbel.tag).localname == _fb_target:
+                        _fb_par = _fbel.getparent()
+                        if _fb_par is not None:
+                            _orig_fb = self._serialize(_fb_par)
+                            _fbp_copy = self._copy(_fb_par)
+                            for _ch in list(_fbp_copy):
+                                if etree.QName(_ch.tag).localname == _fb_target:
+                                    _fbp_copy.remove(_ch)
+                            return FixSuggestion(self._xpath_of(_fb_par), _orig_fb,
+                                                  self._serialize(_fbp_copy), code, msg, "high")
+
         # ── CLRSYSREF_FORBIDDEN — remove ClrSysRef element ────────────────────
         if code == "CLRSYSREF_FORBIDDEN":
             for _crel in root.iter():
