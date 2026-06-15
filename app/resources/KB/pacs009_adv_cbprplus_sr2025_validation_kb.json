@@ -28,7 +28,7 @@
     "If BICFI is present inside FinInstnId, then Nm and PstlAdr are NOT allowed in the same FinInstnId block.",
     "If Nm is present in FinInstnId, PstlAdr must also be present, and vice versa.",
     "All proprietary/text fields (excl. Nm/Adr/RmtInf) limited to FIN-X charset. Nm/Adr/RmtInf extended with !#$&%*=^_{|}~\";<>@[\\] (< as &lt;, > as &gt;).",
-    "AppHdr/BizSvc must be 'swift.cbprplus.03' (SR2025). This element is mandatory (min occurrence changed to 1).",
+    "AppHdr/BizSvc must be 'swift.cbprplus.adv.03' (SR2025, ADV variant). This element is mandatory (min occurrence changed to 1).",
     "AppHdr/BizMsgIdr must equal GrpHdr/MsgId.",
     "DateTime fields must use YYYY-MM-DDTHH:MM:SS+HH:MM format. Z suffix is forbidden. Milliseconds are forbidden.",
     "CBPR+ allows single transactions only per message.",
@@ -246,8 +246,8 @@
       "occurrence": "[1..1]",
       "mandatory": true,
       "note": "Minimum occurrence changed to 1 by CBPR+ SR2025 guideline. ADV usage is conveyed by the AppHdr/BizSvc service value.",
-      "expected_value": "swift.cbprplus.03",
-      "description": "Business Service identifier. Mandatory under CBPR+ SR2025; must be 'swift.cbprplus.03'.",
+      "expected_value": "swift.cbprplus.adv.03",
+      "description": "Business Service identifier. Mandatory under CBPR+ SR2025; must be 'swift.cbprplus.adv.03' (ADV variant).",
       "errors": [
         {
           "error_id": "BIZSVC_MISSING",
@@ -258,7 +258,7 @@
             "AppHdr/BizSvc"
           ],
           "possible_fixes": [
-            "Insert <BizSvc>swift.cbprplus.03</BizSvc> inside AppHdr."
+            "Insert <BizSvc>swift.cbprplus.adv.03</BizSvc> inside AppHdr."
           ]
         },
         {
@@ -270,8 +270,8 @@
             "AppHdr/BizSvc"
           ],
           "possible_fixes": [
-            "Replace value with 'swift.cbprplus.03' as mandated by SR2025.",
-            "Note: SR2024 and earlier used 'swift.cbprplus.02'; upgrade to .03 for SR2025."
+            "Replace value with 'swift.cbprplus.adv.03' as mandated by SR2025 for the ADV variant.",
+            "Note: SR2024 and earlier used 'swift.cbprplus.02'; upgrade to the .adv.03 ADV service value for SR2025."
           ]
         }
       ]
@@ -601,7 +601,9 @@
             "Maximum 18 digits total with up to 5 fraction digits."
           ]
         }
-      ]
+      ],
+      "cbpr_plus_status": "FORBIDDEN",
+      "cbpr_plus_note": "Not permitted in CBPR+ pacs.009 GroupHeader. MyStandards expects NbOfTxs -> SttlmInf with no CtrlSum. Remove if present."
     },
     {
       "tag": "GrpHdr/SttlmInf/SttlmMtd",
@@ -4593,7 +4595,6 @@
       "CreDtTm",
       "BtchBookg",
       "NbOfTxs",
-      "CtrlSum",
       "TtlIntrBkSttlmAmt",
       "IntrBkSttlmDt",
       "SttlmInf",
@@ -4694,7 +4695,7 @@
   "schema_mapping_notes": {
     "root_element": "pacs.009.001.08 ADV root is /Document/FICdtTrf (FinancialInstitutionCreditTransfer, advice variant); the AppHdr (BAH) precedes the Document.",
     "msg_def_idr": "AppHdr/MsgDefIdr must be 'pacs.009.001.08' matching urn:iso:std:iso:20022:tech:xsd:pacs.009.001.08.",
-    "biz_svc": "AppHdr/BizSvc for CBPR+ pacs.009 ADV is 'swift.cbprplus.03'.",
+    "biz_svc": "AppHdr/BizSvc for CBPR+ pacs.009 ADV is 'swift.cbprplus.adv.03'.",
     "structure": "GrpHdr [1..1] + CdtTrfTxInf [1..n]. The ADV (advice) variant may carry CdtTrfTxInf/UndrlygCstmrCdtTrf describing the advised underlying customer credit transfer, plus instruction elements (InstrForCdtrAgt, InstrForNxtAgt).",
     "amount_location": "IntrBkSttlmAmt directly under CdtTrfTxInf carries the FI settlement amount; UndrlygCstmrCdtTrf/InstdAmt carries the underlying customer amount when present.",
     "agent_chain": "InstgAgt/InstdAgt plus IntrmyAgt1..3 and PrvsInstgAgt1..3; agents identified by BICFI; BrnchId removed under CBPR+.",

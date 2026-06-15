@@ -408,6 +408,15 @@
             "fix": "Insert the matching end tag immediately before the conflicting closing tag named in the error message. The lxml parser names the unclosed tag and the line of the conflicting close — use both to place </X> precisely. Self-close only if the element is genuinely empty and the schema permits.",
             "auto_fixable": true
         },
+        "WF_OPEN_TAG_SWALLOWED": {
+            "root_cause": "A start tag's '>' was deleted along with the element's content and its own end tag, leaving '<TagName' run directly into whitespace/newline then '/OtherTag>' (a sibling/parent close tag missing its '<'). e.g. '<Ustrd\\n            /RmtInf></DrctDbtTxInf>'. lxml reports 'error parsing attribute name' because '<TagName' has no '>' and the text after the stray '/' looks like a bogus attribute.",
+            "detect": "Parser error 'error parsing attribute name' (or 'expected attribute name'). The line contains '<TagName' with no '>' before end-of-line, followed on the next line by '/OtherTag>'.",
+            "fix": "Nothing recoverable remains of <TagName>'s content — collapse to an empty self-closing element and restore the '<' on the close tag that follows: '<TagName/></OtherTag>'. The now-empty element may then fail schema validation if its type forbids empty content (e.g. Max140Text minLength=1) — fix that as a normal, separate content-population step in the next round.",
+            "examples": [
+                "'<Ustrd\\n    /RmtInf></DrctDbtTxInf>' → '<Ustrd/></RmtInf></DrctDbtTxInf>', then populate <Ustrd> with remittance text"
+            ],
+            "auto_fixable": true
+        },
         "WF_MISSING_OPENING_TAG": {
             "root_cause": "A closing tag </X> appears in the document but the corresponding opening tag <X> was never written. This is the inverse of WF_UNCLOSED_TAG. Common in CBPR+ messages when the opening tag of a structural container (AppHdr, Document, GrpHdr, TxInf, Ntfctn, Ntry, Acct, BkTxCd, Fr, To, FinInstnId, PstlAdr, etc.) is accidentally deleted while its closing tag remains. The XML parser reports this as 'Unclosed tag <PARENT> ... before the closing tag </X>'.",
             "detect": "Parser error says 'Unclosed tag <PARENT> ... before the closing tag </X> at line N'. Confirm that <X> (without attributes) does NOT appear anywhere earlier in the document. If <X> is absent, this is WF_MISSING_OPENING_TAG; if it is present but mis-nested, it is WF_OVERLAPPING_TAGS.",
@@ -690,6 +699,11 @@
             "fix": "Insert the matching end tag immediately before the conflicting closing tag named in the parser error.",
             "auto_fixable": true
         },
+        "WF_OPEN_TAG_SWALLOWED": {
+            "root_cause": "Start tag's '>' deleted along with its content and end tag, run directly into a sibling close tag missing its '<' (e.g. '<Ustrd\\n  /RmtInf>'). lxml reports 'error parsing attribute name'.",
+            "fix": "Collapse to '<TagName/></OtherTag>' (empty self-close + restored close tag). Populate the now-empty element in a later round if schema requires non-empty content.",
+            "auto_fixable": true
+        },
         "WF_MISSING_OPENING_TAG": {
             "root_cause": "Closing tag </X> present but opening <X> is absent (inverse of WF_UNCLOSED_TAG).",
             "fix": "Scan backward from </X> to find the parent (first line with less indentation), then forward to the first content line after the parent — insert <X [xmlns='...']> there. Add xmlns for AppHdr (head.001.001.02) and Document (message-type URI); omit xmlns for all other elements.",
@@ -718,6 +732,19 @@
         "WF_INVALID_TAG_NAME": {
             "root_cause": "Illegal XML element/attribute name.",
             "fix": "Repair to the legal schema name."
+        },
+        "WF_STRAY_CHAR_IN_TAG": {
+            "root_cause": "Illegal character inside a tag opening/closing (e.g. '!' in '<BusMsgEnvlp xmlns=\"...\"!>' or in '<BusMsgEnvlp!>'). The character appears AFTER the closing quote of the last attribute value but BEFORE the closing '>' of the tag.",
+            "fix": "Strip the stray character(s) between the last attribute quote and the closing '>'. Example: '<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\"!>' → '<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">'. Pattern: remove any non-whitespace, non-'>' characters that appear after the last '\"' or \"'\" in a tag but before its closing '>'.",
+            "auto_fixable": true,
+            "detection_regex": "(<[A-Za-z][^>]*?[\"'][^\"'>]*)[^A-Za-z0-9 \\t\\r\\n/>=\\-_.:\"']+(>|/>)",
+            "applies_to": "all message types — pacs.008, pacs.009, pacs.002, pacs.003, pacs.004, pacs.010, pain.001, pain.002, pain.008, camt.052, camt.053, camt.054, camt.055, camt.056, camt.057"
+        },
+        "WF_STRAY_CHAR_IN_SELF_CLOSE_TAG": {
+            "root_cause": "Stray character before '/>' in a self-closing tag (e.g. '<BICFI!/>') or before '>' in an opening tag with no attributes (e.g. '<Document!>').",
+            "fix": "Strip the stray character(s). '<BICFI!/>' → '<BICFI/>'. '<Document!>' → '<Document>'.",
+            "auto_fixable": true,
+            "applies_to": "all message types"
         },
         "WF_STRAY_TEXT_BETWEEN_ELEMENTS": {
             "root_cause": "Unexpected text/character between child elements.",

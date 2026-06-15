@@ -607,6 +607,31 @@
             ]
         },
         {
+            "tag": "OrgnlPmtInfAndSts",
+            "xml_element": "OrgnlPmtInfAndSts",
+            "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts",
+            "occurrence": "[0..unbounded]",
+            "mandatory": false,
+            "description": "Container reporting the status of an original PaymentInformation block. CBPR+ (SWIFT MyStandards) requires at least one TxInfAndSts child element even though the base ISO 20022 XSD marks it minOccurs=0.",
+            "errors": [
+                {
+                    "error_id": "PAIN002_ORGNLPMT_NO_TXINF",
+                    "error_code": "MISSING_EXPECTED_ELEMENT",
+                    "severity": "Fatal",
+                    "description": "OrgnlPmtInfAndSts is present but contains no TxInfAndSts child. The base XSD has minOccurs=0 but SWIFT CBPR+ / MyStandards requires at least one TxInfAndSts per OrgnlPmtInfAndSts; the message will be rejected with 'The content of element OrgnlPmtInfAndSts is not complete. One of the following elements is expected: TxInfAndSts'.",
+                    "affected_tags": [
+                        "OrgnlPmtInfAndSts",
+                        "OrgnlPmtInfAndSts/TxInfAndSts"
+                    ],
+                    "possible_fixes": [
+                        "Add at least one <TxInfAndSts> block inside <OrgnlPmtInfAndSts> containing <OrgnlEndToEndId>, <TxSts>.",
+                        "When TxSts = RJCT also add <StsRsnInf><Rsn><Cd>{reason_code}</Cd></Rsn></StsRsnInf>.",
+                        "Minimum valid block: <TxInfAndSts><OrgnlEndToEndId>NOTPROVIDED</OrgnlEndToEndId><TxSts>ACSP</TxSts></TxInfAndSts>"
+                    ]
+                }
+            ]
+        },
+        {
             "tag": "OrgnlPmtInfAndSts/OrgnlPmtInfId",
             "xml_element": "OrgnlPmtInfId",
             "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/OrgnlPmtInfId",

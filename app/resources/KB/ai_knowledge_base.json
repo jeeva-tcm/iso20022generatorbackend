@@ -1,8 +1,8 @@
 {
     "_meta": {
         "purpose": "Consolidated knowledge base the AI fix suggester consults BEFORE inventing values. Combines: field constraints (regex/length), tag templates (exact XML structures per message type), dependency rules (cross-field invariants), error-code catalogue with fix recipes, date-fix rules, tag insertion-order maps, and high-quality dummy data. Always prefer this file's data over hallucinated values.",
-        "version": "2.2",
-        "last_updated": "2026-06-04",
+        "version": "2.3",
+        "last_updated": "2026-06-09",
         "xsd_version_coverage": "Rules derived from: pacs.008.001.13, pacs.009.001.12, pacs.003.001.11, pacs.002.001.12, pacs.010.001.06, pain.001.001.12, pain.002.001.14, pain.008.001.11, camt.052/053/054.001.13, camt.055.001.12, camt.056.001.11, camt.057.001.08. All rules are backward-compatible — they also apply to older minor versions (e.g. pacs.008.001.08, pacs.008.001.09, pacs.008.001.12) unless explicitly noted otherwise.",
         "bizsvc_note": "SR2023/SR2024 uses BizSvc='swift.cbprplus.02'. SR2025 uses BizSvc='swift.cbprplus.03'. Both are valid — the validator enforces the version that matches the document's namespace URI. The BIZSVC_V03_TO_V02 auto_fix_rule only triggers when the validator is configured for SR2023/SR2024 compliance. Do NOT apply this rule blindly for SR2025 documents."
     },
@@ -161,6 +161,32 @@
             "max_length": 15,
             "example": "1",
             "notes": "Must equal the count of CdtTrfTxInf / TxInfAndSts blocks."
+        },
+        "CdtDbtInd": {
+            "type": "CreditDebitCode",
+            "allowed_values": ["CRDT", "DBIT"],
+            "example": "CRDT",
+            "notes": "Credit/Debit indicator. CRDT = credit entry (money received), DBIT = debit entry (money sent). Mandatory in Ntry, TxDtls, Bal, and several camt elements. Default to CRDT when context is ambiguous. Applies to camt.052, camt.053, camt.054 and other camt messages."
+        },
+        "NbOfNtries": {
+            "type": "Numeric15",
+            "pattern": "[0-9]{1,15}",
+            "max_length": 15,
+            "example": "1",
+            "notes": "camt statement/notification: total number of Ntry elements in the message. Auto-computed by counting <Ntry> elements. Applies to camt.052, camt.053, camt.054. Optional (minOccurs=0) but must not be empty if present."
+        },
+        "PgNb": {
+            "type": "Numeric5",
+            "pattern": "[0-9]{1,5}",
+            "max_length": 5,
+            "example": "1",
+            "notes": "Pagination page number in StmtPgntn. Default to 1 when empty. Part of camt.052, camt.053, camt.054 statement pagination block."
+        },
+        "LastPgInd": {
+            "type": "YesNoIndicator",
+            "allowed_values": ["true", "false"],
+            "example": "true",
+            "notes": "Pagination last-page indicator in StmtPgntn. Must be 'true' or 'false'. Default to 'true' when empty (single-page statement). Part of camt.052, camt.053, camt.054."
         },
         "CtrlSum": {
             "type": "Amount",
@@ -559,35 +585,146 @@
             "root_cause": "AppHdr/To BICFI does not match the InstdAgt BICFI in the transaction.",
             "fix": "Read InstdAgt/FinInstnId/BICFI from the transaction block and update AppHdr/To/FIId/FinInstnId/BICFI to match."
         },
+        "APPHDR_FR_TO_DELETED_FIID_ORPHANED": {
+            "root_cause": "The <Fr> or <To> opening tag was deleted, leaving <FIId> as a direct child of AppHdr. AppHdr-level tags (BizMsgIdr, MsgDefIdr, BizSvc, CreDt) that followed inside the same block get absorbed inside <FIId> as siblings of <FinInstnId>, because the missing </Fr> was their structural boundary. Additionally, <Document> may end up nested inside <AppHdr> when <To> is also missing. The XML parses cleanly (no well-formedness error) but fails XSD validation.",
+            "fix": "Three-step structural repair: (1) Find any bare <FIId> that is a direct child of AppHdr. Re-wrap it in <Fr> (or <To> if Fr already exists). (2) Extract any AppHdr-level tags (BizMsgIdr, MsgDefIdr, BizSvc, CreDt) that were wrongly absorbed inside <FIId> and move them back as AppHdr siblings after the <Fr>/<To> wrapper. (3) If <Document> is nested inside <AppHdr>, move it out to be a sibling of AppHdr under BusMsgEnvlp.",
+            "auto_fixable": true,
+            "detection": "XSD errors: 'Element FIId is not expected' under AppHdr, or 'Element BizMsgIdr is not expected' under FIId, or 'Element Document is not expected' under AppHdr.",
+            "applies_to": "all CBPR+ message types: any message where the user deletes <Fr> or <To> from AppHdr",
+            "examples": [
+                "AppHdr/<FIId><FinInstnId>...</FinInstnId><BizMsgIdr>X</BizMsgIdr></FIId>  →  AppHdr/<Fr><FIId><FinInstnId>...</FinInstnId></FIId></Fr><BizMsgIdr>X</BizMsgIdr>",
+                "AppHdr with Document nested inside  →  Document moved to BusMsgEnvlp sibling level"
+            ]
+        },
+        "APPHDR_FR_TO_CONTENT_DELETED": {
+            "root_cause": "The entire content of <Fr> or <To> was deleted (both opening tags AND the inner <FIId><FinInstnId><BICFI> content), leaving only orphaned closing tags (</FIId></Fr> or </FinInstnId></FIId></To>). The document is not well-formed. After _balance_xml_tags re-inserts the missing opening tags, the Fr/To blocks exist structurally but contain empty <FIId></FIId> or <FinInstnId></FinInstnId> with no BICFI.",
+            "fix": "Two-pass repair: (1) _balance_xml_tags re-inserts missing opening tags from orphaned closes to restore well-formedness. (2) _normalize_busmsgenvlp Problem 4 then walks every Fr/To block and ensures FIId > FinInstnId > BICFI exists with a dummy BIC (DEUTDEFFXXX for Fr, CHASUS33XXX for To). Missing intermediate elements (FIId, FinInstnId) are created if absent.",
+            "auto_fixable": true,
+            "detection": "lxml well-formedness error: 'Opening and ending tag mismatch' for Fr, FIId, or FinInstnId. After balance fix: XSD error 'Element FinInstnId is empty' or 'BICFI is missing'.",
+            "applies_to": "all CBPR+ message types with BusMsgEnvlp AppHdr",
+            "examples": [
+                "</FIId></Fr>  (all content deleted)  →  <Fr><FIId><FinInstnId><BICFI>DEUTDEFFXXX</BICFI></FinInstnId></FIId></Fr>",
+                "</FinInstnId></FIId></To>  (FinInstnId content deleted)  →  <To><FIId><FinInstnId><BICFI>CHASUS33XXX</BICFI></FinInstnId></FIId></To>"
+            ]
+        },
+        "WF_STRAY_CLOSING_TAG": {
+            "root_cause": "One or more closing tags appear in the XML but their matching opening tags were deleted. lxml emits 'Opening and ending tag mismatch: X and Y'. The document cannot be parsed until the missing opening tags are re-inserted. Common cases: <Fr> missing <FIId> wrapper, <DbtrAcct> opening deleted, any structural wrapper element whose open tag was removed while the close tag remained.",
+            "fix": "Full tag-balance scan: tokenise the entire raw XML, walk every tag token maintaining an open-tag stack, detect every orphaned closing tag (no matching open on the stack), then insert the missing opening tag at the correct position. Also inserts synthetic closes for any elements still open when a parent closes over them (e.g. </PmtId> while <UETR> is open). This repairs ALL missing opening and closing tags in one pass.",
+            "auto_fixable": true,
+            "detection": "lxml emits: 'Opening and ending tag mismatch: <parent> line N and <missing_tag>' — but the engine scans the whole document proactively so it also catches cases where lxml recovery would silently truncate content.",
+            "applies_to": "all message types and ALL structural elements universally: Fr/FIId, To/FIId, DbtrAgt/FinInstnId, CdtrAgt/FinInstnId, DbtrAcct, CdtrAcct, GrpHdr, CdtTrfTxInf, PmtId, UETR, and any other element whose opening or closing tag was removed",
+            "examples": [
+                "<Fr><FinInstnId><BICFI>SNDRBEBBXXX</BICFI></FinInstnId></FIId></Fr>  →  <Fr><FIId><FinInstnId><BICFI>SNDRBEBBXXX</BICFI></FinInstnId></FIId></Fr>",
+                "<PmtId><UETR>uuid\\n\\t\\t\\t</PmtId>  (</UETR> missing)  →  <PmtId><UETR>uuid</UETR></PmtId>",
+                "<CdtTrfTxInf><Id><IBAN>DE89...</IBAN></Id></DbtrAcct></CdtTrfTxInf>  →  <CdtTrfTxInf><DbtrAcct><Id><IBAN>DE89...</IBAN></Id></DbtrAcct></CdtTrfTxInf>"
+            ]
+        },
+        "WF_APPHDR_STRAY_TEXT_BICFI": {
+            "root_cause": "The Fr block opening tags (<Fr><FIId><FinInstnId><BICFI>) were deleted but the BICFI text value leaked into the AppHdr raw text area, leaving a pattern like '\\n\\t\\tBNPPGB2LXXX</BICFI>' before the <To> element. Also covers <To> blocks where FIId/FinInstnId wrappers were deleted, leaving <BICFI> as a direct child of <To>.",
+            "fix": "Stage 2.2 (_strip_empty_apphdr_frto_closes) detects stray text + orphaned </BICFI> before the first legitimate AppHdr open tag and strips the entire garbage region. It also strips the inner content of any <Fr>/<To> that contains a direct <BICFI> child (missing FIId/FinInstnId). _normalize_busmsgenvlp Problem 4 then rebuilds the full Fr/To/FIId/FinInstnId/BICFI chain from scratch.",
+            "auto_fixable": true,
+            "detection": "lxml: 'Opening and ending tag mismatch: AppHdr and BICFI' or similar. AppHdr area has raw text (BIC value) before the first opening tag.",
+            "applies_to": "all CBPR+ message types with BusMsgEnvlp AppHdr — pain.001, pacs.008, camt.055, etc.",
+            "examples": [
+                "AppHdr>\\n\\t\\tBNPPGB2LXXX</BICFI>\\n<To>...  →  stripped; Fr rebuilt with DEUTDEFFXXX",
+                "<To><BICFI>DBSSGB2LXXX</BICFI></FinInstnId></FIId></To>  →  <To><FIId><FinInstnId><BICFI>CHASUS33XXX</BICFI></FinInstnId></FIId></To>"
+            ]
+        },
+        "WF_UNCLOSED_OPEN_TAG": {
+            "root_cause": "An opening tag is present in the XML but its closing tag was deleted. The parent element closes over it, causing lxml 'Opening and ending tag mismatch'. Common case: <UETR>uuid\\n\\t\\t</PmtId> — </UETR> deleted, so </PmtId> closes PmtId while UETR is still open.",
+            "fix": "The balance engine detects elements being 'auto-popped' off the stack when a parent closes (depth > matched depth). For each such element a synthetic </Tag> is inserted immediately before the closing parent tag. This restores the correct nesting without altering content.",
+            "auto_fixable": true,
+            "detection": "lxml: 'Opening and ending tag mismatch: UETR line N and PmtId'. Any case where a leaf element's closing tag is deleted and the parent closes first.",
+            "applies_to": "all message types — any leaf or container element whose closing tag was deleted: UETR, InstrId, EndToEndId, IBAN, Nm, any text-content element",
+            "examples": [
+                "<PmtId><UETR>cb3dbb07-...\\n\\t\\t</PmtId>  →  <PmtId><UETR>cb3dbb07-...</UETR></PmtId>",
+                "<GrpHdr><MsgId>X\\n</GrpHdr>  →  <GrpHdr><MsgId>X</MsgId></GrpHdr>"
+            ]
+        },
+        "WF_STRAY_CHAR_IN_TAG": {
+            "root_cause": "An illegal character (e.g. '!', '@', '#') appears inside an XML opening or closing tag — after the last attribute value but before the closing '>' or '/>' of that tag. Example: '<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\"!>' has '!' before '>'. This makes the document non-well-formed and prevents parsing.",
+            "fix": "Remove every character that is not whitespace, '/', or '>' from the gap between the last attribute quote and the tag's closing '>'. Applies to EVERY tag in the document — BusMsgEnvlp, AppHdr, Document, and all others. The fix must operate on the raw XML text, not the parsed tree (the document cannot be parsed until this is fixed).",
+            "auto_fixable": true,
+            "regex_pattern": "Strip characters matching [^\\s/>] found after the last attribute quote ('\"' or \"'\") and before the first '>' or '/>' of each opening/closing tag.",
+            "applies_to": "all message types and all tags universally",
+            "examples": [
+                "<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\"!>  →  <BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">",
+                "<AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\"!>  →  <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">",
+                "<BICFI!/>  →  <BICFI/>",
+                "<Document!>  →  <Document>"
+            ]
+        },
         "APPHDR_FR_MISSING": {
-            "root_cause": "AppHdr/Fr is completely absent. Fr is mandatory in the BAH (head.001) AppHdr. This is NOT a value mismatch — the whole element was deleted, so there is nothing to update; the AI must INSERT it.",
+            "root_cause": "AppHdr/Fr is completely absent. Fr is CBPR+ mandatory in the BAH (head.001) AppHdr for ALL CBPR+ message types. This rule applies universally: pacs.008, pacs.009, pacs.002, pacs.003, pacs.004, pacs.010, pain.001, pain.002, pain.008, camt.052, camt.053, camt.054, camt.055, camt.056, camt.057. This is NOT a value mismatch — the whole element was deleted, so there is nothing to update; the AI must INSERT it.",
             "aliases": [
                 "MISSING_FR",
                 "APPHDR_FR_ABSENT",
                 "FR_NOT_FOUND"
             ],
-            "fix": "Insert a full Fr element as the FIRST child of AppHdr using tag_templates.Fr. Resolve $INSTG_BICFI by harvesting InstgAgt/FinInstnId/BICFI from the transaction block (CdtTrfTxInf/InstgAgt for pacs.008/009, GrpHdr/InstgAgt for pacs.002/004). If no InstgAgt BICFI exists anywhere in the message, fall back to dummy_data.parties.instructing_agent.bicfi (BARCGB22XXX).",
+            "fix": "Insert a full Fr element as the FIRST child of AppHdr using tag_templates.Fr. Harvest $INSTG_BICFI in this priority order: (1) InstgAgt/FinInstnId/BICFI from any transaction block (CdtTrfTxInf, DrctDbtTxInf, TxInf, CdtInstr), (2) Assgnr/Agt/FinInstnId/BICFI for camt.055/056, (3) GrpHdr/InstgAgt for pacs.002/004, (4) any BICFI already present in the document, (5) dummy_data.parties.instructing_agent.bicfi (BARCGB22XXX) as last resort.",
             "insert_template": "<Fr><FIId><FinInstnId><BICFI>$INSTG_BICFI</BICFI></FinInstnId></FIId></Fr>",
             "insert_position": "First child of AppHdr, before To (see tag_insertion_order.AppHdr).",
-            "must_equal": "The inserted Fr BICFI MUST equal InstgAgt/FinInstnId/BICFI (see dependencies.equals.APPHDR_FR_EQ_INSTGAGT). Always harvest, never invent, when InstgAgt is present.",
-            "do_not": "Do NOT add Nm or PstlAdr inside Fr/FIId/FinInstnId when BICFI is present (BICFI_EXCLUSIVE)."
+            "must_equal": "The inserted Fr BICFI MUST equal InstgAgt/FinInstnId/BICFI when InstgAgt is present.",
+            "do_not": "Do NOT add Nm or PstlAdr inside Fr/FIId/FinInstnId when BICFI is present (BICFI_EXCLUSIVE). Do NOT skip this fix for non-pacs.008 messages — it applies to ALL CBPR+ message types."
         },
         "APPHDR_TO_MISSING": {
-            "root_cause": "AppHdr/To is completely absent. To is mandatory in the BAH (head.001) AppHdr. This is NOT a value mismatch — the whole element was deleted, so there is nothing to update; the AI must INSERT it.",
+            "root_cause": "AppHdr/To is completely absent. To is CBPR+ mandatory in the BAH (head.001) AppHdr for ALL CBPR+ message types. This rule applies universally: pacs.008, pacs.009, pacs.002, pacs.003, pacs.004, pacs.010, pain.001, pain.002, pain.008, camt.052, camt.053, camt.054, camt.055, camt.056, camt.057. This is NOT a value mismatch — the whole element was deleted, so there is nothing to update; the AI must INSERT it.",
             "aliases": [
                 "MISSING_TO",
                 "APPHDR_TO_ABSENT",
                 "TO_NOT_FOUND"
             ],
-            "fix": "Insert a full To element into AppHdr immediately AFTER Fr using tag_templates.To. Resolve $INSTD_BICFI by harvesting InstdAgt/FinInstnId/BICFI from the transaction block (CdtTrfTxInf/InstdAgt for pacs.008/009, GrpHdr/InstdAgt for pacs.002/004). If no InstdAgt BICFI exists anywhere in the message, fall back to dummy_data.parties.instructed_agent.bicfi (CHASUS33XXX).",
+            "fix": "Insert a full To element into AppHdr immediately AFTER Fr using tag_templates.To. Harvest $INSTD_BICFI in this priority order: (1) InstdAgt/FinInstnId/BICFI from any transaction block, (2) Assgne/Agt/FinInstnId/BICFI for camt.055/056, (3) GrpHdr/InstdAgt for pacs.002/004, (4) any other BICFI in the document, (5) dummy_data.parties.instructed_agent.bicfi (CHASUS33XXX) as last resort.",
             "insert_template": "<To><FIId><FinInstnId><BICFI>$INSTD_BICFI</BICFI></FinInstnId></FIId></To>",
             "insert_position": "Second child of AppHdr, immediately after Fr and before BizMsgIdr (see tag_insertion_order.AppHdr).",
-            "must_equal": "The inserted To BICFI MUST equal InstdAgt/FinInstnId/BICFI (see dependencies.equals.APPHDR_TO_EQ_INSTDAGT). Always harvest, never invent, when InstdAgt is present.",
-            "do_not": "Do NOT add Nm or PstlAdr inside To/FIId/FinInstnId when BICFI is present (BICFI_EXCLUSIVE)."
+            "must_equal": "The inserted To BICFI MUST equal InstdAgt/FinInstnId/BICFI when InstdAgt is present.",
+            "do_not": "Do NOT add Nm or PstlAdr inside To/FIId/FinInstnId when BICFI is present (BICFI_EXCLUSIVE). Do NOT skip this fix for non-pacs.008 messages — it applies to ALL CBPR+ message types."
         },
         "NBOFTXS_MISMATCH": {
             "root_cause": "GrpHdr/NbOfTxs does not equal the actual number of transaction blocks.",
             "fix": "Count all CdtTrfTxInf (or DrctDbtTxInf or TxInfAndSts) elements and set NbOfTxs to that count."
+        },
+        "EMPTY_CDTDBTIND": {
+            "root_cause": "CdtDbtInd element is present but empty or whitespace-only. CreditDebitCode only accepts 'CRDT' (credit) or 'DBIT' (debit) — empty string is invalid. Occurs in camt statement entries (Ntry), transaction details (TxDtls), and balance (Bal) elements when the user deletes the value.",
+            "fix": "Set CdtDbtInd to 'CRDT' or 'DBIT'. Inference priority: (1) if another CdtDbtInd sibling within the same parent has a valid value, borrow it; (2) default to 'CRDT' (credit entry) when no context is available. CRDT means money received/credited; DBIT means money sent/debited.",
+            "auto_fixable": true,
+            "applies_to": "camt.052, camt.053, camt.054, and any camt message containing Ntry, TxDtls, or Bal elements",
+            "example": "Empty <CdtDbtInd/> in Ntry → <CdtDbtInd>CRDT</CdtDbtInd>"
+        },
+        "MISSING_CDTDBTIND": {
+            "root_cause": "CdtDbtInd element is entirely absent from a parent that requires it (Ntry, TxDtls, Bal, Rpt, TxInf). CreditDebitCode is mandatory in these contexts per ISO 20022 XSD — its absence causes a 'missing mandatory element' or 'element not found' validation error.",
+            "fix": "Insert <CdtDbtInd> as a child of the affected parent element. Inference priority: (1) if a sibling CdtDbtInd exists elsewhere in the same parent, borrow its value; (2) if parent is Bal with a Tp/CdOrPrtry/Cd of OPBD/PRCD, prefer CRDT; (3) default to 'CRDT' when context is ambiguous. Valid values: CRDT (credit/money received) or DBIT (debit/money sent). Element must appear in the correct XSD sequence position — after Amt and before ValDt in Ntry/TxDtls; after Amt in Bal.",
+            "auto_fixable": true,
+            "applies_to": "camt.052, camt.053, camt.054, and any camt/pain/pacs message where Ntry, TxDtls, or Bal requires CdtDbtInd",
+            "example": "<Ntry> missing CdtDbtInd → insert <CdtDbtInd>CRDT</CdtDbtInd> after <Amt>"
+        },
+        "EMPTY_NBOFNTRIES": {
+            "root_cause": "NbOfNtries element is present but empty or whitespace-only. Occurs in camt.052/053/054 when the user manually deleted the entry count value. XSD type is Max15NumericText ([0-9]{1,15}) — empty string is invalid.",
+            "fix": "Count the number of <Ntry> elements in the entire document and set NbOfNtries to that count. If no Ntry elements exist, set to '0'. Do NOT delete the element — it is required to be non-empty when present.",
+            "auto_fixable": true,
+            "applies_to": "camt.052, camt.053, camt.054",
+            "example": "Document has 3 <Ntry> elements → set <NbOfNtries>3</NbOfNtries>"
+        },
+        "EMPTY_PGINFO": {
+            "root_cause": "StmtPgntn/PgNb or StmtPgntn/LastPgInd is empty. Both are mandatory children of StmtPgntn in camt.052/053/054. PgNb type is Max5NumericText ([0-9]{1,5}); LastPgInd is YesNoIndicator (must be 'true' or 'false').",
+            "fix": "For PgNb: set to '1' (first page) if empty. For LastPgInd: set to 'true' (single-page statement) if empty. Both must be non-empty when StmtPgntn is present.",
+            "auto_fixable": true,
+            "applies_to": "camt.052, camt.053, camt.054",
+            "example": "Empty <PgNb/> → <PgNb>1</PgNb>. Empty <LastPgInd/> → <LastPgInd>true</LastPgInd>"
+        },
+        "EMPTY_ASSGNMT_ID": {
+            "root_cause": "The <Id> element inside <Assgnmt> is empty or self-closing (<Id/>). Assgnmt/Id is a mandatory Max35Text field that uniquely identifies the assignment in camt.055 and other camt cancellation/assignment messages.",
+            "fix": "Generate a non-empty identifier string (Max35Text, up to 35 characters, e.g. 'ASSGN-001' or a UUID-style string). The value only needs to be locally unique; any non-empty alphanumeric string satisfies the constraint.",
+            "auto_fixable": true,
+            "applies_to": "camt.055, camt.029, camt.028, camt.056 — any message with Assgnmt/Id",
+            "example": "<Id/> → <Id>ASSGN-20260609-001</Id>"
+        },
+        "EMPTY_CXLRSN_CD": {
+            "root_cause": "The <Cd> element inside <CxlRsnInf><Rsn> is empty or self-closing (<Cd/>). This is a cancellation reason code from the ExternalCancellationReason1Code codelist, required when the Rsn element uses the Cd variant.",
+            "fix": "Set to a valid ExternalCancellationReason1Code. Common values: DUPL (duplicate), CUST (customer request), NARR (narrative/other), FRAD (fraudulent origin), CNCL (cancellation requested). Default: DUPL.",
+            "auto_fixable": true,
+            "applies_to": "camt.055, camt.056, pacs.007, pacs.004 — any CxlRsnInf/Rsn/Cd field",
+            "example": "<Cd/> → <Cd>DUPL</Cd>"
         },
         "IBAN_INVALID": {
             "root_cause": "IBAN fails checksum or format validation.",
@@ -622,8 +759,8 @@
             "fix": "Add a BICFI child element inside FinInstnId using an appropriate BIC from dummy_data.banks."
         },
         "MISSING_UETR": {
-            "root_cause": "UETR is required under CBPR+ for pacs.008 and pacs.009 but is absent.",
-            "fix": "Insert <UETR>4a1a0945-5772-409a-83ba-240e666e0267</UETR> inside PmtId, after EndToEndId."
+            "root_cause": "UETR is required under CBPR+ for pacs.008, pacs.009, pacs.003, and pacs.010 but is absent from PmtId.",
+            "fix": "Insert <UETR>{fresh UUID v4}</UETR> inside PmtId, after EndToEndId. Never reuse a static UUID. Use str(uuid.uuid4()) to generate a new one."
         },
         "SANCTIONS_BLOCKED": {
             "root_cause": "A party field contains a sanctioned country code or name.",
@@ -1245,6 +1382,17 @@
             "fix": "This is a warning. Optionally migrate AdrLine content to structured fields. At minimum ensure Ctry is always present.",
             "severity": "WARNING"
         },
+        "ADDR_COEXISTENCE": {
+            "root_cause": "Postal Address Coexistence Rule (E001): a PstlAdr block has NO <AdrLine>, but when AddressLine is absent both Town Name <TwnNm> and Country <Ctry> are mandatory. One or both are missing. Applies to every party/agent PstlAdr across all message types (pacs.004, pacs.008, pacs.009, pacs.003, pacs.010, pain.001/002/008, camt.0xx).",
+            "fix": "Add the missing structured fields inside PstlAdr: insert <TwnNm>{city}</TwnNm> and/or <Ctry>{ISO 3166-1 alpha-2}</Ctry>. Respect ISO 20022 child order: ...StrtNm, BldgNb, BldgNm, Flr, PstBx, Room, PstCd, TwnNm, TwnLctnNm, DstrctNm, CtrySubDvsn, Ctry, AdrLine. If the real city is unknown use a sensible value derived from Ctry; if Ctry is unknown default to GB. Alternatively, if a free-form address exists, add an <AdrLine>{address}</AdrLine> instead, which also satisfies the rule.",
+            "affected_tags": [
+                "PstlAdr/TwnNm",
+                "PstlAdr/Ctry",
+                "PstlAdr/AdrLine"
+            ],
+            "do_not": "Do NOT add Nm/PstlAdr content inside a FinInstnId that carries a BICFI (BICFI is exclusive). Do NOT insert an empty <TwnNm> or <Ctry> placeholder.",
+            "xml_example": "<PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry></PstlAdr>"
+        },
         "SCHEME_CONFLICT": {
             "root_cause": "SchmeNm contains both Cd and Prtry children, which are mutually exclusive.",
             "fix": "Remove Prtry and keep Cd. If Cd is empty, remove Cd and keep Prtry.",
@@ -1378,16 +1526,6 @@
             "root_cause": "Advisory: Payment routed via RTGS clearing system but SttlmPrty is NORM or absent. HIGH is recommended for RTGS.",
             "fix": "This is a warning. Consider setting SttlmPrty to HIGH.",
             "severity": "WARNING"
-        },
-        "PACS009_RMT_001": {
-            "aliases": [
-                "PACS009-RMT-001"
-            ],
-            "root_cause": "RmtInf (remittance information) is present in a pacs.009 CORE message. RmtInf is forbidden in the standard FI-to-FI credit transfer; it is only allowed in the COV (cover) variant.",
-            "fix": "Remove the RmtInf element entirely. If the payment is a cover for an underlying customer transfer, ensure BizSvc is 'swift.cbprplus.cov.03' and add UndrlygCstmrCdtTrf instead of bare RmtInf.",
-            "affected_tags": [
-                "CdtTrfTxInf/RmtInf"
-            ]
         },
         "PACS002_RMT_001": {
             "aliases": [
@@ -1658,10 +1796,12 @@
             "severity": "WARNING"
         },
         "CURR_IBAN_MISMATCH": {
-            "root_cause": "Transaction currency (Ccy attribute on IntrBkSttlmAmt or InstdAmt) does not match the expected currency for the IBAN country in DbtrAcct or CdtrAcct. E.g. IBAN starts with DE (→ EUR) but Ccy=SEK.",
-            "fix": "Update the Ccy attribute on the amount element to match the currency expected for the IBAN country. Use dummy_data.currencies_by_country to map IBAN country prefix → currency. Do NOT change the IBAN — change the currency attribute.",
-            "anti_pattern": "Do NOT replace the IBAN with a different-country IBAN. Do NOT change both the IBAN and the currency. Fix ONLY the Ccy attribute on the amount element.",
-            "example": "IBAN DE89370400440532013000 → country DE → expected EUR. If Ccy=SEK, change to Ccy=EUR on IntrBkSttlmAmt."
+            "root_cause": "Transaction currency (Ccy attribute on IntrBkSttlmAmt or InstdAmt) does not match the expected currency for the IBAN country in DbtrAcct or CdtrAcct. Two common causes: (1) the original IBAN country implies a different currency than Ccy (e.g. DE IBAN → EUR but Ccy=SEK); (2) AI auto-generated a dummy IBAN using the default country (GB → GBP) when the payment currency is EUR, causing GB IBAN + EUR Ccy mismatch.",
+            "fix": "SCENARIO 1 (original IBAN is real): Update the Ccy attribute on the amount element to match the currency expected for the IBAN country. Use dummy_data.currencies_by_country to map IBAN country prefix → currency. SCENARIO 2 (dummy IBAN was generated): Replace the dummy IBAN with one whose country currency matches the Ccy attribute — consult dummy_data.ibans and dummy_data.currencies_by_country to pick the right country. E.g. Ccy=EUR → use DE IBAN (DE89370400440532013000).",
+            "anti_pattern": "Do NOT generate a GB IBAN (GB29NWBK60161331926819) as a default when the payment Ccy is EUR or any non-GBP currency. Do NOT change both the IBAN and the Ccy attribute simultaneously without knowing which is correct. Always check Ccy on the nearest amount element before generating a dummy IBAN.",
+            "prevention": "When generating any dummy IBAN, first read the Ccy attribute on IntrBkSttlmAmt/InstdAmt/Amt in the same message. Then use dummy_data.currencies_by_country to find a country whose expected currency matches Ccy. Use that country's IBAN from dummy_data.ibans. If no match found, use DE (EUR, most common cross-border currency) as fallback instead of GB.",
+            "applies_to": "all message types: pacs.008, pacs.009, pacs.003, pacs.004, pain.001, pain.008, camt.052, camt.053, camt.054, camt.057",
+            "example": "Payment has Ccy=EUR on IntrBkSttlmAmt. AI deletes IBAN. Regeneration must pick DE (EUR) not GB (GBP). Result: DE89370400440532013000, not GB29NWBK60161331926819."
         },
         "SvcLvl_Cd_INVALID": {
             "aliases": ["INVALID_CODE", "ENUM_VIOLATION"],
@@ -1813,6 +1953,7 @@
             "pacs.008": "<PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId>",
             "pacs.009": "<PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><TxId>$TX_ID</TxId><UETR>$UETR</UETR></PmtId>",
             "pacs.003": "<PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><MndtId>MNDT-001</MndtId><UETR>$UETR</UETR></PmtId>",
+            "pacs.010": "<PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId><UETR>$UETR</UETR></PmtId>",
             "default": "<PmtId><EndToEndId>$E2E_ID</EndToEndId><UETR>$UETR</UETR></PmtId>",
             "pain.001": "<PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId>",
             "pain.008": "<PmtId><InstrId>$INSTR_ID</InstrId><EndToEndId>$E2E_ID</EndToEndId></PmtId>"
@@ -3511,6 +3652,40 @@
                 "exclusive_with": "BICFI",
                 "fix_action": "coexist_or_remove",
                 "description": "Nm and PstlAdr must both be present; if the block also has BICFI, remove the lone one (exclusivity wins), else add the missing counterpart."
+            },
+            {
+                "id": "ADDR_COEXISTENCE",
+                "codes": [
+                    "ADDR_COEXISTENCE",
+                    "E001"
+                ],
+                "message_pattern": "AddressLine is absent|no <AdrLine>|Town Name and Country must be present",
+                "elements": [
+                    "PstlAdr/TwnNm",
+                    "PstlAdr/Ctry",
+                    "PstlAdr/AdrLine"
+                ],
+                "fix_action": "insert_missing_address_fields",
+                "insertion_order": [
+                    "StrtNm",
+                    "BldgNb",
+                    "BldgNm",
+                    "Flr",
+                    "PstBx",
+                    "Room",
+                    "PstCd",
+                    "TwnNm",
+                    "TwnLctnNm",
+                    "DstrctNm",
+                    "CtrySubDvsn",
+                    "Ctry",
+                    "AdrLine"
+                ],
+                "defaults": {
+                    "TwnNm": "London",
+                    "Ctry": "GB"
+                },
+                "description": "Postal Address Coexistence Rule (E001): when a PstlAdr has no AdrLine, both TwnNm and Ctry are mandatory. Insert whichever of <TwnNm>/<Ctry> is missing, in correct ISO 20022 child order. Applies to ALL message types and every party/agent PstlAdr. Skip blocks under a FinInstnId that carries a BICFI (BICFI is exclusive). Never insert empty placeholder tags."
             }
         ],
         "value_replacement": [
@@ -3592,6 +3767,119 @@
                 "default_replacement": "RTGS",
                 "fix_action": "replace_invalid_code",
                 "description": "Replace invalid ClearingChannel code with RTGS (high-value real-time gross settlement)."
+            }
+        ],
+        "empty_mandatory": [
+            {
+                "id": "EMPTY_BICFI",
+                "codes": ["EMPTY_BICFI", "BICFI_EMPTY"],
+                "message_pattern": "BICFI.*empty|empty.*BICFI",
+                "elements": ["BICFI"],
+                "fix_action": "remove_empty_agent_or_populate",
+                "description": "A BICFI element is present but has no content. Fix engine must either: (a) populate with a valid 8/11-char BIC if one can be inferred from context (e.g. matching InstgAgt/InstdAgt), or (b) remove the entire parent agent block if that agent position is optional and not required by the payment chain. NEVER leave an empty BICFI in the output.",
+                "priority_logic": "If agent is DbtrAgt or CdtrAgt (mandatory in CBPR+), populate from context or flag as CANNOT_AUTO_FIX. If agent is PrvsInstgAgt1/2/3 or IntrmyAgt1/2/3 with empty BICFI, remove entire block."
+            },
+            {
+                "id": "EMPTY_SVCLVL_CD",
+                "codes": ["EMPTY_SVCLVL_CD", "SVCLVL_CD_EMPTY"],
+                "message_pattern": "SvcLvl.*Cd.*empty|PmtTpInf.*SvcLvl.*empty",
+                "elements": ["PmtTpInf.SvcLvl.Cd"],
+                "fix_action": "remove_empty_block_or_populate",
+                "description": "SvcLvl/Cd element present but empty. Either populate with a valid ExternalServiceLevel1Code (default: SDVA for same-day value) or remove the entire <SvcLvl> block if service level is not applicable. Do NOT leave empty <Cd> tag.",
+                "default_value": "SDVA",
+                "valid_common_codes": ["SEPA", "SDVA", "URGP", "NURG"]
+            },
+            {
+                "id": "EMPTY_OTHR_ID",
+                "codes": ["EMPTY_OTHR_ID", "OTHR_ID_EMPTY"],
+                "message_pattern": "Othr.*Id.*empty|empty.*Othr.*Id",
+                "elements": ["Othr.Id"],
+                "fix_action": "remove_empty_block_or_populate",
+                "description": "An Othr/Id element is present but empty. Used in account identifiers (DbtrAcct, CdtrAcct, IntrmyAgtAcct, DbtrAgtAcct, CdtrAgtAcct). Fix: if the parent account has no meaningful identifier, remove the entire parent account block. If it should reference an account, populate with a dummy reference (e.g. ACCT-UNKNOWN). NEVER leave empty Othr/Id.",
+                "priority_logic": "Account blocks for optional agents (IntrmyAgtAcct with empty account) should be removed entirely. Account blocks for mandatory parties (DbtrAcct, CdtrAcct) should be populated."
+            },
+            {
+                "id": "EMPTY_NBOFTXS",
+                "codes": ["EMPTY_NBOFTXS", "NBOFTXS_EMPTY"],
+                "message_pattern": "NbOfTxs.*empty|empty.*NbOfTxs",
+                "elements": ["GrpHdr.NbOfTxs"],
+                "fix_action": "compute_and_insert",
+                "description": "NbOfTxs is present but empty. Engine counts CdtTrfTxInf (or TxInfAndSts) blocks and inserts the count. Applies to pacs.008, pacs.009, pacs.002, pain.001, pain.008.",
+                "default_value": "1"
+            },
+            {
+                "id": "EMPTY_INSTRID",
+                "codes": ["EMPTY_INSTRID", "INSTRID_EMPTY"],
+                "message_pattern": "InstrId.*empty|empty.*InstrId",
+                "elements": ["PmtId.InstrId"],
+                "fix_action": "generate_identifier",
+                "description": "InstrId present but empty. Generate a unique Max16Text identifier. Must not start/end with '/' or contain '//'. Use pattern: INSTR-{6-char-alphanum}.",
+                "default_pattern": "INSTR-{random6}"
+            }
+        ],
+        "decimal_overflow": [
+            {
+                "id": "AMOUNT_DECIMAL_PRECISION_OVERFLOW",
+                "codes": ["DECIMAL_OVERFLOW", "AMOUNT_PRECISION_ERROR", "FRACTIONAL_DIGITS_EXCEEDED"],
+                "message_pattern": "fractionDigits|too many decimal|decimal.*places|precision.*exceeded",
+                "elements": ["InstdAmt", "IntrBkSttlmAmt", "ChrgsInf.Amt", "TtlRtrdIntrBkSttlmAmt", "Amt"],
+                "fix_action": "round_to_two_decimal_places",
+                "description": "ISO 20022 amount fields have XSD constraint fractionDigits=5 (ActiveCurrencyAndAmount / ActiveOrHistoricCurrencyAndAmount). However, SWIFT CBPR+ network and most bank systems only support 2 decimal places. When an amount has more than 5 decimal digits, the XSD itself rejects it; when it has 3-5, SWIFT may reject at network level. Fix: round to 2 decimal places using standard rounding (half-up). Preserve the Ccy attribute. Never change the integer part beyond rounding.",
+                "rounding_rule": "HALF_UP — e.g. 388658.9999999999999999999999906 → 389659.00 is WRONG; correct is 388659.00 (round 388658.999... → 388659.00)",
+                "critical_notes": [
+                    "NEVER remove or change the Ccy attribute",
+                    "Round to 2 decimal places for monetary amounts",
+                    "For XchgRate/BaseOneRate: round to 5 decimal places (not 2)",
+                    "Always use period (.) as decimal separator — never comma",
+                    "Do NOT change the integer portion unless pure rounding requires it (e.g. .9999... rounds up)"
+                ],
+                "examples": [
+                    "388658.9999999999999999999999906 → 388659.00",
+                    "393409.99999999999999999968 → 393410.00",
+                    "1234.123456789 → 1234.12",
+                    "500.00000 → 500.00"
+                ]
+            }
+        ],
+        "structural_repair": [
+            {
+                "id": "RMTINF_WRONG_PARENT",
+                "codes": ["RMTINF_WRONG_PARENT", "WRONG_LEVEL_ELEMENT"],
+                "message_pattern": "RmtInf.*not expected|RmtInf.*not allowed.*UltmtCdtr|RmtInf.*not allowed.*Cdtr|RmtInf.*not allowed.*Dbtr",
+                "elements": ["UltmtCdtr.RmtInf", "Cdtr.RmtInf", "Dbtr.RmtInf"],
+                "fix_action": "move_to_correct_parent",
+                "correct_parent": "CdtTrfTxInf",
+                "description": "RmtInf element found inside UltmtCdtr, Cdtr, or Dbtr party blocks — these party elements do NOT allow RmtInf as a child. RmtInf is only valid as a direct child of CdtTrfTxInf. Move the RmtInf block (including Ustrd/Strd content) to its correct position as a child of CdtTrfTxInf. Also: UltmtCdtr allowed children are only Nm, PstlAdr, Id, CtryOfRes, CtctDtls.",
+                "allowed_children_of_UltmtCdtr": ["Nm", "PstlAdr", "Id", "CtryOfRes", "CtctDtls"],
+                "allowed_children_of_Cdtr": ["Nm", "PstlAdr", "Id", "CtryOfRes", "CtctDtls"],
+                "allowed_children_of_Dbtr": ["Nm", "PstlAdr", "Id", "CtryOfRes", "CtctDtls"]
+            },
+            {
+                "id": "APPHDR_TO_FININSTNID_MISSING",
+                "codes": ["APPHDR_TO_INCOMPLETE", "MISSING_FININSTNID_IN_TO"],
+                "message_pattern": "AppHdr.*To.*FinInstnId.*missing|To.*FIId.*FinInstnId.*not found",
+                "elements": ["AppHdr.To.FIId.FinInstnId"],
+                "fix_action": "insert_template",
+                "template": "<To><FIId><FinInstnId><BICFI>{VALUE_FROM_INSTDAGT}</BICFI></FinInstnId></FIId></To>",
+                "description": "AppHdr/To/FIId/FinInstnId block missing or malformed (e.g. closing tag mismatch like </FIId> used instead of </FinInstnId></FIId>). Reconstruct with the BIC from CdtTrfTxInf/InstdAgt/FinInstnId/BICFI (per CBPR_R2/R3).",
+                "critical_notes": [
+                    "AppHdr/To BICFI must match CdtTrfTxInf/InstdAgt BICFI",
+                    "Common XML error: closing tag </FIId> used prematurely before </FinInstnId>"
+                ]
+            },
+            {
+                "id": "CRDTAGTACCT_MALFORMED",
+                "codes": ["CRDTAGTACCT_STRUCT_ERROR", "SCHEMA_VAL"],
+                "message_pattern": "CdtrAgtAcct.*not expected|CdtrAgtAcct.*structure.*invalid",
+                "elements": ["CdtTrfTxInf.CdtrAgtAcct"],
+                "fix_action": "rebuild_from_template",
+                "description": "CdtrAgtAcct element is structurally broken (e.g. mismatched closing tags, orphaned </Id> tag, truncated element like </CdtrAg). Fix: rebuild the element from the tag_templates KB. If the account identifier is empty, remove the entire block.",
+                "template_key": "CdtrAgtAcct_Othr",
+                "critical_notes": [
+                    "CdtrAgtAcct structure: <CdtrAgtAcct><Id><Othr><Id>{value}</Id></Othr></Id></CdtrAgtAcct>",
+                    "If Id is empty and account is optional, remove entire <CdtrAgtAcct> block",
+                    "Malformed closing tag like </CdtrAg is an XML parse error — must be corrected to </CdtrAgtAcct>"
+                ]
             }
         ],
         "wrap_element": [
@@ -3854,7 +4142,7 @@
             "SE": "SE4550000000058398257466",
             "NO": "NO9386011117947",
             "PL": "PL61109010140000071219812874",
-            "default": "GB29NWBK60161331926819"
+            "default": "DE89370400440532013000"
         },
         "amounts": {
             "small": "100.00",
@@ -4216,6 +4504,7 @@
     "cbpr_plus_rules": {
         "_doc": "SWIFT CBPR+ specific rules that go beyond XSD schema validation. The AI must apply all of these when the BizSvc is swift.cbprplus.02.",
         "mandatory_fields": {
+            "_doc": "AppHdr.Fr and AppHdr.To are CBPR+ mandatory for ALL message types — not just pacs.008. The head.001 XSD marks them optional (min=0) but CBPR+ rules require them. Removing Fr/To must trigger re-insertion for pacs.008, pacs.009, pacs.002, pacs.003, pacs.004, pacs.010, pain.001, pain.002, pain.008, camt.052, camt.053, camt.054, camt.055, camt.056, camt.057.",
             "pacs.008": [
                 "AppHdr",
                 "AppHdr.Fr",
@@ -4241,9 +4530,12 @@
             ],
             "pacs.009": [
                 "AppHdr",
+                "AppHdr.Fr",
+                "AppHdr.To",
                 "AppHdr.BizMsgIdr",
                 "AppHdr.MsgDefIdr",
                 "AppHdr.BizSvc",
+                "AppHdr.CreDt",
                 "GrpHdr.MsgId",
                 "GrpHdr.CreDtTm",
                 "GrpHdr.NbOfTxs",
@@ -4372,6 +4664,120 @@
                 "CdtInstr.DrctDbtTxInf.IntrBkSttlmAmt",
                 "CdtInstr.DrctDbtTxInf.Dbtr",
                 "CdtInstr.DrctDbtTxInf.DbtrAgt"
+            ],
+            "pacs.002": [
+                "AppHdr",
+                "AppHdr.Fr",
+                "AppHdr.To",
+                "AppHdr.BizMsgIdr",
+                "AppHdr.MsgDefIdr",
+                "AppHdr.BizSvc",
+                "AppHdr.CreDt",
+                "GrpHdr.MsgId",
+                "GrpHdr.CreDtTm",
+                "TxInfAndSts.OrgnlEndToEndId",
+                "TxInfAndSts.TxSts"
+            ],
+            "pacs.003": [
+                "AppHdr",
+                "AppHdr.Fr",
+                "AppHdr.To",
+                "AppHdr.BizMsgIdr",
+                "AppHdr.MsgDefIdr",
+                "AppHdr.BizSvc",
+                "AppHdr.CreDt",
+                "GrpHdr.MsgId",
+                "GrpHdr.CreDtTm",
+                "GrpHdr.NbOfTxs",
+                "GrpHdr.SttlmInf",
+                "DrctDbtTxInf.PmtId.EndToEndId",
+                "DrctDbtTxInf.PmtId.UETR",
+                "DrctDbtTxInf.IntrBkSttlmAmt",
+                "DrctDbtTxInf.IntrBkSttlmDt",
+                "DrctDbtTxInf.ChrgBr",
+                "DrctDbtTxInf.InstgAgt",
+                "DrctDbtTxInf.InstdAgt"
+            ],
+            "pacs.004": [
+                "AppHdr",
+                "AppHdr.Fr",
+                "AppHdr.To",
+                "AppHdr.BizMsgIdr",
+                "AppHdr.MsgDefIdr",
+                "AppHdr.BizSvc",
+                "AppHdr.CreDt",
+                "GrpHdr.MsgId",
+                "GrpHdr.CreDtTm",
+                "GrpHdr.NbOfTxs",
+                "GrpHdr.SttlmInf",
+                "TxInf.OrgnlGrpInf.OrgnlMsgId",
+                "TxInf.OrgnlGrpInf.OrgnlMsgNmId",
+                "TxInf.OrgnlEndToEndId",
+                "TxInf.OrgnlUETR",
+                "TxInf.RtrdIntrBkSttlmAmt",
+                "TxInf.InstgAgt",
+                "TxInf.InstdAgt"
+            ],
+            "camt.052": [
+                "AppHdr",
+                "AppHdr.Fr",
+                "AppHdr.To",
+                "AppHdr.BizMsgIdr",
+                "AppHdr.MsgDefIdr",
+                "AppHdr.BizSvc",
+                "AppHdr.CreDt",
+                "GrpHdr.MsgId",
+                "GrpHdr.CreDtTm",
+                "Rpt.Id",
+                "Rpt.CreDtTm",
+                "Rpt.Acct"
+            ],
+            "camt.053": [
+                "AppHdr",
+                "AppHdr.Fr",
+                "AppHdr.To",
+                "AppHdr.BizMsgIdr",
+                "AppHdr.MsgDefIdr",
+                "AppHdr.BizSvc",
+                "AppHdr.CreDt",
+                "GrpHdr.MsgId",
+                "GrpHdr.CreDtTm",
+                "Stmt.Id",
+                "Stmt.CreDtTm",
+                "Stmt.Acct"
+            ],
+            "camt.054": [
+                "AppHdr",
+                "AppHdr.Fr",
+                "AppHdr.To",
+                "AppHdr.BizMsgIdr",
+                "AppHdr.MsgDefIdr",
+                "AppHdr.BizSvc",
+                "AppHdr.CreDt",
+                "GrpHdr.MsgId",
+                "GrpHdr.CreDtTm",
+                "Ntfctn.Id",
+                "Ntfctn.CreDtTm",
+                "Ntfctn.Acct"
+            ],
+            "camt.055": [
+                "AppHdr",
+                "AppHdr.Fr",
+                "AppHdr.To",
+                "AppHdr.BizMsgIdr",
+                "AppHdr.MsgDefIdr",
+                "AppHdr.BizSvc",
+                "AppHdr.CreDt",
+                "Assgnmt.Id",
+                "Assgnmt.Assgnr",
+                "Assgnmt.Assgne",
+                "Assgnmt.CreDtTm",
+                "Undrlyg.Assgnmt.Id",
+                "Undrlyg.Assgnmt.Assgnr",
+                "Undrlyg.Assgnmt.Assgne",
+                "Undrlyg.Assgnmt.CreDtTm",
+                "Case.Id",
+                "Case.Cretr"
             ]
         },
         "datetime_rules": [
@@ -4534,7 +4940,7 @@
                 "Value format errors with codelist (CHRGBR_INVALID, SCHEMENAME_INVALID, INVALID_CHARSETS)",
                 "BIC/IBAN format errors where a dummy value is acceptable (UETR_FORMAT_ERROR, IBAN_INVALID, INVALID_BICFI)",
                 "Cross-field equality fixes where both values are present (BIZMSGIDR_EQ_GRPHDR_MSGID, APPHDR_FR_NEQ_INSTGAGT)",
-                "Counter corrections where the count is computable (NBOFTXS_MISMATCH, CTRL_SUM_MISMATCH)",
+                "Counter corrections where the count is computable (NBOFTXS_MISMATCH, CTRL_SUM_MISMATCH, EMPTY_NBOFNTRIES, EMPTY_PGINFO)",
                 "Element ordering fixes (XSD sequence violations)",
                 "Duplicate element removal (DUPLICATE_TAG)",
                 "BICFI exclusivity fixes (BICFI_EXCLUSIVE — remove Nm and PstlAdr)",
@@ -4555,6 +4961,16 @@
     "known_fix_behaviors": {
         "_doc": "Observed behavioral constraints and edge cases for the AI fix engine. Field-tested limitations. Fix engine MUST read before applying any structural or value fix.",
         "structural_edit_behaviors": [
+            {
+                "id": "UNCLOSED_TAG_MESSAGE_FORMAT_B",
+                "description": "Two separate issues around unclosed AppHdr BICFI tags. (1) RESOLVED: Format B error messages ('Add </X> to close the open tag...') were not matched by the routing condition or surgical regex. (2) RESOLVED: Even after format B was fixed, the balance engine (_balance_xml_tags) produced structurally wrong XML when two empty <BICFI> elements existed in AppHdr Fr/To blocks — BizMsgIdr/MsgDefIdr/BizSvc/CreDt and the <To> block were nested inside Fr's <BICFI> instead of being AppHdr siblings.",
+                "behavior": "(1) Format B caused XML recovery to be skipped, XML fell through to lxml recover=True which discarded malformed structure. (2) Balance engine closed unclosed tags but nested subsequent siblings (<To>, AppHdr fields) inside the unclosed <BICFI>, producing parseable-but-structurally-wrong XML. _normalize_busmsgenvlp was not called on the balance result, and even if it were, it exited immediately for BulkMessages root and did not handle elements nested 3+ levels deep in Fr/BICFI.",
+                "root_cause": "(1) Routing checked only 'unclosed' in msg.lower(). (2) _try_surgical_unclosed_tag_fix did not call _normalize_busmsgenvlp on _balance_xml_tags result. _normalize_busmsgenvlp exited for BulkMessages root (only handled BusMsgEnvlp as root). Problem 3b only lifted elements from Fr/FIId level, not from Fr/FIId/FinInstnId/BICFI level.",
+                "fix_engine_guidance": "(1) Routing condition now also checks: 'close the open tag' in msg.lower() and ('add </' in msg.lower() and 'closing tag' in msg.lower()). Surgical regex now matches both format A and format B. (2) _normalize_busmsgenvlp now handles BulkMessages root by recursing into inner BusMsgEnvlp children. Problem 3c added to lift AppHdr-level elements and misplaced Fr/To from inside Fr/To > FIId > FinInstnId > BICFI. _try_surgical_unclosed_tag_fix now calls _normalize_busmsgenvlp on the _balance_xml_tags result before returning.",
+                "format_a": "Unclosed tag <BICFI> at line 12. The tag <BICFI> must be closed with </BICFI> before the closing tag </AppHdr> at line 17.",
+                "format_b": "Add </BICFI> to close the open tag at line 12 before the </AppHdr> closing tag at line 17.",
+                "detection_pattern": "Two empty unclosed <BICFI> in AppHdr (Fr block line ~8, To block line ~12), followed by BizMsgIdr/MsgDefIdr/BizSvc/CreDt at AppHdr level. Root element is BulkMessages wrapping BusMsgEnvlp."
+            },
             {
                 "id": "EXCL_BANG_REMOVES_TAG",
                 "description": "If user appends '!' to tag name or content (e.g. <Amt>100!</Amt> or <Tag!>), lxml structural recovery REMOVES the tag entirely instead of repairing it. Affects all message types including camt.052 and camt.054.",
@@ -4671,6 +5087,49 @@
                     "Prty"
                 ],
                 "detection_hint": "Trigger when root is BusMsgEnvlp AND AppHdr is absent AND Fr/To/BizMsgIdr are direct children of BusMsgEnvlp."
+            },
+            {
+                "message_type": "pacs.008",
+                "issue_id": "PACS008_AMOUNT_DECIMAL_OVERFLOW",
+                "description": "InstdAmt or ChrgsInf/Amt values with excessive decimal precision (e.g. 388658.9999999999999999999999906) fail XSD validation (fractionDigits=5). These are floating-point precision artifacts from amount calculation systems.",
+                "observed_cases": [
+                    "InstdAmt: 388658.9999999999999999999999906 (should be 388659.00)",
+                    "ChrgsInf/Amt: 393409.99999999999999999968 (should be 393410.00)"
+                ],
+                "fix_engine_guidance": "Round to 2 decimal places using HALF_UP rounding. The near-integer values like .9999... WILL round up the integer part — this is correct and expected. Preserve Ccy attribute. Never use comma as decimal separator.",
+                "rounding_examples": [
+                    "388658.9999999999999999999999906 → 388659.00",
+                    "393409.99999999999999999968 → 393410.00"
+                ]
+            },
+            {
+                "message_type": "pacs.008",
+                "issue_id": "PACS008_CRDTM_INVALID_DATE_FORMAT",
+                "description": "GrpHdr/CreDtTm with invalid date portion like '2026-06-084T10:00:00+00:00' (day has 3 digits: '084' instead of '08'). This is a typo — extra digit inserted. XML parsers accept it as text but XSD date validation rejects the malformed ISO 8601 date.",
+                "observed_cases": [
+                    "2026-06-084T10:00:00+00:00 — day '084' is invalid (should be '08')"
+                ],
+                "fix_engine_guidance": "Pattern: detect YYYY-MM-DDdT where 'DD' is more than 2 digits. Fix: replace with today's datetime in YYYY-MM-DDTHH:MM:SS+00:00 format. Do NOT try to parse the invalid date — replace entirely."
+            },
+            {
+                "message_type": "pacs.008",
+                "issue_id": "PACS008_EMPTY_OPTIONAL_AGENT_BLOCKS",
+                "description": "PrvsInstgAgt1/2/3 or IntrmyAgt1/2/3 blocks present with only an empty <BICFI></BICFI> — no identifying information at all. These are optional agents in the payment chain. An agent block with no content is schema-invalid and adds no routing information.",
+                "observed_cases": [
+                    "PrvsInstgAgt1: <FinInstnId><BICFI></BICFI></FinInstnId> — empty, no value",
+                    "PrvsInstgAgt2: <FinInstnId><BICFI></BICFI></FinInstnId> — empty, no value"
+                ],
+                "fix_engine_guidance": "Remove the entire agent block when it contains only empty BICFI and no other identifying data. Removal triggers chain validation: if PrvsInstgAgt3 has a value but PrvsInstgAgt2 is removed, the predecessor chain rule (PRVS_INSTG_CHAIN_3) will require PrvsInstgAgt2 to be present — in that case, keep PrvsInstgAgt2 and flag it as CANNOT_AUTO_FIX.",
+                "chain_rule": "PrvsInstgAgt3 requires PrvsInstgAgt2; PrvsInstgAgt2 requires PrvsInstgAgt1. IntrmyAgt2 requires IntrmyAgt1."
+            },
+            {
+                "message_type": "pacs.008",
+                "issue_id": "PACS008_RMTINF_UNDER_ULTMTCDTR",
+                "description": "RmtInf block found as a child of UltmtCdtr instead of CdtTrfTxInf. UltmtCdtr is a PartyIdentification element (allows Nm/PstlAdr/Id/CtryOfRes/CtctDtls only). RmtInf placed there causes schema error 'element RmtInf not expected here'.",
+                "observed_cases": [
+                    "<UltmtCdtr>...<RmtInf><Ustrd></Ustrd></RmtInf></UltmtCdtr>"
+                ],
+                "fix_engine_guidance": "Move <RmtInf> from inside <UltmtCdtr> to be a direct child of <CdtTrfTxInf>. Also: if the Ustrd element is empty, either populate with a placeholder ('Payment') or omit the block. Empty <Ustrd></Ustrd> inside RmtInf is also schema-invalid (minLength=1)."
             }
         ]
     }

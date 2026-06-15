@@ -389,16 +389,15 @@ class FirebaseHistoryService:
                 if data.get("deleted", False):
                     continue
 
-                if non_deleted_count >= skip:
-                    sanitized_data = _sanitize_firestore_doc(data)
-                    if "origin" not in sanitized_data or not sanitized_data["origin"]:
-                        sanitized_data["origin"] = "Pasted"
-                    results.append(sanitized_data)
-                    if len(results) >= limit:
-                        non_deleted_count += 1
-                        break
-
                 non_deleted_count += 1
+                if non_deleted_count <= skip:
+                    continue
+                sanitized_data = _sanitize_firestore_doc(data)
+                if "origin" not in sanitized_data or not sanitized_data["origin"]:
+                    sanitized_data["origin"] = "Pasted"
+                results.append(sanitized_data)
+                if len(results) >= limit:
+                    break
             self._note_call_outcome(True)
             return results
         except Exception as e:
@@ -508,10 +507,16 @@ class FirebaseHistoryService:
                     batch.update(doc.reference, {"deleted": True})
                 batch.commit()
                 return True
-                
-            self.db.collection("validation_history").document(validation_id).update({"deleted": True})
-            return True
-        except:
+
+            # No batch-id match — try direct document ID
+            doc_ref = self.db.collection("validation_history").document(validation_id)
+            doc_snap = doc_ref.get()
+            if doc_snap.exists:
+                doc_ref.update({"deleted": True})
+                return True
+            return False
+        except Exception as e:
+            print(f"[Firebase] ERROR in delete_record: {type(e).__name__}: {e}")
             return False
 
     def delete_all(self) -> int:

@@ -21,7 +21,7 @@
     "XSDBICFIPattern": "BICFIDec2014Identifier pattern: [A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3})?. Applies to all FinInstnId/BICFI in CdtInstr/Cdtr, CdtInstr/CdtrAgt, DrctDbtTxInf/Dbtr, DrctDbtTxInf/DbtrAgt.",
     "XSDIBANPattern": "IBAN2007Identifier: [A-Z]{2,2}[0-9]{2,2}[a-zA-Z0-9]{1,30}. Max 34 chars. Used in CdtInstr/CdtrAcct/Id/IBAN and DrctDbtTxInf/DbtrAcct/Id/IBAN.",
     "XSDUUIDPattern": "UUIDv4Identifier: [a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}. Mandatory in DrctDbtTxInf/PmtId/UETR under CBPR+.",
-    "XSDNbOfTxsPattern": "Max15NumericText: [0-9]{1,15}. NbOfTxs counts CdtInstr blocks (NOT DrctDbtTxInf inside them). Example: 1 CdtInstr with 3 DrctDbtTxInf → NbOfTxs=1.",
+    "XSDNbOfTxsPattern": "Max15NumericText: [0-9]{1,15}. GrpHdr/NbOfTxs counts the total number of DrctDbtTxInf occurrences across ALL CdtInstr blocks (NOT the number of CdtInstr blocks themselves). Example: 1 CdtInstr with 3 DrctDbtTxInf → NbOfTxs=3.",
     "XSDPacs010v06Changes": "pacs.010.001.06 (vs .001.03): Added SplmtryData at message level. DrctDbtTxInf sequence: PmtId, PmtTpInf, IntrBkSttlmAmt, IntrBkSttlmDt, Dbtr, DbtrAcct, DbtrAgt, Purp, RmtInf, SplmtryData. CdtInstr mandatory children: CdtId (mandatory), then SttlmInf, then Cdtr, then DrctDbtTxInf."
   },
   "cbpr_plus_formal_rules": [
@@ -282,6 +282,18 @@
           ]
         },
         {
+          "error_id": "CREDT_MILLISECONDS",
+          "error_code": "CBPR_DATETIME_MILLISECONDS_FORBIDDEN",
+          "severity": "Fatal",
+          "description": "AppHdr/CreDt contains milliseconds which are forbidden under CBPR+.",
+          "affected_tags": [
+            "AppHdr/CreDt"
+          ],
+          "possible_fixes": [
+            "Remove millisecond component. Example: 2026-05-28T10:00:00.123+00:00 -> 2026-05-28T10:00:00+00:00."
+          ]
+        },
+        {
           "error_id": "CREDT_NO_TIMEZONE",
           "error_code": "CBPR_DATETIME_NO_TIMEZONE",
           "severity": "Fatal",
@@ -376,6 +388,18 @@
           ],
           "possible_fixes": [
             "Replace 'Z' with '+00:00'. Example: 2026-06-01T10:00:00Z -> 2026-06-01T10:00:00+00:00."
+          ]
+        },
+        {
+          "error_id": "CREDTTM_MILLISECONDS",
+          "error_code": "CBPR_DATETIME_MILLISECONDS_FORBIDDEN",
+          "severity": "Fatal",
+          "description": "GrpHdr/CreDtTm contains milliseconds which are forbidden under CBPR+.",
+          "affected_tags": [
+            "GrpHdr/CreDtTm"
+          ],
+          "possible_fixes": [
+            "Strip milliseconds. Example: 2026-05-28T10:00:00.000+00:00 -> 2026-05-28T10:00:00+00:00."
           ]
         },
         {
@@ -782,6 +806,20 @@
             "Remove Nm and PstlAdr from Cdtr/FinInstnId when BICFI is present.",
             "Or remove BICFI and retain Nm/PstlAdr."
           ]
+        },
+        {
+          "error_id": "CDTR_INVALID_CHARS",
+          "error_code": "INVALID_CHARSETS",
+          "severity": "Fatal",
+          "description": "Cdtr/Nm contains characters outside the permitted character set.",
+          "affected_tags": [
+            "CdtInstr/Cdtr/Nm"
+          ],
+          "possible_fixes": [
+            "Nm/Adr fields support extended charset: A-Z a-z 0-9 / - ? : ( ) . , ' + SPACE and !#$&%*=^_{|}~\";<>@[\\].",
+            "Replace < with &lt; and > with &gt;.",
+            "Remove characters not in the permitted extended set."
+          ]
         }
       ]
     },
@@ -1145,6 +1183,20 @@
             "Add <Ctry>{ISO 3166-1 alpha-2 code}</Ctry> inside PstlAdr.",
             "Example: <Ctry>GB</Ctry>"
           ]
+        },
+        {
+          "error_id": "DBTR_INVALID_CHARS",
+          "error_code": "INVALID_CHARSETS",
+          "severity": "Fatal",
+          "description": "Dbtr/Nm contains characters outside the permitted character set.",
+          "affected_tags": [
+            "DrctDbtTxInf/Dbtr/Nm"
+          ],
+          "possible_fixes": [
+            "Nm/Adr fields support extended charset: A-Z a-z 0-9 / - ? : ( ) . , ' + SPACE and !#$&%*=^_{|}~\";<>@[\\].",
+            "Replace < with &lt; and > with &gt;.",
+            "Remove characters not in the permitted extended set."
+          ]
         }
       ]
     },
@@ -1304,6 +1356,20 @@
           ],
           "possible_fixes": [
             "Truncate each Ustrd occurrence to maximum 140 characters."
+          ]
+        },
+        {
+          "error_id": "RMTINF_INVALID_CHARS",
+          "error_code": "INVALID_CHARSETS",
+          "severity": "Fatal",
+          "description": "RmtInf/Ustrd contains characters outside the extended charset.",
+          "affected_tags": [
+            "DrctDbtTxInf/RmtInf/Ustrd"
+          ],
+          "possible_fixes": [
+            "RmtInf/Ustrd supports extended charset including !#$&%*=^_{|}~\";<>@[\\].",
+            "Replace < with &lt; and > with &gt;.",
+            "Remove unsupported characters."
           ]
         }
       ]

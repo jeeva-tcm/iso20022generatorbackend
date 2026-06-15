@@ -21,7 +21,7 @@
     "AppHdr (BusinessApplicationHeader) is mandatory for all CBPR+ camt.057 messages.",
     "AppHdr/BizMsgIdr must equal GrpHdr/MsgId.",
     "AppHdr/MsgDefIdr must equal 'camt.057.001.08'.",
-    "AppHdr/BizSvc must be 'swift.cbprplus.02' for CBPR+ messages.",
+    "AppHdr/BizSvc must be 'swift.cbprplus.03' for CBPR+ camt.057 messages.",
     "AppHdr/CreDt must use format YYYY-MM-DDTHH:MM:SS+HH:MM — 'Z' suffix is forbidden.",
     "AppHdr/Fr and AppHdr/To are mandatory; each must contain a valid BICFI.",
     "Itm/UETR if present must be a valid UUID v4 (lowercase hex, format xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx).",
@@ -164,27 +164,27 @@
       "occurrence": "[0..1]",
       "mandatory": false,
       "datatype": "Max35Text",
-      "expected_value": "swift.cbprplus.02",
-      "description": "Business Service identifier. The ONLY valid value for camt.057 in this implementation is 'swift.cbprplus.02'. The validator rule CBPR_R8 (CBPR_Business_Service_Usage_camt057) must enforce 'swift.cbprplus.02'. Any message with 'swift.cbprplus.03' must be fixed to 'swift.cbprplus.02'.",
+      "expected_value": "swift.cbprplus.03",
+      "description": "Business Service identifier. The ONLY valid value for camt.057 under CBPR+ SR2025 is 'swift.cbprplus.03'. The validator rule CBPR_R8 (ERROR, expression VALUE == 'swift.cbprplus.03') enforces this. Any message with a different value (e.g. 'swift.cbprplus.02') must be fixed to 'swift.cbprplus.03'.",
       "errors": [
         {
           "error_id": "BIZSVC_WRONG_VALUE",
           "error_code": "CBPR_R8",
           "severity": "Error",
-          "description": "BizSvc contains a value other than 'swift.cbprplus.02'. For camt.057 in this implementation, only 'swift.cbprplus.02' is accepted. The validator rule CBPR_R8 fires when the value is not the expected one.",
+          "description": "BizSvc contains a value other than 'swift.cbprplus.03'. For camt.057 under CBPR+ SR2025, only 'swift.cbprplus.03' is accepted. The validator rule CBPR_R8 fires when the value is not the expected one.",
           "affected_tags": [
             "AppHdr/BizSvc"
           ],
-          "correct_value": "swift.cbprplus.02",
+          "correct_value": "swift.cbprplus.03",
           "possible_fixes": [
-            "Set <BizSvc>swift.cbprplus.02</BizSvc> in AppHdr.",
-            "If the current value is 'swift.cbprplus.03', replace it with 'swift.cbprplus.02'.",
-            "If BizSvc is absent, insert <BizSvc>swift.cbprplus.02</BizSvc> after MsgDefIdr."
+            "Set <BizSvc>swift.cbprplus.03</BizSvc> in AppHdr.",
+            "If the current value is 'swift.cbprplus.02', replace it with 'swift.cbprplus.03'.",
+            "If BizSvc is absent, insert <BizSvc>swift.cbprplus.03</BizSvc> after MsgDefIdr."
           ],
           "ai_fix_action": "replace_value",
-          "ai_fix_old": "swift.cbprplus.03",
-          "ai_fix_new": "swift.cbprplus.02",
-          "ai_fix_note": "Always use 'swift.cbprplus.02' for camt.057 regardless of what the CBPR_R8 error message says."
+          "ai_fix_old": "swift.cbprplus.02",
+          "ai_fix_new": "swift.cbprplus.03",
+          "ai_fix_note": "Always use 'swift.cbprplus.03' for camt.057 — this matches the authoritative validator rule CBPR_R8."
         }
       ]
     },
@@ -2605,7 +2605,7 @@
     "Amt_attribute": "Itm/Amt is ActiveOrHistoricCurrencyAndAmount — it requires a @Ccy attribute. Omitting the attribute causes an XSD schema validation failure.",
     "root_element": "camt.057.001.08 root is /Document/NtfctnToRcv (NotificationToReceive); the AppHdr (BAH) precedes the Document.",
     "msg_def_idr": "AppHdr/MsgDefIdr must equal 'camt.057.001.08' matching urn:iso:std:iso:20022:tech:xsd:camt.057.001.08.",
-    "biz_svc": "AppHdr/BizSvc for CBPR+ camt.057 is 'swift.cbprplus.02' (NOT 'swift.cbprplus.03'); rule CBPR_R8 enforces this.",
+    "biz_svc": "AppHdr/BizSvc for CBPR+ camt.057 is 'swift.cbprplus.03' (NOT 'swift.cbprplus.02'); rule CBPR_R8 enforces this.",
     "datetime_format": "ISODateTime fields (AppHdr/CreDt, GrpHdr/CreDtTm) use YYYY-MM-DDTHH:MM:SS+HH:MM; no 'Z' suffix, no milliseconds."
   }
 }

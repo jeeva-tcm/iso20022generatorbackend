@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import List, Dict, Any, Optional
 
 class ValidationRequest(BaseModel):
@@ -30,6 +30,8 @@ class IssueSchema(BaseModel):
     line: Optional[int] = None
 
 class ValidationResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     validation_id: str
     timestamp: str
     status: str
@@ -40,14 +42,16 @@ class ValidationResponse(BaseModel):
     total_time_ms: float
     layer_status: Dict[str, Any]
     details: List[IssueSchema]
+    metadata: Optional[Dict[str, Any]] = None
     file_id: Optional[str] = None
     batch_id: Optional[str] = None
     fixed_xml: Optional[str] = None
-
-    class Config:
-        allow_population_by_field_name = True
+    auto_fix_rounds: Optional[int] = None
+    auto_fix_applied: Optional[int] = None
 
 class HistorySummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     validation_id: str
     batch_id: Optional[str] = None
     file_id: Optional[str] = None
@@ -68,9 +72,6 @@ class HistorySummary(BaseModel):
                 v = v.replace(tzinfo=timezone.utc)
             return v.strftime("%Y-%m-%dT%H:%M:%SZ")
         return v
-
-    class Config:
-        from_attributes = True
 
 class DashboardStats(BaseModel):
     total_audits: int
