@@ -1,0 +1,252 @@
+[
+  {
+    "validation_id": "VAL15062600001",
+    "batch_id": "VAL15062600001",
+    "file_id": "FILE0001",
+    "timestamp": "2026-06-15T09:55:34.279764+00:00",
+    "message_type": "camt.056.001.08",
+    "status": "PASS",
+    "total_errors": 0,
+    "total_warnings": 5,
+    "execution_time_ms": 72.52,
+    "report_json": {
+      "validation_id": "VAL15062600001",
+      "timestamp": "2026-06-15T09:55:34.279764+00:00",
+      "status": "PASS",
+      "schema": "Unknown",
+      "message": "camt.056.001.08",
+      "errors": 0,
+      "warnings": 5,
+      "total_time_ms": 72.52,
+      "layer_status": {
+        "1": {
+          "status": "✅",
+          "time": 16.57
+        },
+        "2": {
+          "status": "✅",
+          "time": 1.2
+        },
+        "3": {
+          "status": "✅",
+          "time": 54.75
+        }
+      },
+      "details": [
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "AppHdr.Fr.FIId.FinInstnId.BICFI",
+          "message": "BIC 'BARCNLAAXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 7
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "AppHdr.To.FIId.FinInstnId.BICFI",
+          "message": "BIC 'CITIFRPPXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 14
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFIPmtCxlReq.Assgnmt.Assgnr.Agt.FinInstnId.BICFI",
+          "message": "BIC 'BARCNLAAXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 27
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFIPmtCxlReq.Assgnmt.Assgne.Agt.FinInstnId.BICFI",
+          "message": "BIC 'CITIFRPPXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 28
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFIPmtCxlReq.Undrlyg.TxInf.Case.Cretr.Agt.FinInstnId.BICFI",
+          "message": "BIC 'BARCNLAAXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 39
+        }
+      ],
+      "metadata": {
+        "version": "SR2025",
+        "Namespace": "urn:iso:std:iso:20022:tech:xsd:camt.056.001.08"
+      },
+      "file_id": "FILE0001",
+      "batch_id": "VAL15062600001"
+    },
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n\t<AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n\t\t<Fr>\n\t\t\t<FIId>\n\t\t\t\t<FinInstnId>\n\t\t\t\t\t<BICFI>BARCNLAAXXX</BICFI>\n\t\t\t\t</FinInstnId>\n\t\t\t</FIId>\n\t\t</Fr>\n\t\t<To>\n\t\t\t<FIId>\n\t\t\t\t<FinInstnId>\n\t\t\t\t\t<BICFI>CITIFRPPXXX</BICFI>\n\t\t\t\t</FinInstnId>\n\t\t\t</FIId>\n\t\t</To>\n\t\t<BizMsgIdr>MSGVOCW0VBCTE51828L</BizMsgIdr>\n\t\t<MsgDefIdr>camt.056.001.08</MsgDefIdr>\n\t\t<BizSvc>swift.cbprplus.02</BizSvc>\n\t\t<CreDt>2026-06-15T10:00:00+00:00</CreDt>\n\t</AppHdr>\n\t<Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:camt.056.001.08\">\n\t\t<FIToFIPmtCxlReq>\n\t\t\t<Assgnmt>\n\t\t\t\t<Id>ASGN3NV4VSJ7C6T4</Id>\n\t\t\t\t<Assgnr><Agt><FinInstnId><BICFI>BARCNLAAXXX</BICFI></FinInstnId></Agt></Assgnr>\n\t\t\t\t<Assgne><Agt><FinInstnId><BICFI>CITIFRPPXXX</BICFI></FinInstnId></Agt></Assgne>\n\t\t\t\t<CreDtTm>2026-06-15T10:00:00+00:00</CreDtTm>\n\t\t\t</Assgnmt>\n\t\t\t<Undrlyg>\n\t\t\t\t<TxInf>\n\t\t\t\t\t<CxlId>CXLIDOP3Y23S6AN</CxlId>\n\t\t\t\t\t<Case>\n\t\t\t\t\t\t<Id>CASE6E111JHB7R</Id>\n\t\t\t\t\t\t<Cretr>\n\t\t\t\t\t\t\t<Agt>\n\t\t\t\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t\t\t\t<BICFI>BARCNLAAXXX</BICFI>\n\t\t\t\t\t\t\t\t</FinInstnId>\n\t\t\t\t\t\t\t</Agt>\n\t\t\t\t\t\t</Cretr>\n\t\t\t\t\t</Case>\n\t\t\t\t\t<OrgnlGrpInf>\n\t\t\t\t\t\t<OrgnlMsgId>ORIGMSG1XEHPJGHHR</OrgnlMsgId>\n\t\t\t\t\t\t<OrgnlMsgNmId>pacs.008.001.08</OrgnlMsgNmId>\n\t\t\t\t\t</OrgnlGrpInf>\n\t\t\t\t\t<OrgnlEndToEndId>ORIE2EEASK4OZTGY</OrgnlEndToEndId>\n\t\t\t\t\t<OrgnlUETR>b5e2e463-49f7-48ca-a05a-e6574baea571</OrgnlUETR>\n\t\t\t\t\t<OrgnlIntrBkSttlmAmt Ccy=\"EUR\">359241.81</OrgnlIntrBkSttlmAmt>\n\t\t\t\t\t<OrgnlIntrBkSttlmDt>2026-06-15</OrgnlIntrBkSttlmDt>\n\t\t\t\t\t<CxlRsnInf>\n\t\t\t\t\t\t<Rsn>\n\t\t\t\t\t\t\t<Cd>DUPL</Cd>\n\t\t\t\t\t\t</Rsn>\n\t\t\t\t\t\t<AddtlInf>FI cancellation requested</AddtlInf>\n\t\t\t\t\t</CxlRsnInf>\n\t\t\t\t</TxInf>\n\t\t\t</Undrlyg>\n\t\t</FIToFIPmtCxlReq>\n\t</Document>\n</BusMsgEnvlp>",
+    "origin": "Uploaded",
+    "version": "SR2025",
+    "deleted": false
+  },
+  {
+    "validation_id": "VAL15062600002",
+    "batch_id": "VAL15062600002",
+    "file_id": "FILE0001",
+    "timestamp": "2026-06-15T09:55:53.735659+00:00",
+    "message_type": "camt.056.001.08",
+    "status": "FAIL",
+    "total_errors": 1,
+    "total_warnings": 0,
+    "execution_time_ms": 2.55,
+    "report_json": {
+      "validation_id": "VAL15062600002",
+      "timestamp": "2026-06-15T09:55:53.735659+00:00",
+      "status": "FAIL",
+      "schema": "Unknown",
+      "message": "camt.056.001.08",
+      "errors": 1,
+      "warnings": 0,
+      "total_time_ms": 2.55,
+      "layer_status": {
+        "1": {
+          "status": "❌",
+          "time": 2.55
+        },
+        "2": {
+          "status": "SKIPPED",
+          "time": 0
+        },
+        "3": {
+          "status": "SKIPPED",
+          "time": 0
+        }
+      },
+      "details": [
+        {
+          "severity": "ERROR",
+          "layer": 1,
+          "code": "XML Syntax Error",
+          "path": "/",
+          "message": "Unclosed tag <Fr> at line 4. The tag <Fr> must be closed with </Fr> before the closing tag </To> at line 6.",
+          "fix_suggestion": "Add </Fr> to close the open tag at line 4 before the </To> closing tag at line 6. Example: <Fr>VALUE</Fr>",
+          "related_test": "",
+          "line": 6
+        }
+      ],
+      "metadata": {
+        "version": "SR2025"
+      },
+      "file_id": "FILE0001",
+      "batch_id": "VAL15062600002"
+    },
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n\t<AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n\t\t<Fr>\n\t\t\t\n\t\t</To>\n\t\t<BizMsgIdr>MSGVOCW0VBCTE51828L</BizMsgIdr>\n\t\t<MsgDefIdr>camt.056.001.08</MsgDefIdr>\n\t\t<BizSvc>swift.cbprplus.02</BizSvc>\n\t\t<CreDt>2026-06-15T10:00:00+00:00</CreDt>\n\t</AppHdr>\n\t<Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:camt.056.001.08\">\n\t\t<FIToFIPmtCxlReq>\n\t\t\t<Assgnmt>\n\t\t\t\t<Id>ASGN3NV4VSJ7C6T4</Id>\n\t\t\t\t<Assgnr><Agt><FinInstnId><BICFI>BARCNLAAXXX</BICFI></FinInstnId></Agt></Assgnr>\n\t\t\t\t<Assgne><Agt><FinInstnId><BICFI>CITIFRPPXXX</BICFI></FinInstnId></Agt></Assgne>\n\t\t\t\t<CreDtTm>2026-06-15T10:00:00+00:00</CreDtTm>\n\t\t\t</Assgnmt>\n\t\t\t<Undrlyg>\n\t\t\t\t<TxInf>\n\t\t\t\t\t<CxlId>CXLIDOP3Y23S6AN</CxlId>\n\t\t\t\t\t<Case>\n\t\t\t\t\t\t<Id>CASE6E111JHB7R</Id>\n\t\t\t\t\t\t<Cretr>\n\t\t\t\t\t\t\t<Agt>\n\t\t\t\t\t\t\t\t<FinInstnId>\n\t\t\t\t\t\t\t\t\t<BICFI>BARCNLAAXXX</BICFI>\n\t\t\t\t\t\t\t\t</FinInstnId>\n\t\t\t\t\t\t\t</Agt>\n\t\t\t\t\t\t</Cretr>\n\t\t\t\t\t</Case>\n\t\t\t\t\t<OrgnlGrpInf>\n\t\t\t\t\t\t<OrgnlMsgId>ORIGMSG1XEHPJGHHR</OrgnlMsgId>\n\t\t\t\t\t\t<OrgnlMsgNmId>pacs.008.001.08</OrgnlMsgNmId>\n\t\t\t\t\t</OrgnlGrpInf>\n\t\t\t\t\t<OrgnlEndToEndId>ORIE2EEASK4OZTGY</OrgnlEndToEndId>\n\t\t\t\t\t<OrgnlUETR>b5e2e463-49f7-48ca-a05a-e6574baea571</OrgnlUETR>\n\t\t\t\t\t<OrgnlIntrBkSttlmAmt Ccy=\"EUR\">359241.81</OrgnlIntrBkSttlmAmt>\n\t\t\t\t\t<OrgnlIntrBkSttlmDt>2026-06-15</OrgnlIntrBkSttlmDt>\n\t\t\t\t\t<CxlRsnInf>\n\t\t\t\t\t\t<Rsn>\n\t\t\t\t\t\t\t<Cd>DUPL</Cd>\n\t\t\t\t\t\t</Rsn>\n\t\t\t\t\t\t<AddtlInf>FI cancellation requested</AddtlInf>\n\t\t\t\t\t</CxlRsnInf>\n\t\t\t\t</TxInf>\n\t\t\t</Undrlyg>\n\t\t</FIToFIPmtCxlReq>\n\t</Document>\n</BusMsgEnvlp>",
+    "origin": "Uploaded",
+    "version": "SR2025",
+    "deleted": false
+  },
+  {
+    "validation_id": "VAL15062600007",
+    "batch_id": "VAL15062600007",
+    "file_id": "FILE0001",
+    "timestamp": "2026-06-15T09:55:55.317996+00:00",
+    "message_type": "camt.056.001.08",
+    "status": "PASS",
+    "total_errors": 0,
+    "total_warnings": 5,
+    "execution_time_ms": 23.01,
+    "report_json": {
+      "validation_id": "VAL15062600007",
+      "timestamp": "2026-06-15T09:55:55.317996+00:00",
+      "status": "PASS",
+      "schema": "Unknown",
+      "message": "camt.056.001.08",
+      "errors": 0,
+      "warnings": 5,
+      "total_time_ms": 23.01,
+      "layer_status": {
+        "1": {
+          "status": "✅",
+          "time": 0.67
+        },
+        "2": {
+          "status": "✅",
+          "time": 0.55
+        },
+        "3": {
+          "status": "✅",
+          "time": 21.79
+        }
+      },
+      "details": [
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "AppHdr.Fr.FIId.FinInstnId.BICFI",
+          "message": "BIC 'BARCNLAAXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 7
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "AppHdr.To.FIId.FinInstnId.BICFI",
+          "message": "BIC 'CITIFRPPXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 14
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFIPmtCxlReq.Assgnmt.Assgnr.Agt.FinInstnId.BICFI",
+          "message": "BIC 'BARCNLAAXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 30
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFIPmtCxlReq.Assgnmt.Assgne.Agt.FinInstnId.BICFI",
+          "message": "BIC 'CITIFRPPXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 37
+        },
+        {
+          "severity": "WARNING",
+          "layer": 3,
+          "code": "BIC_NOT_FOUND",
+          "path": "Document.FIToFIPmtCxlReq.Undrlyg.TxInf.Case.Cretr.Agt.FinInstnId.BICFI",
+          "message": "BIC 'BARCNLAAXXX' not found in official directory.",
+          "fix_suggestion": "Verify if the BIC is correct or recently decommissioned.",
+          "related_test": "",
+          "line": 51
+        }
+      ],
+      "metadata": {
+        "version": "SR2025",
+        "Namespace": "urn:iso:std:iso:20022:tech:xsd:camt.056.001.08"
+      },
+      "file_id": "FILE0001",
+      "batch_id": "VAL15062600007"
+    },
+    "original_message": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<BusMsgEnvlp xmlns=\"urn:swift:xsd:envelope\">\n    <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\">\n        <Fr>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>BARCNLAAXXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </Fr>\n        <To>\n            <FIId>\n                <FinInstnId>\n                    <BICFI>CITIFRPPXXX</BICFI>\n                </FinInstnId>\n            </FIId>\n        </To>\n        <BizMsgIdr>MSGVOCW0VBCTE51828L</BizMsgIdr>\n        <MsgDefIdr>camt.056.001.08</MsgDefIdr>\n        <BizSvc>swift.cbprplus.02</BizSvc>\n        <CreDt>2026-06-15T10:00:00+00:00</CreDt>\n    </AppHdr>\n    <Document xmlns=\"urn:iso:std:iso:20022:tech:xsd:camt.056.001.08\">\n        <FIToFIPmtCxlReq>\n            <Assgnmt>\n                <Id>ASGN3NV4VSJ7C6T4</Id>\n                <Assgnr>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>BARCNLAAXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </Assgnr>\n                <Assgne>\n                    <Agt>\n                        <FinInstnId>\n                            <BICFI>CITIFRPPXXX</BICFI>\n                        </FinInstnId>\n                    </Agt>\n                </Assgne>\n                <CreDtTm>2026-06-15T10:00:00+00:00</CreDtTm>\n            </Assgnmt>\n            <Undrlyg>\n                <TxInf>\n                    <CxlId>CXLIDOP3Y23S6AN</CxlId>\n                    <Case>\n                        <Id>CASE6E111JHB7R</Id>\n                        <Cretr>\n                            <Agt>\n                                <FinInstnId>\n                                    <BICFI>BARCNLAAXXX</BICFI>\n                                </FinInstnId>\n                            </Agt>\n                        </Cretr>\n                    </Case>\n                    <OrgnlGrpInf>\n                        <OrgnlMsgId>ORIGMSG1XEHPJGHHR</OrgnlMsgId>\n                        <OrgnlMsgNmId>pacs.008.001.08</OrgnlMsgNmId>\n                    </OrgnlGrpInf>\n                    <OrgnlEndToEndId>ORIE2EEASK4OZTGY</OrgnlEndToEndId>\n                    <OrgnlUETR>b5e2e463-49f7-48ca-a05a-e6574baea571</OrgnlUETR>\n                    <OrgnlIntrBkSttlmAmt Ccy=\"EUR\">359241.81</OrgnlIntrBkSttlmAmt>\n                    <OrgnlIntrBkSttlmDt>2026-06-15</OrgnlIntrBkSttlmDt>\n                    <CxlRsnInf>\n                        <Rsn>\n                            <Cd>DUPL</Cd>\n                        </Rsn>\n                        <AddtlInf>FI cancellation requested</AddtlInf>\n                    </CxlRsnInf>\n                </TxInf>\n            </Undrlyg>\n        </FIToFIPmtCxlReq>\n    </Document>\n</BusMsgEnvlp>",
+    "origin": "Uploaded",
+    "version": "SR2025",
+    "deleted": false
+  }
+]

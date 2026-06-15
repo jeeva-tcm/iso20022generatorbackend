@@ -1066,7 +1066,6 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
 
     def _validate_cbpr_datetime(self, xml_content: str, report: ValidationReport) -> None:
         r"""
-        r"""
         Step 4.21 — CBPR+ DateTime Format Validation
         Enforces:
           1. Timezone offset is mandatory (e.g., +00:00, +05:30)
@@ -2781,7 +2780,6 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                     seen[val] = line_num
 
     def _validate_swift_charset(self, xml_content: str, report: ValidationReport) -> None:
-        r"""
         r"""
         Step 4.10 — SWIFT Character Set Validation
         Checks <Ustrd> (unstructured remittance) content for characters
