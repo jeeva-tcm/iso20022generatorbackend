@@ -3441,6 +3441,15 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             message_type = "pacs.009.001.08" # Use standard version for XSD
         elif message_type in ["pacs.009.adv", "pacs.009.001.08_ADV"]:
             message_type = "pacs.009.001.08_ADV"
+        # pacs.010 ships only the .06 base XSD in this repo (KB
+        # xsd_version=pacs.010.001.06). Pin the .03 message id to that schema so
+        # base-schema validation is deterministic regardless of which XSD files
+        # have been synced. CBPR+ usage-guideline restrictions that the base
+        # schema does not encode (e.g. SttlmPrty is not permitted in pacs.010 —
+        # verified against SWIFT MyStandards) are enforced by dedicated layer-3
+        # rules in _validate_clearing_system_rules.
+        elif message_type in ["pacs.010.001.03", "pacs.010"]:
+            message_type = "pacs.010.001.06"
 
         # 1. Exact Match
         exact_xsd = f"{message_type}.xsd"
@@ -3600,9 +3609,30 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
 
         # --- 5. Settlement Priority (SttlmPrty) Rules ---
         sttlm_prty_els = root.xpath("//*[local-name()='SttlmPrty']")
-        
+
+        # pacs.010 (FinancialInstitutionDirectDebit): CBPR+ does NOT permit
+        # several elements that the .06 base schema allows in DrctDbtTxInf —
+        # verified against SWIFT MyStandards (the .03 usage guideline omits them;
+        # the expected set after IntrBkSttlmDt is only {SttlmTmReq, Dbtr}). Flag
+        # each forbidden occurrence and exclude SttlmPrty from the credit-transfer
+        # placement/value rules below.
+        _PACS010_FORBIDDEN_ELEMENTS = ("SttlmPrty", "SttlmTmIndctn", "UltmtDbtr")
+        is_pacs010 = bool(root.xpath("//*[local-name()='FIDrctDbt']"))
+        if is_pacs010:
+            for _fb_el in root.iter():
+                if not isinstance(_fb_el.tag, str):
+                    continue
+                _fb_ln = local(_fb_el.tag)
+                if _fb_ln in _PACS010_FORBIDDEN_ELEMENTS:
+                    report.add_issue(ValidationIssue(
+                        "ERROR", 3, "PACS010_ELEMENT_FORBIDDEN", str(_fb_el.sourceline or "Unknown"),
+                        f"Element <{_fb_ln}> is not permitted in CBPR+ pacs.010 (FinancialInstitutionDirectDebit).",
+                        f"Remove the <{_fb_ln}> element — it is not part of the CBPR+ pacs.010 DrctDbtTxInf structure."
+                    ))
+        ct_sttlm_prty_els = [] if is_pacs010 else sttlm_prty_els
+
         # Rule 5.1: No Empty Tag & Valid Values
-        for sp_el in sttlm_prty_els:
+        for sp_el in ct_sttlm_prty_els:
             if not sp_el.text or not sp_el.text.strip():
                 report.add_issue(ValidationIssue(
                     "ERROR", 3, "STTLMPRTY_EMPTY", str(sp_el.sourceline or "Unknown"),
@@ -3618,17 +3648,22 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                         "Change value to HIGH or NORM."
                     ))
             
-            # Rule 5.2: Dependency - Must be inside CdtTrfTxInf
+            # Rule 5.2: Dependency - Must be inside the transaction container.
+            # CdtTrfTxInf for credit transfers (pacs.008/009, pain.001);
+            # DrctDbtTxInf for pacs.003 direct debits (SttlmPrty is valid there).
+            # pacs.010 forbids SttlmPrty outright and is handled above.
             parent = sp_el.getparent()
-            if parent is not None and local(parent.tag) != 'CdtTrfTxInf':
+            if parent is not None and local(parent.tag) not in ('CdtTrfTxInf', 'DrctDbtTxInf'):
                 report.add_issue(ValidationIssue(
                     "ERROR", 3, "STTLMPRTY_WRONG_PARENT", str(sp_el.sourceline or "Unknown"),
-                    "Settlement Priority <SttlmPrty> MUST be inside <CdtTrfTxInf>.",
-                    "Move <SttlmPrty> directly under <CdtTrfTxInf>."
+                    "Settlement Priority <SttlmPrty> MUST be inside the transaction container (<CdtTrfTxInf> or <DrctDbtTxInf>).",
+                    "Move <SttlmPrty> directly under <CdtTrfTxInf> (credit transfers) or <DrctDbtTxInf> (pacs.003)."
                 ))
 
-        # Rule 5.3: Position and Uniqueness (Relative to CdtTrfTxInf)
-        for tx_inf in root.xpath("//*[local-name()='CdtTrfTxInf']"):
+        # Rule 5.3: Position and Uniqueness (relative to the transaction
+        # container). Skipped for pacs.010, where SttlmPrty is not permitted.
+        _sp_containers = [] if is_pacs010 else root.xpath("//*[local-name()='CdtTrfTxInf' or local-name()='DrctDbtTxInf']")
+        for tx_inf in _sp_containers:
             sp = tx_inf.xpath("./*[local-name()='SttlmPrty']")
             if len(sp) > 1:
                  report.add_issue(ValidationIssue(
@@ -3654,8 +3689,9 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                         "Ensure <SttlmPrty> follows <IntrBkSttlmDt> according to ISO 20022 sequence."
                     ))
 
-        # Rule 5.4: Business Rule - RTGS Recommendation
-        if 'RTGS' in active_systems:
+        # Rule 5.4: Business Rule - RTGS Recommendation (not for pacs.010, where
+        # SttlmPrty is not permitted at all).
+        if 'RTGS' in active_systems and not is_pacs010:
             has_high = any(el.text and el.text.strip().upper() == 'HIGH' for el in sttlm_prty_els)
             if not has_high:
                  report.add_issue(ValidationIssue(
