@@ -1276,6 +1276,7 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             'Bal':               "Tp, Amt, CdtDbtInd, and Dt",
             'NtryDtls':          "TxDtls or Btch",
             'TxDtls':            "Refs, Amt, or RltdPties",
+            'BkTxCd':            "<Domn> or <Prtry>",
             # ── Account identification choice ──
             'AcctId':            "<IBAN> or <Othr> with an identifier",
             # ── Party identification (camt.056 Cretr, etc.) ──

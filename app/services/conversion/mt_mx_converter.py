@@ -2203,9 +2203,10 @@ class MT2MXConverter:
                         amt_el.set("Ccy", ntry_ccy)
                 if not any(c.tag.split("}")[-1] == "CdtDbtInd" for c in txd):
                     self.set_element_text(txd, "CdtDbtInd", ntry_ind, namespaces)
-                # RltdDts is mandatory [1..1] in SR2026 camt.054 TxDtls. Add an empty
-                # container (all its children are optional) if absent.
-                if not any(c.tag.split("}")[-1] == "RltdDts" for c in txd):
+                # RltdDts is mandatory [1..1] in SR2026 camt.054 TxDtls only.
+                # Do NOT inject for camt.053 (it is optional there, and an empty
+                # element fails the "Empty elements found" validation check).
+                if "camt.054" in xmlns and not any(c.tag.split("}")[-1] == "RltdDts" for c in txd):
                     rd_tag = f"{{{xmlns}}}RltdDts" if xmlns else "RltdDts"
                     ET.SubElement(txd, rd_tag)
 

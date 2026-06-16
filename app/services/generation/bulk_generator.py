@@ -2208,7 +2208,7 @@ def _gen_camt055(selected: set, idx: int) -> str:
 \t<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.055.001.08">
 \t\t<CstmrPmtCxlReq>
 \t\t\t<Assgnmt>
-\t\t\t\t<Id>{xe(rng_id("ASSGNMT", 10))}</Id>
+\t\t\t\t<Id>{xe(rng_id("ASSGNMT", 10, max_total=16))}</Id>
 \t\t\t\t<Assgnr><Agt><FinInstnId><BICFI>{xe(from_bic)}</BICFI></FinInstnId></Agt></Assgnr>
 \t\t\t\t<Assgne><Agt><FinInstnId><BICFI>{xe(to_bic)}</BICFI></FinInstnId></Agt></Assgne>
 \t\t\t\t<CreDtTm>{cre_dt}</CreDtTm>
@@ -2329,7 +2329,7 @@ def _gen_camt056(selected: set, idx: int) -> str:
 \t<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.056.001.08">
 \t\t<FIToFIPmtCxlReq>
 \t\t\t<Assgnmt>
-\t\t\t\t<Id>{xe(rng_id("ASSGNMT", 10))}</Id>
+\t\t\t\t<Id>{xe(rng_id("ASSGNMT", 10, max_total=16))}</Id>
 \t\t\t\t<Assgnr><Agt><FinInstnId><BICFI>{xe(from_bic)}</BICFI></FinInstnId></Agt></Assgnr>
 \t\t\t\t<Assgne><Agt><FinInstnId><BICFI>{xe(to_bic)}</BICFI></FinInstnId></Agt></Assgne>
 \t\t\t\t<CreDtTm>{cre_dt}</CreDtTm>

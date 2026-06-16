@@ -3709,6 +3709,41 @@ class FixSuggester:
         except Exception:
             self._kb_family = ""
 
+        # ── ID_LENGTH_ERROR: early dedicated handler ──────────────────────────
+        # Runs first so no other handler can intercept it. Handles the
+        # Max16Text fields Assgnmt/Id and Case/Id (and any other Id with a
+        # numeric max length embedded in the error message).
+        if code == "ID_LENGTH_ERROR":
+            _idlen_max_m = re.search(r"maximum\s+(?:allowed\s+)?(\d+)", msg, re.I)
+            _idlen_max = int(_idlen_max_m.group(1)) if _idlen_max_m else 16
+            # Determine the parent context from the error path (e.g. "//Assgnmt/Id")
+            _idlen_pp = [p for p in path.replace("/", ".").split(".")
+                         if p and _VALID_XML_NAME.match(p)]
+            _idlen_tgt  = _idlen_pp[-1] if _idlen_pp else "Id"
+            _idlen_par  = _idlen_pp[-2] if len(_idlen_pp) >= 2 else ""
+            for _idel in root.iter():
+                if not isinstance(_idel.tag, str):
+                    continue
+                _idel_ln = etree.QName(_idel.tag).localname
+                if _idel_ln != _idlen_tgt:
+                    continue
+                _idel_val = (_idel.text or "").strip()
+                if len(_idel_val) <= _idlen_max:
+                    continue
+                if _idlen_par:
+                    _idel_par = _idel.getparent()
+                    _idel_par_ln = (etree.QName(_idel_par.tag).localname
+                                    if _idel_par is not None and isinstance(_idel_par.tag, str)
+                                    else "")
+                    if _idel_par_ln != _idlen_par:
+                        continue
+                _idel_copy = self._copy(_idel)
+                _idel_copy.text = _idel_val[:_idlen_max]
+                return FixSuggestion(
+                    self._xpath_of(_idel), self._serialize(_idel),
+                    self._serialize(_idel_copy), code, msg, "high"
+                )
+
         # ── Per-release handler override surface ──────────────────────────────
         # The release-specific module (fix_handlers_sr2025 / sr2026) gets first
         # refusal: it can override or add to the shared deterministic chain below
@@ -5164,6 +5199,7 @@ class FixSuggester:
                 "SttlmInf": "<SttlmInf><SttlmMtd>INDA</SttlmMtd></SttlmInf>",
                 "PmtId": "<PmtId><EndToEndId>E2E-NOTPROVIDED</EndToEndId></PmtId>",
                 "InitgPty": "<InitgPty><Nm>Initiating Party</Nm></InitgPty>",
+                "BkTxCd": "<BkTxCd><Domn><Cd>PMNT</Cd><Fmly><Cd>RCDT</Cd><SubFmlyCd>OTHR</SubFmlyCd></Fmly></Domn></BkTxCd>",
             }
 
             def _ec_fill(_ecel) -> Optional["FixSuggestion"]:
@@ -10020,7 +10056,15 @@ class FixSuggester:
                     _cl, _prefs = "return_reason", ("AC01", "CUST", "NARR")
             elif _parname == "Sts":
                 # <Ntry><Sts><Cd> / <TxDtls><Sts><Cd> → EntryStatus1Code (camt.052/053/054)
-                _cl, _prefs = "entry_status", ("BOOK", "PDNG", "INFO", "FUTR")
+                # EntryStatus1Code is a closed 4-value enum — apply fix directly
+                # rather than relying on the codelist file (may be absent in this path).
+                _ENTRY_STATUS_VALID = {"BOOK", "FUTR", "INFO", "PDNG"}
+                _cur_sts = (el.text or "").strip()
+                if _cur_sts not in _ENTRY_STATUS_VALID:
+                    el_copy = self._copy(el)
+                    el_copy.text = "BOOK"
+                    return FixSuggestion(xpath, original_fragment,
+                                         self._serialize(el_copy), code, msg, "high")
             if _cl:
                 _codes = _codelist_codes(_cl)
                 _cur = (el.text or "").strip()
