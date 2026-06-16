@@ -917,7 +917,24 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                         f"Field <{tag_name}> contains '{raw_value}', which is after today ({today_date}).",
                         f"Update <{tag_name}> to a valid past date. (Line: {line_num})"
                     ))
-            elif parsed_date < today_date and tag_name not in ('BirthDt', 'IntrBkSttlmDt', 'OrgnlIntrBkSttlmDt'):
+            elif parsed_date < today_date and tag_name not in (
+                # Birth date: must be past — checked separately above.
+                'BirthDt',
+                # Settlement / value dates: legitimately historical in return/
+                # investigation messages (pacs.004, camt.056).
+                'IntrBkSttlmDt', 'OrgnlIntrBkSttlmDt',
+                # Mandate-related dates (pain.008): the mandate was signed and
+                # first/final collections may already have occurred.
+                'DtOfSgntr', 'FrstColltnDt', 'FnlColltnDt',
+                # Amendment information: original mandate dates are historical.
+                'OrgnlFnlColltnDt',
+                # Pre-notification date: sent before collection, so naturally
+                # precedes the collection date and will be in the past by the
+                # time the message is validated.
+                'PreNtfctnDt',
+                # Generic / reference dates that are contextually historical.
+                'RltdDt', 'Dt',
+            ):
                 # Find the line number in the raw XML
                 try:
                     line_num = xml_content.count('\n', 0, m.start()) + 1
