@@ -617,8 +617,8 @@
         "COVE",
         "CLRG"
       ],
-      "preferred": "INGA",
-      "description": "Settlement method. INGA = settled on books of instructed agent (CBPR+ preferred).",
+      "preferred": "COVE",
+      "description": "Settlement method. For the pacs.009 ADV (advice) variant this MUST be COVE — the advice settles via cover with a reimbursement agent (Instd/InstgRmbrsmntAgt). INDA/INGA/CLRG are not used for ADV.",
       "errors": [
         {
           "error_id": "STTLMMTD_MISSING",
@@ -629,20 +629,19 @@
             "GrpHdr/SttlmInf/SttlmMtd"
           ],
           "possible_fixes": [
-            "Insert <SttlmMtd>INGA</SttlmMtd> as first child of SttlmInf."
+            "Insert <SttlmMtd>COVE</SttlmMtd> as first child of SttlmInf."
           ]
         },
         {
           "error_id": "STTLMMTD_INVALID_CODE",
           "error_code": "CHRGBR_INVALID",
           "severity": "Fatal",
-          "description": "SttlmMtd contains a value not in the allowed codelist.",
+          "description": "SttlmMtd contains a value not valid for pacs.009 ADV.",
           "affected_tags": [
             "GrpHdr/SttlmInf/SttlmMtd"
           ],
           "possible_fixes": [
-            "Replace with one of: INDA, INGA, COVE, CLRG.",
-            "Use INGA for standard CBPR+ interbank settlement."
+            "Use COVE — the pacs.009 ADV advice variant settles via cover. Do NOT use CLRG/INDA/INGA here."
           ]
         }
       ]
