@@ -165,6 +165,34 @@ def _set_active_sr_version(version: Optional[str]) -> None:
     _ACTIVE_SR_VERSION = version if version in ("SR2025", "SR2026") else "SR2025"
 
 
+# Per-release deterministic-handler modules. The shared engine in this file
+# serves both releases; each release may register its own handlers in a separate
+# module, which get first refusal before the shared chain (see suggest()).
+_VERSION_HANDLER_CACHE: Dict[str, Any] = {}
+_VERSION_HANDLER_MODULES = {
+    "SR2025": "fix_handlers_sr2025",
+    "SR2026": "fix_handlers_sr2026",
+}
+
+
+def _version_handler(version: str):
+    """Return the release's handler entry point — a callable
+    handle(suggester, code, msg, root, fix_hint) -> Optional[FixSuggestion] —
+    or None if the release defines no version-specific handlers."""
+    v = version if version in _VERSION_HANDLER_MODULES else "SR2025"
+    if v in _VERSION_HANDLER_CACHE:
+        return _VERSION_HANDLER_CACHE[v]
+    handler = None
+    try:
+        import importlib
+        mod = importlib.import_module(f"app.services.{_VERSION_HANDLER_MODULES[v]}")
+        handler = getattr(mod, "handle", None)
+    except Exception as e:
+        logger.debug(f"[FixSuggester] no version handler module for {v}: {e}")
+    _VERSION_HANDLER_CACHE[v] = handler
+    return handler
+
+
 def _deep_merge(base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any]:
     """Merge overlay onto a copy of base. Dicts merge key-by-key; any non-dict
     value (scalars AND lists) in overlay replaces the base value. Lets an SR2026
@@ -1782,6 +1810,12 @@ _CBPR_FORBIDDEN_CHILDREN = {"SttlmInf": {"ClrSys"}}
 # ── FixSuggester ──────────────────────────────────────────────────────────────
 
 class FixSuggester:
+
+    def __init__(self, version: str = None):
+        # Release this instance is bound to, used when a per-call version isn't
+        # supplied. The shared engine is identical across releases; only the
+        # per-release handler modules differ (see _version_handler).
+        self._default_version = version if version in ("SR2025", "SR2026") else None
 
     # ── XML helpers ───────────────────────────────────────────────────────────
 
@@ -3558,7 +3592,8 @@ class FixSuggester:
         # Active SWIFT release for this fix. Handlers whose fix differs by
         # release (bucket C) and SR2026-only delta-rule codes (bucket B) read
         # self._sr_version. Defaults to SR2025 so existing callers are unaffected.
-        self._sr_version = (version or issue.get("sr_version") or "SR2025")
+        self._sr_version = (version or issue.get("sr_version")
+                            or getattr(self, "_default_version", None) or "SR2025")
         # Make the active release visible to the module-level KB loaders so they
         # overlay the SR2026 delta KB for this request.
         _set_active_sr_version(self._sr_version)
@@ -3722,6 +3757,55 @@ class FixSuggester:
             self._kb_family = _detect_family_from_tree(root)
         except Exception:
             self._kb_family = ""
+
+        # ── ID_LENGTH_ERROR: early dedicated handler ──────────────────────────
+        # Runs first so no other handler can intercept it. Handles the
+        # Max16Text fields Assgnmt/Id and Case/Id (and any other Id with a
+        # numeric max length embedded in the error message).
+        if code == "ID_LENGTH_ERROR":
+            _idlen_max_m = re.search(r"maximum\s+(?:allowed\s+)?(\d+)", msg, re.I)
+            _idlen_max = int(_idlen_max_m.group(1)) if _idlen_max_m else 16
+            # Determine the parent context from the error path (e.g. "//Assgnmt/Id")
+            _idlen_pp = [p for p in path.replace("/", ".").split(".")
+                         if p and _VALID_XML_NAME.match(p)]
+            _idlen_tgt  = _idlen_pp[-1] if _idlen_pp else "Id"
+            _idlen_par  = _idlen_pp[-2] if len(_idlen_pp) >= 2 else ""
+            for _idel in root.iter():
+                if not isinstance(_idel.tag, str):
+                    continue
+                _idel_ln = etree.QName(_idel.tag).localname
+                if _idel_ln != _idlen_tgt:
+                    continue
+                _idel_val = (_idel.text or "").strip()
+                if len(_idel_val) <= _idlen_max:
+                    continue
+                if _idlen_par:
+                    _idel_par = _idel.getparent()
+                    _idel_par_ln = (etree.QName(_idel_par.tag).localname
+                                    if _idel_par is not None and isinstance(_idel_par.tag, str)
+                                    else "")
+                    if _idel_par_ln != _idlen_par:
+                        continue
+                _idel_copy = self._copy(_idel)
+                _idel_copy.text = _idel_val[:_idlen_max]
+                return FixSuggestion(
+                    self._xpath_of(_idel), self._serialize(_idel),
+                    self._serialize(_idel_copy), code, msg, "high"
+                )
+
+        # ── Per-release handler override surface ──────────────────────────────
+        # The release-specific module (fix_handlers_sr2025 / sr2026) gets first
+        # refusal: it can override or add to the shared deterministic chain below
+        # without touching this engine. Returns a FixSuggestion or None.
+        _vh = _version_handler(self._sr_version)
+        if _vh is not None:
+            try:
+                _vsug = _vh(self, code, msg, root, fix_hint)
+            except Exception as _ve:
+                logger.warning(f"[FixSuggester] {self._sr_version} handler error: {_ve}")
+                _vsug = None
+            if _vsug is not None:
+                return _vsug
 
         # ── Duplicate element → keep the first valid occurrence, remove extras ─
         # Runs before the ordering/insert guards so a duplicate (e.g. a second
@@ -5231,6 +5315,7 @@ class FixSuggester:
                 "SttlmInf": "<SttlmInf><SttlmMtd>INDA</SttlmMtd></SttlmInf>",
                 "PmtId": "<PmtId><EndToEndId>E2E-NOTPROVIDED</EndToEndId></PmtId>",
                 "InitgPty": "<InitgPty><Nm>Initiating Party</Nm></InitgPty>",
+                "BkTxCd": "<BkTxCd><Domn><Cd>PMNT</Cd><Fmly><Cd>RCDT</Cd><SubFmlyCd>OTHR</SubFmlyCd></Fmly></Domn></BkTxCd>",
             }
 
             def _ec_fill(_ecel) -> Optional["FixSuggestion"]:
@@ -5505,6 +5590,46 @@ class FixSuggester:
                                     _fbp_copy.remove(_ch)
                             return FixSuggestion(self._xpath_of(_fb_par), _orig_fb,
                                                   self._serialize(_fbp_copy), code, msg, "high")
+
+        # ── HEADER_VAL — repair the AppHdr Fr/To party block to the canonical
+        # BAH shape <Fr|To><FIId><FinInstnId>…</FinInstnId></FIId></…>. The BAH
+        # rejects a stray BICFI directly under FIId, or a FinInstnId/BICFI
+        # directly under Fr/To. Rebuild the block around the best FinInstnId
+        # found — this PRESERVES that FinInstnId's full content (BICFI, Nm,
+        # PstlAdr, ClrSysMmbId, …) and drops only the misplaced duplicates.
+        if code == "HEADER_VAL":
+            _apphdr = next((e for e in root.iter()
+                            if isinstance(e.tag, str)
+                            and etree.QName(e.tag).localname == "AppHdr"), None)
+            if _apphdr is not None:
+                _hns = etree.QName(_apphdr.tag).namespace or ""
+                def _hq(tag):
+                    return f"{{{_hns}}}{tag}" if _hns else tag
+                for _pty_ln in ("Fr", "To"):
+                    _pty = _apphdr.find(_hq(_pty_ln))
+                    if _pty is None:
+                        continue
+                    # Pick the FinInstnId to keep: prefer FIId/FinInstnId, else a
+                    # FinInstnId placed directly under the party, else wrap the
+                    # stray children of FIId (e.g. a bare BICFI) into one.
+                    _fiid = _pty.find(_hq("FIId"))
+                    _fin = _fiid.find(_hq("FinInstnId")) if _fiid is not None else None
+                    if _fin is None and _fiid is not None:
+                        _strays = [c for c in _fiid if isinstance(c.tag, str)]
+                        if _strays:
+                            _fin = etree.Element(_hq("FinInstnId"))
+                            for _s in _strays:
+                                _fin.append(self._copy(_s))
+                    if _fin is None:
+                        _fin = _pty.find(_hq("FinInstnId"))
+                    if _fin is None:
+                        continue
+                    _new_pty = etree.Element(_pty.tag)
+                    _new_fiid = etree.SubElement(_new_pty, _hq("FIId"))
+                    _new_fiid.append(self._copy(_fin))
+                    if self._serialize(_new_pty) != self._serialize(_pty):
+                        return FixSuggestion(self._xpath_of(_pty), self._serialize(_pty),
+                                              self._serialize(_new_pty), code, msg, "high")
 
         # ── CLRSYSREF_FORBIDDEN — remove ClrSysRef element ────────────────────
         if code == "CLRSYSREF_FORBIDDEN":
@@ -10047,7 +10172,15 @@ class FixSuggester:
                     _cl, _prefs = "return_reason", ("AC01", "CUST", "NARR")
             elif _parname == "Sts":
                 # <Ntry><Sts><Cd> / <TxDtls><Sts><Cd> → EntryStatus1Code (camt.052/053/054)
-                _cl, _prefs = "entry_status", ("BOOK", "PDNG", "INFO", "FUTR")
+                # EntryStatus1Code is a closed 4-value enum — apply fix directly
+                # rather than relying on the codelist file (may be absent in this path).
+                _ENTRY_STATUS_VALID = {"BOOK", "FUTR", "INFO", "PDNG"}
+                _cur_sts = (el.text or "").strip()
+                if _cur_sts not in _ENTRY_STATUS_VALID:
+                    el_copy = self._copy(el)
+                    el_copy.text = "BOOK"
+                    return FixSuggestion(xpath, original_fragment,
+                                         self._serialize(el_copy), code, msg, "high")
             if _cl:
                 _codes = _codelist_codes(_cl)
                 _cur = (el.text or "").strip()
@@ -13144,4 +13277,6 @@ class FixSuggester:
 
 # ── Module-level singleton ────────────────────────────────────────────────────
 
-fix_suggester = FixSuggester()
+fix_suggester = FixSuggester()                       # default (resolves version per call)
+fix_suggester_sr2025 = FixSuggester(version="SR2025")  # SR2025-bound
+fix_suggester_sr2026 = FixSuggester(version="SR2026")  # SR2026-bound

@@ -21,10 +21,19 @@ from app.schemas.fixes import (
     FeedbackRequest,
     FeedbackResponse,
 )
-from app.services.fix_suggester import fix_suggester, FixApplyError
+from app.services.fix_suggester import (
+    fix_suggester, fix_suggester_sr2025, fix_suggester_sr2026, FixApplyError,
+)
 from app.services import fix_feedback, fix_metrics
 
 router = APIRouter(prefix="/fixes", tags=["fixes"])
+
+
+def _suggester_for(version: str):
+    """Pick the release-bound fix-suggester. The engine is shared; the instance
+    carries the release so its version-specific handler module + version-scoped
+    KB are used."""
+    return fix_suggester_sr2026 if version == "SR2026" else fix_suggester_sr2025
 
 
 def _suggestion_to_response(s) -> FixSuggestionResponse:
@@ -55,9 +64,9 @@ def suggest_fix(req: SuggestRequest, x_sr_version: Optional[str] = Header(defaul
     self-checked (well-formed + no XSD regression) before returning, so the
     `verified` flag tells the UI whether the fix actually holds up.
     """
+    version = _resolve_sr_version(x_sr_version)
     issue_dict = req.issue.model_dump()
-    suggestion = fix_suggester.suggest_verified(
-        req.xml, issue_dict, version=_resolve_sr_version(x_sr_version))
+    suggestion = _suggester_for(version).suggest_verified(req.xml, issue_dict, version=version)
     return _suggestion_to_response(suggestion)
 
 
@@ -66,9 +75,9 @@ def suggest_fix_batch(req: SuggestBatchRequest, x_sr_version: Optional[str] = He
     """Generate fix suggestions for up to 20 validation issues."""
     if len(req.issues) > 20:
         raise HTTPException(status_code=400, detail="Maximum 20 issues per batch request.")
+    version = _resolve_sr_version(x_sr_version)
     issues_list = [i.model_dump() for i in req.issues]
-    suggestions = fix_suggester.suggest_batch(
-        req.xml, issues_list, version=_resolve_sr_version(x_sr_version))
+    suggestions = _suggester_for(version).suggest_batch(req.xml, issues_list, version=version)
     return SuggestBatchResponse(fixes=[_suggestion_to_response(s) for s in suggestions])
 
 
