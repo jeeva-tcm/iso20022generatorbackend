@@ -115,14 +115,17 @@ class SR2026Validator:
                 return self._build_response(report, layers_skipped=[2, 3])
 
             # Step 2: Layer 2 XSD Validation
-            l2_result = Layer2Validator.validate(root_element, message_type, report)
+            l2_result = Layer2Validator.validate(root_element, message_type, report, xml_content)
             # Catastrophic failure (None) = no schema, stop immediately.
             if l2_result is None:
                 return self._build_response(report, layers_skipped=[3])
 
             # AppHdr structurally broken → NVR/Guidelines would duplicate same BAH errors.
             # Return now so L3 "BAH From/To BIC is missing" doesn't stack on top of L2.
-            apphdr_failed = any(i.code == "APPHDR_SCHEMA_ERROR" for i in report.issues)
+            # HEADER_VAL is the SR2025/shared-engine header code; APPHDR_SCHEMA_ERROR is
+            # kept for backward compatibility with any older emitters.
+            apphdr_failed = any(i.code in ("HEADER_VAL", "APPHDR_SCHEMA_ERROR")
+                                for i in report.issues)
             if apphdr_failed:
                 return self._build_response(report, layers_skipped=[3])
 

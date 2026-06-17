@@ -7,5 +7,41 @@
       "fix": "Describe the deterministic fix the suggester should apply.",
       "affected_tags": ["Parent/Child"]
     }
+  },
+
+  "NBOFTXS_INVALID_CODE": {
+    "aliases": ["SCHEMA_VAL_NBOFTXS", "NBOFTXS_NOT_A_VALID_CODE"],
+    "root_cause": "The schema validator misreports GrpHdr/NbOfTxs as an enumerated code field, producing 'Invalid code '<n>' for field 'NbOfTxs'.' even though NbOfTxs is a plain transaction count, not a code list.",
+    "fix": "Set GrpHdr/NbOfTxs to '1'. Every generated SR2026 message is single-transaction, so this is always 1 regardless of the reported invalid value — do not attempt to re-count transaction blocks for this specific error.",
+    "affected_tags": ["GrpHdr/NbOfTxs"],
+    "auto_fixable": true,
+    "requires_human_review": false
+  },
+
+  "INVALID_BIZ_SVC": {
+    "aliases": ["HEAD001_BIZSVC_FORMAT", "BIZSVC_WRONG_VALUE", "CBPR_BIZ_SVC"],
+    "root_cause": "AppHdr/BizSvc carries an SR2025-or-earlier CBPR+ business service identifier (e.g. swift.cbprplus.02 or swift.cbprplus.03 / .adv.03 / .cov.03). SR2026 moved CBPR+ onto the '.04' generation, but the exact value is per message type — it must match what the SR2026 delta-validator enforces.",
+    "fix": "Set AppHdr/BizSvc to the SR2026 value for this message: 'swift.cbprplus.04' for pacs.008/002/004, pain.001/002, camt.052/053/054/056/057 and pacs.009 CORE; 'swift.cbprplus.adv.04' for pacs.009 ADV; 'swift.cbprplus.cov.04' for pacs.009 COV; 'swift.cbprplus.03' for pacs.003, pain.008 and camt.055.",
+    "affected_tags": ["AppHdr/BizSvc"]
+  },
+
+  "field_constraints": {
+    "BizSvc": {
+      "example": "swift.cbprplus.04",
+      "notes": "SR2026 CBPR+ values are per message type (must match the SR2026 delta-validators): swift.cbprplus.04 for pacs.008/002/004, pain.001/002, camt.052/053/054/056/057 and pacs.009 CORE; swift.cbprplus.adv.04 / swift.cbprplus.cov.04 for pacs.009 ADV / COV; swift.cbprplus.03 for pacs.003, pain.008 and camt.055. The SR2023/24 value swift.cbprplus.02 is never valid in SR2026."
+    }
+  },
+
+  "tag_templates": {
+    "BizSvc": {
+      "default": "<BizSvc>swift.cbprplus.04</BizSvc>",
+      "camt.052": "<BizSvc>swift.cbprplus.04</BizSvc>",
+      "camt.053": "<BizSvc>swift.cbprplus.04</BizSvc>",
+      "camt.054": "<BizSvc>swift.cbprplus.04</BizSvc>",
+      "camt.055": "<BizSvc>swift.cbprplus.03</BizSvc>",
+      "camt.056": "<BizSvc>swift.cbprplus.04</BizSvc>",
+      "camt.057": "<BizSvc>swift.cbprplus.04</BizSvc>",
+      "_note": "SR2026 per-message CBPR+ business service. Most types use 'swift.cbprplus.04'; camt.055 (and pacs.003 / pain.008) stay on 'swift.cbprplus.03'; pacs.009 ADV/COV use 'swift.cbprplus.adv.04' / '.cov.04'. Never emit '.02' in SR2026."
+    }
   }
 }

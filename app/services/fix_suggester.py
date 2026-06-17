@@ -71,7 +71,7 @@ def _load_codelists() -> Dict[str, Any]:
     if _CODELISTS_CACHE is not None:
         return _CODELISTS_CACHE
     base = os.path.normpath(
-        os.path.join(os.path.dirname(__file__), "..", "resources", "codelists")
+        os.path.join(os.path.dirname(__file__), "..", "sr2025", "resources", "codelists")
     )
     result: Dict[str, Any] = {}
     if not os.path.isdir(base):
@@ -351,11 +351,16 @@ def _load_kb_folder(msg_type: str, xml: str = "") -> Dict[str, Any]:
     if cache_key in _KB_FOLDER_CACHE:
         return _KB_FOLDER_CACHE[cache_key]
     # These per-message KBs are list-based ("tags" arrays), so the active
-    # release's file REPLACES the base wholesale rather than merging. _kb_path
-    # checks KB/<active>/ first (SR2026 override, named either <name> or with
-    # sr2025→sr2026), then falls back to the KB/sr2025/ base.
-    path = (_kb_path(name)
-            or (_kb_path(name.replace("sr2025", "sr2026")) if version == "SR2026" else None))
+    # release's file REPLACES the base wholesale rather than merging. For SR2026
+    # the release-renamed file (sr2025→sr2026) takes precedence; we resolve it
+    # FIRST because _kb_path falls back to the KB/sr2025/ base and would
+    # otherwise return the base file before the rename branch is ever tried.
+    # Falls back to the KB/sr2025/ base when no SR2026 override exists.
+    path = None
+    if version == "SR2026":
+        path = _kb_path(name.replace("sr2025", "sr2026"))
+    if not path:
+        path = _kb_path(name)
     kb = _read_json_first([path]) if path else {}
     _KB_FOLDER_CACHE[cache_key] = kb
     return kb
@@ -408,26 +413,49 @@ def _kb_folder_leaf_value(tag_name: str, msg_type: str, xml: str = "") -> Option
 
 
 def _cbpr_bizsvc_value(msg_type: str, xml: str = "") -> Optional[str]:
-    """The correct CBPR+ SR2025 AppHdr/BizSvc value for this message + variant.
+    """The correct CBPR+ AppHdr/BizSvc value for this message + variant, for the
+    ACTIVE SWIFT release.
 
-    pacs.009 splits into three business services that the generic
-    ai_knowledge_base template ('swift.cbprplus.02') does NOT cover:
-      • CORE → swift.cbprplus.03
-      • ADV  → swift.cbprplus.adv.03   (carries <Prtry>ADV</Prtry>)
-      • COV  → swift.cbprplus.cov.03   (carries UndrlygCstmrCdtTrf)
-    For every other family the per-message KB 'expected_value' is authoritative
-    (pacs.008 → .02 per its CBPR_R8 rule; camt.052-055/camt.057 → .03;
-    camt.056/pain.*/pacs.010 → .02). NOTE: the value MUST agree with the message's own validator
-    rule (e.g. camt.057 CBPR_R8 enforces .03 as an ERROR) — a mismatch makes the
-    auto-fix loop oscillate forever, so KB expected_value and the rule JSON must
-    stay in lockstep.
+    pacs.009 splits into three business services:
+      • CORE → swift.cbprplus.03 / .04   (SR2025 / SR2026)
+      • ADV  → swift.cbprplus.adv.03 / .adv.04   (carries <Prtry>ADV</Prtry> / UndrlygFITxInf)
+      • COV  → swift.cbprplus.cov.03 / .cov.04   (carries UndrlygCstmrCdtTrf)
+
+    SR2026 moved CBPR+ onto the '.04' generation but the value is NOT uniform —
+    it mirrors exactly what each SR2026 delta-validator enforces. This MUST stay
+    in lockstep with app/sr2026/validation/delta_rules/* (and pacs.009 base.json):
+    a mismatch makes the auto-fix loop oscillate forever.
+      • pacs.003 / pain.008 / camt.055  → swift.cbprplus.03  (stayed on .03)
+      • everything else (pacs.008/002/004, pain.001/002, camt.052/053/054/056/057,
+        pacs.009 CORE) → swift.cbprplus.04
+    SR2025 keeps the legacy generation: pacs.008 → .02 per its CBPR_R8 rule;
+    camt.052-055/camt.057 → .03; camt.056/pain.*/pacs.010 → .02, resolved from the
+    per-message KB 'expected_value'.
     """
     low = f"{msg_type} {xml}".lower()
     fam = (msg_type or "").lower()
-    if fam.startswith("pacs.009") or "financialinstitutioncredittransfer" in low:
-        if "cov" in fam or "undrlygcstmrcdttrf" in low or "swift.cbprplus.cov" in low:
+    is_pacs009 = fam.startswith("pacs.009") or "financialinstitutioncredittransfer" in low
+    is_cov = "cov" in fam or "undrlygcstmrcdttrf" in low or "swift.cbprplus.cov" in low
+    is_adv = ("adv" in fam or "<prtry>adv</prtry>" in low
+              or "undrlygfitxinf" in low or "swift.cbprplus.adv" in low)
+
+    if _ACTIVE_SR_VERSION == "SR2026":
+        if is_pacs009:
+            if is_cov:
+                return "swift.cbprplus.cov.04"
+            if is_adv:
+                return "swift.cbprplus.adv.04"
+            return "swift.cbprplus.04"
+        # pacs.003 / pain.008 / camt.055 stayed on the .03 service in SR2026.
+        if any(k in fam for k in ("pacs.003", "pain.008", "camt.055")):
+            return "swift.cbprplus.03"
+        return "swift.cbprplus.04"
+
+    # ── SR2025 (and earlier releases) ──
+    if is_pacs009:
+        if is_cov:
             return "swift.cbprplus.cov.03"
-        if "adv" in fam or "<prtry>adv</prtry>" in low or "swift.cbprplus.adv" in low:
+        if is_adv:
             return "swift.cbprplus.adv.03"
         return "swift.cbprplus.03"
     # All other message types: trust the per-message KB's expected_value.
@@ -2969,6 +2997,22 @@ class FixSuggester:
 
     # ── XSD loading ───────────────────────────────────────────────────────────
 
+    def _xsd_extracted_dir(self) -> Optional[str]:
+        """Locate the directory holding extracted MX/head XSDs.
+
+        Tries known layouts in order and returns the first that exists:
+          1. repo-root  xsds/extracted        (packaged/deploy layout)
+          2. app/sr2025/xsds/extracted        (in-repo source layout)
+        Returns None when neither is present (schema-aware fixing then disabled).
+        """
+        here = os.path.dirname(__file__)
+        for rel in (("..", "..", "xsds", "extracted"),
+                    ("..", "sr2025", "xsds", "extracted")):
+            cand = os.path.normpath(os.path.join(here, *rel))
+            if os.path.isdir(cand):
+                return cand
+        return None
+
     def _get_xsd_path(self, xml: str) -> Optional[str]:
         """Resolve the Document message XSD for any MX type, version-blind.
 
@@ -2982,10 +3026,8 @@ class FixSuggester:
         msg_type = _detect_msg_type(xml)
         if not msg_type:
             return None
-        xsd_dir = os.path.normpath(
-            os.path.join(os.path.dirname(__file__), "..", "..", "xsds", "extracted")
-        )
-        if not os.path.isdir(xsd_dir):
+        xsd_dir = self._xsd_extracted_dir()
+        if not xsd_dir:
             return None
         exact = os.path.join(xsd_dir, f"{msg_type}.xsd")
         if os.path.exists(exact):
@@ -3006,10 +3048,8 @@ class FixSuggester:
         """Resolve the Business Application Header (head.001) XSD for AppHdr/*
         fixes. Prefers the exact version declared by the AppHdr namespace, else
         the newest head.001.001.* on disk."""
-        xsd_dir = os.path.normpath(
-            os.path.join(os.path.dirname(__file__), "..", "..", "xsds", "extracted")
-        )
-        if not os.path.isdir(xsd_dir):
+        xsd_dir = self._xsd_extracted_dir()
+        if not xsd_dir:
             return None
         m = re.search(r"head\.001\.001\.\d{2}", xml)
         if m:
@@ -3964,12 +4004,32 @@ class FixSuggester:
             if _apphdr is None and etree.QName(root.tag).localname == "AppHdr":
                 _apphdr = root
             if _apphdr is not None and self._child_exists(_apphdr, _mh.group(1)) is None:
-                _res = self._try_insert_missing_sibling(
-                    root, xml, code, msg, fix_hint,
-                    explicit_parent=_apphdr, explicit_missing=_mh.group(1),
+                # The flattened "//AppHdr/<Tag>" path only names the leaf and its
+                # nearest reported ancestor — it does NOT mean <Tag> is a DIRECT
+                # child of AppHdr. e.g. BICFI actually lives at
+                # AppHdr/Fr/FIId/FinInstnId/BICFI. Without this check, a value
+                # error (wrong BIC) on that nested element looks "missing" here
+                # and gets a DUPLICATE inserted straight under AppHdr — turning
+                # one error into two (the original bad value AND an "unexpected
+                # field" structural error) while never fixing the real value.
+                _existing_nested = next(
+                    (d for d in _apphdr.iter()
+                     if d is not _apphdr and isinstance(d.tag, str)
+                     and etree.QName(d.tag).localname == _mh.group(1)),
+                    None
                 )
-                if _res is not None:
-                    return _res
+                if _existing_nested is not None:
+                    _ns_local = etree.QName(_apphdr.tag).namespace or ""
+                    _vfix = self._fix_value(_existing_nested, code, msg, fix_hint, _ns_local)
+                    if _vfix is not None:
+                        return _vfix
+                else:
+                    _res = self._try_insert_missing_sibling(
+                        root, xml, code, msg, fix_hint,
+                        explicit_parent=_apphdr, explicit_missing=_mh.group(1),
+                    )
+                    if _res is not None:
+                        return _res
 
         # ── Route: Empty <Pty/> inside <Cretr> ──────────────────────────────────
         # When <Pty/> is self-closed (no children) inside <Cretr>, the XSD reports
@@ -4519,10 +4579,16 @@ class FixSuggester:
         # _find_target returns None and the implicit _try_insert_missing_sibling
         # (which relies on XSD "not expected here" messages) never fires.
         # Route: parse path → derive parent_tag + missing_tag → explicit insert.
+        # SR2026 delta-rule validators (new_mandatory_fields.py, pacs004_validator.py,
+        # camt_statement_validator.py, etc.) emit one bespoke "MISSING_<FIELD>" code
+        # per field instead of a shared generic code — but the path still points at
+        # the absent element, so the same path-driven insertion below applies.
+        # MISSING_ATTRIBUTE is excluded: it has its own dedicated @Ccy-attribute
+        # route further down, not an element insertion.
         _is_missing_field_code = code in (
             "MISSING_MANDATORY_FIELD", "CBPR_MANDATORY_FIELD",
             "MANDATORY_FIELD_MISSING", "MISSING_FIELD",
-        )
+        ) or (code.startswith("MISSING_") and code != "MISSING_ATTRIBUTE")
         _missing_in_msg = (
             any(w in msg.lower() for w in ("absent", "missing", "not present", "required"))
             and any(w in msg.lower() for w in ("mandatory", "required", "cbpr"))
@@ -4609,11 +4675,16 @@ class FixSuggester:
         _BIC_HEADER_CODES = {
             "CBPR_R3", "CBPR_P9_R2", "CBPR_P9_R3",
             "L3-PACS-MATCH-TO", "L3-PACS-MATCH-FR",
+            "TO_BIC_MISMATCH", "FROM_BIC_MISMATCH",
         }
         _msg_lc = msg.lower()
         _is_bic_header_msg = (
-            "apphdr" in _msg_lc and "bicfi" in _msg_lc
-            and ("instdagt" in _msg_lc or "instgagt" in _msg_lc)
+            ("apphdr" in _msg_lc and "bicfi" in _msg_lc
+             and ("instdagt" in _msg_lc or "instgagt" in _msg_lc))
+            # SR2026 prose form: "BAH To/From BIC does not match the
+            # Instructed/Instructing Agent BIC." — no "AppHdr"/"BICFI" literal.
+            or ("bah" in _msg_lc and "bic" in _msg_lc
+                and ("instructed agent" in _msg_lc or "instructing agent" in _msg_lc))
         )
         if code in _BIC_HEADER_CODES or _is_bic_header_msg:
             _r3_fix = self._fix_cbpr_r3_bic(root, code, msg)
@@ -4936,9 +5007,11 @@ class FixSuggester:
         # ══════════════════════════════════════════════════════════════════════
 
         # ── UETR_FORMAT_ERROR — malformed UUID v4 → fresh UUID ────────────────
+        # Covers both <UETR> and <OrgnlUETR> (camt.055/056 originals can also
+        # end up with embedded whitespace after XML recovery truncates tags).
         if code == "UETR_FORMAT_ERROR" or ("uetr" in msg.lower() and "format" in msg.lower()):
             for _uel in root.iter():
-                if isinstance(_uel.tag, str) and etree.QName(_uel.tag).localname == "UETR":
+                if isinstance(_uel.tag, str) and etree.QName(_uel.tag).localname in ("UETR", "OrgnlUETR"):
                     _uel_copy = self._copy(_uel)
                     _uel_copy.text = str(uuid.uuid4())
                     return FixSuggestion(self._xpath_of(_uel), self._serialize(_uel),
@@ -5161,20 +5234,27 @@ class FixSuggester:
                     return FixSuggestion(self._xpath_of(_ael), self._serialize(_ael),
                                           self._serialize(_ael_copy), code, msg, "high")
 
-        # ── ADDR_PREFER_STRUCTURED — unstructured address → add Ctry ─────────
+        # ── ADDR_PREFER_STRUCTURED — true-unstructured address → add TwnNm/Ctry (Hybrid) ─
         if code == "ADDR_PREFER_STRUCTURED":
             for _pael in root.iter():
                 if not isinstance(_pael.tag, str): continue
                 if etree.QName(_pael.tag).localname == "PstlAdr":
                     _has_ctry = any(etree.QName(c.tag).localname == "Ctry"
                                     for c in _pael if isinstance(c.tag, str))
-                    if not _has_ctry:
+                    _has_town = any(etree.QName(c.tag).localname == "TwnNm"
+                                    for c in _pael if isinstance(c.tag, str))
+                    if not _has_ctry or not _has_town:
                         _orig = self._serialize(_pael)
                         _par_copy = self._copy(_pael)
-                        _ctry_ns = etree.QName(_pael.tag).namespace or ""
-                        _ctry_el = etree.SubElement(_par_copy,
-                            f"{{{_ctry_ns}}}Ctry" if _ctry_ns else "Ctry")
-                        _ctry_el.text = "US"
+                        _addr_ns = etree.QName(_pael.tag).namespace or ""
+                        if not _has_town:
+                            _twn_el = etree.SubElement(_par_copy,
+                                f"{{{_addr_ns}}}TwnNm" if _addr_ns else "TwnNm")
+                            _twn_el.text = "New York"
+                        if not _has_ctry:
+                            _ctry_el = etree.SubElement(_par_copy,
+                                f"{{{_addr_ns}}}Ctry" if _addr_ns else "Ctry")
+                            _ctry_el.text = "US"
                         return FixSuggestion(self._xpath_of(_pael), _orig,
                                               self._serialize(_par_copy), code, msg, "low")
 
@@ -5193,9 +5273,9 @@ class FixSuggester:
             _CONTAINER_FILLS = {
                 "FinInstnId": "<FinInstnId><BICFI>DEUTDEFFXXX</BICFI></FinInstnId>",
                 "Id": "<Id><IBAN>GB29NWBK60161331926819</IBAN></Id>",
-                "PstlAdr": "<PstlAdr><AdrLine>123 Main Street</AdrLine><Ctry>US</Ctry></PstlAdr>",
-                "Dbtr": "<Dbtr><Nm>Debtor Name</Nm><PstlAdr><AdrLine>123 Main St</AdrLine><Ctry>US</Ctry></PstlAdr></Dbtr>",
-                "Cdtr": "<Cdtr><Nm>Creditor Name</Nm><PstlAdr><AdrLine>456 Oak Ave</AdrLine><Ctry>GB</Ctry></PstlAdr></Cdtr>",
+                "PstlAdr": "<PstlAdr><TwnNm>New York</TwnNm><Ctry>US</Ctry><AdrLine>123 Main Street</AdrLine><AdrLine>Address Line 2</AdrLine></PstlAdr>",
+                "Dbtr": "<Dbtr><Nm>Debtor Name</Nm><PstlAdr><TwnNm>New York</TwnNm><Ctry>US</Ctry><AdrLine>123 Main St</AdrLine><AdrLine>Address Line 2</AdrLine></PstlAdr></Dbtr>",
+                "Cdtr": "<Cdtr><Nm>Creditor Name</Nm><PstlAdr><TwnNm>London</TwnNm><Ctry>GB</Ctry><AdrLine>456 Oak Ave</AdrLine><AdrLine>Address Line 2</AdrLine></PstlAdr></Cdtr>",
                 "SttlmInf": "<SttlmInf><SttlmMtd>INDA</SttlmMtd></SttlmInf>",
                 "PmtId": "<PmtId><EndToEndId>E2E-NOTPROVIDED</EndToEndId></PmtId>",
                 "InitgPty": "<InitgPty><Nm>Initiating Party</Nm></InitgPty>",
@@ -5508,10 +5588,33 @@ class FixSuggester:
                         _fin = _pty.find(_hq("FinInstnId"))
                     if _fin is None:
                         continue
-                    _new_pty = etree.Element(_pty.tag)
+                    # nsmap={None: _hns} keeps the default-namespace style (xmlns="...")
+                    # that the original tree uses. Without it, a bare etree.Element()
+                    # has no prefix registered and lxml serializes it with an
+                    # auto-generated "ns0:" prefix — making this comparison always
+                    # mismatch and firing a bogus "fix" for every HEADER_VAL issue,
+                    # even ones unrelated to Fr/To (e.g. an empty BizMsgIdr).
+                    _new_pty = etree.Element(_pty.tag, nsmap=({None: _hns} if _hns else None))
                     _new_fiid = etree.SubElement(_new_pty, _hq("FIId"))
                     _new_fiid.append(self._copy(_fin))
-                    if self._serialize(_new_pty) != self._serialize(_pty):
+                    # Compare structurally (tag/attrs/text), ignoring whitespace-only
+                    # text/tail formatting. _pty is part of the original, already
+                    # human-indented document; _new_pty is freshly built with no
+                    # source whitespace at all — a raw string/serialize comparison
+                    # (even with_tail stripped) differs on indentation alone, so it
+                    # ALWAYS looked "changed" and fired a bogus fix for every
+                    # HEADER_VAL issue, starving unrelated fixes (e.g. an empty
+                    # BizMsgIdr) of ever running.
+                    def _struct_eq(a, b):
+                        if a.tag != b.tag or dict(a.attrib) != dict(b.attrib):
+                            return False
+                        if (a.text or "").strip() != (b.text or "").strip():
+                            return False
+                        a_kids = [c for c in a if isinstance(c.tag, str)]
+                        b_kids = [c for c in b if isinstance(c.tag, str)]
+                        return len(a_kids) == len(b_kids) and all(
+                            _struct_eq(x, y) for x, y in zip(a_kids, b_kids))
+                    if not _struct_eq(_pty, _new_pty):
                         return FixSuggestion(self._xpath_of(_pty), self._serialize(_pty),
                                               self._serialize(_new_pty), code, msg, "high")
 
@@ -5607,7 +5710,9 @@ class FixSuggester:
                                       self._serialize(_s_copy), code, msg, "high")
 
         # ── INVALID_CURRENCY_CODE — fix @Ccy or <Ccy> value ──────────────────
-        if code == "INVALID_CURRENCY_CODE":
+        # SR2026's Layer3Validator emits "INVALID_CURRENCY" (no _CODE suffix);
+        # SR2025 emits "INVALID_CURRENCY_CODE" — accept both.
+        if code in ("INVALID_CURRENCY_CODE", "INVALID_CURRENCY"):
             _valid_ccys = set(_valid_currency_codes())
             # Try Ccy attribute first
             for _amt_el in root.iter():
@@ -6365,6 +6470,27 @@ class FixSuggester:
         # ── Walk to parent ────────────────────────────────────────────────────
         parent_el = self._walk_dot_path(root, parent_parts) if parent_parts else None
 
+        # ── Shallow/relative validator path: parent isn't root's direct child ──
+        # Some validators report short relative paths (e.g. "//Stmt/Bal") that
+        # omit the real ancestor chain back to Document/BkToCstmrStmt.
+        # _walk_dot_path only matches direct children starting at ROOT, so it
+        # can't locate a deeply-nested parent and reports "missing" even though
+        # it exists. Search by local name anywhere in the document before
+        # falling through to the "build a brand-new subtree" path below — that
+        # path anchors on the nearest existing ancestor (often the document
+        # ROOT itself), which built and inserted the new subtree as a stray
+        # sibling of <Document> instead of finding the real, already-present
+        # parent.
+        if parent_el is None and parent_parts:
+            _anywhere_tag = parent_parts_stripped[-1]
+            _anywhere_cands = [el for el in root.iter()
+                                if isinstance(el.tag, str)
+                                and etree.QName(el.tag).localname == _anywhere_tag]
+            if _anywhere_cands:
+                parent_el = (min(_anywhere_cands,
+                                 key=lambda e: abs((e.sourceline or 0) - line_hint))
+                             if line_hint is not None else _anywhere_cands[0])
+
         # ── If parent not found, walk up to find the deepest existing ancestor ─
         # e.g. path = Dbtr.PstlAdr.Ctry  but PstlAdr doesn't exist yet →
         # anchor = Dbtr, then build PstlAdr with Ctry inside it.
@@ -6433,6 +6559,24 @@ class FixSuggester:
         if existing is not None:
             # Child exists but has wrong value — fix its value
             return self._fix_value(existing, code, msg, fix_hint, ns)
+
+        # ── Check if it exists deeper (not a DIRECT child) ──────────────────────
+        # The validator's flattened xpath (e.g. //AppHdr/BICFI) names only the
+        # leaf and its nearest reported ancestor — it does NOT mean the tag is a
+        # direct child. BICFI normally lives at AppHdr/Fr/FIId/FinInstnId/BICFI.
+        # Without this check, _child_exists (direct-children only) reports "not
+        # found" and the code below inserts a DUPLICATE leaf straight under
+        # parent_el, turning a value error into a structural "unexpected field"
+        # error while leaving the original bad value untouched.
+        if not missing_tag.endswith("]"):
+            _descendant = next(
+                (d for d in parent_el.iter()
+                 if d is not parent_el and isinstance(d.tag, str)
+                 and etree.QName(d.tag).localname == missing_tag),
+                None
+            )
+            if _descendant is not None:
+                return self._fix_value(_descendant, code, msg, fix_hint, ns)
 
         # ── Add missing child ─────────────────────────────────────────────────
         original_fragment = self._serialize(parent_el)
@@ -6569,7 +6713,8 @@ class FixSuggester:
         # Fallback: scan document body for the canonical agent BICFI.
         _BIC_RE = re.compile(r"^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$")
         if not target_bic:
-            apphdr_ids = {id(el) for el in apphdr.iter()}
+            apphdr_nodes = list(apphdr.iter())  # keep alive: ids must stay
+            apphdr_ids = {id(el) for el in apphdr_nodes}  # valid for the loop below
             for el in root.iter():
                 if not isinstance(el.tag, str) or id(el) in apphdr_ids:
                     continue
@@ -6582,7 +6727,8 @@ class FixSuggester:
         # Second fallback: any valid BICFI in the body when the agent-specific
         # scan found nothing (e.g. message format doesn't quote the BIC inline).
         if not target_bic:
-            apphdr_ids = {id(el) for el in apphdr.iter()}
+            apphdr_nodes2 = list(apphdr.iter())  # keep alive: ids must stay
+            apphdr_ids = {id(el) for el in apphdr_nodes2}  # valid for the loop below
             for el in root.iter():
                 if not isinstance(el.tag, str) or id(el) in apphdr_ids:
                     continue

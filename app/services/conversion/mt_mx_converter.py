@@ -862,18 +862,14 @@ class MT2MXConverter:
                                               detected_city or "NOTPROVIDED", namespaces)
                         self.set_element_text(mx_root, f"{parent_path}/Ctry",
                                               detected_ctry or "GB", namespaces)
-                        # AdrLine is repeatable (0..2). Emit each MT address line as a separate AdrLine.
+                        # AdrLine is repeatable (0..2). Emit each MT address line as a separate
+                        # AdrLine — Hybrid (TwnNm + Ctry + AdrLine) is the SR2026 default too.
                         pstl_adr = self._get_or_create_node(mx_root, parent_path, namespaces)
                         xmlns_local = namespaces.get("xmlns", "")
                         adr_tag = f"{{{xmlns_local}}}AdrLine" if xmlns_local else "AdrLine"
-                        if version == "SR2026":
-                            strt_tag = f"{{{xmlns_local}}}StrtNm" if xmlns_local else "StrtNm"
-                            strt_el = ET.SubElement(pstl_adr, strt_tag)
-                            strt_el.text = " ".join(address_lines[:2])[:70]
-                        else:
-                            for line in address_lines[:2]:
-                                adr_el = ET.SubElement(pstl_adr, adr_tag)
-                                adr_el.text = line[:70]
+                        for line in address_lines[:2]:
+                            adr_el = ET.SubElement(pstl_adr, adr_tag)
+                            adr_el.text = line[:70]
                     else:
                         # Fallback for empty address (CBPR+ E001: TwnNm and Ctry mandatory).
                         self.set_element_text(mx_root, f"{parent_path}/Ctry", "GB", namespaces)

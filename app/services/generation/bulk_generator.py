@@ -220,15 +220,13 @@ def _rng_pstl_adr(indent: int, country: str = None) -> str:
     c = country or rng_country()
     
     xml = f"{t2}<PstlAdr>\n"
-    # Always use structured address — AdrLine alongside structured fields triggers a
-    # broken rule (CBPR_GracePeriod_Unstructured_FormalRule) that unconditionally caps
-    # AdrLine at 35 chars even when TwnNm+Ctry are present. Structured-only is safe.
-    xml += f"{t3}<StrtNm>{xe(random.choice(LAST_NAMES))} Street</StrtNm>\n"
-    xml += f"{t3}<BldgNb>{random.randint(1, 999)}</BldgNb>\n"
-    if random.random() > 0.5:
-        xml += f"{t3}<PstCd>{random.randint(10000, 99999)}</PstCd>\n"
+    # SR2026 default: Hybrid address (TwnNm + Ctry + up to 2 AdrLine). Detail structured
+    # fields (StrtNm, BldgNb, PstCd, …) must NOT coexist with AdrLine — unstructured-only
+    # (AdrLine with no TwnNm/Ctry) is deprecated, so Hybrid is generated directly.
     xml += f"{t3}<TwnNm>{xe(random.choice(LAST_NAMES))} City</TwnNm>\n"
     xml += f"{t3}<Ctry>{xe(c)}</Ctry>\n"
+    xml += f"{t3}<AdrLine>{random.randint(1, 999)} {xe(random.choice(LAST_NAMES))} Street</AdrLine>\n"
+    xml += f"{t3}<AdrLine>Address Line 2</AdrLine>\n"
     xml += f"{t2}</PstlAdr>\n"
     return xml
 
@@ -237,16 +235,13 @@ def _rng_pstl_adr_cov(indent: int, country: str = None) -> str:
     t2 = tabs(indent)
     t3 = tabs(indent + 1)
     c = country or rng_country()
-    
+
     xml = f"{t2}<PstlAdr>\n"
-    # Always use structured address — same reason as _rng_pstl_adr (AdrLine triggers
-    # a broken 35-char rule unconditionally regardless of coexisting structured fields).
-    xml += f"{t3}<StrtNm>{xe(random.choice(LAST_NAMES))} Street</StrtNm>\n"
-    xml += f"{t3}<BldgNb>{random.randint(1, 999)}</BldgNb>\n"
-    if random.random() > 0.5:
-        xml += f"{t3}<PstCd>{random.randint(10000, 99999)}</PstCd>\n"
+    # Hybrid address, same reasoning as _rng_pstl_adr.
     xml += f"{t3}<TwnNm>{xe(random.choice(LAST_NAMES))} City</TwnNm>\n"
     xml += f"{t3}<Ctry>{xe(c)}</Ctry>\n"
+    xml += f"{t3}<AdrLine>{random.randint(1, 999)} {xe(random.choice(LAST_NAMES))} Street</AdrLine>\n"
+    xml += f"{t3}<AdrLine>Address Line 2</AdrLine>\n"
     xml += f"{t2}</PstlAdr>\n"
     return xml
 

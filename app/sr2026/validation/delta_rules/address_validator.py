@@ -42,27 +42,22 @@ class AddressValidator:
                 else "Party"
             )
 
-            # ── Rule: AdrLine deprecated ──────────────────────────────────
+            # ── Rule: true-unstructured AdrLine deprecated ─────────────────
+            # Hybrid (AdrLine + TwnNm + Ctry) is the SR2026 default and valid everywhere.
+            # Only AdrLine without TwnNm/Ctry (true unstructured) is deprecated.
             adr_lines = addr.xpath("*[local-name()='AdrLine']")
             if adr_lines:
-                # Inside UndrlygCstmrCdtTrf the parties are customers, not FIs —
-                # AdrLine is allowed in a hybrid customer address (downgrade to WARNING)
-                ancestor = addr.getparent()
-                in_customer_layer = False
-                while ancestor is not None:
-                    if isinstance(ancestor.tag, str) and ancestor.tag.split("}")[-1] == "UndrlygCstmrCdtTrf":
-                        in_customer_layer = True
-                        break
-                    ancestor = ancestor.getparent()
-                effective_severity = "WARNING" if in_customer_layer else adr_severity
-                report.add_issue(ValidationIssue(
-                    severity=effective_severity,
-                    code=adr_code,
-                    path=f"//{parent_name}/PstlAdr",
-                    message=f"Address for '{parent_name}' contains unstructured <AdrLine> element(s) which are deprecated in SR2026.",
-                    line=adr_lines[0].sourceline or line,
-                    fix=adr_fix,
-                ))
+                has_town = bool(addr.xpath("*[local-name()='TwnNm']"))
+                has_ctry = bool(addr.xpath("*[local-name()='Ctry']"))
+                if not (has_town and has_ctry):
+                    report.add_issue(ValidationIssue(
+                        severity=adr_severity,
+                        code=adr_code,
+                        path=f"//{parent_name}/PstlAdr",
+                        message=f"Address for '{parent_name}' contains unstructured <AdrLine> element(s) without mandatory <TwnNm>/<Ctry>, which is deprecated in SR2026.",
+                        line=adr_lines[0].sourceline or line,
+                        fix=adr_fix,
+                    ))
 
             # ── Rule: TwnNm mandatory ─────────────────────────────────────
             has_town = bool(addr.xpath("*[local-name()='TwnNm']"))

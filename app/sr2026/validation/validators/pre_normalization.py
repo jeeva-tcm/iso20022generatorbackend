@@ -174,18 +174,21 @@ class PreNormalizationValidator:
         any XSD errors (e.g. invalid amounts, IBANs, UETRs).
 
         Field limits enforced:
-          InstrId      → max 35 chars
-          EndToEndId   → max 35 chars
-          BizMsgIdr    → max 35 chars
-          MsgId        → max 35 chars
-          TxId         → max 35 chars
-          UETR         → max 36 chars
+          InstrId        → max 16 chars (CBPR+ RestrictedFINXMax16Text)
+          Assgnmt/Id     → max 16 chars (ISO 20022 Max16Text)
+          Case/Id        → max 16 chars (ISO 20022 Max16Text)
+          EndToEndId     → max 35 chars
+          BizMsgIdr      → max 35 chars
+          MsgId          → max 35 chars
+          TxId           → max 35 chars
+          ClrSysRef      → max 35 chars
+          UETR           → max 36 chars
         """
         # UETR is handled by the dedicated _validate_uetr_in_xml validator (Step 4.7)
         # which checks UUID v4 format fully, so it is excluded here to avoid
         # double-reporting.
         ID_MAX_LENGTHS = {
-            "InstrId":    35,
+            "InstrId":    16,
             "EndToEndId": 35,
             "BizMsgIdr":  35,
             "MsgId":      35,
@@ -223,6 +226,68 @@ class PreNormalizationValidator:
                     f"Shorten the value of <{tag_name}> to at most {max_len} characters. "
                     f"Current value has {actual_len} characters."
                 ))
+
+        # ── Context-specific <Id> max-length checks ───────────────────────────
+        # <Id> is too generic to add globally, but certain parent containers
+        # restrict it to Max16Text under ISO 20022 / CBPR+.
+        _CTX_ID_MAX16_PARENTS = {"Assgnmt", "Case"}
+        _ctx_id_patt = re.compile(
+            r'<(' + "|".join(re.escape(p) for p in _CTX_ID_MAX16_PARENTS) + r')[^>]*>'
+            r'(?:(?!</' + "|".join(re.escape(p) for p in _CTX_ID_MAX16_PARENTS) + r'>).)*?'
+            r'<Id>\s*([^<]+?)\s*</Id>',
+            re.DOTALL,
+        )
+        for _cm in _ctx_id_patt.finditer(xml_content):
+            _parent   = _cm.group(1)
+            _id_value = _cm.group(2).strip()
+            _id_len   = len(_id_value)
+            if _id_len > 16:
+                try:
+                    _line_num = xml_content.count('\n', 0, _cm.start()) + 1
+                except Exception:
+                    _line_num = "Unknown"
+                report.add_issue(ValidationIssue(
+                    "ERROR",
+                    2,
+                    "ID_LENGTH_ERROR",
+                    f"//{_parent}/Id",
+                    f"Invalid length in element <{_parent}/Id> at line {_line_num}: "
+                    f"Length {_id_len} exceeds maximum allowed 16.",
+                    f"Shorten the {_parent}.Id value to 16 characters or fewer. "
+                    f"This field must be maximum 16 characters long. "
+                    f"The current value exceeds 16 characters.",
+                    line=_line_num,
+                ))
+
+        # ── CBPR+ charset check for AppHdr ID fields ──────────────────────────
+        # BizMsgIdr and MsgDefIdr must only contain RestrictedFINXMax35Text chars.
+        _CBPR_APPHDR_ALLOWED = re.compile(r"[^A-Za-z0-9 /\-?:().,'+]")
+        _APPHDR_ID_PAT = re.compile(
+            r'<(BizMsgIdr|MsgDefIdr)>\s*([^<]+?)\s*</\1>'
+        )
+        for m in _APPHDR_ID_PAT.finditer(xml_content):
+            tag_name  = m.group(1)
+            raw_value = m.group(2).strip()
+            if not raw_value:
+                continue
+            forbidden_chars = sorted(set(c for c in raw_value if _CBPR_APPHDR_ALLOWED.match(c)))
+            if not forbidden_chars:
+                continue
+            try:
+                line_num = xml_content.count('\n', 0, m.start()) + 1
+            except Exception:
+                line_num = "Unknown"
+            forbidden_display = ' '.join(repr(c) for c in forbidden_chars)
+            cleaned = _CBPR_APPHDR_ALLOWED.sub('', raw_value)
+            report.add_issue(ValidationIssue(
+                "ERROR",
+                2,
+                "BIZMSGID_INVALID_CHARS" if tag_name == "BizMsgIdr" else "MSGDEFIDR_INVALID_CHARS",
+                str(line_num),
+                f"AppHdr/<{tag_name}> contains invalid character(s): {forbidden_display}. "
+                f"Only CBPR+ RestrictedFINXMax35Text characters are allowed (A-Z a-z 0-9 space / - ? : ( ) . , ' +).",
+                f"Remove {forbidden_display} from <{tag_name}>. Suggested clean value: '{cleaned}'."
+            ))
 
 
     @staticmethod
@@ -403,9 +468,14 @@ class PreNormalizationValidator:
             'OrgId':             "AnyBIC, LEI, or Othr/Id",
             'PrvtId':            "DtAndPlcOfBirth or Othr/Id",
             'SchmeNm':           "<Cd> or <Prtry>",
+            'Othr':              "an identifier value <Id>",
             'ClrSys':            "<Cd> or <Prtry>",
             # ── Postal address (all children optional in XSD) ──
             'PstlAdr':           "Ctry, TwnNm, StrtNm, BldgNb, PstCd, or AdrLine",
+            # ── Payment identification & group header ──
+            'PmtId':             "EndToEndId (and ideally InstrId, TxId, UETR)",
+            'GrpHdr':            "MsgId, CreDtTm, NbOfTxs and SttlmInf",
+            'SttlmInf':          "SttlmMtd",
             # ── Payment type info (choice containers) ──
             'PmtTpInf':          "SvcLvl, LclInstrm, CtgyPurp, InstrPrty, or ClrChanl",
             'SvcLvl':            "<Cd> or <Prtry>",
@@ -432,8 +502,13 @@ class PreNormalizationValidator:
             'Bal':               "Tp, Amt, CdtDbtInd, and Dt",
             'NtryDtls':          "TxDtls or Btch",
             'TxDtls':            "Refs, Amt, or RltdPties",
+            'BkTxCd':            "<Domn> or <Prtry>",
             # ── Account identification choice ──
             'AcctId':            "<IBAN> or <Othr> with an identifier",
+            # ── Party identification ──
+            'Pty':               "Nm (party name) and PstlAdr (postal address with Ctry)",
+            # ── Contact details ──
+            'CtctDtls':          "Nm, PhneNb, MobNb, FaxNb, EmailAdr, or other contact fields",
         }
 
         # Party/agent wrappers — must contain *some* identifying child
@@ -2330,6 +2405,597 @@ class PreNormalizationValidator:
 
 
     @staticmethod
+    def _check_lei(lei: str) -> str:
+        """Validates LEI using ISO 7064 MOD 97-10. Returns 'OK' or an error code."""
+        lei = lei.strip().upper()
+        if not lei or len(lei) != 20:
+            return "INVALID_LENGTH"
+        if not re.match(r'^[A-Z0-9]{20}$', lei):
+            return "INVALID_CHARACTERS"
+        if lei == "0" * 20:
+            return "ALL_ZEROS_INVALID"
+        check_digits = lei[-2:]
+        if check_digits in ["00", "01"]:
+            return "INVALID_CHECK_DIGITS_RESERVED"
+        numeric_str = ""
+        for char in lei:
+            if '0' <= char <= '9':
+                numeric_str += char
+            else:
+                numeric_str += str(ord(char) - 55)
+        try:
+            return "OK" if int(numeric_str) % 97 == 1 else "CHECKSUM_MISMATCH"
+        except Exception:
+            return "CHECKSUM_MISMATCH"
+
+    @staticmethod
+    def _validate_bah_agent_bic_match(xml_content: str, report: ValidationReport) -> None:
+        """CBPR+ rule: AppHdr Fr/To BICs must match InstgAgt/InstdAgt BICs.
+
+        Applies per BusMsgEnvlp in a bulk; skips envelopes where CpyDplct is present.
+        Family-agnostic: walks first InstgAgt/InstdAgt regardless of message type.
+        Only operates on wrapped messages (<BusMsgEnvlp>) — bare Documents skip this.
+        """
+        try:
+            parser = etree.XMLParser(recover=True, no_network=True, resolve_entities=False)
+            root = etree.fromstring(xml_content.encode("utf-8"), parser)
+        except Exception:
+            return
+
+        def _first_bicfi(node, tag_local: str) -> str:
+            results = node.xpath(
+                f".//*[local-name()='{tag_local}']"
+                f"/*[local-name()='FinInstnId']"
+                f"/*[local-name()='BICFI']"
+            )
+            return (results[0].text or "").strip() if results else ""
+
+        root_local = etree.QName(root.tag).localname if isinstance(root.tag, str) else ""
+
+        if root_local == "BulkMessages":
+            envelopes = [c for c in root
+                         if isinstance(c.tag, str) and etree.QName(c.tag).localname == "BusMsgEnvlp"]
+        elif root_local == "BusMsgEnvlp":
+            envelopes = [root]
+        else:
+            return  # No envelope — BAH BIC rule not applicable
+
+        for env in envelopes:
+            app_hdr = env.find(".//{*}AppHdr")
+            document = env.find(".//{*}Document")
+            if app_hdr is None or document is None:
+                continue
+            if app_hdr.find(".//{*}CpyDplct") is not None:
+                continue
+
+            fr_bic = _first_bicfi(app_hdr, "Fr")
+            to_bic = _first_bicfi(app_hdr, "To")
+            instg_bic = _first_bicfi(document, "InstgAgt")
+            instd_bic = _first_bicfi(document, "InstdAgt")
+
+            if fr_bic and instg_bic and fr_bic != instg_bic:
+                fr_el = app_hdr.xpath(".//*[local-name()='Fr']//*[local-name()='BICFI']")
+                line_no = str(fr_el[0].sourceline if fr_el else (app_hdr.sourceline or "?"))
+                report.add_issue(ValidationIssue(
+                    "ERROR", 3, "BAH_FR_INSTGAGT_MISMATCH", line_no,
+                    f"AppHdr <Fr> BIC '{fr_bic}' does not match the payload <InstgAgt> BIC "
+                    f"'{instg_bic}'. CBPR+ requires these to be identical when <CpyDplct> is absent.",
+                    f"Update AppHdr <Fr>...<BICFI> to '{instg_bic}', or update <InstgAgt>...<BICFI> "
+                    f"to '{fr_bic}' in the payload."
+                ))
+
+            if to_bic and instd_bic and to_bic != instd_bic:
+                to_el = app_hdr.xpath(".//*[local-name()='To']//*[local-name()='BICFI']")
+                line_no = str(to_el[0].sourceline if to_el else (app_hdr.sourceline or "?"))
+                report.add_issue(ValidationIssue(
+                    "ERROR", 3, "BAH_TO_INSTDAGT_MISMATCH", line_no,
+                    f"AppHdr <To> BIC '{to_bic}' does not match the payload <InstdAgt> BIC "
+                    f"'{instd_bic}'. CBPR+ requires these to be identical when <CpyDplct> is absent.",
+                    f"Update AppHdr <To>...<BICFI> to '{instd_bic}', or update <InstdAgt>...<BICFI> "
+                    f"to '{to_bic}' in the payload."
+                ))
+
+    @staticmethod
+    def _validate_bizmsgidr_eq_msgid(xml_content: str, report: ValidationReport) -> None:
+        """CBPR+ rule: AppHdr/BizMsgIdr must equal GrpHdr/MsgId.
+
+        Equivalent of the SR2025 KB dependency rule CBPR_BIZ_MSG_IDR / DEP_001,
+        implemented inline so it fires without a KB context dependency.
+        """
+        existing_codes = {getattr(i, 'code', None) for i in report.issues}
+        if "BIZMSGIDR_NEQ_MSGID" in existing_codes:
+            return
+        try:
+            parser = etree.XMLParser(recover=True, no_network=True, resolve_entities=False)
+            root = etree.fromstring(xml_content.encode("utf-8"), parser)
+        except Exception:
+            return
+
+        biz_el = root.find(".//{*}BizMsgIdr")
+        msgid_el = root.find(".//{*}GrpHdr/{*}MsgId")
+        if biz_el is None or msgid_el is None:
+            return
+        bv = (biz_el.text or "").strip()
+        mv = (msgid_el.text or "").strip()
+        if bv and mv and bv != mv:
+            report.add_issue(ValidationIssue(
+                "ERROR", 2, "BIZMSGIDR_NEQ_MSGID", "/AppHdr/BizMsgIdr",
+                f"AppHdr/BizMsgIdr '{bv}' must equal GrpHdr/MsgId '{mv}'.",
+                f"Set <BizMsgIdr> to the same value as GrpHdr/MsgId (i.e. '{mv}'). "
+                "Always harvest from MsgId rather than inventing a value.",
+                line=biz_el.sourceline
+            ))
+
+    @staticmethod
+    def _validate_pain002_txinf_rule(xml_content: str, report: ValidationReport) -> None:
+        """CBPR+ Rule — pain.002 OrgnlPmtInfAndSts must contain TxInfAndSts."""
+        try:
+            parser = etree.XMLParser(recover=True, no_network=True, resolve_entities=False)
+            root = etree.fromstring(xml_content.encode('utf-8'), parser)
+        except Exception:
+            return
+
+        for el in root.iter():
+            if not isinstance(el.tag, str):
+                continue
+            if etree.QName(el.tag).localname != "OrgnlPmtInfAndSts":
+                continue
+            has_txinf = any(
+                isinstance(c.tag, str) and etree.QName(c.tag).localname == "TxInfAndSts"
+                for c in el
+            )
+            if not has_txinf:
+                line = str(el.sourceline or "?")
+                report.add_issue(ValidationIssue(
+                    "ERROR", 2, "PAIN002_ORGNLPMT_NO_TXINF", line,
+                    "The content of element 'OrgnlPmtInfAndSts' is not complete. "
+                    "One of the following elements is expected: 'TxInfAndSts'.",
+                    "Add at least one <TxInfAndSts> block inside <OrgnlPmtInfAndSts> "
+                    "containing <OrgnlEndToEndId>, <TxSts> and, when TxSts is RJCT, "
+                    "<StsRsnInf><Rsn><Cd>REASON_CODE</Cd></Rsn></StsRsnInf>."
+                ))
+
+    @staticmethod
+    def _validate_pain002_sequence_rules(xml_content: str, report: ValidationReport) -> None:
+        """CBPR+ pain.002.001.10 element-sequence constraints:
+        1. GrpHdr/InitgPty — mandatory, must appear before FwdgAgt.
+        2. TxInfAndSts/OrgnlUETR — mandatory before TxSts.
+        """
+        def _local(el) -> str:
+            return etree.QName(el.tag).localname if isinstance(el.tag, str) and '}' in el.tag else (el.tag or "")
+
+        try:
+            parser = etree.XMLParser(recover=True, no_network=True, resolve_entities=False)
+            root = etree.fromstring(xml_content.encode("utf-8"), parser)
+        except Exception:
+            return
+
+        for grp_hdr in root.iter():
+            if not isinstance(grp_hdr.tag, str) or _local(grp_hdr) != "GrpHdr":
+                continue
+            child_names = [_local(c) for c in grp_hdr if isinstance(c.tag, str)]
+            if "InitgPty" not in child_names:
+                line_num = grp_hdr.sourceline or "?"
+                if "FwdgAgt" in child_names:
+                    fwdg_el = next(
+                        (c for c in grp_hdr if isinstance(c.tag, str) and _local(c) == "FwdgAgt"),
+                        None
+                    )
+                    line_num = (fwdg_el.sourceline if fwdg_el is not None else grp_hdr.sourceline) or "?"
+                report.add_issue(ValidationIssue(
+                    "ERROR", 3, "PAIN002_GRPHDR_INITGPTY_REQUIRED", str(line_num),
+                    "The element 'FwdgAgt' is not expected here — "
+                    "<InitgPty> is mandatory in pain.002 GrpHdr and must appear before <FwdgAgt>.",
+                    "Add <InitgPty><Nm>Initiating Party Name</Nm></InitgPty> inside <GrpHdr> "
+                    "before <FwdgAgt>. InitgPty is required by SWIFT CBPR+ pain.002.001.10.",
+                    line=line_num if isinstance(line_num, int) else None
+                ))
+
+        for tx_el in root.iter():
+            if not isinstance(tx_el.tag, str) or _local(tx_el) != "TxInfAndSts":
+                continue
+            child_names = [_local(c) for c in tx_el if isinstance(c.tag, str)]
+            if "TxSts" in child_names and "OrgnlUETR" not in child_names:
+                tx_sts_el = next(
+                    (c for c in tx_el if isinstance(c.tag, str) and _local(c) == "TxSts"),
+                    None
+                )
+                line_num = (tx_sts_el.sourceline if tx_sts_el is not None else tx_el.sourceline) or "?"
+                report.add_issue(ValidationIssue(
+                    "ERROR", 3, "PAIN002_ORGNLUETR_REQUIRED", str(line_num),
+                    "The element 'TxSts' is not expected here — "
+                    "<OrgnlUETR> is expected before <TxSts> in pain.002 TxInfAndSts.",
+                    "Add <OrgnlUETR>xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx</OrgnlUETR> inside "
+                    "<TxInfAndSts> before <TxSts>. OrgnlUETR must be the UUID v4 of the "
+                    "original transaction (lowercase hex).",
+                    line=line_num if isinstance(line_num, int) else None
+                ))
+
+    @staticmethod
+    def _validate_pacs002_txinf_orig_id(xml_content: str, report: ValidationReport) -> None:
+        """CBPR+ Rule — pacs.002 TxInfAndSts must have OrgnlInstrId or OrgnlEndToEndId before TxSts."""
+        try:
+            parser = etree.XMLParser(recover=True, no_network=True, resolve_entities=False)
+            root = etree.fromstring(xml_content.encode('utf-8'), parser)
+        except Exception:
+            return
+
+        for el in root.iter():
+            if not isinstance(el.tag, str):
+                continue
+            if etree.QName(el.tag).localname != "TxInfAndSts":
+                continue
+            child_locals = {etree.QName(c.tag).localname for c in el if isinstance(c.tag, str)}
+            has_orig_id = bool(child_locals & {"OrgnlInstrId", "OrgnlEndToEndId"})
+            has_txsts   = "TxSts" in child_locals
+            if has_txsts and not has_orig_id:
+                txsts_el = next(
+                    (c for c in el if isinstance(c.tag, str)
+                     and etree.QName(c.tag).localname == "TxSts"),
+                    el,
+                )
+                line = str(txsts_el.sourceline or el.sourceline or "?")
+                report.add_issue(ValidationIssue(
+                    "ERROR", 2, "PACS002_TXINF_NO_ORIG_ID", line,
+                    "The element 'TxSts' is not expected here. Either it is not allowed "
+                    "in this specification, or another mandatory element is missing before "
+                    "this one. One of the following elements is expected: "
+                    "'OrgnlInstrId, OrgnlEndToEndId'.",
+                    "Add <OrgnlEndToEndId> (or <OrgnlInstrId>) before <TxSts> inside "
+                    "<TxInfAndSts>. CBPR+ requires at least one original identifier so "
+                    "the status can be correlated to the originating transaction.",
+                ))
+
+    @staticmethod
+    def _validate_schme_nm_in_xml(xml_content: str, report: ValidationReport) -> None:
+        """Step 4.19 — Scheme Name Validation (Strict Policy + Structural Rules + LEI Checksum).
+
+        Enforces:
+          1. Mutual Exclusivity (<Cd> vs <Prtry>)
+          2. Presence check (one must be present in SchmeNm)
+          3. Missing SchmeNm check inside Othr for Dbtr/Cdtr party identifiers
+          4. SchmeNm not allowed for account Othr identifiers
+          5. LEI format & checksum validation
+          6. Empty <Prtry> check
+        """
+        valid_codes = {"LEI": "", "TXID": "", "BANK": "", "CUST": "", "COID": "", "TXNR": "", "DUNS": "", "GIIN": ""}
+        error_labels = {
+            "invalid_scheme": "Invalid scheme code in <Cd>",
+            "both_cd_and_prtry": "Mutually exclusive elements conflict",
+            "missing_element": "<SchmeNm> must contain either <Cd> or <Prtry>",
+            "empty_prtry": "<Prtry> value must not be empty",
+            "missing_schmenm": "<SchmeNm> is required when <Othr> is present"
+        }
+
+        acct_othr_lines: set = set()
+        path_map: dict = {}
+        try:
+            parser = etree.XMLParser(recover=True, no_network=True, resolve_entities=False)
+            tree_root = etree.fromstring(xml_content.encode('utf-8'), parser)
+            for othr in tree_root.xpath("//*[local-name()='Othr']"):
+                path = PreNormalizationValidator._get_xpath_for_element(othr)
+                ln = othr.sourceline
+                if ln:
+                    if "/Acct/" in path:
+                        acct_othr_lines.add(ln)
+                    path_map[ln] = path
+        except Exception:
+            pass
+
+        othr_patt = re.compile(r'<Othr[^>]*>([\s\S]*?)</Othr>', re.IGNORECASE)
+        id_patt_inner = re.compile(r'<Id[^>]*>\s*([^<]*?)\s*</Id>', re.IGNORECASE)
+        schme_patt = re.compile(r'<SchmeNm[^>]*>([\s\S]*?)</SchmeNm>', re.IGNORECASE)
+        cd_patt = re.compile(r'<Cd[^>]*>\s*([^<]*?)\s*</Cd>', re.IGNORECASE)
+        prtry_patt = re.compile(r'<Prtry[^>]*>\s*([^<]*?)\s*</Prtry>', re.IGNORECASE)
+
+        codes_str = ", ".join(valid_codes.keys())
+
+        for m_othr in othr_patt.finditer(xml_content):
+            inner_othr = m_othr.group(1)
+            othr_pos = m_othr.start()
+            try:
+                othr_line = xml_content.count('\n', 0, othr_pos) + 1
+            except Exception:
+                othr_line = "Unknown"
+
+            m_id = id_patt_inner.search(inner_othr)
+            id_val = m_id.group(1).strip() if m_id else ""
+
+            m_schme = schme_patt.search(inner_othr)
+
+            curr_path = path_map.get(othr_line, "/Othr")
+            is_forbidden_path = any(f in curr_path for f in ["/DbtrAcct/", "/CdtrAcct/"])
+            is_mandatory_path = any(mp in curr_path for mp in [
+                "/Dbtr/Id/OrgId/", "/Dbtr/Id/PrvtId/",
+                "/Cdtr/Id/OrgId/", "/Cdtr/Id/PrvtId/"
+            ])
+
+            if is_forbidden_path:
+                if m_schme:
+                    report.add_issue(ValidationIssue(
+                        "ERROR", 3, "SCHEME_NOT_ALLOWED", str(othr_line),
+                        f"{curr_path} → <SchmeNm> is not allowed for account identifier <Othr> blocks.",
+                        "Remove the <SchmeNm> block. For accounts, provide only the <Id> within <Othr>."
+                    ))
+                continue
+
+            elif is_mandatory_path:
+                if not m_schme:
+                    report.add_issue(ValidationIssue(
+                        "ERROR", 3, "SCHEME_MISSING", str(othr_line),
+                        f"{curr_path} → {error_labels['missing_schmenm']}",
+                        "Identify the ID type using <SchmeNm>. For example: <SchmeNm><Cd>LEI</Cd></SchmeNm>."
+                    ))
+                    continue
+            else:
+                if not m_schme:
+                    continue
+
+            inner_schme = m_schme.group(1)
+            schme_pos = othr_pos + m_othr.group(0).find(m_schme.group(0))
+            try:
+                schme_line = xml_content.count('\n', 0, schme_pos) + 1
+            except Exception:
+                schme_line = "Unknown"
+
+            cds = list(cd_patt.finditer(inner_schme))
+            ptys = list(prtry_patt.finditer(inner_schme))
+
+            if len(cds) > 0 and len(ptys) > 0:
+                report.add_issue(ValidationIssue(
+                    "ERROR", 3, "SCHEME_CONFLICT", str(schme_line),
+                    f"{curr_path} → {error_labels['both_cd_and_prtry']}",
+                    "You cannot provide both <Cd> and <Prtry> in the same <SchmeNm> block. "
+                    "Use either a standardized code OR a proprietary name."
+                ))
+                continue
+
+            if len(cds) == 0 and len(ptys) == 0:
+                report.add_issue(ValidationIssue(
+                    "ERROR", 3, "SCHEME_MISSING_CHILD", str(schme_line),
+                    f"{curr_path} → {error_labels['missing_element']}",
+                    "The <SchmeNm> block must contain either <Cd> or <Prtry>."
+                ))
+                continue
+
+            for m_cd in cds:
+                val = m_cd.group(1).strip()
+                val_upper = val.upper()
+                if not val:
+                    report.add_issue(ValidationIssue(
+                        "ERROR", 3, "SCHEME_EMPTY_CD", str(schme_line),
+                        "Missing or empty identifier code in <Cd>.",
+                        f"Please provide a valid code such as: {codes_str}."
+                    ))
+                    continue
+                if val_upper == "LEI" and id_val:
+                    lei_status = PreNormalizationValidator._check_lei(id_val)
+                    if lei_status != "OK":
+                        id_match_pos = othr_pos + m_othr.group(0).find(m_id.group(0)) if m_id else othr_pos
+                        try:
+                            id_line = xml_content.count('\n', 0, id_match_pos) + 1
+                        except Exception:
+                            id_line = "Unknown"
+                        error_map = {
+                            "INVALID_LENGTH": ("LEI must be exactly 20 characters.", "Correct the LEI to full 20-character length."),
+                            "INVALID_CHARACTERS": ("Special characters found — only A-Z and 0-9 allowed.", "Replace special characters with valid alphanumeric characters."),
+                            "ALL_ZEROS_INVALID": ("All-zero LEI is not a valid GLEIF-registered identifier.", "Use a real GLEIF-registered LEI."),
+                            "INVALID_CHECK_DIGITS_RESERVED": ("Check digits '00' or '01' are reserved and not allowed.", "Valid check digit range is 02–97 only."),
+                            "CHECKSUM_MISMATCH": ("Invalid LEI checksum (MOD 97 remainder is not 1).", "Ensure the LEI follows ISO 7064 MOD 97-10 rules. The last two digits must be correct check digits.")
+                        }
+                        msg, fix = error_map.get(lei_status, ("Invalid LEI format.", "Check the LEI structure."))
+                        report.add_issue(ValidationIssue(
+                            "ERROR", 3, f"LEI_{lei_status}", str(id_line),
+                            f"{msg} ('{id_val}')",
+                            fix
+                        ))
+
+            for m_pty in ptys:
+                val = m_pty.group(1).strip()
+                if not val:
+                    report.add_issue(ValidationIssue(
+                        "ERROR", 3, "EMPTY_PRTRY", str(schme_line),
+                        f"{curr_path} → {error_labels['empty_prtry']}",
+                        "The <Prtry> tag cannot be empty. Provide a proprietary scheme description or code."
+                    ))
+
+    @staticmethod
+    def _validate_empty_codelist_elements(xml_content: str, report: ValidationReport) -> None:
+        """Detect empty codelist leaf elements whose value is required but absent.
+
+        Covers empty <Cd/> inside Tp, CdOrPrtry, SvcLvl and similar typed containers.
+        """
+        try:
+            parser = etree.XMLParser(recover=True, no_network=True, resolve_entities=False)
+            root = etree.fromstring(xml_content.encode('utf-8'), parser)
+        except Exception:
+            return
+
+        _EMPTY_CD_PARENTS = {
+            "Tp":         ("ACCT_TP_EMPTY_CD",   "Account type code",        "Use a valid ExternalCashAccountType1Code such as 'CACC' (Current), 'CASH', 'LOAN', or 'COMM'."),
+            "CdOrPrtry":  ("CDORPRTRY_EMPTY_CD",  "Code or proprietary code", "Provide a valid code value or replace <Cd/> with <Prtry>value</Prtry>."),
+            "SvcLvl":     ("SVCLVL_EMPTY_CD",     "Service level code",       "Use a valid ExternalServiceLevel1Code such as 'SEPA', 'NURG', or 'SDVA'."),
+        }
+
+        for el in root.iter():
+            if not isinstance(el.tag, str):
+                continue
+            if el.tag.split('}')[-1] != 'Cd':
+                continue
+            if (el.text or '').strip():
+                continue
+            parent = el.getparent()
+            if parent is None or not isinstance(parent.tag, str):
+                continue
+            parent_local = parent.tag.split('}')[-1]
+            entry = _EMPTY_CD_PARENTS.get(parent_local)
+            if entry is None:
+                continue
+            err_code, label, fix = entry
+            line = str(el.sourceline or '/')
+            report.add_issue(ValidationIssue(
+                "ERROR", 3, err_code, line,
+                f"Empty <Cd/> element inside <{parent_local}>: {label} must not be empty.",
+                fix,
+            ))
+
+    @staticmethod
+    def _validate_camt053_lastpgind_clbd(xml_content: str, report: ValidationReport) -> None:
+        """SWIFT MyStandards Rule — camt.053:
+        If Stmt/StmtPgntn/LastPgInd = 'true', exactly one Bal/Tp/CdOrPrtry/Cd must
+        have value 'CLBD' and no SubType/Cd may equal 'INTM'.
+        """
+        try:
+            parser = etree.XMLParser(recover=True, no_network=True, resolve_entities=False)
+            root = etree.fromstring(xml_content.encode('utf-8'), parser)
+        except Exception:
+            return
+
+        def _local(el):
+            return etree.QName(el.tag).localname if isinstance(el.tag, str) else ''
+
+        def _text(el):
+            return (el.text or '').strip()
+
+        def _find_first(parent, *local_names):
+            cur = parent
+            for name in local_names:
+                cur = next((c for c in cur if _local(c) == name), None)
+                if cur is None:
+                    return None
+            return cur
+
+        for stmt in root.iter():
+            if _local(stmt) != 'Stmt':
+                continue
+            pgntn = _find_first(stmt, 'StmtPgntn')
+            if pgntn is None:
+                continue
+            last_pg_el = _find_first(pgntn, 'LastPgInd')
+            if last_pg_el is None or _text(last_pg_el).lower() != 'true':
+                continue
+
+            last_pg_line = str(last_pg_el.sourceline or '/')
+            clbd_count = 0
+            clbd_line = '/'
+
+            for bal in stmt:
+                if _local(bal) != 'Bal':
+                    continue
+                tp = _find_first(bal, 'Tp')
+                if tp is None:
+                    continue
+                cdorprtry = _find_first(tp, 'CdOrPrtry')
+                if cdorprtry is not None:
+                    cd_el = _find_first(cdorprtry, 'Cd')
+                    if cd_el is not None and _text(cd_el) == 'CLBD':
+                        clbd_count += 1
+                        clbd_line = str(cd_el.sourceline or '/')
+                subtype = _find_first(tp, 'SubType')
+                if subtype is not None:
+                    subcd = _find_first(subtype, 'Cd')
+                    if subcd is not None and _text(subcd) == 'INTM':
+                        sub_line = str(subcd.sourceline or '/')
+                        report.add_issue(ValidationIssue(
+                            "ERROR", 3, "CAMT053_LASTPGIND_INTM_SUBTYPE", sub_line,
+                            "When LastPgInd is 'true', Balance SubType Code must not be 'INTM' "
+                            "(intermediate balance not allowed on the final page).",
+                            "Remove <SubType><Cd>INTM</Cd></SubType> from this Balance entry, "
+                            "or change its value to a non-intermediate subtype code.",
+                        ))
+
+            if clbd_count == 0:
+                report.add_issue(ValidationIssue(
+                    "ERROR", 3, "CAMT053_LASTPGIND_CLBD_MISSING", last_pg_line,
+                    "When LastPgInd is 'true', exactly one Balance/Type/CodeOrProprietary/Code "
+                    "must equal 'CLBD' (closing booked balance). No such balance was found.",
+                    "Add a <Bal> entry with <Tp><CdOrPrtry><Cd>CLBD</Cd></CdOrPrtry></Tp> "
+                    "and its corresponding <Amt> to represent the closing booked balance.",
+                ))
+            elif clbd_count > 1:
+                report.add_issue(ValidationIssue(
+                    "ERROR", 3, "CAMT053_LASTPGIND_CLBD_DUPLICATE", clbd_line,
+                    f"When LastPgInd is 'true', exactly one Balance with Code 'CLBD' is required, "
+                    f"but {clbd_count} were found.",
+                    "Remove duplicate CLBD balance entries, keeping exactly one.",
+                ))
+
+    @staticmethod
+    def _validate_pain001_cbprplus(xml_content: str, report: ValidationReport) -> None:
+        """CBPR+ pain.001 structural constraints not enforced by the base XSD:
+        1. Each PmtInf must contain exactly 1 CdtTrfTxInf (CBPR+ maxOccurs=1).
+        2. Every CdtTrfTxInf/PmtId must carry a <UETR> (mandatory in CBPR+ SR2022+).
+        3. NbOfTxs must equal the number of PmtInf blocks.
+        """
+        def _local(el) -> str:
+            return etree.QName(el.tag).localname if isinstance(el.tag, str) and '}' in el.tag else (el.tag or "")
+
+        try:
+            parser = etree.XMLParser(recover=True, no_network=True, resolve_entities=False)
+            root = etree.fromstring(xml_content.encode("utf-8"), parser)
+        except Exception:
+            return
+        if root is None:
+            return
+
+        pmt_inf_els = [el for el in root.iter() if _local(el) == "PmtInf"]
+        if not pmt_inf_els:
+            return
+
+        for pmt_inf in pmt_inf_els:
+            cdt_txs = [c for c in pmt_inf.iter() if _local(c) == "CdtTrfTxInf" and c.getparent() is pmt_inf]
+            if len(cdt_txs) > 1:
+                for extra in cdt_txs[1:]:
+                    line_num = extra.sourceline or "?"
+                    report.add_issue(ValidationIssue(
+                        "ERROR", 3, "PAIN001_MAX_ONE_TX_PER_PMTINF", str(line_num),
+                        "<CdtTrfTxInf> is not expected here — CBPR+ pain.001 allows "
+                        "only 1 CdtTrfTxInf per PmtInf block.",
+                        "Move each additional <CdtTrfTxInf> into its own <PmtInf> block. "
+                        "One payment instruction per payment-information block is required "
+                        "by the CBPR+ restricted profile.",
+                        line=line_num if isinstance(line_num, int) else None
+                    ))
+
+            for cdt_tx in cdt_txs:
+                pmt_id_el = next(
+                    (c for c in cdt_tx if isinstance(c.tag, str) and _local(c) == "PmtId"),
+                    None
+                )
+                if pmt_id_el is None:
+                    continue
+                has_uetr = any(_local(c) == "UETR" and (c.text or "").strip()
+                               for c in pmt_id_el.iter())
+                if not has_uetr:
+                    line_num = pmt_id_el.sourceline or "?"
+                    report.add_issue(ValidationIssue(
+                        "ERROR", 3, "PAIN001_UETR_REQUIRED", str(line_num),
+                        "The content of element <PmtId> is not complete — <UETR> is expected.",
+                        "Add <UETR>xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx</UETR> inside <PmtId>. "
+                        "UETR is mandatory in CBPR+ pain.001 (UUID v4 format, lowercase hex).",
+                        line=line_num if isinstance(line_num, int) else None
+                    ))
+
+        nb_el = next((el for el in root.iter() if _local(el) == "NbOfTxs"), None)
+        if nb_el is not None:
+            txt = (nb_el.text or "").strip()
+            if txt.isdigit():
+                declared = int(txt)
+                pmtinf_count = len(pmt_inf_els)
+                if declared != pmtinf_count:
+                    line_num = nb_el.sourceline or "?"
+                    report.add_issue(ValidationIssue(
+                        "ERROR", 3, "PAIN001_NBOFTXS_MISMATCH", str(line_num),
+                        f"<NbOfTxs> value '{declared}' does not match the number of "
+                        f"<PmtInf> blocks ({pmtinf_count}). In CBPR+ pain.001 each "
+                        f"PmtInf carries exactly 1 transaction, so NbOfTxs must equal "
+                        f"the number of PmtInf blocks.",
+                        f"Set <NbOfTxs>{pmtinf_count}</NbOfTxs> to match the "
+                        f"{pmtinf_count} PmtInf block(s) present.",
+                        line=line_num if isinstance(line_num, int) else None
+                    ))
+
+    @staticmethod
     def validate_all(xml_content: str, report: ValidationReport, message_type: str) -> None:
         PreNormalizationValidator._validate_dates_in_xml(xml_content, report)
         PreNormalizationValidator._validate_id_lengths_in_xml(xml_content, report)
@@ -2337,7 +3003,17 @@ class PreNormalizationValidator:
         PreNormalizationValidator._validate_name_address_coexistence(xml_content, report)
         PreNormalizationValidator._validate_empty_required_containers(xml_content, report)
         PreNormalizationValidator._validate_apphdr_payload_match(xml_content, report)
+        PreNormalizationValidator._validate_bah_agent_bic_match(xml_content, report)
+        PreNormalizationValidator._validate_bizmsgidr_eq_msgid(xml_content, report)
+        PreNormalizationValidator._validate_uetr_in_xml(xml_content, report)
         PreNormalizationValidator._validate_pain008_fwdgagt_rule(xml_content, report)
+        if "pain.001" in (report.message_type or ""):
+            PreNormalizationValidator._validate_pain001_cbprplus(xml_content, report)
+        if "pain.002" in (report.message_type or ""):
+            PreNormalizationValidator._validate_pain002_txinf_rule(xml_content, report)
+            PreNormalizationValidator._validate_pain002_sequence_rules(xml_content, report)
+        if "pacs.002" in (report.message_type or ""):
+            PreNormalizationValidator._validate_pacs002_txinf_orig_id(xml_content, report)
         PreNormalizationValidator._validate_account_identifiers_in_xml(xml_content, report)
         PreNormalizationValidator._validate_nboftxs(xml_content, report)
         PreNormalizationValidator._validate_duplicate_ids(xml_content, report)
@@ -2349,3 +3025,7 @@ class PreNormalizationValidator:
         PreNormalizationValidator._validate_clearing_system_rules(xml_content, report)
         PreNormalizationValidator._validate_charsets_in_xml(xml_content, report)
         PreNormalizationValidator._validate_duplicate_tags(xml_content, report, message_type)
+        PreNormalizationValidator._validate_schme_nm_in_xml(xml_content, report)
+        PreNormalizationValidator._validate_empty_codelist_elements(xml_content, report)
+        if "camt.053" in (report.message_type or ""):
+            PreNormalizationValidator._validate_camt053_lastpgind_clbd(xml_content, report)

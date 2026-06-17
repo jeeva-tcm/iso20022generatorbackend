@@ -414,8 +414,8 @@
   },
 
   "addressRules": {
-    "globalPolicy": "structured_only",
-    "description": "SR2026 deprecates unstructured AdrLine-only addresses. TwnNm and Ctry are mandatory in all postal addresses.",
+    "globalPolicy": "hybrid_default",
+    "description": "SR2026 removes unstructured-only addresses (AdrLine without TwnNm/Ctry). The default and required combination is Hybrid: TwnNm + Ctry + up to two AdrLine elements. TwnNm and Ctry are mandatory in all postal addresses.",
     "gracePeriodRules": {
       "GracePeriod_Hybrid":      { "active": false },
       "GracePeriod_Structured":  { "active": false },
@@ -424,8 +424,8 @@
     "adrLineDeprecated": {
       "severity": "ERROR",
       "code": "DEPRECATED_UNSTRUCTURED_ADDRESS",
-      "errorMessage": "Unstructured address lines (AdrLine only) are no longer accepted in SR2026.",
-      "fix": "Replace unstructured address lines with structured fields: Street Name, Building Number, Postal Code, Town, Country."
+      "errorMessage": "Unstructured address lines (AdrLine without TwnNm/Ctry) are no longer accepted in SR2026. Use Hybrid: AdrLine alongside mandatory TwnNm and Ctry.",
+      "fix": "Add mandatory <TwnNm> and <Ctry> alongside the existing <AdrLine> elements to form a Hybrid address."
     },
     "partyAddressRequirements": {
       "Dbtr": {

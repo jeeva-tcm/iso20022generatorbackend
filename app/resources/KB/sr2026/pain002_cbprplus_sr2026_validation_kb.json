@@ -1,0 +1,3939 @@
+{
+  "domain": "SWIFT MX CBPR+ pain.002.001.10",
+  "version": "SR2026",
+  "last_updated": "2026-06-16",
+  "purpose": "Context KB for pain.002.001.10 Customer Payment Status Report V10 validation (CBPR+ SR2026). For each XML tag: possible errors, affected tags, and fix suggestions, plus ISO 20022 / CBPR+ formal rules.",
+  "reference_documents": [
+    "CBPRPlus_SR2026_(Combined)_CBPRPlus-pain_002_001_10_FIToFICustomerPaymentStatusReport_20260525_0146.pdf"
+  ],
+  "iso_20022_rules": {
+    "R1_OrgnlGroupInformation": "OrgnlGrpInfAndSts is mandatory and must reference the original message via OrgnlMsgId and OrgnlMsgNmId.",
+    "R2_StatusReasonOnReject": "If a transaction or group status is RJCT, the corresponding StsRsnInf (status reason) should be present to explain the rejection.",
+    "R3_ExternalPaymentTransactionStatus": "GrpSts, PmtInfSts and TxSts values must be valid ExternalPaymentGroupStatus / ExternalPaymentTransactionStatus codes.",
+    "R4_OriginalIdentification": "OrgnlInstrId, OrgnlEndToEndId, OrgnlTxId and OrgnlUETR must be copied unchanged from the original (reported) message.",
+    "R5_StatusReasonCode": "StsRsnInf/Rsn/Cd must be a valid ExternalStatusReason1Code (e.g. AC01, AM04, MS03) or NARR when free-text is supplied in AddtlInf.",
+    "R6_PartialAcceptance": "GrpSts = PART (partially accepted) requires per-transaction TxSts to be populated so accepted and rejected items are distinguishable.",
+    "R7_OriginalMessageNameIdentifier": "OrgnlMsgNmId identifies the reported message type (e.g. pain.001.001.09) and must be a valid ISO 20022 message identifier.",
+    "XSD_BICFIPattern": "BICFIDec2014Identifier: [A-Z0-9]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})? — applies to AppHdr/Fr, AppHdr/To and all FinInstnId/BICFI in the status report.",
+    "XSD_AmountConstraints": "ActiveOrHistoricCurrencyAndAmount (used in ChrgsInf/Amt in TxInfAndSts): fractionDigits=5, totalDigits=18, minInclusive=0. Ccy attribute required.",
+    "XSD_StatusCodeNARR_AddtlInf": "ISO 20022 base rule (R16 in pacs.002): If StsRsnInf/Rsn/Cd = NARR, then AddtlInf MUST be present in the same StsRsnInf block.",
+    "XSD_V14Changes_pain002": "pain.002.001.14 (latest XSD) vs 001.10: TxInfAndSts/ChrgsInf removed (was optional in 001.10, removed in 001.14). TxInfAndSts/AccptncDtTm removed. TxInfAndSts/AcctSvcrRef removed. OrgnlTxRef added at TxInfAndSts level with full original transaction details.",
+    "DuplicateIdentifierValue": "[DUPLICATE_ID_VALUE] Identifiers required to be unique within a message (e.g. InstrId, TxId, EndToEndId, UETR) must not repeat across transactions or collide with GrpHdr/MsgId.",
+    "BicNotInDirectory": "[BIC_NOT_FOUND] Each BICFI should resolve to a registered institution in the official BIC directory.",
+    "MissingLeiAdvisory": "[MISSING_LEI_ADVISORY] Under SR2026 a Legal Entity Identifier (LEI) is highly recommended for all financial institutions."
+  },
+  "cbpr_plus_formal_rules": [
+    "AppHdr (BusinessApplicationHeaderV02) is mandatory for all CBPR+ messages and must precede the Document element.",
+    "AppHdr/BizSvc must be 'swift.cbprplus.02' for the status report exchange under CBPR+ SR2025.",
+    "AppHdr/MsgDefIdr must equal 'pain.002.001.10' and match the Document namespace.",
+    "AppHdr/BizMsgIdr must equal Document/CstmrPmtStsRpt/GrpHdr/MsgId.",
+    "AppHdr/CreDt and all ISODateTime fields must use YYYY-MM-DDTHH:MM:SS+HH:MM; the 'Z' suffix and milliseconds are forbidden.",
+    "AppHdr/Fr and AppHdr/To must carry valid BIC8 or BIC11 (ISO 9362) identifiers when exchanged on the SWIFT network.",
+    "GrpSts, PmtInfSts and TxSts must use codes from the ExternalPaymentGroupStatus / ExternalPaymentTransactionStatus lists.",
+    "If TxSts = RJCT (or PmtInfSts = RJCT / GrpSts = RJCT) then at least one StsRsnInf with Rsn/Cd must be present.",
+    "OrgnlUETR, when present, must be a valid lowercase UUID v4 and must match the UETR of the original transaction.",
+    "All proprietary/text fields are limited to the FIN-X character set; accented characters must be transliterated to ASCII.",
+    "StsRsnInf/Rsn/Cd must be a valid ExternalStatusReason1Code; use NARR with AddtlInf when no specific code applies.",
+    "The Business Message Identifier must match the Message Identification in the Group Header.",
+    "If used, the Related BAH must transport the exact same information as in the BAH of the related message.",
+    "The Business Message Identifier is the unique identifier of the Business Message instance that is being transported with this header, as defined by the sending application or system. Must contain the Message Identification element from the Group Header of the underlying message, where available (as is typically the case with pacs, pain, and camt messages, for example). If Message Identification is not available in the underlying message, then this element must contain the unique identifier of the Business Message instance.",
+    "The Message Definition Identifier of the Business Message instance that is being transported with this header. In general, it must be formatted exactly as it appears in the namespace of the Business Message instance.",
+    "If related BAH is present, it should transport the element Business Service.",
+    "The Original Payment Information Identification must be the same as the Original Message Identification in the Original Group Information And Status.",
+    "Forwarding Agent should respect the Message ID provided by the Initiating Party of the pain.001 and pain.002.",
+    "Original Message Identification must transport the Message Identification of the underlying payment (e.g. pain.001).",
+    "This element must be populated with either pain.001.001.xx, or pain.008.001.xx.",
+    "If TransactionStatus/Code equals RJCT, then “Status Reason Information/Reason” is mandatory.",
+    "If provided in the original pain.001, this Id is returned.",
+    "Must transport the EndToEnd Identification of the underlying pain.001.",
+    "If provided in the original pain.001, this value is returned.",
+    "If any BIC is absent, then Name is mandatory.",
+    "If Postal Address is present, then Name is mandatory.",
+    "If AnyBIC is present, in addition to any other optional elements, in case of conflicting information it will always take precedence.",
+    "Data present in structured elements within the Postal Address must not, under any circumstances be repeated in AddressLine.",
+    "Additional Information may only be used when Reason Code contains the code NARR."
+  ],
+  "tags": [
+    {
+      "tag": "AppHdr",
+      "xml_element": "AppHdr",
+      "xpath": "/AppHdr",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Business Application Header V02 (head.001.001.02)",
+      "errors": [
+        {
+          "error_id": "APPHDR_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Business Application Header V02 (head.001.001.02) is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr"
+          ],
+          "possible_fixes": [
+            "Insert <AppHdr></AppHdr> inside the appropriate parent element."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/CharSet",
+      "xml_element": "CharSet",
+      "xpath": "/AppHdr/CharSet",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Character Set",
+      "datatype": "text"
+    },
+    {
+      "tag": "AppHdr/Fr/FIId",
+      "xml_element": "FIId",
+      "xpath": "/AppHdr/Fr/FIId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Financial Institution Identification",
+      "errors": [
+        {
+          "error_id": "FIID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Financial Institution Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/Fr/FIId"
+          ],
+          "possible_fixes": [
+            "Insert <FIId></FIId> inside the appropriate parent element."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Fr/FIId/FinInstnId",
+      "xml_element": "FinInstnId",
+      "xpath": "/AppHdr/Fr/FIId/FinInstnId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Financial Institution Identification",
+      "errors": [
+        {
+          "error_id": "FININSTNID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Financial Institution Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/Fr/FIId/FinInstnId"
+          ],
+          "possible_fixes": [
+            "Insert <FinInstnId></FinInstnId> inside the appropriate parent element."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Fr/FIId/FinInstnId/BICFI",
+      "xml_element": "BICFI",
+      "xpath": "/AppHdr/Fr/FIId/FinInstnId/BICFI",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "BICFI",
+      "datatype": "text",
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/Fr/FIId/FinInstnId/BICFI",
+          "name": "BICFI",
+          "datatype": "text",
+          "pattern": "[A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}"
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "BICFI_PATTERN_ERROR",
+          "error_code": "INVALID_FORMAT",
+          "severity": "Fatal",
+          "description": "BICFI does not match the required format pattern.",
+          "affected_tags": [
+            "AppHdr/Fr/FIId/FinInstnId/BICFI"
+          ],
+          "possible_fixes": [
+            "Value must match pattern: [A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "xml_element": "Cd",
+      "xpath": "/AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Code",
+      "datatype": "text{1,5}",
+      "max_length": 5,
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+          "name": "Code",
+          "datatype": "text{1,5}",
+          "min_length": 1,
+          "max_length": 5
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "CD_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Code is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd"
+          ],
+          "possible_fixes": [
+            "Insert <Cd></Cd> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "CD_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Code exceeds maximum length of 5 characters.",
+          "affected_tags": [
+            "AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 5 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "xml_element": "MmbId",
+      "xpath": "/AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Member Identification",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId/MmbId",
+          "name": "Member Identification",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "MMBID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Member Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId/MmbId"
+          ],
+          "possible_fixes": [
+            "Insert <MmbId></MmbId> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "MMBID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Member Identification exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "AppHdr/Fr/FIId/FinInstnId/ClrSysMmbId/MmbId"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Fr/FIId/FinInstnId/LEI",
+      "xml_element": "LEI",
+      "xpath": "/AppHdr/Fr/FIId/FinInstnId/LEI",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "LEI",
+      "datatype": "text",
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/Fr/FIId/FinInstnId/LEI",
+          "name": "LEI",
+          "datatype": "text",
+          "pattern": "[A-Z0-9]{18,18}[0-9]{2,2}"
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "LEI_PATTERN_ERROR",
+          "error_code": "INVALID_FORMAT",
+          "severity": "Fatal",
+          "description": "LEI does not match the required format pattern.",
+          "affected_tags": [
+            "AppHdr/Fr/FIId/FinInstnId/LEI"
+          ],
+          "possible_fixes": [
+            "Value must match pattern: [A-Z0-9]{18,18}[0-9]{2,2}."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/To/FIId",
+      "xml_element": "FIId",
+      "xpath": "/AppHdr/To/FIId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Financial Institution Identification",
+      "errors": [
+        {
+          "error_id": "FIID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Financial Institution Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/To/FIId"
+          ],
+          "possible_fixes": [
+            "Insert <FIId></FIId> inside the appropriate parent element."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/To/FIId/FinInstnId",
+      "xml_element": "FinInstnId",
+      "xpath": "/AppHdr/To/FIId/FinInstnId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Financial Institution Identification",
+      "errors": [
+        {
+          "error_id": "FININSTNID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Financial Institution Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/To/FIId/FinInstnId"
+          ],
+          "possible_fixes": [
+            "Insert <FinInstnId></FinInstnId> inside the appropriate parent element."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/To/FIId/FinInstnId/BICFI",
+      "xml_element": "BICFI",
+      "xpath": "/AppHdr/To/FIId/FinInstnId/BICFI",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "BICFI",
+      "datatype": "text",
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/To/FIId/FinInstnId/BICFI",
+          "name": "BICFI",
+          "datatype": "text",
+          "pattern": "[A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}"
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "BICFI_PATTERN_ERROR",
+          "error_code": "INVALID_FORMAT",
+          "severity": "Fatal",
+          "description": "BICFI does not match the required format pattern.",
+          "affected_tags": [
+            "AppHdr/To/FIId/FinInstnId/BICFI"
+          ],
+          "possible_fixes": [
+            "Value must match pattern: [A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "xml_element": "Cd",
+      "xpath": "/AppHdr/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Code",
+      "datatype": "text{1,5}",
+      "max_length": 5,
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+          "name": "Code",
+          "datatype": "text{1,5}",
+          "min_length": 1,
+          "max_length": 5
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "CD_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Code is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd"
+          ],
+          "possible_fixes": [
+            "Insert <Cd></Cd> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "CD_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Code exceeds maximum length of 5 characters.",
+          "affected_tags": [
+            "AppHdr/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 5 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/To/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "xml_element": "MmbId",
+      "xpath": "/AppHdr/To/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Member Identification",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/To/FIId/FinInstnId/ClrSysMmbId/MmbId",
+          "name": "Member Identification",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "MMBID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Member Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/To/FIId/FinInstnId/ClrSysMmbId/MmbId"
+          ],
+          "possible_fixes": [
+            "Insert <MmbId></MmbId> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "MMBID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Member Identification exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "AppHdr/To/FIId/FinInstnId/ClrSysMmbId/MmbId"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/To/FIId/FinInstnId/LEI",
+      "xml_element": "LEI",
+      "xpath": "/AppHdr/To/FIId/FinInstnId/LEI",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "LEI",
+      "datatype": "text",
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/To/FIId/FinInstnId/LEI",
+          "name": "LEI",
+          "datatype": "text",
+          "pattern": "[A-Z0-9]{18,18}[0-9]{2,2}"
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "LEI_PATTERN_ERROR",
+          "error_code": "INVALID_FORMAT",
+          "severity": "Fatal",
+          "description": "LEI does not match the required format pattern.",
+          "affected_tags": [
+            "AppHdr/To/FIId/FinInstnId/LEI"
+          ],
+          "possible_fixes": [
+            "Value must match pattern: [A-Z0-9]{18,18}[0-9]{2,2}."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/BizMsgIdr",
+      "xml_element": "BizMsgIdr",
+      "xpath": "/AppHdr/BizMsgIdr",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Business Message Identifier Rules: CBPR_BusinessMessageIdentifier_FormalRule.",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "spec_rule_ids": [
+        "R1"
+      ],
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/BizMsgIdr",
+          "name": "Business Message Identifier",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "BIZMSGIDR_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Business Message Identifier is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/BizMsgIdr"
+          ],
+          "possible_fixes": [
+            "Insert <BizMsgIdr></BizMsgIdr> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "BIZMSGIDR_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Business Message Identifier exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "AppHdr/BizMsgIdr"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        },
+        {
+          "error_id": "BIZMSGIDR_R1_VIOLATION",
+          "error_code": "R1",
+          "severity": "Fatal",
+          "description": "The Business Message Identifier must match the Message Identification in the Group Header.",
+          "rule_id": "R1",
+          "rule_name": "CBPR_BusinessMessageIdentifier_FormalRule",
+          "affected_tags": [
+            "AppHdr/BizMsgIdr"
+          ],
+          "possible_fixes": [
+            "The Business Message Identifier must match the Message Identification in the Group Header.",
+            "Relevant paths: BusinessMessageIdentifier, MessageIdentification."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/MsgDefIdr",
+      "xml_element": "MsgDefIdr",
+      "xpath": "/AppHdr/MsgDefIdr",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Message Definition Identifier",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/MsgDefIdr",
+          "name": "Message Definition Identifier",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "MSGDEFIDR_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Message Definition Identifier is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/MsgDefIdr"
+          ],
+          "possible_fixes": [
+            "Insert <MsgDefIdr></MsgDefIdr> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "MSGDEFIDR_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Message Definition Identifier exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "AppHdr/MsgDefIdr"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/BizSvc",
+      "xml_element": "BizSvc",
+      "xpath": "/AppHdr/BizSvc",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Business Service",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/BizSvc",
+          "name": "Business Service",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "BIZSVC_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Business Service exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "AppHdr/BizSvc"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/MktPrctc/Regy",
+      "xml_element": "Regy",
+      "xpath": "/AppHdr/MktPrctc/Regy",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Registry",
+      "datatype": "text{1,350}",
+      "max_length": 350,
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/MktPrctc/Regy",
+          "name": "Registry",
+          "datatype": "text{1,350}",
+          "min_length": 1,
+          "max_length": 350
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "REGY_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Registry is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/MktPrctc/Regy"
+          ],
+          "possible_fixes": [
+            "Insert <Regy></Regy> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "REGY_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Registry exceeds maximum length of 350 characters.",
+          "affected_tags": [
+            "AppHdr/MktPrctc/Regy"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 350 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/MktPrctc/Id",
+      "xml_element": "Id",
+      "xpath": "/AppHdr/MktPrctc/Id",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Identification",
+      "datatype": "text{1,2048}",
+      "max_length": 2048,
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/MktPrctc/Id",
+          "name": "Identification",
+          "datatype": "text{1,2048}",
+          "min_length": 1,
+          "max_length": 2048
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "ID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/MktPrctc/Id"
+          ],
+          "possible_fixes": [
+            "Insert <Id></Id> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "ID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Identification exceeds maximum length of 2048 characters.",
+          "affected_tags": [
+            "AppHdr/MktPrctc/Id"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 2048 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/CreDt",
+      "xml_element": "CreDt",
+      "xpath": "/AppHdr/CreDt",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Creation Date",
+      "datatype": "dateTime",
+      "errors": [
+        {
+          "error_id": "CREDT_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Creation Date is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/CreDt"
+          ],
+          "possible_fixes": [
+            "Insert <CreDt></CreDt> inside the appropriate parent element."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/CpyDplct",
+      "xml_element": "CpyDplct",
+      "xpath": "/AppHdr/CpyDplct",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Copy Duplicate",
+      "datatype": "text"
+    },
+    {
+      "tag": "AppHdr/PssblDplct",
+      "xml_element": "PssblDplct",
+      "xpath": "/AppHdr/PssblDplct",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Possible Duplicate",
+      "datatype": "boolean"
+    },
+    {
+      "tag": "AppHdr/Prty",
+      "xml_element": "Prty",
+      "xpath": "/AppHdr/Prty",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Priority",
+      "datatype": "text"
+    },
+    {
+      "tag": "AppHdr/Rltd",
+      "xml_element": "Rltd",
+      "xpath": "/AppHdr/Rltd",
+      "occurrence": "[0..*]",
+      "mandatory": false,
+      "description": "Related Rules: CBPR_Related_Business_Application_Header_TextualRule.",
+      "spec_rule_ids": [
+        "R2"
+      ],
+      "errors": [
+        {
+          "error_id": "RLTD_R2_VIOLATION",
+          "error_code": "R2",
+          "severity": "Warning",
+          "description": "If used, the Related BAH must transport the exact same information as in the BAH of the related message.",
+          "rule_id": "R2",
+          "rule_name": "CBPR_Related_Business_Application_Header_TextualRule",
+          "affected_tags": [
+            "AppHdr/Rltd"
+          ],
+          "possible_fixes": [
+            "If used, the Related BAH must transport the exact same information as in the BAH of the related message."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Rltd/CharSet",
+      "xml_element": "CharSet",
+      "xpath": "/AppHdr/Rltd/CharSet",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Character Set",
+      "datatype": "text"
+    },
+    {
+      "tag": "AppHdr/Rltd/Fr/FIId",
+      "xml_element": "FIId",
+      "xpath": "/AppHdr/Rltd/Fr/FIId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Financial Institution Identification",
+      "errors": [
+        {
+          "error_id": "FIID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Financial Institution Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/Rltd/Fr/FIId"
+          ],
+          "possible_fixes": [
+            "Insert <FIId></FIId> inside the appropriate parent element."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Rltd/Fr/FIId/FinInstnId",
+      "xml_element": "FinInstnId",
+      "xpath": "/AppHdr/Rltd/Fr/FIId/FinInstnId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Financial Institution Identification",
+      "errors": [
+        {
+          "error_id": "FININSTNID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Financial Institution Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/Rltd/Fr/FIId/FinInstnId"
+          ],
+          "possible_fixes": [
+            "Insert <FinInstnId></FinInstnId> inside the appropriate parent element."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Rltd/Fr/FIId/FinInstnId/BICFI",
+      "xml_element": "BICFI",
+      "xpath": "/AppHdr/Rltd/Fr/FIId/FinInstnId/BICFI",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "BICFI",
+      "datatype": "text",
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/BICFI",
+          "name": "BICFI",
+          "datatype": "text",
+          "pattern": "[A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}"
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "BICFI_PATTERN_ERROR",
+          "error_code": "INVALID_FORMAT",
+          "severity": "Fatal",
+          "description": "BICFI does not match the required format pattern.",
+          "affected_tags": [
+            "AppHdr/Rltd/Fr/FIId/FinInstnId/BICFI"
+          ],
+          "possible_fixes": [
+            "Value must match pattern: [A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "xml_element": "Cd",
+      "xpath": "/AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Code",
+      "datatype": "text{1,5}",
+      "max_length": 5,
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+          "name": "Code",
+          "datatype": "text{1,5}",
+          "min_length": 1,
+          "max_length": 5
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "CD_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Code is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd"
+          ],
+          "possible_fixes": [
+            "Insert <Cd></Cd> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "CD_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Code exceeds maximum length of 5 characters.",
+          "affected_tags": [
+            "AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 5 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "xml_element": "MmbId",
+      "xpath": "/AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Member Identification",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId/MmbId",
+          "name": "Member Identification",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "MMBID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Member Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId/MmbId"
+          ],
+          "possible_fixes": [
+            "Insert <MmbId></MmbId> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "MMBID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Member Identification exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "AppHdr/Rltd/Fr/FIId/FinInstnId/ClrSysMmbId/MmbId"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Rltd/Fr/FIId/FinInstnId/LEI",
+      "xml_element": "LEI",
+      "xpath": "/AppHdr/Rltd/Fr/FIId/FinInstnId/LEI",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "LEI",
+      "datatype": "text",
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/Rltd/Fr/FIId/FinInstnId/LEI",
+          "name": "LEI",
+          "datatype": "text",
+          "pattern": "[A-Z0-9]{18,18}[0-9]{2,2}"
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "LEI_PATTERN_ERROR",
+          "error_code": "INVALID_FORMAT",
+          "severity": "Fatal",
+          "description": "LEI does not match the required format pattern.",
+          "affected_tags": [
+            "AppHdr/Rltd/Fr/FIId/FinInstnId/LEI"
+          ],
+          "possible_fixes": [
+            "Value must match pattern: [A-Z0-9]{18,18}[0-9]{2,2}."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Rltd/To/FIId",
+      "xml_element": "FIId",
+      "xpath": "/AppHdr/Rltd/To/FIId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Financial Institution Identification",
+      "errors": [
+        {
+          "error_id": "FIID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Financial Institution Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/Rltd/To/FIId"
+          ],
+          "possible_fixes": [
+            "Insert <FIId></FIId> inside the appropriate parent element."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Rltd/To/FIId/FinInstnId",
+      "xml_element": "FinInstnId",
+      "xpath": "/AppHdr/Rltd/To/FIId/FinInstnId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Financial Institution Identification",
+      "errors": [
+        {
+          "error_id": "FININSTNID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Financial Institution Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/Rltd/To/FIId/FinInstnId"
+          ],
+          "possible_fixes": [
+            "Insert <FinInstnId></FinInstnId> inside the appropriate parent element."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Rltd/To/FIId/FinInstnId/BICFI",
+      "xml_element": "BICFI",
+      "xpath": "/AppHdr/Rltd/To/FIId/FinInstnId/BICFI",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "BICFI",
+      "datatype": "text",
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/Rltd/To/FIId/FinInstnId/BICFI",
+          "name": "BICFI",
+          "datatype": "text",
+          "pattern": "[A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}"
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "BICFI_PATTERN_ERROR",
+          "error_code": "INVALID_FORMAT",
+          "severity": "Fatal",
+          "description": "BICFI does not match the required format pattern.",
+          "affected_tags": [
+            "AppHdr/Rltd/To/FIId/FinInstnId/BICFI"
+          ],
+          "possible_fixes": [
+            "Value must match pattern: [A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "xml_element": "Cd",
+      "xpath": "/AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Code",
+      "datatype": "text{1,5}",
+      "max_length": 5,
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+          "name": "Code",
+          "datatype": "text{1,5}",
+          "min_length": 1,
+          "max_length": 5
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "CD_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Code is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd"
+          ],
+          "possible_fixes": [
+            "Insert <Cd></Cd> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "CD_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Code exceeds maximum length of 5 characters.",
+          "affected_tags": [
+            "AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId/ClrSysId/Cd"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 5 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "xml_element": "MmbId",
+      "xpath": "/AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId/MmbId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Member Identification",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId/MmbId",
+          "name": "Member Identification",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "MMBID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Member Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId/MmbId"
+          ],
+          "possible_fixes": [
+            "Insert <MmbId></MmbId> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "MMBID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Member Identification exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "AppHdr/Rltd/To/FIId/FinInstnId/ClrSysMmbId/MmbId"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Rltd/To/FIId/FinInstnId/LEI",
+      "xml_element": "LEI",
+      "xpath": "/AppHdr/Rltd/To/FIId/FinInstnId/LEI",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "LEI",
+      "datatype": "text",
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/Rltd/To/FIId/FinInstnId/LEI",
+          "name": "LEI",
+          "datatype": "text",
+          "pattern": "[A-Z0-9]{18,18}[0-9]{2,2}"
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "LEI_PATTERN_ERROR",
+          "error_code": "INVALID_FORMAT",
+          "severity": "Fatal",
+          "description": "LEI does not match the required format pattern.",
+          "affected_tags": [
+            "AppHdr/Rltd/To/FIId/FinInstnId/LEI"
+          ],
+          "possible_fixes": [
+            "Value must match pattern: [A-Z0-9]{18,18}[0-9]{2,2}."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Rltd/BizMsgIdr",
+      "xml_element": "BizMsgIdr",
+      "xpath": "/AppHdr/Rltd/BizMsgIdr",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Business Message Identifier Rules: CBPR_Business_Message_Identifier_TextualRule.",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "spec_rule_ids": [
+        "R3"
+      ],
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/Rltd/BizMsgIdr",
+          "name": "Business Message Identifier",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "BIZMSGIDR_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Business Message Identifier is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/Rltd/BizMsgIdr"
+          ],
+          "possible_fixes": [
+            "Insert <BizMsgIdr></BizMsgIdr> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "BIZMSGIDR_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Business Message Identifier exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "AppHdr/Rltd/BizMsgIdr"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        },
+        {
+          "error_id": "BIZMSGIDR_R3_VIOLATION",
+          "error_code": "R3",
+          "severity": "Warning",
+          "description": "The Business Message Identifier is the unique identifier of the Business Message instance that is being transported with this header, as defined by the sending application or system. Must contain the Message Identification element from the Group Header of the underlying message, where available (as is typically the case with pacs, pain, and camt messages, for example). If Message Identification is not available in the underlying message, then this element must contain the unique identifier of the Business Message instance.",
+          "rule_id": "R3",
+          "rule_name": "CBPR_Business_Message_Identifier_TextualRule",
+          "affected_tags": [
+            "AppHdr/Rltd/BizMsgIdr"
+          ],
+          "possible_fixes": [
+            "The Business Message Identifier is the unique identifier of the Business Message instance that is being transported with this header, as defined by the sending application or system. Must contain the Message Identification element from the Group Header of the underlying message, where available (as is typically the case with pacs, pain, and camt messages, for example). If Message Identification is not available in the underlying message, then this element must contain the unique identifier of the Business Message instance."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Rltd/MsgDefIdr",
+      "xml_element": "MsgDefIdr",
+      "xpath": "/AppHdr/Rltd/MsgDefIdr",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Message Definition Identifier Rules: CBPR_Message_Definition_Identifier_TextualRule.",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "spec_rule_ids": [
+        "R4"
+      ],
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/Rltd/MsgDefIdr",
+          "name": "Message Definition Identifier",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "MSGDEFIDR_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Message Definition Identifier is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/Rltd/MsgDefIdr"
+          ],
+          "possible_fixes": [
+            "Insert <MsgDefIdr></MsgDefIdr> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "MSGDEFIDR_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Message Definition Identifier exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "AppHdr/Rltd/MsgDefIdr"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        },
+        {
+          "error_id": "MSGDEFIDR_R4_VIOLATION",
+          "error_code": "R4",
+          "severity": "Warning",
+          "description": "The Message Definition Identifier of the Business Message instance that is being transported with this header. In general, it must be formatted exactly as it appears in the namespace of the Business Message instance.",
+          "rule_id": "R4",
+          "rule_name": "CBPR_Message_Definition_Identifier_TextualRule",
+          "affected_tags": [
+            "AppHdr/Rltd/MsgDefIdr"
+          ],
+          "possible_fixes": [
+            "The Message Definition Identifier of the Business Message instance that is being transported with this header. In general, it must be formatted exactly as it appears in the namespace of the Business Message instance."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Rltd/BizSvc",
+      "xml_element": "BizSvc",
+      "xpath": "/AppHdr/Rltd/BizSvc",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Business Service Rules: CBPR_Related_BAH_Business_Service_TextualRule.",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "spec_rule_ids": [
+        "R5"
+      ],
+      "format_constraints_ref": [
+        {
+          "path": "AppHdr/Rltd/BizSvc",
+          "name": "Business Service",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "BIZSVC_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Business Service exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "AppHdr/Rltd/BizSvc"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        },
+        {
+          "error_id": "BIZSVC_R5_VIOLATION",
+          "error_code": "R5",
+          "severity": "Warning",
+          "description": "If related BAH is present, it should transport the element Business Service.",
+          "rule_id": "R5",
+          "rule_name": "CBPR_Related_BAH_Business_Service_TextualRule",
+          "affected_tags": [
+            "AppHdr/Rltd/BizSvc"
+          ],
+          "possible_fixes": [
+            "If related BAH is present, it should transport the element Business Service."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Rltd/CreDt",
+      "xml_element": "CreDt",
+      "xpath": "/AppHdr/Rltd/CreDt",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Creation Date",
+      "datatype": "dateTime",
+      "errors": [
+        {
+          "error_id": "CREDT_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Creation Date is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "AppHdr/Rltd/CreDt"
+          ],
+          "possible_fixes": [
+            "Insert <CreDt></CreDt> inside the appropriate parent element."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "AppHdr/Rltd/CpyDplct",
+      "xml_element": "CpyDplct",
+      "xpath": "/AppHdr/Rltd/CpyDplct",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Copy Duplicate",
+      "datatype": "text"
+    },
+    {
+      "tag": "AppHdr/Rltd/Prty",
+      "xml_element": "Prty",
+      "xpath": "/AppHdr/Rltd/Prty",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Priority",
+      "datatype": "text"
+    },
+    {
+      "tag": "Document",
+      "xml_element": "",
+      "xpath": "/Document",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Document",
+      "errors": [
+        {
+          "error_id": "_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Document is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "Document"
+          ],
+          "possible_fixes": [
+            "Insert <></> inside the appropriate parent element."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "Document/CstmrPmtStsRpt",
+      "xml_element": "CstmrPmtStsRpt",
+      "xpath": "/Document/CstmrPmtStsRpt",
+      "occurrence": "",
+      "mandatory": false,
+      "description": "Customer Payment Status Report V10 (pain.002.001.10) Rules: CBPR_MessageIdentification_PaymentInformationIdentification_FormalRule.",
+      "spec_rule_ids": [
+        "R6"
+      ],
+      "errors": [
+        {
+          "error_id": "CSTMRPMTSTSRPT_R6_VIOLATION",
+          "error_code": "R6",
+          "severity": "Fatal",
+          "description": "The Original Payment Information Identification must be the same as the Original Message Identification in the Original Group Information And Status.",
+          "rule_id": "R6",
+          "rule_name": "CBPR_MessageIdentification_PaymentInformationIdentification_FormalRule",
+          "affected_tags": [
+            "Document/CstmrPmtStsRpt"
+          ],
+          "possible_fixes": [
+            "The Original Payment Information Identification must be the same as the Original Message Identification in the Original Group Information And Status.",
+            "Relevant paths: OriginalMessageIdentification, OriginalPaymentInformationIdentification, CustomerPaymentStatusReportV10."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr",
+      "xml_element": "GrpHdr",
+      "xpath": "/Document/CstmrPmtStsRpt/GrpHdr",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Group Header",
+      "errors": [
+        {
+          "error_id": "GRPHDR_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Group Header is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "GrpHdr"
+          ],
+          "possible_fixes": [
+            "Insert <GrpHdr></GrpHdr> inside the appropriate parent element."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr/MsgId",
+      "xml_element": "MsgId",
+      "xpath": "/Document/CstmrPmtStsRpt/GrpHdr/MsgId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Message Identification Rules: CBPR_BusinessMessageIdentifier_FormalRule, CBPR_Message_Identification_TextualRule.",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "spec_rule_ids": [
+        "R1",
+        "R7"
+      ],
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/GrpHdr/MsgId",
+          "name": "Message Identification",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "MSGID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Message Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "GrpHdr/MsgId"
+          ],
+          "possible_fixes": [
+            "Insert <MsgId></MsgId> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "MSGID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Message Identification exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "GrpHdr/MsgId"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        },
+        {
+          "error_id": "MSGID_R1_VIOLATION",
+          "error_code": "R1",
+          "severity": "Fatal",
+          "description": "The Business Message Identifier must match the Message Identification in the Group Header.",
+          "rule_id": "R1",
+          "rule_name": "CBPR_BusinessMessageIdentifier_FormalRule",
+          "affected_tags": [
+            "GrpHdr/MsgId"
+          ],
+          "possible_fixes": [
+            "The Business Message Identifier must match the Message Identification in the Group Header.",
+            "Relevant paths: BusinessMessageIdentifier, MessageIdentification."
+          ]
+        },
+        {
+          "error_id": "MSGID_R7_VIOLATION",
+          "error_code": "R7",
+          "severity": "Warning",
+          "description": "Forwarding Agent should respect the Message ID provided by the Initiating Party of the pain.001 and pain.002.",
+          "rule_id": "R7",
+          "rule_name": "CBPR_Message_Identification_TextualRule",
+          "affected_tags": [
+            "GrpHdr/MsgId"
+          ],
+          "possible_fixes": [
+            "Forwarding Agent should respect the Message ID provided by the Initiating Party of the pain.001 and pain.002."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr/CreDtTm",
+      "xml_element": "CreDtTm",
+      "xpath": "/Document/CstmrPmtStsRpt/GrpHdr/CreDtTm",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Creation Date Time",
+      "datatype": "dateTime",
+      "errors": [
+        {
+          "error_id": "CREDTTM_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Creation Date Time is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "GrpHdr/CreDtTm"
+          ],
+          "possible_fixes": [
+            "Insert <CreDtTm></CreDtTm> inside the appropriate parent element."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr/InitgPty",
+      "xml_element": "InitgPty",
+      "xpath": "/Document/CstmrPmtStsRpt/GrpHdr/InitgPty",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Initiating Party"
+    },
+    {
+      "tag": "GrpHdr/InitgPty/Id/OrgId",
+      "xml_element": "OrgId",
+      "xpath": "/Document/CstmrPmtStsRpt/GrpHdr/InitgPty/Id/OrgId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Organisation Identification",
+      "errors": [
+        {
+          "error_id": "ORGID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Organisation Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "GrpHdr/InitgPty/Id/OrgId"
+          ],
+          "possible_fixes": [
+            "Insert <OrgId></OrgId> inside the appropriate parent element."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr/InitgPty/Id/OrgId/AnyBIC",
+      "xml_element": "AnyBIC",
+      "xpath": "/Document/CstmrPmtStsRpt/GrpHdr/InitgPty/Id/OrgId/AnyBIC",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Any BIC",
+      "datatype": "text",
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/GrpHdr/InitgPty/Id/OrgId/AnyBIC",
+          "name": "Any BIC",
+          "datatype": "text",
+          "pattern": "[A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}"
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "ANYBIC_PATTERN_ERROR",
+          "error_code": "INVALID_FORMAT",
+          "severity": "Fatal",
+          "description": "Any BIC does not match the required format pattern.",
+          "affected_tags": [
+            "GrpHdr/InitgPty/Id/OrgId/AnyBIC"
+          ],
+          "possible_fixes": [
+            "Value must match pattern: [A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr/InitgPty/Id/OrgId/LEI",
+      "xml_element": "LEI",
+      "xpath": "/Document/CstmrPmtStsRpt/GrpHdr/InitgPty/Id/OrgId/LEI",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "LEI",
+      "datatype": "text",
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/GrpHdr/InitgPty/Id/OrgId/LEI",
+          "name": "LEI",
+          "datatype": "text",
+          "pattern": "[A-Z0-9]{18,18}[0-9]{2,2}"
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "LEI_PATTERN_ERROR",
+          "error_code": "INVALID_FORMAT",
+          "severity": "Fatal",
+          "description": "LEI does not match the required format pattern.",
+          "affected_tags": [
+            "GrpHdr/InitgPty/Id/OrgId/LEI"
+          ],
+          "possible_fixes": [
+            "Value must match pattern: [A-Z0-9]{18,18}[0-9]{2,2}."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr/InitgPty/Id/OrgId/Othr",
+      "xml_element": "Othr",
+      "xpath": "/Document/CstmrPmtStsRpt/GrpHdr/InitgPty/Id/OrgId/Othr",
+      "occurrence": "[0..*]",
+      "mandatory": false,
+      "description": "Other"
+    },
+    {
+      "tag": "GrpHdr/InitgPty/Id/OrgId/Othr/Id",
+      "xml_element": "Id",
+      "xpath": "/Document/CstmrPmtStsRpt/GrpHdr/InitgPty/Id/OrgId/Othr/Id",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Identification",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/GrpHdr/InitgPty/Id/OrgId/Othr/Id",
+          "name": "Identification",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "ID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "GrpHdr/InitgPty/Id/OrgId/Othr/Id"
+          ],
+          "possible_fixes": [
+            "Insert <Id></Id> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "ID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Identification exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "GrpHdr/InitgPty/Id/OrgId/Othr/Id"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr/InitgPty/Id/OrgId/Othr/SchmeNm/Cd",
+      "xml_element": "Cd",
+      "xpath": "/Document/CstmrPmtStsRpt/GrpHdr/InitgPty/Id/OrgId/Othr/SchmeNm/Cd",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Code",
+      "datatype": "text{1,4}",
+      "max_length": 4,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/GrpHdr/InitgPty/Id/OrgId/Othr/SchmeNm/Cd",
+          "name": "Code",
+          "datatype": "text{1,4}",
+          "min_length": 1,
+          "max_length": 4
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "CD_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Code is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "GrpHdr/InitgPty/Id/OrgId/Othr/SchmeNm/Cd"
+          ],
+          "possible_fixes": [
+            "Insert <Cd></Cd> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "CD_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Code exceeds maximum length of 4 characters.",
+          "affected_tags": [
+            "GrpHdr/InitgPty/Id/OrgId/Othr/SchmeNm/Cd"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 4 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr/InitgPty/Id/OrgId/Othr/Issr",
+      "xml_element": "Issr",
+      "xpath": "/Document/CstmrPmtStsRpt/GrpHdr/InitgPty/Id/OrgId/Othr/Issr",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Issuer",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/GrpHdr/InitgPty/Id/OrgId/Othr/Issr",
+          "name": "Issuer",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "ISSR_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Issuer exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "GrpHdr/InitgPty/Id/OrgId/Othr/Issr"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr/FwdgAgt/FinInstnId",
+      "xml_element": "FinInstnId",
+      "xpath": "/Document/CstmrPmtStsRpt/GrpHdr/FwdgAgt/FinInstnId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Financial Institution Identification",
+      "errors": [
+        {
+          "error_id": "FININSTNID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Financial Institution Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "GrpHdr/FwdgAgt/FinInstnId"
+          ],
+          "possible_fixes": [
+            "Insert <FinInstnId></FinInstnId> inside the appropriate parent element."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr/FwdgAgt/FinInstnId/BICFI",
+      "xml_element": "BICFI",
+      "xpath": "/Document/CstmrPmtStsRpt/GrpHdr/FwdgAgt/FinInstnId/BICFI",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "BICFI",
+      "datatype": "text",
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/GrpHdr/FwdgAgt/FinInstnId/BICFI",
+          "name": "BICFI",
+          "datatype": "text",
+          "pattern": "[A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}"
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "BICFI_PATTERN_ERROR",
+          "error_code": "INVALID_FORMAT",
+          "severity": "Fatal",
+          "description": "BICFI does not match the required format pattern.",
+          "affected_tags": [
+            "GrpHdr/FwdgAgt/FinInstnId/BICFI"
+          ],
+          "possible_fixes": [
+            "Value must match pattern: [A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr/FwdgAgt/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "xml_element": "Cd",
+      "xpath": "/Document/CstmrPmtStsRpt/GrpHdr/FwdgAgt/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Code",
+      "datatype": "text{1,5}",
+      "max_length": 5,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/GrpHdr/FwdgAgt/FinInstnId/ClrSysMmbId/ClrSysId/Cd",
+          "name": "Code",
+          "datatype": "text{1,5}",
+          "min_length": 1,
+          "max_length": 5
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "CD_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Code is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "GrpHdr/FwdgAgt/FinInstnId/ClrSysMmbId/ClrSysId/Cd"
+          ],
+          "possible_fixes": [
+            "Insert <Cd></Cd> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "CD_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Code exceeds maximum length of 5 characters.",
+          "affected_tags": [
+            "GrpHdr/FwdgAgt/FinInstnId/ClrSysMmbId/ClrSysId/Cd"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 5 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr/FwdgAgt/FinInstnId/ClrSysMmbId/MmbId",
+      "xml_element": "MmbId",
+      "xpath": "/Document/CstmrPmtStsRpt/GrpHdr/FwdgAgt/FinInstnId/ClrSysMmbId/MmbId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Member Identification",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/GrpHdr/FwdgAgt/FinInstnId/ClrSysMmbId/MmbId",
+          "name": "Member Identification",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "MMBID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Member Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "GrpHdr/FwdgAgt/FinInstnId/ClrSysMmbId/MmbId"
+          ],
+          "possible_fixes": [
+            "Insert <MmbId></MmbId> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "MMBID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Member Identification exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "GrpHdr/FwdgAgt/FinInstnId/ClrSysMmbId/MmbId"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "GrpHdr/FwdgAgt/FinInstnId/LEI",
+      "xml_element": "LEI",
+      "xpath": "/Document/CstmrPmtStsRpt/GrpHdr/FwdgAgt/FinInstnId/LEI",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "LEI",
+      "datatype": "text",
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/GrpHdr/FwdgAgt/FinInstnId/LEI",
+          "name": "LEI",
+          "datatype": "text",
+          "pattern": "[A-Z0-9]{18,18}[0-9]{2,2}"
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "LEI_PATTERN_ERROR",
+          "error_code": "INVALID_FORMAT",
+          "severity": "Fatal",
+          "description": "LEI does not match the required format pattern.",
+          "affected_tags": [
+            "GrpHdr/FwdgAgt/FinInstnId/LEI"
+          ],
+          "possible_fixes": [
+            "Value must match pattern: [A-Z0-9]{18,18}[0-9]{2,2}."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlGrpInfAndSts",
+      "xml_element": "OrgnlGrpInfAndSts",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlGrpInfAndSts",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Original Group Information And Status",
+      "errors": [
+        {
+          "error_id": "ORGNLGRPINFANDSTS_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Original Group Information And Status is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "OrgnlGrpInfAndSts"
+          ],
+          "possible_fixes": [
+            "Insert <OrgnlGrpInfAndSts></OrgnlGrpInfAndSts> inside the appropriate parent element."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlGrpInfAndSts/OrgnlMsgId",
+      "xml_element": "OrgnlMsgId",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlGrpInfAndSts/OrgnlMsgId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Original Message Identification Rules: CBPR_Original_Message_Identification_TextualRule, CBPR_MessageIdentification_PaymentInformationIdentification_FormalRule.",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "spec_rule_ids": [
+        "R8",
+        "R6"
+      ],
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlGrpInfAndSts/OrgnlMsgId",
+          "name": "Original Message Identification",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "ORGNLMSGID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Original Message Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "OrgnlGrpInfAndSts/OrgnlMsgId"
+          ],
+          "possible_fixes": [
+            "Insert <OrgnlMsgId></OrgnlMsgId> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "ORGNLMSGID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Original Message Identification exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "OrgnlGrpInfAndSts/OrgnlMsgId"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        },
+        {
+          "error_id": "ORGNLMSGID_R8_VIOLATION",
+          "error_code": "R8",
+          "severity": "Warning",
+          "description": "Original Message Identification must transport the Message Identification of the underlying payment (e.g. pain.001).",
+          "rule_id": "R8",
+          "rule_name": "CBPR_Original_Message_Identification_TextualRule",
+          "affected_tags": [
+            "OrgnlGrpInfAndSts/OrgnlMsgId"
+          ],
+          "possible_fixes": [
+            "Original Message Identification must transport the Message Identification of the underlying payment (e.g. pain.001)."
+          ]
+        },
+        {
+          "error_id": "ORGNLMSGID_R6_VIOLATION",
+          "error_code": "R6",
+          "severity": "Fatal",
+          "description": "The Original Payment Information Identification must be the same as the Original Message Identification in the Original Group Information And Status.",
+          "rule_id": "R6",
+          "rule_name": "CBPR_MessageIdentification_PaymentInformationIdentification_FormalRule",
+          "affected_tags": [
+            "OrgnlGrpInfAndSts/OrgnlMsgId"
+          ],
+          "possible_fixes": [
+            "The Original Payment Information Identification must be the same as the Original Message Identification in the Original Group Information And Status.",
+            "Relevant paths: OriginalMessageIdentification, OriginalPaymentInformationIdentification, CustomerPaymentStatusReportV10."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlGrpInfAndSts/OrgnlMsgNmId",
+      "xml_element": "OrgnlMsgNmId",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlGrpInfAndSts/OrgnlMsgNmId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Original Message Name Identification Rules: CBPR_OriginalMessageNameIdentification_FormalRule.",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "spec_rule_ids": [
+        "R9"
+      ],
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlGrpInfAndSts/OrgnlMsgNmId",
+          "name": "Original Message Name Identification",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "ORGNLMSGNMID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Original Message Name Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "OrgnlGrpInfAndSts/OrgnlMsgNmId"
+          ],
+          "possible_fixes": [
+            "Insert <OrgnlMsgNmId></OrgnlMsgNmId> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "ORGNLMSGNMID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Original Message Name Identification exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "OrgnlGrpInfAndSts/OrgnlMsgNmId"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        },
+        {
+          "error_id": "ORGNLMSGNMID_R9_VIOLATION",
+          "error_code": "R9",
+          "severity": "Fatal",
+          "description": "This element must be populated with either pain.001.001.xx, or pain.008.001.xx.",
+          "rule_id": "R9",
+          "rule_name": "CBPR_OriginalMessageNameIdentification_FormalRule",
+          "affected_tags": [
+            "OrgnlGrpInfAndSts/OrgnlMsgNmId"
+          ],
+          "possible_fixes": [
+            "This element must be populated with either pain.001.001.xx, or pain.008.001.xx.",
+            "Relevant paths: OriginalMessageNameIdentification."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlGrpInfAndSts/OrgnlCreDtTm",
+      "xml_element": "OrgnlCreDtTm",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlGrpInfAndSts/OrgnlCreDtTm",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Original Creation Date Time",
+      "datatype": "dateTime"
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts",
+      "xml_element": "OrgnlPmtInfAndSts",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts",
+      "occurrence": "[0..*]",
+      "mandatory": false,
+      "description": "Original Payment Information And Status"
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/OrgnlPmtInfId",
+      "xml_element": "OrgnlPmtInfId",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/OrgnlPmtInfId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Original Payment Information Identification Rules: CBPR_MessageIdentification_PaymentInformationIdentification_FormalRule.",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "spec_rule_ids": [
+        "R6"
+      ],
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/OrgnlPmtInfId",
+          "name": "Original Payment Information Identification",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "ORGNLPMTINFID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Original Payment Information Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/OrgnlPmtInfId"
+          ],
+          "possible_fixes": [
+            "Insert <OrgnlPmtInfId></OrgnlPmtInfId> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "ORGNLPMTINFID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Original Payment Information Identification exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/OrgnlPmtInfId"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        },
+        {
+          "error_id": "ORGNLPMTINFID_R6_VIOLATION",
+          "error_code": "R6",
+          "severity": "Fatal",
+          "description": "The Original Payment Information Identification must be the same as the Original Message Identification in the Original Group Information And Status.",
+          "rule_id": "R6",
+          "rule_name": "CBPR_MessageIdentification_PaymentInformationIdentification_FormalRule",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/OrgnlPmtInfId"
+          ],
+          "possible_fixes": [
+            "The Original Payment Information Identification must be the same as the Original Message Identification in the Original Group Information And Status.",
+            "Relevant paths: OriginalMessageIdentification, OriginalPaymentInformationIdentification, CustomerPaymentStatusReportV10."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts",
+      "xml_element": "TxInfAndSts",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts",
+      "occurrence": "[0..*]",
+      "mandatory": false,
+      "description": "Transaction Information And Status Rules: CBPR_Transaction_Status_Reject_Reason_FormalRule.",
+      "spec_rule_ids": [
+        "R10"
+      ],
+      "errors": [
+        {
+          "error_id": "TXINFANDSTS_R10_VIOLATION",
+          "error_code": "R10",
+          "severity": "Fatal",
+          "description": "If TransactionStatus/Code equals RJCT, then “Status Reason Information/Reason” is mandatory.",
+          "rule_id": "R10",
+          "rule_name": "CBPR_Transaction_Status_Reject_Reason_FormalRule",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts"
+          ],
+          "possible_fixes": [
+            "If TransactionStatus/Code equals RJCT, then “Status Reason Information/Reason” is mandatory.",
+            "Check the element value against the allowed code list in the spec."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlInstrId",
+      "xml_element": "OrgnlInstrId",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/OrgnlInstrId",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Original Instruction Identification Rules: CBPR_Original_Instruction_Id_TextualRule.",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "spec_rule_ids": [
+        "R11"
+      ],
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/OrgnlInstrId",
+          "name": "Original Instruction Identification",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "ORGNLINSTRID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Original Instruction Identification exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlInstrId"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        },
+        {
+          "error_id": "ORGNLINSTRID_R11_VIOLATION",
+          "error_code": "R11",
+          "severity": "Warning",
+          "description": "If provided in the original pain.001, this Id is returned.",
+          "rule_id": "R11",
+          "rule_name": "CBPR_Original_Instruction_Id_TextualRule",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlInstrId"
+          ],
+          "possible_fixes": [
+            "If provided in the original pain.001, this Id is returned."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlEndToEndId",
+      "xml_element": "OrgnlEndToEndId",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/OrgnlEndToEndId",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Original End To End Identification Rules: CBPR_Original_End_To_End_Identification_TextualRule.",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "spec_rule_ids": [
+        "R12"
+      ],
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/OrgnlEndToEndId",
+          "name": "Original End To End Identification",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "ORGNLENDTOENDID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Original End To End Identification exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlEndToEndId"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        },
+        {
+          "error_id": "ORGNLENDTOENDID_R12_VIOLATION",
+          "error_code": "R12",
+          "severity": "Warning",
+          "description": "Must transport the EndToEnd Identification of the underlying pain.001.",
+          "rule_id": "R12",
+          "rule_name": "CBPR_Original_End_To_End_Identification_TextualRule",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlEndToEndId"
+          ],
+          "possible_fixes": [
+            "Must transport the EndToEnd Identification of the underlying pain.001."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlUETR",
+      "xml_element": "OrgnlUETR",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/OrgnlUETR",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Original UETR Rules: CBPR_Original_UETR_TextualRule.",
+      "datatype": "text",
+      "spec_rule_ids": [
+        "R13"
+      ],
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/OrgnlUETR",
+          "name": "Original UETR",
+          "datatype": "text",
+          "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}"
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "ORGNLUETR_PATTERN_ERROR",
+          "error_code": "INVALID_FORMAT",
+          "severity": "Fatal",
+          "description": "Original UETR does not match the required format pattern.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlUETR"
+          ],
+          "possible_fixes": [
+            "Value must match pattern: [a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}."
+          ]
+        },
+        {
+          "error_id": "ORGNLUETR_R13_VIOLATION",
+          "error_code": "R13",
+          "severity": "Warning",
+          "description": "If provided in the original pain.001, this value is returned.",
+          "rule_id": "R13",
+          "rule_name": "CBPR_Original_UETR_TextualRule",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlUETR"
+          ],
+          "possible_fixes": [
+            "If provided in the original pain.001, this value is returned."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/TxSts",
+      "xml_element": "TxSts",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/TxSts",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Transaction Status Rules: CBPR_Transaction_Status_Reject_Reason_FormalRule.",
+      "datatype": "text{1,4}",
+      "max_length": 4,
+      "spec_rule_ids": [
+        "R10"
+      ],
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/TxSts",
+          "name": "Transaction Status",
+          "datatype": "text{1,4}",
+          "min_length": 1,
+          "max_length": 4
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "TXSTS_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Transaction Status exceeds maximum length of 4 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/TxSts"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 4 characters."
+          ]
+        },
+        {
+          "error_id": "TXSTS_R10_VIOLATION",
+          "error_code": "R10",
+          "severity": "Fatal",
+          "description": "If TransactionStatus/Code equals RJCT, then “Status Reason Information/Reason” is mandatory.",
+          "rule_id": "R10",
+          "rule_name": "CBPR_Transaction_Status_Reject_Reason_FormalRule",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/TxSts"
+          ],
+          "possible_fixes": [
+            "If TransactionStatus/Code equals RJCT, then “Status Reason Information/Reason” is mandatory.",
+            "Check the element value against the allowed code list in the spec."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf",
+      "xml_element": "StsRsnInf",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf",
+      "occurrence": "[0..*]",
+      "mandatory": false,
+      "description": "Status Reason Information"
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr",
+      "xml_element": "Orgtr",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Originator Rules: CBPR_Originator_Option_1_FormalRule, CBPR_Originator_Option_2_FormalRule.",
+      "spec_rule_ids": [
+        "R14",
+        "R15"
+      ],
+      "errors": [
+        {
+          "error_id": "ORGTR_R14_VIOLATION",
+          "error_code": "R14",
+          "severity": "Fatal",
+          "description": "If any BIC is absent, then Name is mandatory.",
+          "rule_id": "R14",
+          "rule_name": "CBPR_Originator_Option_1_FormalRule",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr"
+          ],
+          "possible_fixes": [
+            "If any BIC is absent, then Name is mandatory.",
+            "Verify presence/absence of: Originator, AnyBIC, Name."
+          ]
+        },
+        {
+          "error_id": "ORGTR_R15_VIOLATION",
+          "error_code": "R15",
+          "severity": "Fatal",
+          "description": "If Postal Address is present, then Name is mandatory.",
+          "rule_id": "R15",
+          "rule_name": "CBPR_Originator_Option_2_FormalRule",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr"
+          ],
+          "possible_fixes": [
+            "If Postal Address is present, then Name is mandatory.",
+            "Relevant paths: Originator, Name, PostalAddress."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Nm",
+      "xml_element": "Nm",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Nm",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Name Rules: CBPR_Originator_Option_1_FormalRule, CBPR_Originator_Option_2_FormalRule.",
+      "datatype": "text{1,140}",
+      "max_length": 140,
+      "spec_rule_ids": [
+        "R14",
+        "R15",
+        "R16"
+      ],
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Nm",
+          "name": "Name",
+          "datatype": "text{1,140}",
+          "min_length": 1,
+          "max_length": 140
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "NM_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Name exceeds maximum length of 140 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Nm"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 140 characters."
+          ]
+        },
+        {
+          "error_id": "NM_R14_VIOLATION",
+          "error_code": "R14",
+          "severity": "Fatal",
+          "description": "If any BIC is absent, then Name is mandatory.",
+          "rule_id": "R14",
+          "rule_name": "CBPR_Originator_Option_1_FormalRule",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Nm"
+          ],
+          "possible_fixes": [
+            "If any BIC is absent, then Name is mandatory.",
+            "Verify presence/absence of: Originator, AnyBIC, Name."
+          ]
+        },
+        {
+          "error_id": "NM_R15_VIOLATION",
+          "error_code": "R15",
+          "severity": "Fatal",
+          "description": "If Postal Address is present, then Name is mandatory.",
+          "rule_id": "R15",
+          "rule_name": "CBPR_Originator_Option_2_FormalRule",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Nm"
+          ],
+          "possible_fixes": [
+            "If Postal Address is present, then Name is mandatory.",
+            "Relevant paths: Originator, Name, PostalAddress."
+          ]
+        },
+        {
+          "error_id": "NM_R16_VIOLATION",
+          "error_code": "R16",
+          "severity": "Warning",
+          "description": "If AnyBIC is present, in addition to any other optional elements, in case of conflicting information it will always take precedence.",
+          "rule_id": "R16",
+          "rule_name": "CBPR_Originator_Identification_TextualRule",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Nm"
+          ],
+          "possible_fixes": [
+            "If AnyBIC is present, in addition to any other optional elements, in case of conflicting information it will always take precedence."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr",
+      "xml_element": "PstlAdr",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Postal Address Rules: CBPR_Originator_Option_2_FormalRule, CBPR_Duplication_Postal_Address_TextualRule.",
+      "spec_rule_ids": [
+        "R15",
+        "R17"
+      ],
+      "errors": [
+        {
+          "error_id": "PSTLADR_R15_VIOLATION",
+          "error_code": "R15",
+          "severity": "Fatal",
+          "description": "If Postal Address is present, then Name is mandatory.",
+          "rule_id": "R15",
+          "rule_name": "CBPR_Originator_Option_2_FormalRule",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr"
+          ],
+          "possible_fixes": [
+            "If Postal Address is present, then Name is mandatory.",
+            "Relevant paths: Originator, Name, PostalAddress."
+          ]
+        },
+        {
+          "error_id": "PSTLADR_R17_VIOLATION",
+          "error_code": "R17",
+          "severity": "Warning",
+          "description": "Data present in structured elements within the Postal Address must not, under any circumstances be repeated in AddressLine.",
+          "rule_id": "R17",
+          "rule_name": "CBPR_Duplication_Postal_Address_TextualRule",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr"
+          ],
+          "possible_fixes": [
+            "Data present in structured elements within the Postal Address must not, under any circumstances be repeated in AddressLine."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Dept",
+      "xml_element": "Dept",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Dept",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Department",
+      "datatype": "text{1,70}",
+      "max_length": 70,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Dept",
+          "name": "Department",
+          "datatype": "text{1,70}",
+          "min_length": 1,
+          "max_length": 70
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "DEPT_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Department exceeds maximum length of 70 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Dept"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 70 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/SubDept",
+      "xml_element": "SubDept",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/SubDept",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Sub Department",
+      "datatype": "text{1,70}",
+      "max_length": 70,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/SubDept",
+          "name": "Sub Department",
+          "datatype": "text{1,70}",
+          "min_length": 1,
+          "max_length": 70
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "SUBDEPT_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Sub Department exceeds maximum length of 70 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/SubDept"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 70 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/StrtNm",
+      "xml_element": "StrtNm",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/StrtNm",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Street Name",
+      "datatype": "text{1,70}",
+      "max_length": 70,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/StrtNm",
+          "name": "Street Name",
+          "datatype": "text{1,70}",
+          "min_length": 1,
+          "max_length": 70
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "STRTNM_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Street Name exceeds maximum length of 70 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/StrtNm"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 70 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/BldgNb",
+      "xml_element": "BldgNb",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/BldgNb",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Building Number",
+      "datatype": "text{1,16}",
+      "max_length": 16,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/BldgNb",
+          "name": "Building Number",
+          "datatype": "text{1,16}",
+          "min_length": 1,
+          "max_length": 16
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "BLDGNB_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Building Number exceeds maximum length of 16 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/BldgNb"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 16 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/BldgNm",
+      "xml_element": "BldgNm",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/BldgNm",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Building Name",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/BldgNm",
+          "name": "Building Name",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "BLDGNM_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Building Name exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/BldgNm"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Flr",
+      "xml_element": "Flr",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Flr",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Floor",
+      "datatype": "text{1,70}",
+      "max_length": 70,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Flr",
+          "name": "Floor",
+          "datatype": "text{1,70}",
+          "min_length": 1,
+          "max_length": 70
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "FLR_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Floor exceeds maximum length of 70 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Flr"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 70 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/PstBx",
+      "xml_element": "PstBx",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/PstBx",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Post Box",
+      "datatype": "text{1,16}",
+      "max_length": 16,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/PstBx",
+          "name": "Post Box",
+          "datatype": "text{1,16}",
+          "min_length": 1,
+          "max_length": 16
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "PSTBX_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Post Box exceeds maximum length of 16 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/PstBx"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 16 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Room",
+      "xml_element": "Room",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Room",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Room",
+      "datatype": "text{1,70}",
+      "max_length": 70,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Room",
+          "name": "Room",
+          "datatype": "text{1,70}",
+          "min_length": 1,
+          "max_length": 70
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "ROOM_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Room exceeds maximum length of 70 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Room"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 70 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/PstCd",
+      "xml_element": "PstCd",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/PstCd",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Post Code",
+      "datatype": "text{1,16}",
+      "max_length": 16,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/PstCd",
+          "name": "Post Code",
+          "datatype": "text{1,16}",
+          "min_length": 1,
+          "max_length": 16
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "PSTCD_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Post Code exceeds maximum length of 16 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/PstCd"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 16 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/TwnNm",
+      "xml_element": "TwnNm",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/TwnNm",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Town Name",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/TwnNm",
+          "name": "Town Name",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "TWNNM_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Town Name exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/TwnNm"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/TwnLctnNm",
+      "xml_element": "TwnLctnNm",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/TwnLctnNm",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Town Location Name",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/TwnLctnNm",
+          "name": "Town Location Name",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "TWNLCTNNM_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Town Location Name exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/TwnLctnNm"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/DstrctNm",
+      "xml_element": "DstrctNm",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/DstrctNm",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "District Name",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/DstrctNm",
+          "name": "District Name",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "DSTRCTNM_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "District Name exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/DstrctNm"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/CtrySubDvsn",
+      "xml_element": "CtrySubDvsn",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/CtrySubDvsn",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Country Sub Division",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/CtrySubDvsn",
+          "name": "Country Sub Division",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "CTRYSUBDVSN_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Country Sub Division exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/CtrySubDvsn"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Ctry",
+      "xml_element": "Ctry",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Ctry",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Country",
+      "datatype": "text",
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Ctry",
+          "name": "Country",
+          "datatype": "text",
+          "pattern": "[A-Z]{2,2}"
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "CTRY_PATTERN_ERROR",
+          "error_code": "INVALID_FORMAT",
+          "severity": "Fatal",
+          "description": "Country does not match the required format pattern.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/Ctry"
+          ],
+          "possible_fixes": [
+            "Value must match pattern: [A-Z]{2,2}."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/AdrLine",
+      "xml_element": "AdrLine",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/AdrLine",
+      "occurrence": "[0..7]",
+      "mandatory": false,
+      "description": "Address Line",
+      "datatype": "text{1,70}",
+      "max_length": 70,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/AdrLine",
+          "name": "Address Line",
+          "datatype": "text{1,70}",
+          "min_length": 1,
+          "max_length": 70
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "ADRLINE_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Address Line exceeds maximum length of 70 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/PstlAdr/AdrLine"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 70 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId",
+      "xml_element": "OrgId",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Organisation Identification",
+      "errors": [
+        {
+          "error_id": "ORGID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Organisation Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId"
+          ],
+          "possible_fixes": [
+            "Insert <OrgId></OrgId> inside the appropriate parent element."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/AnyBIC",
+      "xml_element": "AnyBIC",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/AnyBIC",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Any BIC Rules: CBPR_Originator_Option_1_FormalRule.",
+      "datatype": "text",
+      "spec_rule_ids": [
+        "R14"
+      ],
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/AnyBIC",
+          "name": "Any BIC",
+          "datatype": "text",
+          "pattern": "[A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}"
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "ANYBIC_PATTERN_ERROR",
+          "error_code": "INVALID_FORMAT",
+          "severity": "Fatal",
+          "description": "Any BIC does not match the required format pattern.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/AnyBIC"
+          ],
+          "possible_fixes": [
+            "Value must match pattern: [A-Z0-9]{4,4}[A-Z]{2,2}[A-Z0-9]{2,2}([A-Z0-9]{3,3}){0,1}."
+          ]
+        },
+        {
+          "error_id": "ANYBIC_R14_VIOLATION",
+          "error_code": "R14",
+          "severity": "Fatal",
+          "description": "If any BIC is absent, then Name is mandatory.",
+          "rule_id": "R14",
+          "rule_name": "CBPR_Originator_Option_1_FormalRule",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/AnyBIC"
+          ],
+          "possible_fixes": [
+            "If any BIC is absent, then Name is mandatory.",
+            "Verify presence/absence of: Originator, AnyBIC, Name."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/LEI",
+      "xml_element": "LEI",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/LEI",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "LEI",
+      "datatype": "text",
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/LEI",
+          "name": "LEI",
+          "datatype": "text",
+          "pattern": "[A-Z0-9]{18,18}[0-9]{2,2}"
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "LEI_PATTERN_ERROR",
+          "error_code": "INVALID_FORMAT",
+          "severity": "Fatal",
+          "description": "LEI does not match the required format pattern.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/LEI"
+          ],
+          "possible_fixes": [
+            "Value must match pattern: [A-Z0-9]{18,18}[0-9]{2,2}."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr",
+      "xml_element": "Othr",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr",
+      "occurrence": "[0..*]",
+      "mandatory": false,
+      "description": "Other"
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr/Id",
+      "xml_element": "Id",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr/Id",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Identification",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr/Id",
+          "name": "Identification",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "ID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr/Id"
+          ],
+          "possible_fixes": [
+            "Insert <Id></Id> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "ID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Identification exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr/Id"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr/SchmeNm/Cd",
+      "xml_element": "Cd",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr/SchmeNm/Cd",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Code",
+      "datatype": "text{1,4}",
+      "max_length": 4,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr/SchmeNm/Cd",
+          "name": "Code",
+          "datatype": "text{1,4}",
+          "min_length": 1,
+          "max_length": 4
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "CD_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Code is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr/SchmeNm/Cd"
+          ],
+          "possible_fixes": [
+            "Insert <Cd></Cd> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "CD_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Code exceeds maximum length of 4 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr/SchmeNm/Cd"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 4 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr/Issr",
+      "xml_element": "Issr",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr/Issr",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Issuer",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr/Issr",
+          "name": "Issuer",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "ISSR_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Issuer exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/OrgId/Othr/Issr"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId",
+      "xml_element": "PrvtId",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Private Identification",
+      "errors": [
+        {
+          "error_id": "PRVTID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Private Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId"
+          ],
+          "possible_fixes": [
+            "Insert <PrvtId></PrvtId> inside the appropriate parent element."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/BirthDt",
+      "xml_element": "BirthDt",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/BirthDt",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Birth Date",
+      "datatype": "date",
+      "errors": [
+        {
+          "error_id": "BIRTHDT_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Birth Date is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/BirthDt"
+          ],
+          "possible_fixes": [
+            "Insert <BirthDt></BirthDt> inside the appropriate parent element."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/PrvcOfBirth",
+      "xml_element": "PrvcOfBirth",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/PrvcOfBirth",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Province Of Birth",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/PrvcOfBirth",
+          "name": "Province Of Birth",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "PRVCOFBIRTH_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Province Of Birth exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/PrvcOfBirth"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/CityOfBirth",
+      "xml_element": "CityOfBirth",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/CityOfBirth",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "City Of Birth",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/CityOfBirth",
+          "name": "City Of Birth",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "CITYOFBIRTH_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "City Of Birth is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/CityOfBirth"
+          ],
+          "possible_fixes": [
+            "Insert <CityOfBirth></CityOfBirth> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "CITYOFBIRTH_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "City Of Birth exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/CityOfBirth"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/CtryOfBirth",
+      "xml_element": "CtryOfBirth",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/CtryOfBirth",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Country Of Birth",
+      "datatype": "text",
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/CtryOfBirth",
+          "name": "Country Of Birth",
+          "datatype": "text",
+          "pattern": "[A-Z]{2,2}"
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "CTRYOFBIRTH_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Country Of Birth is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/CtryOfBirth"
+          ],
+          "possible_fixes": [
+            "Insert <CtryOfBirth></CtryOfBirth> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "CTRYOFBIRTH_PATTERN_ERROR",
+          "error_code": "INVALID_FORMAT",
+          "severity": "Fatal",
+          "description": "Country Of Birth does not match the required format pattern.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/DtAndPlcOfBirth/CtryOfBirth"
+          ],
+          "possible_fixes": [
+            "Value must match pattern: [A-Z]{2,2}."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr",
+      "xml_element": "Othr",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr",
+      "occurrence": "[0..*]",
+      "mandatory": false,
+      "description": "Other"
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr/Id",
+      "xml_element": "Id",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr/Id",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Identification",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr/Id",
+          "name": "Identification",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "ID_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Identification is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr/Id"
+          ],
+          "possible_fixes": [
+            "Insert <Id></Id> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "ID_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Identification exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr/Id"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr/SchmeNm/Cd",
+      "xml_element": "Cd",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr/SchmeNm/Cd",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Code",
+      "datatype": "text{1,4}",
+      "max_length": 4,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr/SchmeNm/Cd",
+          "name": "Code",
+          "datatype": "text{1,4}",
+          "min_length": 1,
+          "max_length": 4
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "CD_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Code is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr/SchmeNm/Cd"
+          ],
+          "possible_fixes": [
+            "Insert <Cd></Cd> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "CD_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Code exceeds maximum length of 4 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr/SchmeNm/Cd"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 4 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr/Issr",
+      "xml_element": "Issr",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr/Issr",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Issuer",
+      "datatype": "text{1,35}",
+      "max_length": 35,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr/Issr",
+          "name": "Issuer",
+          "datatype": "text{1,35}",
+          "min_length": 1,
+          "max_length": 35
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "ISSR_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Issuer exceeds maximum length of 35 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/Id/PrvtId/Othr/Issr"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 35 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/CtryOfRes",
+      "xml_element": "CtryOfRes",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/CtryOfRes",
+      "occurrence": "[0..1]",
+      "mandatory": false,
+      "description": "Country Of Residence",
+      "datatype": "text",
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/CtryOfRes",
+          "name": "Country Of Residence",
+          "datatype": "text",
+          "pattern": "[A-Z]{2,2}"
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "CTRYOFRES_PATTERN_ERROR",
+          "error_code": "INVALID_FORMAT",
+          "severity": "Fatal",
+          "description": "Country Of Residence does not match the required format pattern.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Orgtr/CtryOfRes"
+          ],
+          "possible_fixes": [
+            "Value must match pattern: [A-Z]{2,2}."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Rsn/Cd",
+      "xml_element": "Cd",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Rsn/Cd",
+      "occurrence": "[1..1]",
+      "mandatory": true,
+      "description": "Code",
+      "datatype": "text{1,4}",
+      "max_length": 4,
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Rsn/Cd",
+          "name": "Code",
+          "datatype": "text{1,4}",
+          "min_length": 1,
+          "max_length": 4
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "CD_MISSING",
+          "error_code": "MISSING_MANDATORY_FIELD",
+          "severity": "Fatal",
+          "description": "Code is absent; mandatory per CBPR+ SR2026.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Rsn/Cd"
+          ],
+          "possible_fixes": [
+            "Insert <Cd></Cd> inside the appropriate parent element."
+          ]
+        },
+        {
+          "error_id": "CD_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Code exceeds maximum length of 4 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Rsn/Cd"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 4 characters."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/AddtlInf",
+      "xml_element": "AddtlInf",
+      "xpath": "/Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/AddtlInf",
+      "occurrence": "[0..*]",
+      "mandatory": false,
+      "description": "Additional Information Rules: CBPR_Additional_Information_TextualRule.",
+      "datatype": "text{1,105}",
+      "max_length": 105,
+      "spec_rule_ids": [
+        "R18"
+      ],
+      "format_constraints_ref": [
+        {
+          "path": "Document/CstmrPmtStsRpt/OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/AddtlInf",
+          "name": "Additional Information",
+          "datatype": "text{1,105}",
+          "min_length": 1,
+          "max_length": 105
+        }
+      ],
+      "errors": [
+        {
+          "error_id": "ADDTLINF_TOO_LONG",
+          "error_code": "ID_LENGTH_ERROR",
+          "severity": "Fatal",
+          "description": "Additional Information exceeds maximum length of 105 characters.",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/AddtlInf"
+          ],
+          "possible_fixes": [
+            "Truncate to at most 105 characters."
+          ]
+        },
+        {
+          "error_id": "ADDTLINF_R18_VIOLATION",
+          "error_code": "R18",
+          "severity": "Warning",
+          "description": "Additional Information may only be used when Reason Code contains the code NARR.",
+          "rule_id": "R18",
+          "rule_name": "CBPR_Additional_Information_TextualRule",
+          "affected_tags": [
+            "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/AddtlInf"
+          ],
+          "possible_fixes": [
+            "Additional Information may only be used when Reason Code contains the code NARR."
+          ]
+        }
+      ]
+    }
+  ],
+  "cross_tag_dependency_rules": [
+    {
+      "rule_id": "DEP_001",
+      "rule": "AppHdr/BizMsgIdr must equal Document/CstmrPmtStsRpt/GrpHdr/MsgId",
+      "affected_tags": [
+        "AppHdr/BizMsgIdr",
+        "GrpHdr/MsgId"
+      ],
+      "fix": "Harvest GrpHdr/MsgId and set BizMsgIdr to match (or vice versa); never invent a new value."
+    },
+    {
+      "rule_id": "DEP_002",
+      "rule": "AppHdr/MsgDefIdr must equal 'pain.002.001.10' and match the Document namespace",
+      "affected_tags": [
+        "AppHdr/MsgDefIdr"
+      ],
+      "fix": "Set MsgDefIdr to pain.002.001.10 derived from the Document xmlns."
+    },
+    {
+      "rule_id": "DEP_003",
+      "rule": "If TxSts = RJCT then at least one StsRsnInf with Rsn/Cd MUST be present for that transaction",
+      "affected_tags": [
+        "OrgnlPmtInfAndSts/TxInfAndSts/TxSts",
+        "OrgnlPmtInfAndSts/TxInfAndSts/StsRsnInf/Rsn/Cd"
+      ],
+      "fix": "Insert a StsRsnInf/Rsn/Cd (e.g. MS03 or NARR with AddtlInf) when TxSts = RJCT."
+    },
+    {
+      "rule_id": "DEP_004",
+      "rule": "If GrpSts = RJCT then a group-level StsRsnInf with Rsn/Cd should be present",
+      "affected_tags": [
+        "OrgnlGrpInfAndSts/GrpSts",
+        "OrgnlGrpInfAndSts/StsRsnInf/Rsn/Cd"
+      ],
+      "fix": "Insert a StsRsnInf/Rsn/Cd under OrgnlGrpInfAndSts when GrpSts = RJCT."
+    },
+    {
+      "rule_id": "DEP_005",
+      "rule": "If PmtInfSts = RJCT then a StsRsnInf with Rsn/Cd should be present at PaymentInformation level",
+      "affected_tags": [
+        "OrgnlPmtInfAndSts/PmtInfSts",
+        "OrgnlPmtInfAndSts/StsRsnInf"
+      ],
+      "fix": "Insert a StsRsnInf block under OrgnlPmtInfAndSts when PmtInfSts = RJCT."
+    },
+    {
+      "rule_id": "DEP_006",
+      "rule": "GrpSts / PmtInfSts / TxSts must all be valid ExternalPaymentGroupStatus / ExternalPaymentTransactionStatus codes",
+      "affected_tags": [
+        "OrgnlGrpInfAndSts/GrpSts",
+        "OrgnlPmtInfAndSts/PmtInfSts",
+        "OrgnlPmtInfAndSts/TxInfAndSts/TxSts"
+      ],
+      "fix": "Replace any out-of-list status with a valid code (ACCP, ACSC, ACSP, ACWC, ACWP, PART, PDNG, RJCT, RCVD)."
+    },
+    {
+      "rule_id": "DEP_007",
+      "rule": "OrgnlMsgNmId identifies the reported message type and must be a valid ISO 20022 message identifier (e.g. pain.001.001.09)",
+      "affected_tags": [
+        "OrgnlGrpInfAndSts/OrgnlMsgNmId"
+      ],
+      "fix": "Set OrgnlMsgNmId to the identifier of the original reported message."
+    },
+    {
+      "rule_id": "DEP_008",
+      "rule": "If GrpSts = PART (partial acceptance) then per-transaction TxSts must be populated so accepted and rejected items are distinguishable",
+      "affected_tags": [
+        "OrgnlGrpInfAndSts/GrpSts",
+        "OrgnlPmtInfAndSts/TxInfAndSts/TxSts"
+      ],
+      "fix": "Populate TxSts on each TxInfAndSts when GrpSts/PmtInfSts = PART."
+    },
+    {
+      "rule_id": "DEP_009",
+      "rule": "OrgnlInstrId / OrgnlEndToEndId / OrgnlTxId / OrgnlUETR must be copied unchanged from the original (reported) transaction",
+      "affected_tags": [
+        "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlInstrId",
+        "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlEndToEndId",
+        "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlTxId",
+        "OrgnlPmtInfAndSts/TxInfAndSts/OrgnlUETR"
+      ],
+      "fix": "Harvest each original identifier from the reported message; do not regenerate."
+    }
+  ],
+  "tag_insertion_order": {
+    "AppHdr": [
+      "Fr",
+      "To",
+      "BizMsgIdr",
+      "MsgDefIdr",
+      "BizSvc",
+      "CreDt",
+      "CpyDplct",
+      "PssblDplct",
+      "Prty",
+      "Sgntr",
+      "Rltd"
+    ],
+    "GrpHdr": [
+      "MsgId",
+      "CreDtTm",
+      "InitgPty",
+      "FwdgAgt",
+      "DbtrAgt",
+      "CdtrAgt"
+    ],
+    "OrgnlGrpInfAndSts": [
+      "OrgnlMsgId",
+      "OrgnlMsgNmId",
+      "OrgnlCreDtTm",
+      "OrgnlNbOfTxs",
+      "OrgnlCtrlSum",
+      "GrpSts",
+      "StsRsnInf",
+      "NbOfTxsPerSts"
+    ],
+    "OrgnlPmtInfAndSts": [
+      "OrgnlPmtInfId",
+      "OrgnlNbOfTxs",
+      "OrgnlCtrlSum",
+      "PmtInfSts",
+      "StsRsnInf",
+      "NbOfTxsPerSts",
+      "TxInfAndSts"
+    ],
+    "TxInfAndSts": [
+      "StsId",
+      "OrgnlInstrId",
+      "OrgnlEndToEndId",
+      "OrgnlTxId",
+      "OrgnlUETR",
+      "TxSts",
+      "StsRsnInf",
+      "ChrgsInf",
+      "AccptncDtTm",
+      "AcctSvcrRef",
+      "ClrSysRef",
+      "OrgnlTxRef"
+    ],
+    "StsRsnInf": [
+      "Orgtr",
+      "Rsn",
+      "AddtlInf"
+    ],
+    "Rsn": [
+      "Cd",
+      "Prtry"
+    ]
+  },
+  "schema_mapping_notes": {
+    "root_element": "Document/CstmrPmtStsRpt is the root; the message type is CustomerPaymentStatusReportV10.",
+    "msg_def_idr": "AppHdr/MsgDefIdr = pain.002.001.10 and must match the Document xmlns urn:iso:std:iso:20022:tech:xsd:pain.002.001.10.",
+    "biz_svc": "AppHdr/BizSvc = swift.cbprplus.02 for the CBPR+ status report exchange under SR2025.",
+    "original_group": "OrgnlGrpInfAndSts references the reported message via OrgnlMsgId (original GrpHdr/MsgId) and OrgnlMsgNmId (original message identifier, e.g. pain.001.001.09).",
+    "status_codelists": "GrpSts/PmtInfSts use ExternalPaymentGroupStatus; TxSts uses ExternalPaymentTransactionStatus; StsRsnInf/Rsn/Cd uses ExternalStatusReason1Code.",
+    "datetime_format": "All ISODateTime fields (AppHdr/CreDt, GrpHdr/CreDtTm, OrgnlCreDtTm) use YYYY-MM-DDTHH:MM:SS+HH:MM; Z suffix and milliseconds are forbidden under CBPR+.",
+    "reject_reason_dependency": "A RJCT status at group, payment-information or transaction level requires a corresponding StsRsnInf with Rsn/Cd."
+  },
+  "merge_source": {
+    "file": "CBPRPlus_SR2026_(Combined)_CBPRPlus-pain_002_001_10_FIToFICustomerPaymentStatusReport_20260525_0146.pdf",
+    "extracted_with": "pdfplumber (layout-aware) + markitdown pipeline",
+    "spec_counts": {
+      "elements": 134,
+      "format_constraints": 98,
+      "business_rules": 18
+    },
+    "built_on": "2026-06-16"
+  }
+}

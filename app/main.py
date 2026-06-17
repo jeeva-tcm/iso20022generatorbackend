@@ -196,8 +196,40 @@ def _priority_sort_issues(issues: list[dict]) -> list[dict]:
     return sorted(issues, key=_prio)
 
 
+async def _validate_unified(xml_content: str, message_type: str, version: str) -> dict:
+    """Validate with the release-appropriate engine, normalized to the
+    SR2025 ValidationReport.to_dict() shape ({"details": [...], "layer_status":
+    {...}}) that the auto-fix loop below is built around.
+
+    Without this, /fixes/auto-fix always validated with the default SR2025
+    `validator` regardless of the message's actual release — silently running
+    pacs.008/SR2025 rules against SR2026 messages (e.g. pacs.009 ADV/COV),
+    producing a wrong issue list and fixes that don't match what /validate
+    (which IS release-aware via the same x-sr-version header) showed in the UI.
+    That's why "Fix All" / "Apply Structural Fix" (both backed by this
+    endpoint) could disagree with the per-issue "AI fix" button, which reads
+    x-sr-version correctly via /fixes/suggest.
+    """
+    if version == "SR2026":
+        from app.sr2026.validation.validators.validator import SR2026Validator
+        sr2026_val = SR2026Validator(history_service=history_service)
+        resp = await sr2026_val.validate(xml_content, message_type or "Auto-detect")
+        details = [issue.model_dump()
+                   for bucket in (resp.errors, resp.warnings, resp.info)
+                   for issue in bucket]
+        well_formed = 2 not in (resp.layers_skipped or [])
+        return {
+            "details": details,
+            "layer_status": {"1": {"status": "✅" if well_formed else "❌"}},
+        }
+    report = await validator.validate(
+        xml_content, mode="Full 1-3", message_type=message_type or "Auto-detect"
+    )
+    return report.to_dict()
+
+
 async def _auto_fix_iterative(original_xml: str, message_type: str = "Auto-detect",
-                              max_rounds: int = 12):
+                              max_rounds: int = 12, version: str = "SR2025"):
     """
     Iteratively validate → fix → re-validate until the document is clean, no
     further actionable fix can be produced, or no progress is made.
@@ -239,10 +271,7 @@ async def _auto_fix_iterative(original_xml: str, message_type: str = "Auto-detec
     stall_count = 0       # consecutive well-formed rounds with no resolved errors
 
     for _ in range(max_rounds):
-        report = await validator.validate(
-            cur, mode="Full 1-3", message_type=message_type or "Auto-detect"
-        )
-        report_dict = report.to_dict()
+        report_dict = await _validate_unified(cur, message_type, version)
         details = report_dict.get("details", []) or []
         errors = [d for d in details if d.get("severity") in ("ERROR", "CRITICAL")]
         err_sigs = {(d.get("code"), d.get("path")) for d in errors}
@@ -336,7 +365,7 @@ async def _auto_fix_iterative(original_xml: str, message_type: str = "Auto-detec
         # Fix up to 20 per round; the next round re-validates and continues,
         # so >20 issues are handled across rounds rather than dropped.
         try:
-            suggestions = fix_suggester.suggest_batch(cur, _priority_sort_issues(fixable)[:20])
+            suggestions = fix_suggester.suggest_batch(cur, _priority_sort_issues(fixable)[:20], version=version)
         except Exception as e:
             print(f"[auto-fix] suggest_batch failed: {e}")
             break
@@ -381,19 +410,24 @@ async def _apply_auto_fixes(report_dict, original_xml, message_type="Auto-detect
 
 
 @app.post("/fixes/auto-fix", response_model=fix_schemas.AutoFixResponse)
-async def fixes_auto_fix(request: fix_schemas.AutoFixRequest):
+async def fixes_auto_fix(request: fix_schemas.AutoFixRequest, raw_request: Request):
     """
     Fix EVERYTHING in one go: iteratively validate → fix → re-validate until the
     message is clean (or no further actionable fix can be made). Returns the
     fully-fixed XML plus any residual issues that need manual attention.
+
+    Reads x-sr-version the same way /validate and /fixes/suggest do — this
+    endpoint used to always run the SR2025 engine regardless of the message's
+    actual release, so a SR2026 message's "Fix All" could diverge from what
+    /validate (and the per-issue /fixes/suggest "AI fix" button) reported.
     """
+    version = raw_request.headers.get("x-sr-version") or "SR2025"
+    if version not in ("SR2025", "SR2026"):
+        version = "SR2025"
     fixed_xml, rounds, applied = await _auto_fix_iterative(
-        request.xml, request.message_type
+        request.xml, request.message_type, version=version
     )
-    final = await validator.validate(
-        fixed_xml, mode="Full 1-3", message_type=request.message_type or "Auto-detect"
-    )
-    fd = final.to_dict()
+    fd = await _validate_unified(fixed_xml, request.message_type, version)
     residual = [d for d in (fd.get("details", []) or [])
                 if d.get("severity") in ("ERROR", "CRITICAL")]
     return fix_schemas.AutoFixResponse(

@@ -92,15 +92,25 @@ class Layer2Validator:
         return Layer2Validator._schema_cache[xsd_path]
 
     @staticmethod
-    def _validate_apphdr(root_element: etree._Element, report: ValidationReport) -> bool:
+    def _validate_apphdr(root_element: etree._Element, report: ValidationReport,
+                         xml_content: str = "") -> bool:
         """Validate the <AppHdr> element against head.001.001.02.xsd.
-        Returns True if valid, False if XSD errors found or if AppHdr is missing."""
+        Returns True if valid, False if XSD errors found or if AppHdr is missing.
+
+        Header errors are routed through the SR2025 translation engine
+        (Layer2Mixin._simplify_error_message) so every libxml2 facet/value error —
+        empty value (minLength), BIC, pattern, length, enum, date, attribute, … —
+        becomes the same friendly, actionable message SR2025 produces, instead of
+        leaking raw "Element 'BizMsgIdr': [facet 'minLength'] …" text. Issues are
+        emitted under code HEADER_VAL (matching SR2025) so the shared autofix
+        engine's header routes (missing-field inserter, Fr/To party repair) fire
+        for SR2026 too."""
         apphdr_nodes = root_element.xpath("//*[local-name()='AppHdr']")
         if not apphdr_nodes:
             report.add_issue(ValidationIssue(
                 severity="ERROR",
                 layer=2,
-                code="APPHDR_SCHEMA_ERROR",
+                code="HEADER_VAL",
                 path="/AppHdr",
                 message="The standard header block (<AppHdr>) is missing from the file.",
                 line=1,
@@ -116,28 +126,15 @@ class Layer2Validator:
             return True  # no header XSD available — skip silently
 
         apphdr_node = apphdr_nodes[0]
+        h_line_offset = apphdr_node.sourceline or 1
 
-        # Completeness check: report EVERY missing mandatory element, not just the
-        # first one libxml2's sequence validator would stop on.
-        actual_children = {
-            etree.QName(c).localname for c in apphdr_node if isinstance(c.tag, str)
-        }
-        missing_elements = [
-            name for name in Layer2Validator._APPHDR_MANDATORY_ELEMENTS
-            if name not in actual_children
-        ]
-        if missing_elements:
-            for name in missing_elements:
-                report.add_issue(ValidationIssue(
-                    severity="ERROR",
-                    layer=2,
-                    code="APPHDR_SCHEMA_ERROR",
-                    path=f"//AppHdr/{name}",
-                    message=f"The mandatory field '{name}' is missing from the header block.",
-                    line=apphdr_node.sourceline or 1,
-                    fix=f"Add the mandatory <{name}> element to AppHdr."
-                ))
-            return False
+        # Reuse the SR2025 translation engine + XSD-driven mandatory-children list.
+        # SR2026's validate() already uses this mixin for the document body, so the
+        # bare-instance pattern is established (the Cd-codelist branches fall back
+        # to defaults when self.codelists is absent — which is fine here).
+        from app.sr2025.validation.validators.layer2_validator import Layer2Mixin
+        mixin = Layer2Mixin()
+        h_tag_info = mixin._build_tag_info_from_xsd(hdr_xsd_path)
 
         try:
             schema = Layer2Validator._get_schema(hdr_xsd_path)
@@ -152,68 +149,100 @@ class Layer2Validator:
             schema.assertValid(validation_doc)
             return True
         except etree.DocumentInvalid as e:
-            import re
+            # 1. Simplify each raw libxml2 header error (SR2025 parity). libxml2
+            #    stops at the first content-model violation, so this list is the
+            #    value/format errors plus its single structural complaint.
+            hdr_libxml_issues = []
             for error in e.error_log:
-                clean_msg = re.sub(r'\{[^\}]+\}', '', error.message)
+                friendly_msg, suggestion = mixin._simplify_error_message(
+                    error.message, h_tag_info, xml_content=xml_content)
 
-                # "Element 'X'[: ]is not expected. Expected is [one of] ( A, B )."
-                # → pick the first mandatory candidate (skip optional CharSet), rewrite as
-                #   "Element 'Y' is missing from AppHdr (found 'X' at this position)."
-                not_expected_match = re.search(
-                    r"Element '([^']+)'[:\s]+[Tt]his element is not expected.*?Expected is(?:\s+one of)?\s*\(\s*([^\)]+?)\s*\)",
-                    clean_msg
-                )
-                if not_expected_match:
-                    found_tag = not_expected_match.group(1).split('}')[-1]
-                    candidates = [c.strip().split('}')[-1] for c in not_expected_match.group(2).split(',')]
-                    # prefer mandatory fields (skip CharSet which is optional)
-                    optional_known = {'CharSet', 'MktPrctc', 'BizPrcgDt', 'CpyDplct', 'PssblDplct', 'Prty', 'Sgntr', 'Rltd'}
-                    mandatory_candidates = [c for c in candidates if c not in optional_known]
-                    missing_tag = mandatory_candidates[0] if mandatory_candidates else candidates[0]
-                    clean_msg = f"Element '{missing_tag}' is missing from AppHdr (found '{found_tag}' at this position)."
-                    path_str = f"//AppHdr/{missing_tag}"
-                    fix_str = f"Add the mandatory <{missing_tag}> element before <{found_tag}> in AppHdr."
-                else:
-                    elem_match = re.search(r"Element '([^']+)'", clean_msg)
-                    path_str = "//AppHdr"
-                    if elem_match:
-                        tag_name = elem_match.group(1).split('}')[-1]
-                        path_str = f"//AppHdr/{tag_name}"
-                    fix_str = "Verify the AppHdr element structure against head.001.001.02 schema."
+                # High-precision line + path correction against the real AppHdr tree.
+                h_real_line = error.line
+                best_n = None
+                tag_m = re.search(r"Element '([^']+)'", error.message)
+                try:
+                    if tag_m:
+                        t_name = tag_m.group(1).split('}')[-1]
+                        is_empty_h = "Empty" in friendly_msg or "minLength" in error.message
+                        h_cands = apphdr_node.xpath(
+                            f"descendant-or-self::*[local-name()='{t_name}']")
+                        if h_cands:
+                            if is_empty_h:
+                                h_cands = [c for c in h_cands if not (c.text or "").strip()]
+                            if h_cands:
+                                best_n = min(h_cands,
+                                             key=lambda c: abs((c.sourceline or 0) - error.line))
+                                h_real_line = best_n.sourceline
+                except Exception:
+                    pass
 
-                # "The content of element 'AppHdr' is not complete. Expected is [one of] ( X )."
-                # → rewrite as "Element 'X' is missing from AppHdr."
-                incomplete_match = re.search(
-                    r"content of element 'AppHdr' is not complete.*?Expected is(?:\s+one of)?\s*\(\s*([^\)]+?)\s*\)",
-                    clean_msg
-                )
-                if incomplete_match:
-                    candidates = [c.strip().split('}')[-1] for c in incomplete_match.group(1).split(',')]
-                    optional_known = {'CharSet', 'MktPrctc', 'BizPrcgDt', 'CpyDplct', 'PssblDplct', 'Prty', 'Sgntr', 'Rltd'}
-                    mandatory_candidates = [c for c in candidates if c not in optional_known]
-                    missing_tag = mandatory_candidates[0] if mandatory_candidates else candidates[0]
-                    clean_msg = f"Element '{missing_tag}' is missing from AppHdr."
-                    path_str = f"//AppHdr/{missing_tag}"
-                    fix_str = f"Add the mandatory <{missing_tag}> element to AppHdr."
+                h_path = "//AppHdr"
+                if best_n is not None:
+                    h_path = f"//AppHdr/{etree.QName(best_n).localname}"
+                elif tag_m:
+                    h_path = f"//AppHdr/{tag_m.group(1).split('}')[-1]}"
 
-                report.add_issue(ValidationIssue(
+                hdr_libxml_issues.append(ValidationIssue(
                     severity="ERROR",
                     layer=2,
-                    code="APPHDR_SCHEMA_ERROR",
-                    path=path_str,
-                    message=f"Header error: {clean_msg}",
-                    line=error.line,
-                    fix=fix_str
+                    code="HEADER_VAL",
+                    path=h_path,
+                    message=friendly_msg.strip(),
+                    line=h_real_line,
+                    fix=suggestion
                 ))
+
+            # 2. Completeness scan — report EVERY missing mandatory direct child of
+            #    AppHdr at once (read from the head XSD, not a hardcoded list).
+            present_children = {etree.QName(c.tag).localname for c in apphdr_node
+                                if isinstance(c.tag, str)}
+            mandatory = (mixin._mandatory_header_children(hdr_xsd_path)
+                         or Layer2Validator._APPHDR_MANDATORY_ELEMENTS)
+            hdr_missing_issues = []
+            for tag in mandatory:
+                if tag not in present_children:
+                    label = (h_tag_info.get(tag, {}) or {}).get('label', tag)
+                    hdr_missing_issues.append(ValidationIssue(
+                        severity="ERROR",
+                        layer=2,
+                        code="HEADER_VAL",
+                        path=f"//AppHdr/{tag}",
+                        message=f"The mandatory header element '{tag}' is missing from the Business Application Header (AppHdr).",
+                        line=h_line_offset,
+                        fix=f"Add a <{tag}> element inside <AppHdr>. {label} is required by the ISO 20022 BAH (head.001) schema."
+                    ))
+
+            if hdr_missing_issues:
+                # Clear per-field "missing" issues supersede libxml2's confusing
+                # single structural complaint — keep genuine value/format errors on
+                # fields that ARE present, drop the structural noise.
+                def _is_structural(it):
+                    m = (it.message or "").lower()
+                    return any(s in m for s in (
+                        "is not expected", "not expected here",
+                        "not expected at this position", "unexpected field",
+                        "is expected", "is not complete",
+                        "content is incomplete", "not complete",
+                    ))
+                for it in hdr_missing_issues:
+                    report.add_issue(it)
+                for it in hdr_libxml_issues:
+                    if not _is_structural(it):
+                        report.add_issue(it)
+            else:
+                for it in hdr_libxml_issues:
+                    report.add_issue(it)
             return False
         except Exception:
             return True  # non-fatal — don't block the pipeline
 
     @staticmethod
-    def validate(root_element: etree._Element, message_type: str, report: ValidationReport):
+    def validate(root_element: etree._Element, message_type: str, report: ValidationReport,
+                 xml_content: str = ""):
         """Returns True (passed), False (XSD errors - L3 should still run), or None (catastrophic - stop pipeline)."""
         # Always validate AppHdr against head.001.001.02.xsd
-        apphdr_passed = Layer2Validator._validate_apphdr(root_element, report)
+        apphdr_passed = Layer2Validator._validate_apphdr(root_element, report, xml_content)
 
         xsd_path = Layer2Validator._resolve_xsd_path(message_type)
         if not xsd_path:
