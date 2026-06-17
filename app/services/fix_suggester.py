@@ -1371,6 +1371,7 @@ _TEMPLATES: dict[str, str] = {
     # Identifiers
     "UETR":           f"<UETR>{_UETR_SENTINEL}</UETR>",
     "MsgId":          "<MsgId>MSG-2025-001</MsgId>",
+    "PmtInfId":       "<PmtInfId>PMT-INF-2025-001</PmtInfId>",
     "Id":             "<Id>ID-2025-001</Id>",
     "BICFI":          "<BICFI>DEUTDEFFXXX</BICFI>",
     "IBAN":           "<IBAN>GB29NWBK60161331926819</IBAN>",
@@ -2513,25 +2514,64 @@ class FixSuggester:
                 return None
             found_elem = ""
             exp_candidates = [explicit_missing]
+            self._targeted_insert_flag = False
         else:
             # 1. The element the validator stumbled on ("not expected").
-            m_found = re.search(r"element '([\w:{}.\-]+)' is not expected", text, re.I)
+            # Matches both:
+            #   "element 'PmtMtd' is not expected here"  (XSD-style)
+            #   "Unexpected field 'PmtMtd' found here"   (custom validator style)
+            m_found = re.search(
+                r"(?:element '([\w:{}.\-]+)' is not expected"
+                r"|[Uu]nexpected\s+(?:field|element)\s+'([\w:{}.\-]+)')",
+                text, re.I,
+            )
             if not m_found:
                 return None
-            found_elem = m_found.group(1).split('}')[-1].split(':')[-1]
+            _raw_found = (m_found.group(1) or m_found.group(2) or "")
+            found_elem = _raw_found.split('}')[-1].split(':')[-1]
             if not found_elem:
                 return None
 
             # 2. The candidate elements the schema expected at that slot. They are
             #    quoted after "expected", e.g. expected : 'CharSet, Fr'  →  the
             #    quoted blob may itself be a comma-separated list.
+            # For "right before or instead of 'PmtMtd': 'PmtInfId'" patterns,
+            # exclude the found_elem itself from candidates (it already exists).
             exp_candidates = []
+            # _targeted_insert=True means the found element IS valid/correctly
+            # named but just misplaced — the misnaming check must be skipped
+            # (see below) so the missing sibling is actually inserted.
+            _targeted_insert = False
+            # Primary extraction: targeted pattern for "instead of 'X': 'Y'" where
+            # Y is the missing predecessor. This avoids apostrophe-in-words (e.g.
+            # "It's") misaligning the generic quote-pair finder below.
+            _m_instead = re.search(
+                r"instead of '[\w]+'[^']*'([\w]+)'", text, re.I
+            )
+            if _m_instead:
+                _inst_tok = _m_instead.group(1).strip()
+                if _inst_tok and _inst_tok != found_elem:
+                    exp_candidates.append(_inst_tok)
+                    _targeted_insert = True
+            # Also handle "right before 'X'" pattern
+            _m_before = re.search(
+                r"(?:right\s+)?before '([\w]+)'", text, re.I
+            )
+            if _m_before:
+                _bef_tok = _m_before.group(1).strip()
+                if _bef_tok and _bef_tok != found_elem and _bef_tok not in exp_candidates:
+                    exp_candidates.append(_bef_tok)
+                    _targeted_insert = True
+            # Fallback: extract 'Token' patterns from the text, but use only
+            # 1-word CamelCase tokens (XSD element names) to avoid prose words.
             m_exp = re.search(r"expected\s*:?\s*(.+)$", text, re.I | re.S)
             if m_exp:
                 for blob in re.findall(r"'([^']+)'", m_exp.group(1)):
                     for tok in re.split(r"[,\s|]+", blob):
                         tok = tok.strip().split('}')[-1].split(':')[-1]
-                        if tok and tok not in exp_candidates:
+                        # Only accept CamelCase single-word XSD element names
+                        if (tok and re.match(r'^[A-Z][A-Za-z0-9]{1,}$', tok)
+                                and tok not in exp_candidates and tok != found_elem):
                             exp_candidates.append(tok)
 
             # 3. Locate the offending element in the live document — issue-path
@@ -2546,6 +2586,9 @@ class FixSuggester:
             parent = found_el.getparent()
             if parent is None:
                 return None
+            # Propagate targeted-insert flag so the misnaming check is skipped
+            # for "element exists but missing predecessor" cases.
+            self._targeted_insert_flag = _targeted_insert
 
         parent_local = etree.QName(parent.tag).localname
 
@@ -2715,7 +2758,13 @@ class FixSuggester:
             tmap is not None and _parent_type
             and tmap.get_child_type(_parent_type, found_elem)
         )
-        if found_elem and wanted and not _found_is_valid_child:
+        # Skip misnaming check when candidates came from a targeted "instead of
+        # 'X': 'Y'" extraction — in that case the found element IS a valid, correctly
+        # named element that simply has a missing mandatory predecessor. The shared-
+        # prefix heuristic would incorrectly discard the missing sibling (e.g.
+        # "PmtMtd" and "PmtInfId" both start with "Pmt").
+        _skip_misname = getattr(self, "_targeted_insert_flag", False)
+        if found_elem and wanted and not _found_is_valid_child and not _skip_misname:
             _misnamed_target = self._closest_expected(found_elem, wanted)
             if _misnamed_target:
                 wanted = [t for t in wanted if t != _misnamed_target]
@@ -3999,6 +4048,49 @@ class FixSuggester:
         # lacking the head.001 XSD order, append at the end). Route them to the
         # namespace-aware, KB-ordered, indented inserter instead.
         _mh = re.search(r"(?:^|/)AppHdr/(\w+)$", path)
+
+        # ── Route: AppHdr child exists but is OUT OF ORDER ───────────────────
+        # When HEADER_VAL fires because a named AppHdr element is present but
+        # in the wrong position (e.g. CharSet after Fr/To instead of first),
+        # resequence all AppHdr children into the canonical head.001 order.
+        _APPHDR_ORDER = [
+            "CharSet", "Fr", "To", "BizMsgIdr", "MsgDefIdr", "BizSvc",
+            "MktPrctc", "CreDt", "CpyDplct", "Pssbl", "Prty", "Sgntr", "Rltd",
+        ]
+        if code in ("HEADER_VAL",) and _mh:
+            _tag_oos = _mh.group(1)
+            _apphdr_oos = root.find(".//{*}AppHdr")
+            if _apphdr_oos is None and etree.QName(root.tag).localname == "AppHdr":
+                _apphdr_oos = root
+            if _apphdr_oos is not None and self._child_exists(_apphdr_oos, _tag_oos) is not None:
+                # Element exists — it's out of order. Resequence all children.
+                try:
+                    _parser_oos = etree.XMLParser(remove_blank_text=False, no_network=True, recover=True)
+                    _r_oos = etree.fromstring(xml.encode("utf-8"), _parser_oos)
+                    _ah_oos = _r_oos.find(".//{*}AppHdr")
+                    if _ah_oos is None and etree.QName(_r_oos.tag).localname == "AppHdr":
+                        _ah_oos = _r_oos
+                    if _ah_oos is not None:
+                        def _ln_oos(el) -> str:
+                            return etree.QName(el.tag).localname if isinstance(el.tag, str) else ""
+                        _ah_children = [((_ln_oos(c)), c) for c in list(_ah_oos)]
+                        for _, _c in _ah_children:
+                            _ah_oos.remove(_c)
+                        _known_oos = {ln: c for ln, c in _ah_children if ln in _APPHDR_ORDER}
+                        _unknown_oos = [c for ln, c in _ah_children if ln not in _APPHDR_ORDER]
+                        for _slot in _APPHDR_ORDER:
+                            if _slot in _known_oos:
+                                _ah_oos.append(_known_oos[_slot])
+                        for _unk in _unknown_oos:
+                            _ah_oos.append(_unk)
+                        _decl = '<?xml version="1.0" encoding="UTF-8"?>\n'
+                        _fixed_oos = etree.tostring(_r_oos, encoding="unicode", pretty_print=True)
+                        if not _fixed_oos.startswith("<?"):
+                            _fixed_oos = _decl + _fixed_oos
+                        return FixSuggestion("/", xml, _fixed_oos, code, msg, "high")
+                except Exception:
+                    pass
+
         if code in ("HEADER_VAL", "HEAD001_BIZSVC_MISSING") and _mh:
             _apphdr = root.find(".//{*}AppHdr")
             if _apphdr is None and etree.QName(root.tag).localname == "AppHdr":
@@ -4324,6 +4416,9 @@ class FixSuggester:
             "not allowed in this context",
             "following element",
             "missing before",
+            "found here",
+            "unexpected field",
+            "missed a mandatory field",
         )):
             # ── Wrong ISO 20022 document root element ────────────────────────
             # Each message type has a unique Document child element name.
@@ -4593,6 +4688,34 @@ class FixSuggester:
             any(w in msg.lower() for w in ("absent", "missing", "not present", "required"))
             and any(w in msg.lower() for w in ("mandatory", "required", "cbpr"))
         )
+
+        # ── Route: MISSING_MANDATORY_FIELD — entirely absent AppHdr ─────────────
+        # When AppHdr is completely absent the path is "/AppHdr" (length-1 after
+        # splitting), so the generic path-driven handler below can't fire.
+        # Build a canonical AppHdr from data already present in the Document and
+        # insert it in the correct position:
+        #   BusMsgEnvlp envelope → after </Document>, before </BusMsgEnvlp>
+        #   Bare Document root   → immediately before <Document>
+        if (
+            _is_missing_field_code
+            and path
+            and re.sub(r'[/.]', '', path).strip() == "AppHdr"
+            and root.find(".//{*}AppHdr") is None
+        ):
+            try:
+                _fixed_ah = self._insert_missing_apphdr(root, xml, code, msg, msg_type)
+                if _fixed_ah is not None:
+                    return _fixed_ah
+            except Exception:
+                pass
+
+        # ── Route: MISSING_MANDATORY_FIELD — path-driven insertion ───────────────
+        # CBPR+ validators emit code="MISSING_MANDATORY_FIELD" (not an XSD error)
+        # for pacs.010 DrctDbtTxInf missing UETR/EndToEndId/IntrBkSttlmAmt/Dbtr/
+        # DbtrAgt.  The path points at the absent element, not an existing one, so
+        # _find_target returns None and the implicit _try_insert_missing_sibling
+        # (which relies on XSD "not expected here" messages) never fires.
+        # Route: parse path → derive parent_tag + missing_tag → explicit insert.
         if (_is_missing_field_code or _missing_in_msg) and path and path != "/":
             _pp = [p for p in re.split(r'[/.]', path)
                    if p and _VALID_XML_NAME.match(p)]
@@ -12676,6 +12799,151 @@ class FixSuggester:
 
         fixed = xml[:insert_at] + new_apphdr + xml[splice_end:]
         return fixed if fixed != xml else None
+
+    def _insert_missing_apphdr(
+        self, root, xml: str, code: str, msg: str, msg_type: str
+    ) -> Optional[FixSuggestion]:
+        """Insert a complete <AppHdr> when it is entirely absent from the XML.
+
+        Placement rules (matching standard CBPR+ structure):
+        - BusMsgEnvlp envelope: insert after </Document>, before </BusMsgEnvlp>
+        - Bare Document root  : insert immediately before <Document>
+
+        Values are harvested from existing XML elements:
+        - BizMsgIdr ← GrpHdr/MsgId
+        - MsgDefIdr ← Document namespace (e.g. pain.008.001.08)
+        - BizSvc    ← infer from msg_type or default swift.cbprplus.02
+        - CreDt     ← GrpHdr/CreDtTm
+        - Fr BICFI  ← FwdgAgt/FinInstnId/BICFI (or first BICFI found)
+        - To BICFI  ← CdtrAgt or InstgAgt/FinInstnId/BICFI (or second BICFI found)
+        """
+        AH_NS = 'urn:iso:std:iso:20022:tech:xsd:head.001.001.02'
+
+        # ── Harvest values from the parsed tree ──────────────────────────────────
+        def _first_text(tags):
+            for tag in tags:
+                els = root.findall(f".//*{{*}}{tag}")
+                for el in els:
+                    if el.text and el.text.strip():
+                        return el.text.strip()
+            return None
+
+        def _collect_bicfis():
+            return [
+                el.text.strip()
+                for el in root.findall(".//{*}BICFI")
+                if el.text and el.text.strip()
+            ]
+
+        msg_id = _first_text(["MsgId"])
+        cre_dtm = _first_text(["CreDtTm", "CreDt"])
+
+        # Determine MsgDefIdr from Document namespace
+        doc_node = next(
+            (el for el in root.iter()
+             if isinstance(el.tag, str) and etree.QName(el.tag).localname == "Document"),
+            None,
+        )
+        mdi = None
+        if doc_node is not None:
+            _doc_ns = (etree.QName(doc_node).namespace or "") if isinstance(doc_node.tag, str) else ""
+            _ns_m = re.match(
+                r'^urn:iso:std:iso:20022:tech:xsd:([a-z]{4}\.\d{3}\.\d{3}\.\d{2})$',
+                _doc_ns,
+            )
+            if _ns_m:
+                mdi = _ns_m.group(1)
+        if not mdi and msg_type:
+            mdi = msg_type
+
+        # BizSvc: use known service codes per message family
+        _svc_map = {
+            "pain.001": "swift.cbprplus.02",
+            "pain.002": "swift.cbprplus.02",
+            "pain.008": "swift.cbprplus.02",
+            "pacs.008": "swift.cbprplus.02",
+            "pacs.002": "swift.cbprplus.02",
+            "pacs.004": "swift.cbprplus.02",
+            "pacs.009": "swift.cbprplus.adv.02",
+            "pacs.010": "swift.cbprplus.02",
+            "camt.056": "swift.cbprplus.02",
+        }
+        _family_key = ".".join((mdi or "").split(".")[:2])
+        biz_svc = _svc_map.get(_family_key, "swift.cbprplus.02")
+
+        # Fr BICFI: prefer FwdgAgt, fall back to first BICFI in document
+        all_bics = _collect_bicfis()
+        fwdg_el = root.find(".//{*}FwdgAgt")
+        fr_bic = None
+        if fwdg_el is not None:
+            _b = fwdg_el.find(".//{*}BICFI")
+            if _b is not None and _b.text and _b.text.strip():
+                fr_bic = _b.text.strip()
+        if not fr_bic:
+            fr_bic = all_bics[0] if all_bics else "AAAABBCCXXX"
+
+        # To BICFI: prefer CdtrAgt (pain.008), InstgAgt, or second BICFI in document
+        to_bic = None
+        for _agent_tag in ("CdtrAgt", "InstgAgt", "DbtrAgt"):
+            _agt_el = root.find(f".//*{{*}}{_agent_tag}")
+            if _agt_el is not None:
+                _b = _agt_el.find(".//{*}BICFI")
+                if _b is not None and _b.text and _b.text.strip():
+                    to_bic = _b.text.strip()
+                    break
+        if not to_bic:
+            to_bic = next((b for b in all_bics if b != fr_bic), all_bics[0] if all_bics else "AAAABBCCXXX")
+
+        # ── Build the AppHdr XML string ───────────────────────────────────────────
+        nl = "\n    "
+        ind = "\n        "
+        lines = [
+            f'{nl}<AppHdr xmlns="{AH_NS}">',
+            f'{ind}<Fr><FIId><FinInstnId><BICFI>{fr_bic}</BICFI></FinInstnId></FIId></Fr>',
+            f'{ind}<To><FIId><FinInstnId><BICFI>{to_bic}</BICFI></FinInstnId></FIId></To>',
+        ]
+        if msg_id:
+            lines.append(f"{ind}<BizMsgIdr>{msg_id}</BizMsgIdr>")
+        if mdi:
+            lines.append(f"{ind}<MsgDefIdr>{mdi}</MsgDefIdr>")
+        lines.append(f"{ind}<BizSvc>{biz_svc}</BizSvc>")
+        if cre_dtm:
+            lines.append(f"{ind}<CreDt>{cre_dtm}</CreDt>")
+        lines.append(f"{nl}</AppHdr>")
+        new_apphdr_str = "".join(lines)
+
+        # ── Determine insertion point ─────────────────────────────────────────────
+        root_local = etree.QName(root.tag).localname if isinstance(root.tag, str) else ""
+        if root_local == "BusMsgEnvlp":
+            # Insert after </Document> and before </BusMsgEnvlp>
+            envlp_close = xml.rfind("</BusMsgEnvlp")
+            if envlp_close == -1:
+                envlp_close = len(xml)
+            # Find the last </Document> before the envelope close
+            doc_close_m = None
+            for _m in re.finditer(r"</(?:\w+:)?Document\s*>", xml[:envlp_close]):
+                doc_close_m = _m
+            if doc_close_m:
+                insert_at = doc_close_m.end()
+            else:
+                insert_at = envlp_close
+            fixed = xml[:insert_at] + "\n" + new_apphdr_str + xml[insert_at:]
+        else:
+            # Bare Document (or unknown root): insert before the <Document> open tag
+            doc_open_m = re.search(r"<(?:\w+:)?Document\b", xml)
+            if doc_open_m:
+                insert_at = doc_open_m.start()
+            else:
+                return None
+            fixed = xml[:insert_at] + new_apphdr_str + "\n" + xml[insert_at:]
+
+        if fixed == xml:
+            return None
+
+        _decl = '<?xml version="1.0" encoding="UTF-8"?>\n'
+        if not fixed.lstrip().startswith("<?"):
+            fixed = _decl + fixed
+        return FixSuggestion("/", xml, fixed, code, msg, "high")
 
     def _try_xml_recovery(self, xml: str, code: str, msg: str) -> Optional[FixSuggestion]:
         """Attempt document-level XML syntax repairs. Returns FixSuggestion("/", ...) or None."""

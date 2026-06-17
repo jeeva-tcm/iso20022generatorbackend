@@ -183,8 +183,23 @@ class Layer2Mixin:
                 issues.extend(self._validate_payload_node(_doc_node, message_type, xml_content))
 
             # Step 11 — validate every Business Application Header (head.001).
-            for _app_hdr_node in full_xml_doc.findall(".//{*}AppHdr"):
+            _apphdr_nodes = full_xml_doc.findall(".//{*}AppHdr")
+            for _app_hdr_node in _apphdr_nodes:
                 issues.extend(self._validate_header_node(_app_hdr_node, xml_content))
+
+            # Step 11b — flag missing AppHdr. CBPR+ mandates BAH for every
+            # ISO 20022 message exchanged on SWIFT. Only skip this check when
+            # the message IS a head.001 header file itself.
+            if not _apphdr_nodes and not (message_type or "").startswith("head."):
+                issues.append(ValidationIssue(
+                    "ERROR", 2, "MISSING_MANDATORY_FIELD", "/AppHdr",
+                    "The Business Application Header (<AppHdr>) is missing. "
+                    "CBPR+ mandates a BusinessApplicationHeaderV02 (head.001.001.02) "
+                    "for all ISO 20022 messages exchanged on the SWIFT network.",
+                    "Add a complete <AppHdr xmlns=\"urn:iso:std:iso:20022:tech:xsd:head.001.001.02\"> "
+                    "block before the <Document> element containing at least: "
+                    "<Fr>, <To>, <BizMsgIdr>, <MsgDefIdr>, <BizSvc>, and <CreDt>."
+                ))
 
         except etree.XMLSyntaxError as e:
              issues.append(ValidationIssue("ERROR", 2, "XML_SYNTAX", "/", f"XML Markup Error: {str(e)}", line=e.lineno))

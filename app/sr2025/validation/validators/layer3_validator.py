@@ -65,6 +65,9 @@ class Layer3Mixin:
                 print(f"Error loading global rules: {e}")
 
         # 2. Load CBPR Common (universal cross-message rules: BAH, BICFI exclusivity, AnyBIC exclusivity)
+        # pain messages use a different party/account structure than pacs/camt, so several
+        # CBPR common rules (R1 character set scan, R11 AnyBIC exclusivity) produce false
+        # positives on pain data. Keep the original guard.
         cbpr_common_file = os.path.join(self.rules_path, "cbpr_common.json")
         if os.path.exists(cbpr_common_file) and not message_type.startswith("pain"):
             try:

@@ -52,6 +52,46 @@
                         "Insert a complete <AppHdr> block before the <Document> element.",
                         "Ensure AppHdr contains Fr, To, BizMsgIdr, MsgDefIdr, BizSvc, and CreDt."
                     ]
+                },
+                {
+                    "error_id": "HEADER_VAL_CHARSET_ORDER",
+                    "error_code": "HEADER_VAL",
+                    "severity": "Error",
+                    "description": "An AppHdr child element exists but is placed out of the canonical head.001.001.02 sequence. Common case: <CharSet> appears after <Fr>/<To> instead of being the very first child. The AI fix resequences all AppHdr children into the correct order: CharSet → Fr → To → BizMsgIdr → MsgDefIdr → BizSvc → MktPrctc → CreDt → CpyDplct → Pssbl → Prty → Sgntr → Rltd.",
+                    "affected_tags": [
+                        "AppHdr/CharSet",
+                        "AppHdr/Fr",
+                        "AppHdr/To",
+                        "AppHdr/BizMsgIdr",
+                        "AppHdr/MsgDefIdr",
+                        "AppHdr/BizSvc",
+                        "AppHdr/CreDt"
+                    ],
+                    "possible_fixes": [
+                        "Reorder AppHdr children to: CharSet (if present), Fr, To, BizMsgIdr, MsgDefIdr, BizSvc, MktPrctc (if present), CreDt, then optional fields.",
+                        "The AI Fix engine automatically resequences all present AppHdr children into the correct canonical order."
+                    ]
+                }
+            ]
+        },
+        {
+            "tag": "AppHdr/CharSet",
+            "xml_element": "CharSet",
+            "xpath": "/AppHdr/CharSet",
+            "occurrence": "[0..1]",
+            "mandatory": false,
+            "description": "Character set used in the message. When present, must be the FIRST child of AppHdr (before Fr). Typical value: 'UTF-8'. SMPL-CharSet or other custom values are accepted per head.001.001.02.",
+            "errors": [
+                {
+                    "error_id": "CHARSET_OUT_OF_ORDER",
+                    "error_code": "HEADER_VAL",
+                    "severity": "Error",
+                    "description": "CharSet is present but not in the first position inside AppHdr. The XSD sequence requires CharSet before Fr.",
+                    "affected_tags": ["AppHdr/CharSet"],
+                    "possible_fixes": [
+                        "Move <CharSet> to be the first child inside <AppHdr>, before <Fr>.",
+                        "Use the AI Fix to automatically resequence all AppHdr children into the correct order."
+                    ]
                 }
             ]
         },
@@ -1472,14 +1512,16 @@
     ],
     "tag_insertion_order": {
         "AppHdr": [
+            "CharSet",
             "Fr",
             "To",
             "BizMsgIdr",
             "MsgDefIdr",
             "BizSvc",
+            "MktPrctc",
             "CreDt",
             "CpyDplct",
-            "PssblDplct",
+            "Pssbl",
             "Prty",
             "Sgntr",
             "Rltd"

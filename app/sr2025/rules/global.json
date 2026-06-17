@@ -174,7 +174,7 @@
         "fix": "Use a valid Private scheme code like 'CCPT' (Passport) or 'NIDN'.",
         "type": "expression",
         "selector": ".*\\.PrvtId\\.Othr\\.SchmeNm\\.Cd$",
-        "expression": "VALUE in ['CCPT', 'DRLC', 'NIDN', 'SSSN', 'PASSPORT', 'NATIONALID']",
+        "expression": "VALUE in ['CCPT', 'DRLC', 'NIDN', 'SSSN', 'PASSPORT', 'NATIONALID', 'SEPA']",
         "severity": "ERROR",
         "layer": 3
     },

@@ -126,6 +126,68 @@
         "fix": "Set <BtchBookg>true</BtchBookg> or <BtchBookg>false</BtchBookg>."
     },
     {
+        "rule_id": "PAIN008_NBOFTXS_REQUIRED",
+        "description": "pain.008: GrpHdr.NbOfTxs is mandatory.",
+        "condition": "exists(Document.CstmrDrctDbtInitn.GrpHdr)",
+        "mandatory_fields": [
+            "Document.CstmrDrctDbtInitn.GrpHdr.NbOfTxs"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PAIN008_INITGPTY_REQUIRED",
+        "description": "pain.008: Initiating Party (InitgPty) is mandatory.",
+        "condition": "exists(Document.CstmrDrctDbtInitn.GrpHdr)",
+        "mandatory_fields": [
+            "Document.CstmrDrctDbtInitn.GrpHdr.InitgPty"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PAIN008_INITGPTY_NM_REQUIRED",
+        "description": "pain.008: Initiating Party Name (InitgPty/Nm) is mandatory under CBPR+.",
+        "condition": "exists(Document.CstmrDrctDbtInitn.GrpHdr.InitgPty)",
+        "mandatory_fields": [
+            "Document.CstmrDrctDbtInitn.GrpHdr.InitgPty.Nm"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PAIN008_PMTINF_REQUIRED",
+        "description": "pain.008: At least one PmtInf block is mandatory.",
+        "condition": "exists(Document.CstmrDrctDbtInitn)",
+        "mandatory_fields": [
+            "Document.CstmrDrctDbtInitn.PmtInf"
+        ],
+        "severity": "ERROR",
+        "layer": 3
+    },
+    {
+        "rule_id": "PAIN008_REQDCOLLTNDT_REQUIRED",
+        "description": "pain.008: PmtInf.ReqdColltnDt (Requested Collection Date) is mandatory.",
+        "selector": "^Document\\.CstmrDrctDbtInitn\\.PmtInf(\\[\\d+\\])?$",
+        "type": "expression",
+        "expression": "exists(KEY + '.ReqdColltnDt')",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "PmtInf must contain <ReqdColltnDt> (Requested Collection Date).",
+        "fix": "Add <ReqdColltnDt>YYYY-MM-DD</ReqdColltnDt> inside each <PmtInf>."
+    },
+    {
+        "rule_id": "PAIN008_DBTR_NM_REQUIRED",
+        "description": "pain.008: Each DrctDbtTxInf.Dbtr must have a name.",
+        "selector": "^Document\\.CstmrDrctDbtInitn\\.PmtInf(\\[\\d+\\])?\\.DrctDbtTxInf(\\[\\d+\\])?\\.Dbtr$",
+        "type": "expression",
+        "expression": "exists(KEY + '.Nm')",
+        "severity": "ERROR",
+        "layer": 3,
+        "errorMessage": "DrctDbtTxInf.Dbtr requires a <Nm> element.",
+        "fix": "Add <Nm>Debtor Name</Nm> inside <Dbtr>."
+    },
+    {
         "rule_id": "PAIN008_PMTMTD_MUST_BE_DD",
         "description": "pain.008: Payment Method must be 'DD' for direct debit initiation.",
         "selector": "^Document\\.CstmrDrctDbtInitn\\.PmtInf(\\[\\d+\\])?\\.PmtMtd$",
