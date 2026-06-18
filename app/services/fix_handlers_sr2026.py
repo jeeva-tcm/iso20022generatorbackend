@@ -393,6 +393,116 @@ def handle(suggester, code: str, msg: str, root, fix_hint: str = "") -> Optional
             if _ser != _orig:
                 return FixSuggestion(suggester._xpath_of(_fidbt), _orig, _ser, code, msg, "high")
 
+    # ── SCHEMA_VAL SttlmMtd: stray duplicate at GrpHdr level ─────────────────
+    # GrpHdr's XSD content model is MsgId, CreDtTm, ..., SttlmInf{SttlmMtd, ...}
+    # — SttlmMtd is only valid nested inside SttlmInf, never as a direct GrpHdr
+    # child. Malformed messages sometimes carry a stray top-level <SttlmMtd>
+    # (often positioned before MsgId) in addition to the correct nested one.
+    # The XSD raises SCHEMA_VAL "Unexpected field 'SttlmMtd'" on the stray
+    # element. Fix: remove the direct-child stray, keep SttlmInf/SttlmMtd.
+    if code == "SCHEMA_VAL" and "sttlmmtd" in msg.lower() and "unexpected" in msg.lower():
+        for _grphdr in root.iter():
+            if not isinstance(_grphdr.tag, str) or _localname(_grphdr) != "GrpHdr":
+                continue
+            _stray = [c for c in _grphdr if isinstance(c.tag, str) and _localname(c) == "SttlmMtd"]
+            if not _stray:
+                continue
+            _sttlminf = _grphdr.xpath("*[local-name()='SttlmInf']")
+            if not _sttlminf or not _sttlminf[0].xpath("*[local-name()='SttlmMtd']"):
+                continue  # no correctly-placed SttlmMtd to fall back on — leave for shared chain
+            from app.services.fix_suggester import FixSuggestion
+            _orig = suggester._serialize(_grphdr)
+            _new = suggester._copy(_grphdr)
+            for _s in _new.xpath("*[local-name()='SttlmMtd']"):
+                _new.remove(_s)
+            _ser = suggester._serialize(_new)
+            if _ser != _orig:
+                return FixSuggestion(suggester._xpath_of(_grphdr), _orig, _ser, code, msg, "high")
+
+    # ── pacs.009 SCHEMA_VAL BICFI: orphaned reimbursement-agent fragments at
+    #    GrpHdr level ───────────────────────────────────────────────────────
+    # SettlementInstruction7's XSD sequence is SttlmMtd, InstgRmbrsmntAgt,
+    # InstgRmbrsmntAgtAcct, InstdRmbrsmntAgt, InstdRmbrsmntAgtAcct — all nested
+    # INSIDE SttlmInf, never as direct GrpHdr children. Some malformed pacs.009
+    # ADV/COV messages carry the pieces of an InstgRmbrsmntAgt/InstdRmbrsmntAgt
+    # block flattened directly under GrpHdr instead: a stray empty <BICFI/>,
+    # an orphan <FinInstnId> (the BICFI's real container), and an empty
+    # <InstgRmbrsmntAgt/>/<InstdRmbrsmntAgt/> (the FinInstnId's real container).
+    # The XSD raises SCHEMA_VAL "Unexpected field 'BICFI'" on the stray leaf.
+    # Fix: reassemble — move the orphan FinInstnId into the empty
+    # Instg/InstdRmbrsmntAgt wrapper, move that wrapper inside SttlmInf right
+    # after SttlmMtd, and drop the now-redundant stray top-level BICFI.
+    if code == "SCHEMA_VAL" and "bicfi" in msg.lower() and "unexpected" in msg.lower():
+        for _grphdr in root.iter():
+            if not isinstance(_grphdr.tag, str) or _localname(_grphdr) != "GrpHdr":
+                continue
+            _direct = [c for c in _grphdr if isinstance(c.tag, str)]
+            _stray_bicfi = [c for c in _direct if _localname(c) == "BICFI"]
+            _orphan_fininstnid = [c for c in _direct if _localname(c) == "FinInstnId"]
+            _rmbrsmnt_wrappers = [c for c in _direct
+                                   if _localname(c) in ("InstgRmbrsmntAgt", "InstdRmbrsmntAgt")]
+            _sttlminf = _grphdr.xpath("*[local-name()='SttlmInf']")
+            if not (_stray_bicfi and _orphan_fininstnid and _rmbrsmnt_wrappers and _sttlminf):
+                continue
+            from app.services.fix_suggester import FixSuggestion
+            _orig = suggester._serialize(_grphdr)
+            _new = suggester._copy(_grphdr)
+            _new_direct = [c for c in _new if isinstance(c.tag, str)]
+            _n_bicfi = [c for c in _new_direct if _localname(c) == "BICFI"]
+            _n_fininstnid = [c for c in _new_direct if _localname(c) == "FinInstnId"]
+            _n_wrappers = [c for c in _new_direct
+                           if _localname(c) in ("InstgRmbrsmntAgt", "InstdRmbrsmntAgt")]
+            _n_sttlminf = _new.xpath("*[local-name()='SttlmInf']")[0]
+            # Reassemble: orphan FinInstnId (carrying the real BICFI text) into
+            # the empty wrapper, wrapper into SttlmInf after SttlmMtd.
+            for _w, _fi in zip(_n_wrappers, _n_fininstnid):
+                _w.append(_fi)
+                _new.remove(_w)
+                _sttlm_mtd = _n_sttlminf.xpath("*[local-name()='SttlmMtd']")
+                if _sttlm_mtd:
+                    _sttlm_mtd[0].addnext(_w)
+                else:
+                    _n_sttlminf.insert(0, _w)
+            # Drop the stray top-level BICFI(s) and any unmatched orphans.
+            for _b in _n_bicfi:
+                _new.remove(_b)
+            for _fi in _n_fininstnid:
+                if _fi.getparent() is _new:
+                    _new.remove(_fi)
+            _ser = suggester._serialize(_new)
+            if _ser != _orig:
+                return FixSuggestion(suggester._xpath_of(_grphdr), _orig, _ser, code, msg, "high")
+
+    # ── pacs.008/009/003 SCHEMA_VAL: stray wrong-namespace duplicate tx block ──
+    # Some malformed messages carry a SECOND CdtTrfTxInf/DrctDbtTxInf/TxInf block
+    # as a direct child of Document, namespaced to a foreign URI (e.g. the
+    # envelope namespace) instead of the Document's own namespace. lxml treats it
+    # as an orphan in a different namespace, so the XSD validator raises
+    # "Unexpected field 'CdtTrfTxInf' ..." for it, and separately NbOfTxs no
+    # longer matches the real (correctly-namespaced) block count. Fix: drop the
+    # foreign-namespace stray(s) from Document, then resync NbOfTxs.
+    _tx_block_names = {"CdtTrfTxInf", "DrctDbtTxInf", "TxInf", "CdtInstr"}
+    if (code == "SCHEMA_VAL" and "unexpected" in msg.lower()
+            and any(n.lower() in msg.lower() for n in _tx_block_names)):
+        _doc = _first(root, "//*[local-name()='Document']")
+        if _doc is not None:
+            _doc_ns = etree.QName(_doc.tag).namespace or ""
+            _strays = [c for c in _doc if isinstance(c.tag, str)
+                       and _localname(c) in _tx_block_names
+                       and (etree.QName(c.tag).namespace or "") != _doc_ns]
+            if _strays:
+                from app.services.fix_suggester import FixSuggestion
+                _orig = suggester._serialize(_doc)
+                _new = suggester._copy(_doc)
+                _new_ns = etree.QName(_new.tag).namespace or ""
+                for _s in [c for c in _new if isinstance(c.tag, str)
+                           and _localname(c) in _tx_block_names
+                           and (etree.QName(c.tag).namespace or "") != _new_ns]:
+                    _new.remove(_s)
+                _ser = suggester._serialize(_new)
+                if _ser != _orig:
+                    return FixSuggestion(suggester._xpath_of(_doc), _orig, _ser, code, msg, "high")
+
     # ── MISSING_UNDRLYG_CSTMR_CDT_TRF — insert minimal UndrlygCstmrCdtTrf ───
     # pacs.009 COV requires UndrlygCstmrCdtTrf inside each CdtTrfTxInf.
     # When tag-removal strips it, insert a minimal placeholder with Dbtr/Cdtr Nm.

@@ -152,6 +152,15 @@
       "error_code": "MISSING_LEI_ADVISORY",
       "severity": "Warning",
       "error_text": "Agent FinInstnId is missing a recommended LEI."
+    },
+    {
+      "rule_id": "CAMT055_TXINF_SEQ",
+      "name": "TxInfMandatorySequence",
+      "description": "TxInf in camt.055 CBPR+ SR2026 requires OrgnlEndToEndId and OrgnlUETR before OrgnlInstdAmt. Both are mandatory per the SR2026 XSD (PaymentTransaction109__1 complex type).",
+      "error_code": "SCHEMA_VAL",
+      "severity": "Fatal",
+      "error_text": "OrgnlInstdAmt not allowed here — OrgnlEndToEndId and OrgnlUETR are mandatory and must precede it.",
+      "fix": "Insert <OrgnlEndToEndId>{original-e2e-id}</OrgnlEndToEndId> and <OrgnlUETR>{uuid-v4}</OrgnlUETR> before <OrgnlInstdAmt> in TxInf."
     }
   ],
   "cbpr_plus_formal_rules": [
@@ -4480,8 +4489,8 @@
       "xml_element": "OrgnlEndToEndId",
       "xpath": "/Document/CstmrPmtCxlReq/Undrlyg/OrgnlPmtInfAndCxl/TxInf/OrgnlEndToEndId",
       "occurrence": "[0..1]",
-      "mandatory": false,
-      "description": "Original End To End Identification",
+      "mandatory": true,
+      "description": "Original End-To-End Identification — MANDATORY in CBPR+ SR2026 camt.055 TxInf (XSD minOccurs=1). Must appear after Case/OrgnlInstrId and before OrgnlUETR.",
       "datatype": "text{1,35}",
       "max_length": 35,
       "format_constraints_ref": [
@@ -4495,16 +4504,11 @@
       ],
       "errors": [
         {
-          "error_id": "ORGNLENDTOENDID_TOO_LONG",
-          "error_code": "ID_LENGTH_ERROR",
-          "severity": "Fatal",
-          "description": "Original End To End Identification exceeds maximum length of 35 characters.",
-          "affected_tags": [
-            "Undrlyg/OrgnlPmtInfAndCxl/TxInf/OrgnlEndToEndId"
-          ],
-          "possible_fixes": [
-            "Truncate to at most 35 characters."
-          ]
+          "error_id": "MISSING_ORGNLENDTOENDID",
+          "code": "SCHEMA_VAL",
+          "message": "OrgnlEndToEndId is mandatory in TxInf per CBPR+ SR2026 camt.055 XSD sequence.",
+          "fix": "Insert <OrgnlEndToEndId> before <OrgnlUETR> in TxInf. Use the original payment EndToEndId value.",
+          "example": "<OrgnlEndToEndId>E2E-ORIG-001</OrgnlEndToEndId>"
         }
       ]
     },
@@ -4513,8 +4517,8 @@
       "xml_element": "OrgnlUETR",
       "xpath": "/Document/CstmrPmtCxlReq/Undrlyg/OrgnlPmtInfAndCxl/TxInf/OrgnlUETR",
       "occurrence": "[0..1]",
-      "mandatory": false,
-      "description": "Original UETR",
+      "mandatory": true,
+      "description": "Original UETR — MANDATORY in CBPR+ SR2026 camt.055 TxInf (XSD minOccurs=1). Must appear after OrgnlEndToEndId and before OrgnlInstdAmt. Must be a valid UUID v4.",
       "datatype": "text",
       "format_constraints_ref": [
         {
@@ -4526,16 +4530,11 @@
       ],
       "errors": [
         {
-          "error_id": "ORGNLUETR_PATTERN_ERROR",
-          "error_code": "INVALID_FORMAT",
-          "severity": "Fatal",
-          "description": "Original UETR does not match the required format pattern.",
-          "affected_tags": [
-            "Undrlyg/OrgnlPmtInfAndCxl/TxInf/OrgnlUETR"
-          ],
-          "possible_fixes": [
-            "Value must match pattern: [a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}."
-          ]
+          "error_id": "MISSING_ORGNLUETR",
+          "code": "SCHEMA_VAL",
+          "message": "OrgnlUETR is mandatory in TxInf per CBPR+ SR2026 camt.055 XSD sequence.",
+          "fix": "Insert <OrgnlUETR> after <OrgnlEndToEndId> and before <OrgnlInstdAmt> in TxInf. Value must be a UUID v4.",
+          "example": "<OrgnlUETR>xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx</OrgnlUETR>"
         }
       ]
     },
@@ -4544,8 +4543,8 @@
       "xml_element": "OrgnlInstdAmt",
       "xpath": "/Document/CstmrPmtCxlReq/Undrlyg/OrgnlPmtInfAndCxl/TxInf/OrgnlInstdAmt",
       "occurrence": "[0..1]",
-      "mandatory": false,
-      "description": "Original Instructed Amount",
+      "mandatory": true,
+      "description": "Original Instructed Amount — MANDATORY in CBPR+ SR2026 camt.055 TxInf (XSD minOccurs=1). Must appear after OrgnlUETR. Include Ccy attribute.",
       "datatype": "0 <= decimal",
       "format_constraints_ref": [
         {
@@ -4557,16 +4556,11 @@
       ],
       "errors": [
         {
-          "error_id": "ORGNLINSTDAMT_PATTERN_ERROR",
-          "error_code": "INVALID_FORMAT",
-          "severity": "Fatal",
-          "description": "Original Instructed Amount does not match the required format pattern.",
-          "affected_tags": [
-            "Undrlyg/OrgnlPmtInfAndCxl/TxInf/OrgnlInstdAmt"
-          ],
-          "possible_fixes": [
-            "Value must match pattern: td = 18fd = 5."
-          ]
+          "error_id": "SCHEMA_VAL_ORGNLINSTDAMT",
+          "code": "SCHEMA_VAL",
+          "message": "OrgnlInstdAmt appears at wrong position — OrgnlEndToEndId and OrgnlUETR must precede it in the TxInf sequence.",
+          "fix": "Insert missing <OrgnlEndToEndId> and <OrgnlUETR> before <OrgnlInstdAmt> in TxInf.",
+          "example": "<OrgnlEndToEndId>E2E-ORIG-001</OrgnlEndToEndId><OrgnlUETR>uuid-v4</OrgnlUETR><OrgnlInstdAmt Ccy=\"EUR\">1000.00</OrgnlInstdAmt>"
         }
       ]
     },

@@ -244,6 +244,29 @@ class NewMandatoryFieldsValidator:
                     fix=biz_msg_missing_r.get("fix", "Add a Business Message ID to the AppHdr."),
                 ))
 
+            # ── BizSvc: missing check ──────────────────────────────────
+            # BizSvc is minOccurs="0" in the base head.001.001.02 XSD, so plain
+            # schema validation never flags its absence — but CBPR+ usage rules
+            # make it mandatory for every CBPR+ message. Without this check, a
+            # message missing BizSvc entirely skips every value-check below
+            # (each is gated on "if biz_svc_nodes:") and passes silently through
+            # the whole SR2026 pipeline, while MyStandards correctly rejects it
+            # (CreDt becomes "unexpected" because BizSvc's mandatory slot before
+            # it is empty). Mirrors HEAD001_BIZSVC_MISSING from the SR2025 engine
+            # (app/sr2025/validation/validators/engine.py) which SR2026Validator
+            # never calls — this is the SR2026-pipeline equivalent.
+            biz_svc_missing_r = hdr_rules.get("bizSvcMissing", {})
+            if not biz_svc_nodes:
+                report.add_issue(ValidationIssue(
+                    severity=biz_svc_missing_r.get("severity", "ERROR"),
+                    code=biz_svc_missing_r.get("code", "MISSING_BIZ_SVC"),
+                    layer=2,
+                    path="//AppHdr/BizSvc",
+                    message=_msg(biz_svc_missing_r, "Business Service (BizSvc) is missing from the header."),
+                    line=hdr_src,
+                    fix=biz_svc_missing_r.get("fix", "Add a Business Service identifier to the AppHdr."),
+                ))
+
             # ── pacs.003: BizSvc must be swift.cbprplus.03 ────────────
             if is_pacs003 and not is_pacs008:
                 expected_003 = "swift.cbprplus.03"
