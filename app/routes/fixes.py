@@ -5,6 +5,7 @@ POST /fixes/suggest        → single-issue fix suggestion
 POST /fixes/suggest-batch  → multi-issue fix suggestions (max 20)
 POST /fixes/apply          → apply a single fix to XML
 POST /fixes/apply-batch    → apply multiple fixes to XML
+POST /fixes/auto-fix       → iterative validate→fix→re-validate until clean
 """
 from fastapi import APIRouter, HTTPException, Header
 
@@ -20,6 +21,8 @@ from app.schemas.fixes import (
     ApplyResponse,
     FeedbackRequest,
     FeedbackResponse,
+    AutoFixRequest,
+    AutoFixResponse,
 )
 from app.services.fix_suggester import (
     fix_suggester, fix_suggester_sr2025, fix_suggester_sr2026, FixApplyError,
@@ -100,6 +103,109 @@ def apply_fix_batch(req: ApplyBatchRequest):
         return ApplyResponse(new_xml=new_xml)
     except FixApplyError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/auto-fix", response_model=AutoFixResponse)
+async def auto_fix(req: AutoFixRequest, x_sr_version: Optional[str] = Header(default=None)):
+    """Iteratively validate → suggest → apply until the message is clean (or no
+    further actionable fix can be made).  Returns the repaired XML plus stats.
+
+    This is what the UI calls when every visible issue is selected — it handles
+    cascading errors that a single-pass batch cannot resolve because each fix
+    may expose new issues (e.g. fixing an empty AppHdr reveals BizSvc mismatch).
+    """
+    import re as _re
+    from app.sr2026.validation.validators.validator import SR2026Validator
+
+    version = _resolve_sr_version(x_sr_version)
+    suggester = _suggester_for(version)
+
+    # Auto-detect message type from namespace URI when not supplied
+    msg_type = req.message_type or "Auto-detect"
+    if msg_type == "Auto-detect":
+        ns_matches = _re.findall(
+            r'xmlns(?::\w+)?=["\']urn:iso:std:iso:20022:tech:xsd:'
+            r'([a-z]{4}\.\d{3}\.\d{3}\.\d{2})["\']',
+            req.xml,
+        )
+        msg_type = "pacs.008.001.08"
+        for _m in ns_matches:
+            if not _m.startswith("head."):
+                msg_type = _m
+                break
+
+    _validator = SR2026Validator()
+    current_xml = req.xml
+    total_fixes = 0
+    rounds_done = 0
+    MAX_ROUNDS = 5
+
+    for _ in range(MAX_ROUNDS):
+        try:
+            result = await _validator.validate(current_xml, msg_type)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Validation error: {e}")
+
+        errors = result.errors  # List[ApiIssue], severity == "ERROR"
+        if not errors:
+            break
+
+        issues = [
+            {
+                "severity": e.severity,
+                "layer": e.layer,
+                "code": e.code,
+                "path": e.path,
+                "message": e.message,
+                "fix_suggestion": e.fix or "",
+                "related_test": "",
+                "line": e.line,
+            }
+            for e in errors[:20]
+        ]
+
+        suggestions = suggester.suggest_batch(current_xml, issues, version=version)
+        fixes = [
+            {"xpath": s.xpath, "fragment_xml": s.fragment_xml}
+            for s in suggestions
+            if s.confidence in ("high", "low")
+            and s.xpath
+            and s.fragment_xml
+            and s.fragment_xml != s.original_fragment
+        ]
+
+        if not fixes:
+            break  # no actionable fix found — stop to avoid infinite loop
+
+        try:
+            current_xml = suggester.apply_batch(current_xml, fixes)
+            total_fixes += len(fixes)
+            rounds_done += 1
+        except FixApplyError:
+            break
+
+    # Final validation to report remaining errors to the UI
+    try:
+        final = await _validator.validate(current_xml, msg_type)
+        remaining = final.errors
+    except Exception:
+        remaining = []
+
+    return AutoFixResponse(
+        new_xml=current_xml,
+        rounds=rounds_done,
+        fixes_applied=total_fixes,
+        remaining_errors=len(remaining),
+        remaining_details=[
+            {
+                "severity": e.severity,
+                "code": e.code,
+                "message": e.message,
+                "path": e.path,
+            }
+            for e in remaining
+        ],
+    )
 
 
 @router.post("/feedback", response_model=FeedbackResponse)

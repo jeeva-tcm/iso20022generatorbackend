@@ -3527,6 +3527,107 @@ class FixSuggester:
                 return val
         return None
 
+    def _rebuild_empty_apphdr(self, root: etree._Element, xml: str,
+                               apphdr: etree._Element) -> Optional["FixSuggestion"]:
+        """
+        Rebuild an entirely empty <AppHdr></AppHdr> by harvesting field values
+        from the Document body. Returns a FixSuggestion replacing the whole
+        AppHdr element, or None when the minimum required data cannot be found.
+
+        Called when HEADER_VAL fires for a missing Fr/To/BizMsgIdr/MsgDefIdr/CreDt
+        and AppHdr has no direct children at all — i.e. the header block exists
+        structurally but is completely empty.
+        """
+        import datetime as _dt
+
+        ah_ns = etree.QName(apphdr.tag).namespace or ""
+
+        # ── Fr BIC (sender): DbtrAgt → InstgAgt → any agent BIC in document ──
+        _fr_bic = None
+        for _cand in ("DbtrAgt", "InstgAgt", "CdtrAgt", "FwdgAgt"):
+            _fr_bic = self._harvest_under(root, _cand, "BICFI")
+            if _fr_bic:
+                break
+        if not _fr_bic:
+            for _el in root.iter():
+                if isinstance(_el.tag, str) and etree.QName(_el.tag).localname == "BICFI":
+                    _par = _el.getparent()
+                    _par_local = etree.QName(_par.tag).localname if _par is not None and isinstance(_par.tag, str) else ""
+                    if _par_local != "AppHdr":
+                        _fr_bic = (_el.text or "").strip() or None
+                        if _fr_bic:
+                            break
+        _fr_bic = _fr_bic or "DEUTDEFFXXX"
+
+        # ── To BIC (receiver): CdtrAgt → InstdAgt → any BIC different from Fr ──
+        _to_bic = None
+        for _cand in ("CdtrAgt", "InstdAgt", "FwdgAgt"):
+            _to_bic = self._harvest_under(root, _cand, "BICFI")
+            if _to_bic and _to_bic != _fr_bic:
+                break
+        if not _to_bic or _to_bic == _fr_bic:
+            for _cand in ("IntrmyAgt1", "IntrmyAgt2", "DbtrAgt", "InstgAgt"):
+                _cand_bic = self._harvest_under(root, _cand, "BICFI")
+                if _cand_bic and _cand_bic != _fr_bic:
+                    _to_bic = _cand_bic
+                    break
+        _to_bic = _to_bic or "CHASUS33XXX"
+
+        # ── BizMsgIdr: mirror GrpHdr/MsgId ────────────────────────────────────
+        _biz_msg_id = (self._harvest_under(root, "GrpHdr", "MsgId")
+                       or self._harvest_value(root, "MsgId")
+                       or "MSG-2026-001")
+
+        # ── MsgDefIdr: extract message type from Document namespace URI ────────
+        # Use findall and skip head.* entries — AppHdr's head.001.001.02 namespace
+        # appears BEFORE the Document namespace in the XML string, so re.search would
+        # return "head.001.001.02" instead of the actual message type (e.g. pain.001.001.09).
+        _msg_def_idr = ""
+        for _ns_cand in re.findall(r"urn:iso:std:iso:20022:tech:xsd:([\w.]+)", xml):
+            if not _ns_cand.startswith("head."):
+                _msg_def_idr = _ns_cand
+                break
+        _msg_def_idr = _msg_def_idr or "pain.001.001.09"
+
+        # ── BizSvc: derive from message family ────────────────────────────────
+        _msg_family = _msg_def_idr.rsplit(".", 2)[0] if "." in _msg_def_idr else ""
+        _biz_svc = _cbpr_bizsvc_value(_msg_family, xml) or "swift.cbprplus.02"
+
+        # ── CreDt: from GrpHdr/CreDtTm, else now (UTC offset form) ───────────
+        _cre_dt = (self._harvest_under(root, "GrpHdr", "CreDtTm")
+                   or self._harvest_value(root, "CreDtTm")
+                   or self._harvest_value(root, "CreDt"))
+        if not _cre_dt:
+            _cre_dt = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+
+        def _xe(v: str) -> str:
+            return v.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+        _ah_ns_attr = f' xmlns="{ah_ns}"' if ah_ns else ""
+        _rebuilt_str = (
+            f"<AppHdr{_ah_ns_attr}>\n"
+            f"        <Fr><FIId><FinInstnId><BICFI>{_xe(_fr_bic)}</BICFI></FinInstnId></FIId></Fr>\n"
+            f"        <To><FIId><FinInstnId><BICFI>{_xe(_to_bic)}</BICFI></FinInstnId></FIId></To>\n"
+            f"        <BizMsgIdr>{_xe(_biz_msg_id)}</BizMsgIdr>\n"
+            f"        <MsgDefIdr>{_xe(_msg_def_idr)}</MsgDefIdr>\n"
+            f"        <BizSvc>{_xe(_biz_svc)}</BizSvc>\n"
+            f"        <CreDt>{_xe(_cre_dt)}</CreDt>\n"
+            f"    </AppHdr>"
+        )
+        try:
+            _new_ah = etree.fromstring(_rebuilt_str.encode("utf-8"))
+        except Exception:
+            return None
+
+        return FixSuggestion(
+            xpath=self._xpath_of(apphdr),
+            original_fragment=self._serialize(apphdr),
+            fragment_xml=self._serialize(_new_ah),
+            issue_code="HEADER_VAL",
+            issue_message="Rebuilt empty AppHdr with Fr, To, BizMsgIdr, MsgDefIdr, BizSvc and CreDt harvested from the document body.",
+            confidence="high",
+        )
+
     def _resolve_placeholders(self, raw_xml: str, tag_name: str,
                                root: Optional[etree._Element]) -> str:
         """
@@ -3724,6 +3825,28 @@ class FixSuggester:
             except Exception:
                 pass
 
+        # ── Early-exit: completely empty AppHdr + HEADER_VAL ──────────────────
+        # Must run BEFORE the _has_missing_decl / _try_xml_recovery block below.
+        # HEADER_VAL messages contain "missing" + "header" so _has_missing_decl
+        # would be True, causing _try_xml_recovery Stage -1 to return a whole-doc
+        # fix that only adds <?xml?> — _rebuild_empty_apphdr never runs.
+        # Intercept here to harvest real BICs/IDs from the Document body instead.
+        if code == "HEADER_VAL":
+            try:
+                _eah_root = etree.fromstring(
+                    xml.encode("utf-8"),
+                    etree.XMLParser(recover=True, no_network=True),
+                )
+                _eah = _eah_root.find(".//{*}AppHdr")
+                if _eah is None and etree.QName(_eah_root.tag).localname == "AppHdr":
+                    _eah = _eah_root
+                if _eah is not None and not any(isinstance(c.tag, str) for c in _eah):
+                    _early = self._rebuild_empty_apphdr(_eah_root, xml, _eah)
+                    if _early is not None:
+                        return _early
+            except Exception:
+                pass
+
         # ── XML Syntax / reserved-character issues ────────────────────────────
         # Layer 1 emits code "XML Syntax Error" (with space), Layer 2 emits
         # "XML_SYNTAX". Both mean the document can't be parsed. Route to
@@ -3741,7 +3864,8 @@ class FixSuggester:
             re.search(r'&(?!(?:amp|lt|gt|apos|quot|#[0-9]+|#x[0-9a-fA-F]+);)', xml)
         )
         _has_missing_decl = (
-            "missing" in msg.lower()
+            code != "HEADER_VAL"  # HEADER_VAL "missing element" is handled above
+            and "missing" in msg.lower()
             and any(k in msg.lower() for k in ("declaration", "header", "xml"))
         )
         _msg_lower = msg.lower()
@@ -4090,6 +4214,46 @@ class FixSuggester:
         # namespace-aware, KB-ordered, indented inserter instead.
         _mh = re.search(r"(?:^|/)AppHdr/(\w+)$", path)
 
+        # ── Route: HEADER_VAL for AppHdr Fr/To Party44Choice conflict ─────────
+        # AppHdr Fr and To are Party44Choice: either <OrgId> OR <FIId>, never
+        # both. The validator collapses the path and reports the conflict as:
+        #   path //AppHdr/OrgId → "Character content not allowed" (OrgId has
+        #                          text in element-only type, or is present when
+        #                          FIId is also present)
+        #   path //AppHdr/FIId  → "Unexpected field FIId" (FIId follows OrgId
+        #                          choice branch — both branches present)
+        # The intermediate Fr/To level is ABSENT from the path, so match just
+        # the element name and then scan ALL Fr and To children for the conflict.
+        _apphdr_orgfiid_m = re.search(r"(?:^|/)AppHdr/(OrgId|FIId)$", path)
+        if code == "HEADER_VAL" and _apphdr_orgfiid_m:
+            _apphdr_pr = root.find(".//{*}AppHdr")
+            if _apphdr_pr is None and etree.QName(root.tag).localname == "AppHdr":
+                _apphdr_pr = root
+            if _apphdr_pr is not None:
+                for _party_ln_pr in ("Fr", "To"):
+                    _party_el_pr = next(
+                        (c for c in _apphdr_pr if isinstance(c.tag, str)
+                         and etree.QName(c.tag).localname == _party_ln_pr),
+                        None
+                    )
+                    if _party_el_pr is None:
+                        continue
+                    _orgid_pr = next(
+                        (c for c in _party_el_pr if isinstance(c.tag, str)
+                         and etree.QName(c.tag).localname == "OrgId"),
+                        None
+                    )
+                    _fiid_pr = next(
+                        (c for c in _party_el_pr if isinstance(c.tag, str)
+                         and etree.QName(c.tag).localname == "FIId"),
+                        None
+                    )
+                    if _orgid_pr is not None and _fiid_pr is not None:
+                        # Both branches of the choice are present — remove OrgId.
+                        _rem_pr = self._remove_element_fix(_orgid_pr, code, msg)
+                        if _rem_pr is not None:
+                            return _rem_pr
+
         # ── Route: AppHdr child exists but is OUT OF ORDER ───────────────────
         # When HEADER_VAL fires because a named AppHdr element is present but
         # in the wrong position (e.g. CharSet after Fr/To instead of first),
@@ -4104,7 +4268,18 @@ class FixSuggester:
             if _apphdr_oos is None and etree.QName(root.tag).localname == "AppHdr":
                 _apphdr_oos = root
             if _apphdr_oos is not None and self._child_exists(_apphdr_oos, _tag_oos) is not None:
-                # Element exists — it's out of order. Resequence all children.
+                # Element exists. If the error message says the field is "missing", a
+                # previous fix in the same batch already added the full AppHdr block.
+                # Return a resolved suggestion so suggest_batch can detect the overlap
+                # and mark this issue as already handled — no spurious resequencing.
+                if "missing" in msg.lower():
+                    _ah_str = self._serialize(_apphdr_oos)
+                    return FixSuggestion(
+                        self._xpath_of(_apphdr_oos), _ah_str, _ah_str,
+                        code, msg, "resolved",
+                    )
+                # Element exists and issue is NOT about it being missing — genuine
+                # out-of-order placement. Resequence all AppHdr children.
                 try:
                     _parser_oos = etree.XMLParser(remove_blank_text=False, no_network=True, recover=True)
                     _r_oos = etree.fromstring(xml.encode("utf-8"), _parser_oos)
@@ -4157,6 +4332,15 @@ class FixSuggester:
                     if _vfix is not None:
                         return _vfix
                 else:
+                    # When AppHdr has NO children at all, rebuild the entire header
+                    # in one shot by harvesting Fr/To/BizMsgIdr/MsgDefIdr/CreDt from
+                    # the Document body — individual element insertion fails for Fr/To
+                    # because they are complex (element-only) types with no template.
+                    _ah_direct = [c for c in _apphdr if isinstance(c.tag, str)]
+                    if not _ah_direct:
+                        _full_fix = self._rebuild_empty_apphdr(root, xml, _apphdr)
+                        if _full_fix is not None:
+                            return _full_fix
                     _res = self._try_insert_missing_sibling(
                         root, xml, code, msg, fix_hint,
                         explicit_parent=_apphdr, explicit_missing=_mh.group(1),
@@ -5573,6 +5757,36 @@ class FixSuggester:
                         _rem = self._remove_element_fix(_eel, code, msg)
                         if _rem is not None:
                             return _rem
+                    # AppHdr special: OrgId inside Fr or To is one branch of
+                    # Party44Choice (the other is FIId). When OrgId is empty AND
+                    # the parent already has a FIId sibling, remove OrgId so the
+                    # choice has exactly one valid branch.
+                    if _ec_name == "OrgId":
+                        # Search both empty OrgId (captured above in _eel) AND
+                        # OrgId that has text content but no child elements —
+                        # text in an element-only type is equally invalid.
+                        _orgid_cands_all = [
+                            _x for _x in root.iter()
+                            if isinstance(_x.tag, str)
+                            and etree.QName(_x.tag).localname == "OrgId"
+                            and not any(isinstance(_ch.tag, str) for _ch in _x)
+                        ]
+                        for _orgid_cand in (_orgid_cands_all if _orgid_cands_all else ([_eel] if _eel is not None else [])):
+                            _erc_parent = _orgid_cand.getparent()
+                            if _erc_parent is None:
+                                continue
+                            _erc_parent_ln = etree.QName(_erc_parent.tag).localname if isinstance(_erc_parent.tag, str) else ""
+                            if _erc_parent_ln not in ("Fr", "To"):
+                                continue
+                            _sibling_fiid = next(
+                                (c for c in _erc_parent if isinstance(c.tag, str)
+                                 and etree.QName(c.tag).localname == "FIId"),
+                                None
+                            )
+                            if _sibling_fiid is not None:
+                                _rem = self._remove_element_fix(_orgid_cand, code, msg)
+                                if _rem is not None:
+                                    return _rem
 
             # Fallback (message didn't name the container): first fillable empty.
             for _ecel in root.iter():
