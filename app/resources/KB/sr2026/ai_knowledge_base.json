@@ -9,6 +9,16 @@
     }
   },
 
+  "DUPLICATE_XML_DECLARATION": {
+    "aliases": ["XML Syntax Error", "XML_SYNTAX_ERROR", "XML_SYNTAX"],
+    "root_cause": "The <?xml version=\"1.0\" encoding=\"UTF-8\"?> processing instruction appears more than once. XML 1.0 allows exactly one declaration, at the very start of the document. Usually caused by pasting a full message on top of an existing one.",
+    "error_message_pattern": "duplicate xml declaration",
+    "fix": "Remove every <?xml ...?> line from the document, then prepend exactly one: <?xml version=\"1.0\" encoding=\"UTF-8\"?> as the first line. All BusMsgEnvlp/AppHdr/Document content is unchanged.",
+    "auto_fixable": true,
+    "applies_to": "all CBPR+ message types",
+    "do_not": "Do NOT remove any part of the message body. Only the extra XML declaration line(s) must be deleted."
+  },
+
   "NBOFTXS_INVALID_CODE": {
     "aliases": ["SCHEMA_VAL_NBOFTXS", "NBOFTXS_NOT_A_VALID_CODE"],
     "root_cause": "The schema validator misreports GrpHdr/NbOfTxs as an enumerated code field, producing 'Invalid code '<n>' for field 'NbOfTxs'.' even though NbOfTxs is a plain transaction count, not a code list.",
@@ -16,6 +26,15 @@
     "affected_tags": ["GrpHdr/NbOfTxs"],
     "auto_fixable": true,
     "requires_human_review": false
+  },
+
+  "UNEXPECTED_FIELD_REMOVE": {
+    "root_cause": "The validator reports 'Unexpected field X' because that element is not defined in the current message type's XSD schema at that location, and no mandatory predecessor is missing. Common cases: <NbOfTxs> appears inside a pacs.002 GrpHdr (it belongs in pacs.003/pacs.008 GrpHdr, not pacs.002); <FIToFICstmrDrctDbt> (the pacs.003 Document root element) appears inside a pacs.002 Document.",
+    "error_codes": ["SCHEMA_VAL"],
+    "error_message_pattern": "unexpected field",
+    "fix": "Remove the unexpected element entirely from its parent. Do NOT move it elsewhere. Example: remove <NbOfTxs> from pacs.002 GrpHdr; remove <FIToFICstmrDrctDbt> from a pacs.002 Document.",
+    "auto_fixable": true,
+    "applies_to": "all CBPR+ message types"
   },
 
   "INVALID_BIZ_SVC": {

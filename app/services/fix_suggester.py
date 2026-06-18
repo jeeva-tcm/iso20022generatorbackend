@@ -3730,7 +3730,7 @@ class FixSuggester:
         # recovery BEFORE attempting to parse so that even a code-only signal
         # (e.g. the validator caught the error but lxml happens to be lenient
         # enough to parse it anyway) gets the dedicated repair path.
-        _is_syntax_code = code in ("XML_SYNTAX", "XML Syntax Error",
+        _is_syntax_code = code in ("XML_SYNTAX", "XML Syntax Error", "XML_SYNTAX_ERROR",
                                    "XML Markup Error", "Invalid Characters",
                                    "Missing Header")
         # Only route to XML recovery when there are ACTUAL unescaped ampersands
@@ -3748,6 +3748,7 @@ class FixSuggester:
         if (_is_syntax_code or _has_unescaped_amp or _has_missing_decl
                 or "reserved" in _msg_lower or "unclosed" in _msg_lower
                 or "close the open tag" in _msg_lower
+                or "duplicate" in _msg_lower
                 or ("add </" in _msg_lower and "closing tag" in _msg_lower)):
             recovered = self._try_xml_recovery(xml, code, msg)
             if recovered is not None:
@@ -3994,6 +3995,46 @@ class FixSuggester:
                         self._xpath_of(_iban_target), self._serialize(_iban_target),
                         self._serialize(_tc), code, msg, "high"
                     )
+
+        # ── Route: INVALID_BIZ_SVC — BizSvc value rejected by context-aware rule ─
+        # Emitted when the BizSvc value is wrong for the *referenced* message type
+        # (e.g. pacs.002 carrying swift.cbprplus.04 while referencing a pacs.003
+        # original that needs swift.cbprplus.03). The error message always contains
+        # "Must be: <correct_value>" — extract that directly so we do not rely on
+        # _cbpr_bizsvc_value(), which returns the value for the *outer* document
+        # type (pacs.002 → .04) and would produce no change.
+        if code == "INVALID_BIZ_SVC":
+            _apphdr = root.find(".//{*}AppHdr")
+            if _apphdr is None and etree.QName(root.tag).localname == "AppHdr":
+                _apphdr = root
+            if _apphdr is not None:
+                _bsvc_el = self._child_exists(_apphdr, "BizSvc")
+                if _bsvc_el is not None:
+                    # Extract the authoritative correct value from the error message.
+                    # Validator embeds it as "Must be: swift.cbprplus.XX" or
+                    # "Set <BizSvc>swift.cbprplus.XX</BizSvc>" in fix_hint.
+                    _combined = (msg or "") + " " + (fix_hint or "")
+                    _must_m = re.search(
+                        r"[Mm]ust\s+be[:\s]+([a-z][a-z0-9.]+)",
+                        _combined
+                    ) or re.search(
+                        r"<BizSvc>([a-z][a-z0-9.]+)</BizSvc>",
+                        _combined
+                    )
+                    _target_val = _must_m.group(1).strip() if _must_m else None
+                    if not _target_val:
+                        # Fallback: use _cbpr_bizsvc_value on the full document
+                        _xml_full = self._serialize(root)
+                        _target_val = _cbpr_bizsvc_value(_detect_msg_type(_xml_full), _xml_full)
+                    if _target_val and _target_val != (_bsvc_el.text or "").strip():
+                        _bsvc_copy = self._copy(_bsvc_el)
+                        _bsvc_copy.text = _target_val
+                        return FixSuggestion(
+                            self._xpath_of(_bsvc_el),
+                            self._serialize(_bsvc_el),
+                            self._serialize(_bsvc_copy),
+                            code, msg, "high",
+                        )
 
         # ── Route: BizSvc wrong pattern (e.g. 'swift..02') ─────────────────────
         # HEAD001_BIZSVC_FORMAT is emitted with path=line-number, not an XPath,
@@ -4557,6 +4598,57 @@ class FixSuggester:
             inserted = self._try_insert_missing_sibling(root, xml, code, msg, fix_hint)
             if inserted is not None:
                 return inserted
+
+            # ── XSD-driven removal of genuinely invalid elements ───────────────
+            # When the custom validator emits "Unexpected field 'X'" and the
+            # sibling-inserter found nothing to insert (no mandatory predecessor),
+            # the element itself is the problem — it does not belong in its parent
+            # at all (e.g. <NbOfTxs> in pacs.002 GrpHdr, or a pacs.003 root
+            # element <FIToFICstmrDrctDbt> inside a pacs.002 Document).
+            # Confirm via XSD type map before removing — never guess-remove.
+            if code == "SCHEMA_VAL":
+                _uf_m = re.search(
+                    r"[Uu]nexpected\s+(?:field|element)\s+'([\w:{}.\-]+)'", msg
+                )
+                _uf_local = (_uf_m.group(1).split('}')[-1].split(':')[-1]
+                             if _uf_m else "")
+                if _uf_local:
+                    _uf_cands = [_e for _e in root.iter()
+                                 if isinstance(_e.tag, str)
+                                 and etree.QName(_e.tag).localname == _uf_local]
+                    if _uf_cands:
+                        _lh = getattr(self, "_line_hint", None)
+                        _uf_el = (min(_uf_cands,
+                                      key=lambda _e: abs((_e.sourceline or 0) - _lh))
+                                  if _lh is not None else _uf_cands[0])
+                        _uf_parent = _uf_el.getparent()
+                        if _uf_parent is not None:
+                            _uf_parent_local = etree.QName(_uf_parent.tag).localname
+                            _uf_xsd_path = self._get_xsd_path(xml)
+                            _uf_tmap = (_XsdTypeMap.get(_uf_xsd_path)
+                                        if _uf_xsd_path else None)
+                            _uf_parent_path = self._local_name_path(_uf_parent)
+                            _uf_parent_type = None
+                            if _uf_tmap is not None:
+                                try:
+                                    _uf_parent_type = _uf_tmap.type_of_path(
+                                        _uf_parent_path)
+                                except Exception:
+                                    _uf_parent_type = _uf_tmap.element_type.get(
+                                        _uf_parent_local)
+                            _uf_pchildren: list = []
+                            if _uf_tmap is not None and _uf_parent_type:
+                                _uf_pinfo = _uf_tmap.type_info.get(
+                                    _uf_parent_type, {})
+                                _uf_pchildren = [
+                                    c["name"]
+                                    for c in _uf_pinfo.get("children", [])
+                                ]
+                            if _uf_pchildren and _uf_local not in _uf_pchildren:
+                                _uf_rem = self._remove_element_fix(
+                                    _uf_el, code, msg)
+                                if _uf_rem is not None:
+                                    return _uf_rem
 
             # KB-driven removal: some "not expected" elements are CBPR-removed
             # elements (e.g. SplmtryData, MsgPgntn) whose documented fix is simply
@@ -10283,6 +10375,21 @@ class FixSuggester:
             if _root is not None:
                 _xml = self._serialize(_root)
                 _bv = _cbpr_bizsvc_value(_detect_msg_type(_xml), _xml)
+                if not _bv or _bv == (el.text or "").strip():
+                    # _cbpr_bizsvc_value returned the same value that's already present
+                    # (can happen when outer doc type differs from the referenced type,
+                    # e.g. pacs.002 referencing pacs.003). Try extracting the correct
+                    # value from the error message or fix hint ("Must be: swift…").
+                    _combined2 = (msg or "") + " " + (fix_hint or "")
+                    _must_m2 = re.search(
+                        r"[Mm]ust\s+be[:\s]+([a-z][a-z0-9.]+)",
+                        _combined2
+                    ) or re.search(
+                        r"<BizSvc>([a-z][a-z0-9.]+)</BizSvc>",
+                        _combined2
+                    )
+                    if _must_m2:
+                        _bv = _must_m2.group(1).strip()
                 if _bv and _bv != (el.text or "").strip():
                     el_copy = self._copy(el)
                     el_copy.text = _bv
@@ -10359,6 +10466,32 @@ class FixSuggester:
                 el_copy.text = _pick
                 return FixSuggestion(xpath, original_fragment,
                                      self._serialize(el_copy), code, msg, "high")
+
+        # ── Currency string placed as amount text instead of a number ────────
+        # e.g. <IntrBkSttlmAmt Ccy="SEK">USD</IntrBkSttlmAmt>
+        # The Ccy attribute is already valid; the text content is a 3-letter
+        # currency code that was typed where a decimal number should be.
+        # This triggers "Invalid currency code 'USD'" because the XSD rejects
+        # the non-numeric text and the message matches the currency-code branch.
+        # Fix: replace the text with a valid default numeric amount.
+        _el_text_raw = (el.text or "").strip()
+        _el_ccy_attr = el.get("Ccy", "")
+        if (
+            (el_local.endswith("Amt") or el_local == "Amt")
+            and re.match(r'^[A-Z]{3}$', _el_text_raw)
+            and _el_ccy_attr in set(_valid_currency_codes())
+            and ("currency code" in msg_l or "invalid amount value" in msg_l)
+        ):
+            _prec = _ccy_precision(_el_ccy_attr)
+            _amt_default = _kb_get("dummy_data.amounts.default") or "1000.00"
+            try:
+                _fixed_text = f"{float(_amt_default):.{_prec}f}"
+            except (ValueError, TypeError):
+                _fixed_text = "1000.00"
+            el_copy = self._copy(el)
+            el_copy.text = _fixed_text
+            return FixSuggestion(xpath, original_fragment,
+                                  self._serialize(el_copy), code, msg, "high")
 
         # ── Currency code (Ccy attribute) on amount elements ──────────────────
         # "Invalid currency code 'Ccy'" / "Missing currency code" is about the
@@ -11640,6 +11773,17 @@ class FixSuggester:
             logger.warning(f"[FixSuggester] LLM returned no valid fix for {code}; declining")
         return FixSuggestion(xpath, original_fragment, original_fragment, code, msg, "low")
 
+    # Top-level CBPR+ structural elements that must never appear as descendants
+    # of a sub-document fragment returned by the LLM for an element-level fix.
+    _CBPR_STRUCTURAL_TAGS = frozenset({
+        "BusMsgEnvlp", "AppHdr", "Document",
+        "FIToFICstmrCdtTrf", "FIToFIPmtStsRpt", "FIToFIPmtRvsl",
+        "FIDrctDbt", "CstmrCdtTrfInitn", "CstmrDrctDbtInitn",
+        "CstmrPmtStsRpt", "CstmrPmtRvsl",
+        "BkToCstmrAcctRpt", "BkToCstmrStmt", "BkToCstmrDbtCdtNtfctn",
+        "UndrlygAccptncDtls", "FIToFIPmtCxlReq", "Rsltn", "NtfctnToRcv",
+    })
+
     def _validate_llm_fragment(self, frag: str, original_fragment: str,
                                target_tag: str) -> Optional[str]:
         """Structurally validate an LLM fragment before trusting it.
@@ -11647,24 +11791,54 @@ class FixSuggester:
         Returns the serialised XML when acceptable, else None. Enforces:
           • well-formed XML,
           • root local-name matches the broken element (no off-topic answer),
+          • fragment not significantly larger than the original (LLM expansion guard),
+          • no CBPR+ structural contaminants (AppHdr, Document, etc.) inside a
+            sub-document fragment — guards against the LLM returning an entire
+            re-imagined document wrapped in the target element tag,
           • <BIC> renamed to <BICFI> (CBPR+ requirement),
-          • KB field constraints for the target tag (pattern / max_length /
-            enum) — the model is checked against the same rules we already know,
-            so a fix that violates a known constraint is rejected, not shown.
+          • KB field constraints for the target tag (pattern / max_length / enum).
         """
         try:
             new_el = etree.fromstring(frag.encode("utf-8"))
         except Exception:
             return None
+
+        new_local = etree.QName(new_el.tag).localname
+
+        # ── Root local-name must match the original element ───────────────────
         if original_fragment.strip():
+            orig_local = target_tag  # fallback: use target_tag if parse fails
             try:
                 orig_local = etree.QName(
                     etree.fromstring(original_fragment.encode("utf-8")).tag
                 ).localname
-                if etree.QName(new_el.tag).localname != orig_local:
-                    return None
             except Exception:
-                pass
+                pass  # keep target_tag as fallback
+            if new_local != orig_local:
+                return None
+
+        # ── Size guard: fragment must not be dramatically larger than original ─
+        # A fragment that grew >5× almost certainly contains whole-document content
+        # that the LLM hallucinated inside the target element tag.
+        if original_fragment.strip():
+            _orig_sz = len(original_fragment.strip())
+            _frag_sz = len(frag.strip())
+            if _orig_sz > 0 and _frag_sz > _orig_sz * 5:
+                return None
+
+        # ── Structural-contamination guard ────────────────────────────────────
+        # Reject any fragment where the LLM stuffed top-level CBPR+ structural
+        # elements (AppHdr, Document, BusMsgEnvlp, message-body roots, etc.)
+        # inside a sub-document element like FinInstnId or PmtId.
+        # Exception: the target element itself is allowed to be one of these
+        # top-level containers (e.g. fixing a broken AppHdr fragment is fine).
+        if new_local not in self._CBPR_STRUCTURAL_TAGS:
+            for _desc in new_el:
+                if isinstance(_desc.tag, str):
+                    _desc_local = etree.QName(_desc.tag).localname
+                    if _desc_local in self._CBPR_STRUCTURAL_TAGS:
+                        return None
+
         for _el in new_el.iter():
             if isinstance(_el.tag, str) and etree.QName(_el.tag).localname == "BIC":
                 ns = etree.QName(_el.tag).namespace
@@ -12953,6 +13127,20 @@ class FixSuggester:
         if not re.match(r'^\s*<\?xml', xml):
             fixed = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml.lstrip()
             return FixSuggestion("/", xml, fixed, code, msg, "high")
+
+        # Stage -0.5: duplicate XML declaration — keep only the first.
+        # e.g. user accidentally pastes the declaration twice:
+        #   <?xml version="1.0" encoding="UTF-8"?>
+        #   <?xml version="1.0" encoding="UTF-8"?>
+        #   <BusMsgEnvlp ...>
+        # lxml rejects this with "XML declaration allowed only at the start".
+        _decl_count = len(re.findall(r'<\?xml\b', xml, re.IGNORECASE))
+        if _decl_count > 1:
+            # Remove every XML declaration, then prepend exactly one clean one.
+            _stripped = re.sub(r'<\?xml[^?]*\?>\s*', '', xml, flags=re.IGNORECASE)
+            fixed = '<?xml version="1.0" encoding="UTF-8"?>\n' + _stripped.lstrip()
+            if fixed != xml:
+                return FixSuggestion("/", xml, fixed, code, msg, "high")
 
         # Stage 0: malformed XML declaration (e.g. '<?xml version="1.0" encoding="UTF-8"!?>')
         # Must run FIRST — a broken prolog prevents lxml from parsing at all, so

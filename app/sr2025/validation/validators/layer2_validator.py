@@ -1005,6 +1005,22 @@ class Layer2Mixin:
         if an.lower() in ("ccy", "currency") or "currency" in msg.lower():
             ccy_val = bad_value()
             if ccy_val:
+                # Detect: currency code string typed as the amount text value
+                # e.g. <IntrBkSttlmAmt Ccy="SEK">USD</IntrBkSttlmAmt>
+                # The XSD type name "CurrencyAndAmount" triggers this branch but
+                # the real error is a non-numeric text content, not a bad Ccy attr.
+                _tn_m = re.search(r"Element '([^']+)'", msg)
+                _tag_local = _tn_m.group(1).split('}')[-1] if _tn_m else ""
+                if (
+                    re.match(r'^[A-Z]{3}$', ccy_val)
+                    and (_tag_local.endswith("Amt") or _tag_local == "Amt")
+                    and an.lower() == "attribute"  # no Attribute '...' in XSD error → text value, not attr
+                ):
+                    return (
+                        f"Invalid amount value '{ccy_val}' in element <{_tag_local}>: expected a decimal number.",
+                        f"The text content of <{_tag_local}> must be a decimal number (e.g. '1000.00'), "
+                        f"not a currency code. Move the currency code to the 'Ccy' attribute instead."
+                    )
                 return (
                     f"Invalid currency code '{ccy_val}'.",
                     f"'{ccy_val}' is not a recognised ISO 4217 currency code. "
