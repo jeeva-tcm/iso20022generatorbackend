@@ -4140,7 +4140,6 @@ class FixSuggester:
         # recovery BEFORE attempting to parse so that even a code-only signal
         # (e.g. the validator caught the error but lxml happens to be lenient
         # enough to parse it anyway) gets the dedicated repair path.
-        _is_syntax_code = code in ("XML_SYNTAX", "XML Syntax Error", "XML_SYNTAX_ERROR",
         # SR2025 Layer 1 emits "XML Syntax Error" (with space), Layer 2 emits
         # "XML_SYNTAX". SR2026 Layer 1 emits "XML_SYNTAX_ERROR" plus distinct
         # codes for missing declaration, illegal control chars, wrong encoding.
@@ -4165,10 +4164,20 @@ class FixSuggester:
             and any(k in msg.lower() for k in ("declaration", "header", "xml"))
         )
         _msg_lower = msg.lower()
+        # Bare "duplicate" would also match schema-level duplicate-TAG messages
+        # (e.g. "Tag <IBAN> is duplicated.") which _try_remove_duplicate already
+        # owns — scope this to the XML-declaration-specific wording so a
+        # duplicate-element SCHEMA_VAL issue isn't hijacked into Stage -1's
+        # missing-declaration branch (which unconditionally prepends a
+        # declaration whenever one is absent, regardless of the real defect,
+        # short-circuiting before _try_remove_duplicate ever runs).
+        _has_duplicate_decl = "duplicate" in _msg_lower and (
+            "declaration" in _msg_lower or "xml" in _msg_lower
+        )
         if (_is_syntax_code or _has_unescaped_amp or _has_missing_decl
                 or "reserved" in _msg_lower or "unclosed" in _msg_lower
                 or "close the open tag" in _msg_lower
-                or "duplicate" in _msg_lower
+                or _has_duplicate_decl
                 or ("add </" in _msg_lower and "closing tag" in _msg_lower)):
             recovered = self._try_xml_recovery(xml, code, msg)
             if recovered is not None:
