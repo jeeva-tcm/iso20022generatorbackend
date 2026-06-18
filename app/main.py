@@ -321,7 +321,17 @@ async def _auto_fix_iterative(original_xml: str, message_type: str = "Auto-detec
         report_dict = await _validate_unified(cur, message_type, version)
         details = report_dict.get("details", []) or []
         errors = [d for d in details if d.get("severity") in ("ERROR", "CRITICAL")]
-        err_sigs = {(d.get("code"), d.get("path")) for d in errors}
+        # Include the message text in the signature, not just (code, path).
+        # A "content of element X is not complete: expected A, B, C" error
+        # keeps the SAME (code, path) — always the container's path — across
+        # rounds even as the "expected" list genuinely shrinks (one mandatory
+        # field gets added per round). Without the message text, that real
+        # progress is invisible to the stall-detector below: it sees an
+        # unchanged signature and wrongly concludes nothing was fixed,
+        # stall-exiting before the container is actually complete (e.g.
+        # UndrlygCstmrCdtTrf needing CdtrAgt, Cdtr, CdtrAcct, UltmtCdtr,
+        # InstdAmt added across 5 separate mandatory-children rounds).
+        err_sigs = {(d.get("code"), d.get("path"), d.get("message")) for d in errors}
 
         # A few codelist-validity rules are WARNINGs (their external code lists may
         # be incomplete, so we don't hard-fail), but a value that's definitively

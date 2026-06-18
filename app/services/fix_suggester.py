@@ -6027,7 +6027,7 @@ class FixSuggester:
             # a blind choice-member removal (which the code below rightly refuses
             # to guess), this is unambiguous: exactly one must go. Keep whichever
             # member is VALID, preferring IBAN, and drop the competing member.
-            _choice_fix = self._try_collapse_choice(root, code, msg)
+            _choice_fix = self._try_collapse_choice(root, code, msg, xml)
             if _choice_fix is not None:
                 return _choice_fix
             # ── CBPR+ forbidden element → remove it outright ──────────────────
@@ -10277,8 +10277,83 @@ class FixSuggester:
             confidence="high",
         )
 
+    def _try_collapse_generic_choice(self, root: etree._Element, code: str,
+                                     msg: str, xml: str, off_local: str) -> Optional[FixSuggestion]:
+        """Schema-driven fallback for _try_collapse_choice: handles any XSD
+        xs:choice over-population, not just AccountIdentification4Choice
+        (IBAN/Othr). Example: Party40Choice (Dbtr/Cdtr/UltmtDbtr/UltmtCdtr in
+        pacs.004's RtrChain) permits EXACTLY ONE of <Pty> or <Agt> — an edit
+        that leaves both populated (e.g. a real <Pty> plus a stray <Agt> BICFI
+        block) trips "Unexpected field 'Agt'" the same way IBAN+Othr does.
+
+        Finds the offending element, walks up to its parent, resolves the
+        parent's XSD type via the type map, and only acts when that type is a
+        genuine xs:choice whose declared members include `off_local` AND at
+        least one OTHER declared member. Keeps the member with real content
+        (text, or any non-empty descendant), preferring the FIRST schema-listed
+        member when multiple have content (mirrors the IBAN-preferred-over-Othr
+        precedent above) — deterministic, not a guess about user intent.
+        """
+        if not off_local or not xml:
+            return None
+        off_cands = [el for el in root.iter()
+                     if isinstance(el.tag, str) and etree.QName(el.tag).localname == off_local]
+        if not off_cands:
+            return None
+        off_el = self._pick_candidate(off_cands)
+        parent = off_el.getparent()
+        if parent is None:
+            return None
+
+        parent_path = self._local_name_path(parent)
+        _ah_idx = next((i for i, p in enumerate(parent_path) if p == "AppHdr"), -1)
+        _doc_after_ah = any(p == "Document" for p in parent_path[_ah_idx + 1:]) if _ah_idx >= 0 else False
+        in_apphdr = _ah_idx >= 0 and not _doc_after_ah
+        xsd_path = (self._get_apphdr_xsd_path(xml) if in_apphdr else self._get_xsd_path(xml))
+        tmap = _XsdTypeMap.get(xsd_path) if xsd_path else None
+        if not tmap:
+            return None
+        parent_type = tmap.type_of_path(parent_path)
+        if not parent_type:
+            return None
+        pinfo = tmap.type_info.get(parent_type, {})
+        if pinfo.get("kind") != "choice":
+            return None
+        member_names = [c["name"] for c in pinfo.get("children", [])]
+        if off_local not in member_names or len(member_names) < 2:
+            return None
+
+        present_members = [c for c in parent if isinstance(c.tag, str)
+                            and etree.QName(c.tag).localname in member_names]
+        if len(present_members) < 2:
+            return None  # not actually over-populated
+
+        def _has_content(el) -> bool:
+            if (el.text or "").strip():
+                return True
+            return any((d.text or "").strip() for d in el.iter()
+                       if isinstance(d.tag, str))
+
+        keep_name = next((n for n in member_names
+                          for el in present_members
+                          if etree.QName(el.tag).localname == n and _has_content(el)),
+                         member_names[0])
+
+        pcopy = self._copy(parent)
+        for c in list(pcopy):
+            if (isinstance(c.tag, str)
+                    and etree.QName(c.tag).localname in member_names
+                    and etree.QName(c.tag).localname != keep_name):
+                pcopy.remove(c)
+        if self._serialize(pcopy) == self._serialize(parent):
+            return None
+        return FixSuggestion(
+            self._xpath_of(parent), self._serialize(parent),
+            self._serialize(pcopy), code, msg, "high",
+        )
+
     def _try_collapse_choice(self, root: etree._Element, code: str,
-                             msg: str) -> Optional[FixSuggestion]:
+                             msg: str, xml: str = "") -> Optional[FixSuggestion]:
         """Collapse an over-populated XML Choice container to a single member.
 
         AccountIdentification4Choice (<Id> under any *Acct) permits EXACTLY ONE
@@ -10301,7 +10376,7 @@ class FixSuggester:
             or re.search(r"[Uu]nexpected field '([\w:{}.\-]+)'", msg)
         off_local = m.group(1).split('}')[-1].split(':')[-1] if m else ""
         if off_local not in ("IBAN", "Othr"):
-            return None
+            return self._try_collapse_generic_choice(root, code, msg, xml, off_local)
 
         # AccountIdentification4Choice == an <Id> carrying BOTH IBAN and Othr.
         cands = []
