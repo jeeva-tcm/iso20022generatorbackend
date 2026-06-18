@@ -2435,7 +2435,7 @@ def _gen_pain001(selected: set, idx: int) -> str:
 
 # ── PAIN.002 Generator ─────────────────────────────────────────────────────────
 
-def _gen_pain002(selected: set, idx: int) -> str:
+def _gen_pain002(_selected: set, _idx: int) -> str:
     """
     pain.002 — Customer Payment Status Report — constructive variant.
 
@@ -2480,28 +2480,23 @@ def _gen_pain002(selected: set, idx: int) -> str:
 \t\t\t\t\t<OrgnlCreDtTm>{orgnl_cre_dt}</OrgnlCreDtTm>
 \t\t\t\t</OrgnlGrpInfAndSts>
 """
-    # Always emit OrgnlPmtInfAndSts. The XSD declares it 0..unbounded but the
-    # SWIFT CBPR+ usage of pain.002 requires at least one occurrence so the
-    # report is operationally meaningful (it always references the original
-    # payment instruction that's being reported on).
+    # SR2026 XSD (OriginalPaymentInstruction32__1) requires TxInfAndSts as mandatory.
+    # Always emit OrgnlPmtInfAndSts with TxInfAndSts unconditionally.
+    tx_rsn = ""
+    if status == "RJCT":
+        reasons = ["AM04", "AC01", "FF01", "AG01"]
+        tx_rsn = (f"\t\t\t\t\t\t<StsRsnInf>\n"
+                  f"\t\t\t\t\t\t\t<Rsn><Cd>{random.choice(reasons)}</Cd></Rsn>\n"
+                  f"\t\t\t\t\t\t</StsRsnInf>\n")
     body += f"""\t\t\t\t<OrgnlPmtInfAndSts>
 \t\t\t\t\t<OrgnlPmtInfId>{xe(rng_id("ORIGPMT", 10))}</OrgnlPmtInfId>
-"""
-    if "original_transaction" in selected or status == "RJCT":
-        # If status is RJCT we must also emit a StsRsnInf block (PAIN002_RJCT_REQUIRES_RSN).
-        tx_rsn = ""
-        if status == "RJCT":
-            reasons = ["AM04", "AC01", "FF01", "AG01"]
-            tx_rsn = (f"\t\t\t\t\t\t<StsRsnInf>\n"
-                      f"\t\t\t\t\t\t\t<Rsn><Cd>{random.choice(reasons)}</Cd></Rsn>\n"
-                      f"\t\t\t\t\t\t</StsRsnInf>\n")
-        body += f"""\t\t\t\t\t<TxInfAndSts>
+\t\t\t\t\t<TxInfAndSts>
 \t\t\t\t\t\t<OrgnlEndToEndId>{xe(rng_id("ORIE2E", 10))}</OrgnlEndToEndId>
 \t\t\t\t\t\t<OrgnlUETR>{rng_uetr()}</OrgnlUETR>
 \t\t\t\t\t\t<TxSts>{status}</TxSts>
 {tx_rsn}\t\t\t\t\t</TxInfAndSts>
+\t\t\t\t</OrgnlPmtInfAndSts>
 """
-    body += "\t\t\t\t</OrgnlPmtInfAndSts>\n"
 
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <BusMsgEnvlp xmlns="urn:swift:xsd:envelope">
