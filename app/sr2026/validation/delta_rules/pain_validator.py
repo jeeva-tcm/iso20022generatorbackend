@@ -109,6 +109,24 @@ class PainValidator:
                      "Set PaymentInformationIdentification to the same value as GroupHeader/MessageIdentification.",
                      pmt_inf_id_nodes[0].sourceline or src)
 
+        # PmtTpInf XOR rule: PmtTpInf at PmtInf level and CdtTrfTxInf level are mutually exclusive.
+        # If PmtInf/PmtTpInf is present, CdtTrfTxInf/PmtTpInf must not be present.
+        for pmt_inf in root.xpath("//*[local-name()='PmtInf']"):
+            src = pmt_inf.sourceline or 1
+            pmt_tp_inf = pmt_inf.xpath("*[local-name()='PmtTpInf']")
+            tx_tp_inf = pmt_inf.xpath(
+                "*[local-name()='CdtTrfTxInf']/*[local-name()='PmtTpInf']"
+            )
+            if pmt_tp_inf and tx_tp_inf:
+                _add(report, "ERROR", "PMT_TP_INF_EXCLUSIVE",
+                     "//PmtInf/PmtTpInf",
+                     "Invalid message content for payment type information. "
+                     "If PaymentTypeInformation is present at the PaymentInformation level, "
+                     "then CreditTransferTransactionInformation/PaymentTypeInformation is not allowed.",
+                     "Remove PaymentTypeInformation from either the PaymentInformation level "
+                     "or the CreditTransferTransactionInformation level — not both.",
+                     pmt_tp_inf[0].sourceline or src)
+
     # ─── pain.002 ─────────────────────────────────────────────────────────────
 
     @classmethod

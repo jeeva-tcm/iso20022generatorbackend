@@ -174,6 +174,17 @@ class Layer1Mixin:
             error_line = str(e.lineno) if e.lineno else "?"
             error_msg = str(e)
 
+            # Detect duplicate XML declaration (e.g. two <?xml ...?> lines at the top)
+            _xml_decl_count = len(re.findall(r'<\?xml\b', xml_content, re.IGNORECASE))
+            if _xml_decl_count > 1:
+                report.add_issue(ValidationIssue(
+                    "ERROR", 1, "XML Syntax Error", "1",
+                    "Duplicate XML declaration: the '<?xml version=\"1.0\" encoding=\"UTF-8\"?>' line appears more than once.",
+                    "Remove the duplicate XML declaration so it appears only once, at the very first line of the document."
+                ))
+                report.layer_status["1"] = {"status": "❌", "time": round((time.time() - start) * 1000, 2)}
+                return False
+
             # Detect if a literal & (unescaped ampersand) is the root cause
             has_raw_amp = bool(re.search(r"&(?![a-zA-Z#][a-zA-Z0-9#]*;)", xml_content))
             if has_raw_amp:

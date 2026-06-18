@@ -2443,10 +2443,14 @@ class PreNormalizationValidator:
             return
 
         def _first_bicfi(node, tag_local: str) -> str:
+            # Use //* (any descendant) for BICFI to handle both:
+            #   AppHdr Fr/To → Fr/FIId/FinInstnId/BICFI  (FIId wrapper present)
+            #   payload      → InstgAgt/FinInstnId/BICFI  (no wrapper)
             # Use // before FinInstnId to handle Fr/FIId/FinInstnId/BICFI (BAH shape)
             # and InstgAgt/FinInstnId/BICFI (payload shape) in one pass.
             results = node.xpath(
                 f".//*[local-name()='{tag_local}']"
+                f"//*[local-name()='BICFI']"
                 f"//*[local-name()='FinInstnId']"
                 f"/*[local-name()='BICFI']"
             )

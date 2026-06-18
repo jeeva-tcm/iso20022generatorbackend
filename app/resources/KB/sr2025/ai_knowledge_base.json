@@ -587,6 +587,51 @@
     },
     "error_code_catalogue": {
         "_doc": "Maps every known validator error code to: root cause, affected tags, and the exact fix recipe. AI must check this FIRST when selecting a fix strategy.",
+        "DUPLICATE_XML_DECLARATION": {
+            "root_cause": "The <?xml version=\"1.0\" encoding=\"UTF-8\"?> processing instruction appears more than once in the document. XML 1.0 requires exactly one declaration, at the very beginning. A duplicate is most often caused by pasting a complete message on top of an existing one.",
+            "error_codes": ["XML Syntax Error", "XML_SYNTAX_ERROR", "XML_SYNTAX"],
+            "error_message_pattern": "duplicate xml declaration",
+            "fix": "Remove every <?xml ...?> line from the document, then prepend exactly one clean declaration: <?xml version=\"1.0\" encoding=\"UTF-8\"?> as the first line. The rest of the document content is unchanged.",
+            "auto_fixable": true,
+            "applies_to": "all CBPR+ message types",
+            "do_not": "Do NOT remove any part of the BusMsgEnvlp, AppHdr or Document content. Only the extra XML declaration line(s) must be deleted."
+        },
+        "UNEXPECTED_FIELD_REMOVE": {
+            "root_cause": "The validator reports 'Unexpected field X' because that element is not defined in the current message type's XSD schema at that location, and no mandatory predecessor is missing. Common cases: <NbOfTxs> appears inside a pacs.002 GrpHdr (it belongs in pacs.003/pacs.008 GrpHdr, not pacs.002); <FIToFICstmrDrctDbt> (the pacs.003 Document root element) appears inside a pacs.002 Document.",
+            "error_codes": ["SCHEMA_VAL"],
+            "error_message_pattern": "unexpected field",
+            "fix": "Remove the unexpected element entirely from its parent. Do NOT move it elsewhere — it is genuinely invalid in this message type. Example: remove <NbOfTxs> from pacs.002 GrpHdr; remove <FIToFICstmrDrctDbt> from a pacs.002 Document.",
+            "auto_fixable": true,
+            "applies_to": "all CBPR+ message types",
+            "do_not": "Do NOT add or move elements from other message types into this message. Do NOT attempt to insert a mandatory predecessor when none exists."
+        },
+        "PACS003_IN_PACS002_ELEMENT": {
+            "root_cause": "A pacs.003-specific element (NbOfTxs in GrpHdr, or FIToFICstmrDrctDbt as Document root) was placed inside a pacs.002 message. pacs.002 GrpHdr does not include NbOfTxs. FIToFICstmrDrctDbt is the root of pacs.003 and must not appear anywhere in pacs.002.",
+            "error_codes": ["SCHEMA_VAL"],
+            "fix": "Remove <NbOfTxs> from pacs.002 GrpHdr. Remove <FIToFICstmrDrctDbt> from the pacs.002 Document.",
+            "auto_fixable": true,
+            "affected_tags": ["GrpHdr/NbOfTxs", "FIToFIPmtStsRpt/FIToFICstmrDrctDbt"]
+        },
+        "MISSING_CDTR": {
+            "aliases": ["CDTR_MISSING", "PACS009_CDTR_MISSING"],
+            "root_cause": "CdtTrfTxInf is missing the mandatory <Cdtr> element. In pacs.009, Cdtr (creditor financial institution) is required by both the XSD and CBPR+ business rules. It must appear after CdtrAgt and before RmtInf.",
+            "error_codes": ["MISSING_CDTR"],
+            "fix": "Insert <Cdtr><FinInstnId><BICFI>BICFI_HERE</BICFI></FinInstnId></Cdtr> inside CdtTrfTxInf, after CdtrAgt and before RmtInf. Harvest the BICFI from CdtrAgt/FinInstnId/BICFI when available.",
+            "auto_fixable": true,
+            "affected_tags": ["CdtTrfTxInf/Cdtr"],
+            "applies_to": "pacs.009"
+        },
+        "ISOTIME_FORMAT_ERROR": {
+            "aliases": ["SCHEMA_VAL_TIME", "INVALID_TIME_FORMAT"],
+            "root_cause": "A time-only field (ISOTime type: HH:MM:SS or HH:MM:SS+HH:MM) received a full ISO datetime value (YYYY-MM-DDTHH:MM:SS+HH:MM). Fields CLSTm, TillTm, FrTm, RjctTm in SttlmTmReq are ISOTime — they must not include the date part.",
+            "error_codes": ["SCHEMA_VAL"],
+            "error_message_pattern": "has an invalid value",
+            "fix": "Extract only the time portion after 'T'. Example: '2026-06-17T11:36:03+00:00' → '11:36:03+00:00'. Preserve the timezone offset if present.",
+            "auto_fixable": true,
+            "affected_tags": ["SttlmTmReq/CLSTm", "SttlmTmReq/TillTm", "SttlmTmReq/FrTm", "SttlmTmReq/RjctTm"],
+            "applies_to": "pacs.008",
+            "do_not": "Do NOT emit a full datetime string for ISOTime fields. Do NOT strip the timezone offset from the time portion."
+        },
         "PAST_DATE_ERROR": {
             "root_cause": "Date/datetime field contains a date before today.",
             "fix": "Replace value with today's date (YYYY-MM-DD) or now with offset (YYYY-MM-DDTHH:MM:SS+00:00).",
@@ -4608,7 +4653,9 @@
                 "CdtTrfTxInf.IntrBkSttlmAmt",
                 "CdtTrfTxInf.IntrBkSttlmDt",
                 "CdtTrfTxInf.InstgAgt",
-                "CdtTrfTxInf.InstdAgt"
+                "CdtTrfTxInf.InstdAgt",
+                "CdtTrfTxInf.Dbtr",
+                "CdtTrfTxInf.Cdtr"
             ],
             "pain.001": [
                 "AppHdr",

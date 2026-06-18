@@ -1583,6 +1583,16 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             return
 
         def _first_bicfi(node, tag_local: str) -> str:
+            """Return BICFI text from the first descendant matching tag_local, or ''.
+
+            Uses //* (any descendant) for BICFI to handle both:
+              AppHdr Fr/To → Fr/FIId/FinInstnId/BICFI  (FIId wrapper present)
+              payload      → InstgAgt/FinInstnId/BICFI  (no wrapper)
+            """
+            results = node.xpath(
+                f".//*[local-name()='{tag_local}']"
+                f"//*[local-name()='BICFI']"
+            )
             """Return BICFI text from the first descendant matching tag_local, or ''."""
             # Use // before FinInstnId to handle Fr/FIId/FinInstnId/BICFI (BAH shape)
             # and InstgAgt/FinInstnId/BICFI (payload shape) in one pass.
