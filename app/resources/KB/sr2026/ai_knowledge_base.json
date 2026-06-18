@@ -39,28 +39,51 @@
 
   "INVALID_BIZ_SVC": {
     "aliases": ["HEAD001_BIZSVC_FORMAT", "BIZSVC_WRONG_VALUE", "CBPR_BIZ_SVC"],
-    "root_cause": "AppHdr/BizSvc carries an SR2025-or-earlier CBPR+ business service identifier (e.g. swift.cbprplus.02 or swift.cbprplus.03 / .adv.03 / .cov.03). SR2026 moved CBPR+ onto the '.04' generation, but the exact value is per message type — it must match what the SR2026 delta-validator enforces.",
-    "fix": "Set AppHdr/BizSvc to the SR2026 value for this message: 'swift.cbprplus.04' for pacs.008/002/004, pain.001/002, camt.052/053/054/056/057 and pacs.009 CORE; 'swift.cbprplus.adv.04' for pacs.009 ADV; 'swift.cbprplus.cov.04' for pacs.009 COV; 'swift.cbprplus.03' for pacs.003, pain.008 and camt.055.",
+    "root_cause": "AppHdr/BizSvc carries an incorrect CBPR+ business service identifier. SR2026 values are per message type and variant: pacs.008 has two valid values depending on whether it is STP or non-STP. Other message types have their own fixed values.",
+    "fix": "Set AppHdr/BizSvc to the correct SR2026 value: pacs.008 non-STP → 'swift.cbprplus.04'; pacs.008 STP (from MT103+) → 'swift.cbprplus.stp.04'; pacs.002/004, pain.001/002, camt.052/053/054/056/057, pacs.009 CORE → 'swift.cbprplus.04'; pacs.009 ADV → 'swift.cbprplus.adv.04'; pacs.009 COV → 'swift.cbprplus.cov.04'; pacs.003, pain.008, camt.055 → 'swift.cbprplus.03'.",
     "affected_tags": ["AppHdr/BizSvc"]
+  },
+
+  "MISSING_CDTR": {
+    "aliases": ["CDTR_MISSING", "PACS009_CDTR_MISSING"],
+    "root_cause": "CdtTrfTxInf is missing the mandatory <Cdtr> element. In pacs.009, Cdtr (creditor financial institution) is required by both the XSD and CBPR+ SR2026 business rules. It must appear after CdtrAgt and before RmtInf.",
+    "error_codes": ["MISSING_CDTR"],
+    "fix": "Insert <Cdtr><FinInstnId><BICFI>BICFI_HERE</BICFI></FinInstnId></Cdtr> inside CdtTrfTxInf, after CdtrAgt and before RmtInf. Harvest the BICFI from CdtrAgt/FinInstnId/BICFI when available.",
+    "auto_fixable": true,
+    "affected_tags": ["CdtTrfTxInf/Cdtr"],
+    "applies_to": "pacs.009"
+  },
+  "ISOTIME_FORMAT_ERROR": {
+    "aliases": ["SCHEMA_VAL_TIME", "INVALID_TIME_FORMAT"],
+    "root_cause": "A time-only field (ISOTime type: HH:MM:SS or HH:MM:SS+HH:MM) received a full ISO datetime value (YYYY-MM-DDTHH:MM:SS+HH:MM). Fields CLSTm, TillTm, FrTm, RjctTm in SttlmTmReq are ISOTime — they must not include the date part.",
+    "error_codes": ["SCHEMA_VAL"],
+    "error_message_pattern": "has an invalid value",
+    "fix": "Extract only the time portion after 'T'. Example: '2026-06-17T11:36:03+00:00' → '11:36:03+00:00'. Preserve the timezone offset if present.",
+    "auto_fixable": true,
+    "affected_tags": ["SttlmTmReq/CLSTm", "SttlmTmReq/TillTm", "SttlmTmReq/FrTm", "SttlmTmReq/RjctTm"],
+    "applies_to": "pacs.008",
+    "do_not": "Do NOT emit a full datetime string for ISOTime fields. Do NOT strip the timezone offset from the time portion."
   },
 
   "field_constraints": {
     "BizSvc": {
       "example": "swift.cbprplus.04",
-      "notes": "SR2026 CBPR+ values are per message type (must match the SR2026 delta-validators): swift.cbprplus.04 for pacs.008/002/004, pain.001/002, camt.052/053/054/056/057 and pacs.009 CORE; swift.cbprplus.adv.04 / swift.cbprplus.cov.04 for pacs.009 ADV / COV; swift.cbprplus.03 for pacs.003, pain.008 and camt.055. The SR2023/24 value swift.cbprplus.02 is never valid in SR2026."
+      "notes": "SR2026 CBPR+ values are per message type and variant. pacs.008 accepts TWO values: 'swift.cbprplus.04' for standard (non-STP) transfers, or 'swift.cbprplus.stp.04' for STP transfers (originating from MT103+). All other types: 'swift.cbprplus.04' for pacs.002/004, pain.001/002, camt.052/053/054/056/057, pacs.009 CORE; 'swift.cbprplus.adv.04'/'swift.cbprplus.cov.04' for pacs.009 ADV/COV; 'swift.cbprplus.03' for pacs.003, pain.008, camt.055. swift.cbprplus.02 is never valid in SR2026."
     }
   },
 
   "tag_templates": {
     "BizSvc": {
       "default": "<BizSvc>swift.cbprplus.04</BizSvc>",
+      "pacs.008": "<BizSvc>swift.cbprplus.04</BizSvc>",
+      "pacs.008_stp": "<BizSvc>swift.cbprplus.stp.04</BizSvc>",
       "camt.052": "<BizSvc>swift.cbprplus.04</BizSvc>",
       "camt.053": "<BizSvc>swift.cbprplus.04</BizSvc>",
       "camt.054": "<BizSvc>swift.cbprplus.04</BizSvc>",
       "camt.055": "<BizSvc>swift.cbprplus.03</BizSvc>",
       "camt.056": "<BizSvc>swift.cbprplus.04</BizSvc>",
       "camt.057": "<BizSvc>swift.cbprplus.04</BizSvc>",
-      "_note": "SR2026 per-message CBPR+ business service. Most types use 'swift.cbprplus.04'; camt.055 (and pacs.003 / pain.008) stay on 'swift.cbprplus.03'; pacs.009 ADV/COV use 'swift.cbprplus.adv.04' / '.cov.04'. Never emit '.02' in SR2026."
+      "_note": "SR2026 per-message CBPR+ business service. pacs.008 uses 'swift.cbprplus.04' for standard transfers and 'swift.cbprplus.stp.04' for STP (MT103+) transfers. Most types use 'swift.cbprplus.04'. camt.055/pacs.003/pain.008 stay on 'swift.cbprplus.03'. pacs.009 ADV/COV use 'swift.cbprplus.adv.04'/'.cov.04'. Never emit '.02' in SR2026."
     }
   }
 }

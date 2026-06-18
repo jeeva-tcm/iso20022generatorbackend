@@ -261,19 +261,26 @@ class NewMandatoryFieldsValidator:
             # ── pacs.008: BizSvc + MsgDefIdr checks ──────────────────
             if is_pacs008:
                 biz_svc_r = hdr_rules.get("bizSvc", {})
-                expected_biz_svc = biz_svc_r.get("fixedValue", "swift.cbprplus.04")
+                # pacs.008 accepts both non-STP (swift.cbprplus.04) and STP
+                # (swift.cbprplus.stp.04) variants. Use allowedValues when present,
+                # fall back to fixedValue for backwards-compatibility.
+                _allowed_biz = biz_svc_r.get("allowedValues") or []
+                if not _allowed_biz:
+                    _fv = biz_svc_r.get("fixedValue", "swift.cbprplus.04")
+                    _allowed_biz = [_fv]
                 if biz_svc_nodes:
                     val = _text(biz_svc_nodes[0])
-                    if val != expected_biz_svc:
+                    if val not in _allowed_biz:
                         report.add_issue(ValidationIssue(
                             severity=biz_svc_r.get("severity", "ERROR"),
                             code=biz_svc_r.get("code", "INVALID_BIZ_SVC"),
                             path="//AppHdr/BizSvc",
                             message=_msg(biz_svc_r,
-                                f"BizSvc must be '{expected_biz_svc}' for pacs.008 in SR2026."),
+                                f"BizSvc '{val}' is invalid for pacs.008. "
+                                f"Must be one of: {', '.join(_allowed_biz)}."),
                             line=biz_svc_nodes[0].sourceline or hdr_src,
                             fix=biz_svc_r.get("fix",
-                                f"Set <BizSvc>{expected_biz_svc}</BizSvc>."),
+                                f"Set <BizSvc>{_allowed_biz[0]}</BizSvc>."),
                         ))
 
                 msg_def_r = hdr_rules.get("msgDefIdr", {})

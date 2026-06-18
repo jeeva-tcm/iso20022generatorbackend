@@ -425,8 +425,11 @@ def _cbpr_bizsvc_value(msg_type: str, xml: str = "") -> Optional[str]:
     it mirrors exactly what each SR2026 delta-validator enforces. This MUST stay
     in lockstep with app/sr2026/validation/delta_rules/* (and pacs.009 base.json):
     a mismatch makes the auto-fix loop oscillate forever.
+      • pacs.008 non-STP → swift.cbprplus.04  (standard customer credit transfer)
+      • pacs.008 STP     → swift.cbprplus.stp.04  (MT103+ STP variant)
+        Both are valid — preserve whichever is already in the message.
       • pacs.003 / pain.008 / camt.055  → swift.cbprplus.03  (stayed on .03)
-      • everything else (pacs.008/002/004, pain.001/002, camt.052/053/054/056/057,
+      • everything else (pacs.002/004, pain.001/002, camt.052/053/054/056/057,
         pacs.009 CORE) → swift.cbprplus.04
     SR2025 keeps the legacy generation: pacs.008 → .02 per its CBPR_R8 rule;
     camt.052-055/camt.057 → .03; camt.056/pain.*/pacs.010 → .02, resolved from the
@@ -449,6 +452,20 @@ def _cbpr_bizsvc_value(msg_type: str, xml: str = "") -> Optional[str]:
         # pacs.003 / pain.008 / camt.055 stayed on the .03 service in SR2026.
         if any(k in fam for k in ("pacs.003", "pain.008", "camt.055")):
             return "swift.cbprplus.03"
+        # pacs.008 accepts two BizSvc values: swift.cbprplus.stp.04 (STP/MT103+)
+        # and swift.cbprplus.04 (standard non-STP). Preserve whichever is already
+        # in the message when it is valid; default to the non-STP value.
+        if "pacs.008" in fam or "fitoficstmrcdttrf" in low:
+            _cur_bsv = ""
+            _bsv_m = re.search(r"<BizSvc>([^<]+)</BizSvc>", xml)
+            if _bsv_m:
+                _cur_bsv = _bsv_m.group(1).strip()
+            _pacs008_valid = {"swift.cbprplus.04", "swift.cbprplus.stp.04"}
+            if _cur_bsv in _pacs008_valid:
+                return _cur_bsv  # already correct — no change needed
+            if "stp" in low or "swift.cbprplus.stp" in low:
+                return "swift.cbprplus.stp.04"
+            return "swift.cbprplus.04"
         return "swift.cbprplus.04"
 
     # ── SR2025 (and earlier releases) ──
@@ -6220,6 +6237,30 @@ class FixSuggester:
                         return FixSuggestion(self._xpath_of(_rsn_el), _orig_rsn,
                                               self._serialize(_rsn_copy), code, msg, "high")
 
+        # ── MISSING_CDTR — pacs.009 ADV/COV CdtTrfTxInf is missing mandatory Cdtr ─
+        # SR2026 pacs009adv_validator emits code=MISSING_CDTR when CdtTrfTxInf has
+        # no <Cdtr> child. Build and insert <Cdtr><FinInstnId><BICFI/></FinInstnId>
+        # </Cdtr> before <RmtInf> (or at the correct XSD position) using the pacs.009
+        # KB template ($CDTR_BICFI harvested from CdtrAgt or dummy).
+        if code == "MISSING_CDTR":
+            _mt_cdtr = _detect_msg_type(xml)
+            _xp_cdtr = self._get_xsd_path(xml)
+            _tmap_cdtr = _XsdTypeMap.get(_xp_cdtr) if _xp_cdtr else None
+            for _tx_el in root.iter():
+                if not isinstance(_tx_el.tag, str):
+                    continue
+                if etree.QName(_tx_el.tag).localname != "CdtTrfTxInf":
+                    continue
+                if self._child_exists(_tx_el, "Cdtr") is not None:
+                    continue
+                _mc_res = self._try_insert_missing_sibling(
+                    root, xml, code, msg, fix_hint,
+                    explicit_parent=_tx_el,
+                    explicit_missing="Cdtr",
+                )
+                if _mc_res is not None:
+                    return _mc_res
+
         # PACS004_RTRCHAIN_CDTR_MISSING / DBTR_MISSING — add Cdtr/Dbtr skeleton
         if code in ("PACS004_RTRCHAIN_CDTR_MISSING", "PACS004_RTRCHAIN_DBTR_MISSING"):
             _missing_tag = "Cdtr" if "CDTR" in code else "Dbtr"
@@ -10568,6 +10609,27 @@ class FixSuggester:
                 return FixSuggestion(xpath, original_fragment,
                                      self._serialize(el_copy), code, msg, "high")
 
+        # ── Full datetime placed in a time-only (ISOTime) field ──────────────────
+        # Fields like CLSTm, TillTm, FrTm, RjctTm accept HH:MM:SS[+HH:MM] only.
+        # When the value is a full ISO datetime (YYYY-MM-DDTHH:MM:SS...), extract
+        # just the time portion (after the 'T') as the corrected value.
+        _time_only_fields = {"CLSTm", "TillTm", "FrTm", "RjctTm"}
+        if not list(el) and el.text:
+            _cur = el.text.strip()
+            _is_time_only_field = (
+                el_local in _time_only_fields
+                or (el_local.endswith("Tm") and not el_local.endswith("DtTm"))
+            )
+            _dt_in_time_field = re.match(
+                r"^\d{4}-\d{2}-\d{2}T(\d{2}:\d{2}:\d{2}(?:[+-]\d{2}:\d{2})?)",
+                _cur,
+            )
+            if _is_time_only_field and _dt_in_time_field:
+                el_copy = self._copy(el)
+                el_copy.text = _dt_in_time_field.group(1)
+                return FixSuggestion(xpath, original_fragment,
+                                     self._serialize(el_copy), code, msg, "high")
+
         # ── Garbage value in a datetime field → replace with valid datetime ──────
         # Fires when the value (e.g. 'with', 'abc') is not a datetime at all and
         # the tag name or error message indicates a datetime field.
@@ -10575,8 +10637,7 @@ class FixSuggester:
             _cur = el.text.strip()
             _is_dt_field = (
                 el_local.endswith("DtTm")
-                or el_local in ("CreDt", "CreDtTm", "IntrBkSttlmTm", "PmtStpTm",
-                                 "SttlmTmReq", "CLSTm", "TillTm", "FrTm", "RjctTm")
+                or el_local in ("CreDt", "CreDtTm", "IntrBkSttlmTm", "PmtStpTm")
                 or "date" in msg_l or "datetime" in msg_l
             )
             if _is_dt_field and not re.match(r'^\d{4}-\d{2}-\d{2}', _cur):
