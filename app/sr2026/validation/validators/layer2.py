@@ -136,18 +136,34 @@ class Layer2Validator:
         mixin = Layer2Mixin()
         h_tag_info = mixin._build_tag_info_from_xsd(hdr_xsd_path)
 
+        xsd_ns = "urn:iso:std:iso:20022:tech:xsd:head.001.001.02"
+        xml_ns = etree.QName(apphdr_node).namespace or ""
+        _ns_valid = xml_ns == xsd_ns
+        if not _ns_valid:
+            displayed_ns = xml_ns if xml_ns else "null"
+            report.add_issue(ValidationIssue(
+                severity="ERROR",
+                layer=2,
+                code="HEADER_VAL",
+                path="//AppHdr",
+                message=(
+                    f"The application header's namespace ({displayed_ns}) is not valid. "
+                    f"It should be 'BusinessApplicationHeaderV02' ({xsd_ns})."
+                ),
+                line=h_line_offset,
+                fix=f'Add xmlns="{xsd_ns}" to the <AppHdr> element.',
+            ))
+
         try:
             schema = Layer2Validator._get_schema(hdr_xsd_path)
-            xsd_ns = "urn:iso:std:iso:20022:tech:xsd:head.001.001.02"
-            xml_ns = etree.QName(apphdr_node).namespace or ""
 
             import copy
             validation_doc = copy.deepcopy(apphdr_node)
-            if xml_ns != xsd_ns:
+            if not _ns_valid:
                 Layer2Validator._mask_namespace_in_place(validation_doc, xsd_ns)
 
             schema.assertValid(validation_doc)
-            return True
+            return _ns_valid  # False if namespace was wrong (even though XSD passed)
         except etree.DocumentInvalid as e:
             # 1. Simplify each raw libxml2 header error (SR2025 parity). libxml2
             #    stops at the first content-model violation, so this list is the

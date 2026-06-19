@@ -1247,7 +1247,10 @@ class MT2MXConverter:
             # SR2026 fixed BizSvc values per pacs message (per SR2026 change docs).
             _target = mapping["target_mx"]
             if _target == "pacs.008.001.08":
-                biz_svc_val = "swift.cbprplus.04"
+                # MT103+ (STP) → swift.cbprplus.stp.04; MT103 (non-STP) → swift.cbprplus.04
+                biz_svc_val = ("swift.cbprplus.stp.04"
+                               if mt_type in ("103+", "103STP", "183+")
+                               else "swift.cbprplus.04")
             elif _target == "pacs.009.001.08":
                 _cur = biz_svc_val.lower()
                 if "cov" in _cur:

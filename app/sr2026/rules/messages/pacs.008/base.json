@@ -19,12 +19,12 @@
   "headerRules": {
     "bizSvc": {
       "mandatory": true,
-      "fixedValue": "swift.cbprplus.04",
+      "allowedValues": ["swift.cbprplus.04", "swift.cbprplus.stp.04"],
       "severity": "ERROR",
       "code": "INVALID_BIZ_SVC",
-      "message": "Business Service identifier is wrong for pacs.008 in SR2026.",
-      "fix": "Change Business Service (BizSvc) to swift.cbprplus.04.",
-      "hint": "SR2026 changed this from swift.cbprplus.02 (SR2025). All outbound messages must be updated."
+      "message": "Business Service identifier is wrong for pacs.008 in SR2026. Must be one of: swift.cbprplus.04 (non-STP) or swift.cbprplus.stp.04 (STP/MT103+).",
+      "fix": "Set BizSvc to swift.cbprplus.04 for standard pacs.008, or swift.cbprplus.stp.04 for STP (MT103+) messages.",
+      "hint": "Use swift.cbprplus.04 for regular credit transfers. Use swift.cbprplus.stp.04 only for STP (Straight-Through Processing) transfers originating from MT103+."
     },
     "msgDefIdr": {
       "mandatory": true,

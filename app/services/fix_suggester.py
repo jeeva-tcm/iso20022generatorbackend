@@ -425,8 +425,11 @@ def _cbpr_bizsvc_value(msg_type: str, xml: str = "") -> Optional[str]:
     it mirrors exactly what each SR2026 delta-validator enforces. This MUST stay
     in lockstep with app/sr2026/validation/delta_rules/* (and pacs.009 base.json):
     a mismatch makes the auto-fix loop oscillate forever.
+      • pacs.008 non-STP → swift.cbprplus.04  (standard customer credit transfer)
+      • pacs.008 STP     → swift.cbprplus.stp.04  (MT103+ STP variant)
+        Both are valid — preserve whichever is already in the message.
       • pacs.003 / pain.008 / camt.055  → swift.cbprplus.03  (stayed on .03)
-      • everything else (pacs.008/002/004, pain.001/002, camt.052/053/054/056/057,
+      • everything else (pacs.002/004, pain.001/002, camt.052/053/054/056/057,
         pacs.009 CORE) → swift.cbprplus.04
     SR2025 keeps the legacy generation: pacs.008 → .02 per its CBPR_R8 rule;
     camt.052-055/camt.057 → .03; camt.056/pain.*/pacs.010 → .02, resolved from the
@@ -449,6 +452,20 @@ def _cbpr_bizsvc_value(msg_type: str, xml: str = "") -> Optional[str]:
         # pacs.003 / pain.008 / camt.055 stayed on the .03 service in SR2026.
         if any(k in fam for k in ("pacs.003", "pain.008", "camt.055")):
             return "swift.cbprplus.03"
+        # pacs.008 accepts two BizSvc values: swift.cbprplus.stp.04 (STP/MT103+)
+        # and swift.cbprplus.04 (standard non-STP). Preserve whichever is already
+        # in the message when it is valid; default to the non-STP value.
+        if "pacs.008" in fam or "fitoficstmrcdttrf" in low:
+            _cur_bsv = ""
+            _bsv_m = re.search(r"<BizSvc>([^<]+)</BizSvc>", xml)
+            if _bsv_m:
+                _cur_bsv = _bsv_m.group(1).strip()
+            _pacs008_valid = {"swift.cbprplus.04", "swift.cbprplus.stp.04"}
+            if _cur_bsv in _pacs008_valid:
+                return _cur_bsv  # already correct — no change needed
+            if "stp" in low or "swift.cbprplus.stp" in low:
+                return "swift.cbprplus.stp.04"
+            return "swift.cbprplus.04"
         return "swift.cbprplus.04"
 
     # ── SR2025 (and earlier releases) ──
@@ -1503,17 +1520,31 @@ _TEMPLATES: dict[str, str] = {
     "Assgnr": "<Assgnr><Agt><FinInstnId><BICFI>DEUTDEFFXXX</BICFI></FinInstnId></Agt></Assgnr>",
     "Assgne": "<Assgne><Agt><FinInstnId><BICFI>CHASUS33XXX</BICFI></FinInstnId></Agt></Assgne>",
     "CxlRsnInf": "<CxlRsnInf><Rsn><Cd>DUPL</Cd></Rsn></CxlRsnInf>",
+    # camt.055/056 TxInf mandatory sequence per CBPR+ SR2026 XSD:
+    # CxlId(opt) → Case(opt) → OrgnlInstrId(opt) → OrgnlEndToEndId(mand) →
+    # OrgnlUETR(mand) → OrgnlInstdAmt(mand) → OrgnlReqdExctnDt(opt) → CxlRsnInf(mand)
+    "OrgnlEndToEndId": "<OrgnlEndToEndId>E2E-ORIG-001</OrgnlEndToEndId>",
+    "OrgnlInstrId":    "<OrgnlInstrId>INSTR-ORIG-001</OrgnlInstrId>",
+    "OrgnlUETR":       f"<OrgnlUETR>{_UETR_SENTINEL}</OrgnlUETR>",
+    "OrgnlInstdAmt":   '<OrgnlInstdAmt Ccy="EUR">1000.00</OrgnlInstdAmt>',
     "Undrlyg": (
         "<Undrlyg>"
+        "<OrgnlPmtInfAndCxl>"
+        "<OrgnlPmtInfId>ORIG-PMT-INF-001</OrgnlPmtInfId>"
         "<TxInf>"
+        "<OrgnlEndToEndId>E2E-ORIG-001</OrgnlEndToEndId>"
         f"<OrgnlUETR>{_UETR_SENTINEL}</OrgnlUETR>"
+        '<OrgnlInstdAmt Ccy="EUR">1000.00</OrgnlInstdAmt>'
         "<CxlRsnInf><Rsn><Cd>DUPL</Cd></Rsn></CxlRsnInf>"
         "</TxInf>"
+        "</OrgnlPmtInfAndCxl>"
         "</Undrlyg>"
     ),
     "TxInf": (
         "<TxInf>"
+        "<OrgnlEndToEndId>E2E-ORIG-001</OrgnlEndToEndId>"
         f"<OrgnlUETR>{_UETR_SENTINEL}</OrgnlUETR>"
+        '<OrgnlInstdAmt Ccy="EUR">1000.00</OrgnlInstdAmt>'
         "<CxlRsnInf><Rsn><Cd>DUPL</Cd></Rsn></CxlRsnInf>"
         "</TxInf>"
     ),
@@ -1552,6 +1583,17 @@ _TEMPLATES: dict[str, str] = {
     ),
     "AcctSvcr": "<AcctSvcr><FinInstnId><BICFI>DEUTDEFFXXX</BICFI></FinInstnId></AcctSvcr>",
     "XpctdValDt": "<XpctdValDt>2026-01-15</XpctdValDt>",
+
+    # ── camt.052/053/054 Ntry mandatory children ───────────────────────────
+    # BookgDt / ValDt are date-choice containers; BkTxCd must have at least
+    # one of Domn or Prtry (both optional in base XSD, but required by CBPR+).
+    "BookgDt": "<BookgDt><Dt>2026-01-15</Dt></BookgDt>",
+    "ValDt":   "<ValDt><Dt>2026-01-15</Dt></ValDt>",
+    "BkTxCd": (
+        "<BkTxCd>"
+        "<Domn><Cd>PMNT</Cd><Fmly><Cd>RCDT</Cd><SubFmlyCd>OTHR</SubFmlyCd></Fmly></Domn>"
+        "</BkTxCd>"
+    ),
 
     # ── pacs.010 ───────────────────────────────────────────────────────────
     "CdtInstr": (
@@ -2163,23 +2205,262 @@ class FixSuggester:
                 root.remove(child)
                 _changed = True
 
-        # ── Problem 1: Document nested inside AppHdr ──────────────────────────
-        doc_in_apphdr = next((c for c in apphdr
-                              if isinstance(c.tag, str)
-                              and etree.QName(c.tag).localname == "Document"), None)
+        # Known ISO 20022 message root elements that must live inside Document —
+        # shared by Problem 1 (lift stray roots out of AppHdr alongside Document)
+        # and Problem 5.7 (re-home children stranded before an empty root) below.
+        _MSG_ROOT_LOCALS_EARLY = {
+            "FIToFICstmrCdtTrf", "FICdtTrf", "FIToFICstmrDrctDbt", "PmtRtr",
+            "PmtStsRpt", "FIToFIPmtStsRpt", "FIToFIPmtCxlReq",
+            "CstmrPmtCxlReq", "FIToFIPmtCxlRpt", "BkToCstmrAcctRpt",
+            "BkToCstmrStmt", "BkToCstmrDbtCdtNtfctn", "NtfctnToRcv",
+            "NtfctnToRcvCxlAdvc", "RsltnOfInvstgtn", "CstmrCdtTrfInitn",
+            "CstmrDrctDbtInitn", "CstmrPmtStsRpt",
+        }
+
+        # ── Problem 1: Document nested inside AppHdr (at any depth) ──────────────
+        # Handles: direct AppHdr child AND LLM-hallucinated Document inside
+        # party blocks like <Fr><FIId><Document> (can't be recovered by the
+        # AppHdr-only-tag lifter since "Document" is not in _APPHDR_ONLY_TAGS).
+        doc_in_apphdr = next(
+            (el for el in apphdr.iter()
+             if el is not apphdr
+             and isinstance(el.tag, str)
+             and etree.QName(el.tag).localname == "Document"),
+            None
+        )
         if doc_in_apphdr is not None:
+            doc_parent = doc_in_apphdr.getparent()
+            if doc_parent is not None:
+                doc_parent.remove(doc_in_apphdr)
             doc_in_envlp = next((c for c in root
                                  if isinstance(c.tag, str)
                                  and etree.QName(c.tag).localname == "Document"), None)
-            if doc_in_envlp is not None:
-                apphdr.remove(doc_in_apphdr)
-            else:
-                apphdr.remove(doc_in_apphdr)
+            if doc_in_envlp is None:
                 apphdr_idx = list(root).index(apphdr)
-                if doc_in_apphdr.tail is None:
-                    doc_in_apphdr.tail = apphdr.tail
+                doc_in_apphdr.tail = None
                 root.insert(apphdr_idx + 1, doc_in_apphdr)
             _changed = True
+
+            # Both <Document>'s opening tag AND a message-root's opening tag
+            # (e.g. <PmtRtr>) can be deleted TOGETHER (e.g. "</AppHdr>" and
+            # "<Document xmlns=...>" both removed) — _balance_xml_tags then
+            # reinserts the synthetic empty <Document> open INSIDE AppHdr too,
+            # but its real message-root SIBLING (already fully populated with
+            # the user's actual data, e.g. PmtRtr) is left behind as a direct
+            # AppHdr child, since this handler only ever looked for "Document"
+            # by name. Lifting Document alone here, then letting the generic
+            # mandatory-field machinery later notice Document is "missing" its
+            # message-root child, fabricates a FRESH placeholder root instead of
+            # using the real one still sitting in AppHdr — duplicating the
+            # element with garbage data while leaving the real one stranded.
+            # Move any direct AppHdr child that is a recognised message-root
+            # element OUT alongside Document, into the now-relocated Document
+            # (or, if Document unexpectedly already had its own children, drop
+            # it as a duplicate of what Document already holds).
+            _doc_now = (doc_in_apphdr if doc_in_envlp is None else doc_in_envlp)
+            for _stray_root in [c for c in list(apphdr)
+                                 if isinstance(c.tag, str)
+                                 and etree.QName(c.tag).localname in _MSG_ROOT_LOCALS_EARLY]:
+                apphdr.remove(_stray_root)
+                _stray_root.tail = None
+                if len(_doc_now) == 0:
+                    _doc_now.append(_stray_root)
+                # else: Document already has real content — the AppHdr copy is
+                # a stale duplicate (already-handled case); drop it silently.
+
+        # ── Problem 5.7: orphaned children stranded BEFORE an empty message-root
+        #    element, both as direct BusMsgEnvlp siblings ─────────────────────────
+        # When BOTH <Document>'s opening tag AND a message-root element's (e.g.
+        # <PmtRtr>) opening tag are deleted simultaneously, _balance_xml_tags can
+        # only reinsert each synthetic open immediately before its own orphaned
+        # close — it has no way to know the root's real children (CdtrAgt, Cdtr,
+        # OrgnlTxRef, …) belong INSIDE the root, not as siblings preceding it. The
+        # result: <PmtRtr></PmtRtr> ends up EMPTY, with its rightful children
+        # sitting as BusMsgEnvlp-level siblings just before it. Detect that shape
+        # (an empty/near-empty message-root local immediately preceded by
+        # non-AppHdr/Document siblings) and move those siblings inside it BEFORE
+        # Problem 6 below tries to relocate the (then correctly populated) root
+        # into Document. (_MSG_ROOT_LOCALS_EARLY defined above, with Problem 1.)
+        _root_children = list(root)
+        for _rc in _root_children:
+            if not isinstance(_rc.tag, str):
+                continue
+            if etree.QName(_rc.tag).localname not in _MSG_ROOT_LOCALS_EARLY:
+                continue
+            if len(_rc) > 0:
+                continue  # already has children — not the empty-root case
+            _rc_idx = _root_children.index(_rc)
+            _stray_preceding = []
+            for _sib in _root_children[:_rc_idx]:
+                if not isinstance(_sib.tag, str):
+                    continue
+                _sib_local = etree.QName(_sib.tag).localname
+                if _sib is apphdr or _sib_local in ("Document",) or _sib_local in _MSG_ROOT_LOCALS_EARLY:
+                    continue
+                _stray_preceding.append(_sib)
+            if not _stray_preceding:
+                continue
+            for _sib in _stray_preceding:
+                root.remove(_sib)
+                _sib.tail = None
+                _rc.append(_sib)
+            _changed = True
+
+        # ── Problem 6: body elements orphaned as BusMsgEnvlp siblings of Document ──
+        # Occurs when the balance engine reconstructs an empty <Document> and places
+        # real body elements (CstmrPmtCxlReq, Assgnmt, Undrlyg, …) as BusMsgEnvlp
+        # direct children instead of inside Document.  Also fixes Document namespace
+        # when it inherited the envelope namespace instead of the message namespace.
+        #
+        # Known ISO 20022 message root elements that must live inside Document:
+        _MSG_ROOT_LOCALS = {
+            # pacs
+            "FIToFICstmrCdtTrf", "CdtTrfTxInf", "FICdtTrf",
+            "FIToFICstmrDrctDbt", "PmtRtr", "PmtStsRpt",
+            "FIToFIPmtStsRpt", "FIToFIPmtCxlReq",
+            # camt
+            "CstmrPmtCxlReq", "FIToFIPmtCxlRpt",
+            "BkToCstmrAcctRpt", "BkToCstmrStmt", "BkToCstmrDbtCdtNtfctn",
+            "NtfctnToRcv", "NtfctnToRcvCxlAdvc", "RsltnOfInvstgtn",
+            # pain
+            "CstmrCdtTrfInitn", "CstmrDrctDbtInitn", "CstmrPmtStsRpt",
+            # shared body elements that appear under message root
+            "Assgnmt", "Undrlyg", "OrgnlPmtInfAndCxl", "GrpHdr",
+        }
+        _doc_el = next((c for c in root
+                        if isinstance(c.tag, str)
+                        and etree.QName(c.tag).localname == "Document"), None)
+        _orphaned_body = [
+            c for c in list(root)
+            if isinstance(c.tag, str)
+            and c is not apphdr
+            and etree.QName(c.tag).localname in _MSG_ROOT_LOCALS
+        ]
+        if _orphaned_body:
+            if _doc_el is None:
+                # Create Document placeholder — namespace will be fixed below
+                _doc_el = etree.Element("Document")
+                apphdr_idx = list(root).index(apphdr)
+                root.insert(apphdr_idx + 1, _doc_el)
+            # Move orphaned body elements into Document, preserving order
+            _insert_at = len(_doc_el)
+            for _body_el in _orphaned_body:
+                root.remove(_body_el)
+                _body_el.tail = None
+                _doc_el.insert(_insert_at, _body_el)
+                _insert_at += 1
+            _changed = True
+
+        # Fix Document namespace when it's wrong (inherited envelope ns or bare).
+        # Derive the correct namespace from MsgDefIdr, child ns, or body element names.
+        _DOC_BODY_NS_MAP = {
+            # camt
+            "CstmrPmtCxlReq":        "urn:iso:std:iso:20022:tech:xsd:camt.055.001.08",
+            "FIToFIPmtCxlReq":        "urn:iso:std:iso:20022:tech:xsd:camt.056.001.08",
+            "BkToCstmrAcctRpt":       "urn:iso:std:iso:20022:tech:xsd:camt.052.001.08",
+            "BkToCstmrStmt":          "urn:iso:std:iso:20022:tech:xsd:camt.053.001.08",
+            "BkToCstmrDbtCdtNtfctn":  "urn:iso:std:iso:20022:tech:xsd:camt.054.001.08",
+            "NtfctnToRcv":            "urn:iso:std:iso:20022:tech:xsd:camt.057.001.06",
+            "RsltnOfInvstgtn":        "urn:iso:std:iso:20022:tech:xsd:camt.029.001.09",
+            # pacs
+            "FIToFICstmrCdtTrf":      "urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08",
+            "FICdtTrf":               "urn:iso:std:iso:20022:tech:xsd:pacs.009.001.08",
+            "FIToFICstmrDrctDbt":     "urn:iso:std:iso:20022:tech:xsd:pacs.003.001.08",
+            "PmtRtr":                 "urn:iso:std:iso:20022:tech:xsd:pacs.004.001.09",
+            "FIToFIPmtStsRpt":        "urn:iso:std:iso:20022:tech:xsd:pacs.002.001.10",
+            # pain
+            "CstmrCdtTrfInitn":       "urn:iso:std:iso:20022:tech:xsd:pain.001.001.09",
+            "CstmrDrctDbtInitn":      "urn:iso:std:iso:20022:tech:xsd:pain.008.001.09",
+            "CstmrPmtStsRpt":         "urn:iso:std:iso:20022:tech:xsd:pain.002.001.09",
+        }
+        if _doc_el is not None:
+            _doc_ns = etree.QName(_doc_el.tag).namespace or ""
+            _envlp_ns = etree.QName(root.tag).namespace or ""
+            _doc_has_wrong_ns = _doc_ns == _envlp_ns or not _doc_ns
+            # Body-root-name says a DIFFERENT message family than the (otherwise
+            # "valid-looking") current namespace. Real-world cause: a message was
+            # mislabeled (MsgDefIdr/Document xmlns say pacs.008) but its actual
+            # body root is a different message's root element (e.g. PmtRtr,
+            # pacs.004's root — only ever present in a genuine pacs.004 message).
+            # Recovery from a SEPARATE structural defect (Document+body-root
+            # opening tags both deleted) can surface this for the first time once
+            # the body is correctly reassembled — at that point the schema
+            # validator reports the body root as "Unexpected field" against the
+            # WRONG (mislabeled) namespace, and without this check the generic
+            # mandatory-field machinery "fixes" that by discarding the real body
+            # and fabricating a fresh one of the WRONG type instead. The body
+            # content is what the user actually has — trust it over the label.
+            def _ns_family(_ns: str) -> str:
+                # "...xsd:pacs.004.001.09" -> "pacs.004"; tolerant of version/
+                # variant differences (.001.06 vs .001.08 is the SAME message,
+                # not a mismatch) — only the family (first two dot-segments)
+                # indicates a genuinely different message type.
+                _tail = _ns.rsplit(":", 1)[-1] if _ns else ""
+                _segs = _tail.split(".")
+                return ".".join(_segs[:2]) if len(_segs) >= 2 else _tail
+
+            _body_root_local = next(
+                (etree.QName(c.tag).localname for c in _doc_el
+                 if isinstance(c.tag, str) and etree.QName(c.tag).localname in _DOC_BODY_NS_MAP),
+                None,
+            )
+            _body_root_family_mismatch = bool(
+                _body_root_local
+                and _ns_family(_DOC_BODY_NS_MAP[_body_root_local]) != _ns_family(_doc_ns)
+            )
+            if not _doc_has_wrong_ns and _body_root_family_mismatch:
+                _doc_has_wrong_ns = True
+            if _doc_has_wrong_ns:
+                _correct_ns = None
+                # 1. Body-root-name mapping wins WHEN body and namespace actively
+                #    disagree on FAMILY (mislabeled-message case above) — MsgDefIdr
+                #    is the very thing that's wrong there, so it must not win this
+                #    round. A same-family version/variant difference (e.g.
+                #    camt.057.001.06 vs .001.08) is NOT a mismatch — leave ns alone
+                #    and let MsgDefIdr (step 2) or existing ns stand.
+                if _body_root_family_mismatch:
+                    _correct_ns = _DOC_BODY_NS_MAP[_body_root_local]
+                # 2. Try MsgDefIdr in AppHdr (normal case: ns inherited envelope's,
+                #    MsgDefIdr is the surviving source of truth).
+                if not _correct_ns:
+                    _mdi = apphdr.findtext(".//{*}MsgDefIdr") if apphdr is not None else None
+                    if _mdi:
+                        _correct_ns = f"urn:iso:std:iso:20022:tech:xsd:{_mdi.strip()}"
+                if not _correct_ns:
+                    # 3. Check if any Document descendant carries an ISO 20022 ns
+                    for _ch in _doc_el.iter():
+                        if isinstance(_ch.tag, str):
+                            _ch_ns = etree.QName(_ch.tag).namespace or ""
+                            if _ch_ns and "iso:20022" in _ch_ns:
+                                _correct_ns = _ch_ns
+                                break
+                if not _correct_ns and _body_root_local:
+                    # 4. Fall back to the body-root mapping unconditionally.
+                    _correct_ns = _DOC_BODY_NS_MAP[_body_root_local]
+                if _correct_ns:
+                    # Mutating .tag in place does NOT register the namespace in
+                    # the element's nsmap, so lxml serializes it with a freshly
+                    # auto-generated prefix (<ns1:Document xmlns:ns1="...">)
+                    # instead of the default-namespace style every CBPR+ message
+                    # uses (<Document xmlns="...">) — both are valid XML, but the
+                    # prefixed form fails every "local-name()"-blind consumer
+                    # downstream and looks corrupted to users. Must rebuild the
+                    # element with nsmap={None: _correct_ns} (same pattern as
+                    # _rebuild_missing_document_wrapper) and re-namespace any
+                    # descendants stuck in the wrong (envelope/bare) ns too —
+                    # the balance engine's synthetic <Document> open tag carries
+                    # no namespace at all, so children inherited the ambient
+                    # envelope default-ns just like Document itself did.
+                    _new_doc_el = etree.Element(f"{{{_correct_ns}}}Document", nsmap={None: _correct_ns})
+                    for _k, _v in _doc_el.attrib.items():
+                        _new_doc_el.set(_k, _v)
+                    _new_doc_el.text = _doc_el.text
+                    for _dchild in _doc_el:
+                        if isinstance(_dchild.tag, str):
+                            _new_doc_el.append(self._rens_subtree(_dchild, _doc_ns, _correct_ns))
+                    _doc_el.getparent().replace(_doc_el, _new_doc_el)
+                    _doc_el = _new_doc_el
+                    _changed = True
 
         # ── Problem 5: duplicate AppHdr children (Fr, To, BizMsgIdr, …) ─────────
         # _balance_xml_tags + Problem 3b can leave duplicate AppHdr-level tags:
@@ -2542,17 +2823,22 @@ class FixSuggester:
             # named but just misplaced — the misnaming check must be skipped
             # (see below) so the missing sibling is actually inserted.
             _targeted_insert = False
-            # Primary extraction: targeted pattern for "instead of 'X': 'Y'" where
-            # Y is the missing predecessor. This avoids apostrophe-in-words (e.g.
-            # "It's") misaligning the generic quote-pair finder below.
+            # Primary extraction: targeted pattern for "instead of 'X': 'Y'" or
+            # "instead of 'X': 'Y, Z'" where Y (and Z, …) are the missing
+            # predecessor(s) — the SR2026 fallback message
+            # (Layer2Mixin._simplify_error_message's final "Unexpected field"
+            # branch) lists every missing field in ONE comma-separated quoted
+            # blob, e.g. "...instead of 'StsRsnInf': 'OrgnlInstrId,
+            # OrgnlEndToEndId'." This avoids apostrophe-in-words (e.g. "It's")
+            # misaligning the generic quote-pair finder below.
             _m_instead = re.search(
-                r"instead of '[\w]+'[^']*'([\w]+)'", text, re.I
+                r"instead of '[\w]+'[^']*'([\w][\w,\s]*)'", text, re.I
             )
             if _m_instead:
-                _inst_tok = _m_instead.group(1).strip()
-                if _inst_tok and _inst_tok != found_elem:
-                    exp_candidates.append(_inst_tok)
-                    _targeted_insert = True
+                for _inst_tok in re.split(r"[,\s]+", _m_instead.group(1).strip()):
+                    if _inst_tok and _inst_tok != found_elem and _inst_tok not in exp_candidates:
+                        exp_candidates.append(_inst_tok)
+                        _targeted_insert = True
             # Also handle "right before 'X'" pattern
             _m_before = re.search(
                 r"(?:right\s+)?before '([\w]+)'", text, re.I
@@ -2769,6 +3055,30 @@ class FixSuggester:
             if _misnamed_target:
                 wanted = [t for t in wanted if t != _misnamed_target]
         if not wanted:
+            # No buildable missing predecessor found — none of the "expected"
+            # candidates have a template/XSD-buildable type (e.g. UltmtCdtr,
+            # InstrForCdtrAgt, Purp, RgltryRptg are all XSD-optional fields we
+            # have no data to populate). If `found_elem` ALSO isn't a valid
+            # child of `parent` at all (a true orphan — e.g. a bare FinInstnId
+            # stranded as the last child of CdtTrfTxInf, with no missing Agt
+            # slot to wrap it into — every Instg/Instd/Dbtr/CdtrAgt already
+            # populated), inserting nothing fixes nothing and the error
+            # persists forever. The only deterministic repair left is to
+            # delete the orphan outright — explicit_missing mode never reaches
+            # here (it always has a concrete tag to build), so this only
+            # triggers for implicit-mode genuine garbage.
+            if (not explicit_missing and not _found_is_valid_child
+                    and found_el is not None):
+                _orphan_parent = found_el.getparent()
+                if _orphan_parent is not None:
+                    _op_orig = self._serialize(_orphan_parent)
+                    _op_copy = self._copy(_orphan_parent)
+                    _op_idx = list(_orphan_parent).index(found_el)
+                    _op_copy.remove(list(_op_copy)[_op_idx])
+                    _op_ser = self._serialize(_op_copy)
+                    if _op_ser != _op_orig:
+                        return FixSuggestion(self._xpath_of(_orphan_parent),
+                                             _op_orig, _op_ser, code, msg, "low")
             return None
         # Sort into schema sequence: prefer the KB's tag_insertion_order, fall
         # back to the XSD-declared child order so XSD-discovered tags land in the
@@ -3047,12 +3357,21 @@ class FixSuggester:
     # ── XSD loading ───────────────────────────────────────────────────────────
 
     def _xsd_extracted_dir(self) -> Optional[str]:
-        """Locate the directory holding extracted MX/head XSDs.
+        """Locate the directory holding extracted MX/head XSDs for SR2025.
 
         Tries known layouts in order and returns the first that exists:
           1. repo-root  xsds/extracted        (packaged/deploy layout)
           2. app/sr2025/xsds/extracted        (in-repo source layout)
         Returns None when neither is present (schema-aware fixing then disabled).
+
+        SR2026-only: NOT this directory — see _sr2026_xsd_dir/_get_xsd_path,
+        which route to app/sr2026/xsds (a different naming convention
+        entirely — long descriptive filenames, not '<msgtype>.xsd') whenever
+        the active release is SR2026. Calling this directly for an SR2026
+        message silently resolves the WRONG (SR2025) schema version — e.g.
+        pacs.002.001.10 (SR2026) was resolving to pacs.002.001.15.xsd
+        (SR2025), a different transaction-type shape, breaking every
+        schema-aware insert/build for that message.
         """
         here = os.path.dirname(__file__)
         for rel in (("..", "..", "xsds", "extracted"),
@@ -3060,6 +3379,46 @@ class FixSuggester:
             cand = os.path.normpath(os.path.join(here, *rel))
             if os.path.isdir(cand):
                 return cand
+        return None
+
+    def _sr2026_xsd_dir(self) -> Optional[str]:
+        """SR2026's XSD directory (app/sr2026/xsds) — flat, long descriptive
+        filenames (e.g. 'CBPRPlus_SR2026_(Combined)_CBPRPlus-pacs_002_001_10_
+        FIToFIPaymentStatusReport_....xsd'), NOT '<msgtype>.xsd' like SR2025."""
+        here = os.path.dirname(__file__)
+        cand = os.path.normpath(os.path.join(here, "..", "sr2026", "xsds"))
+        return cand if os.path.isdir(cand) else None
+
+    def _sr2026_resolve_xsd_filename(self, msg_type: str, xsd_dir: str) -> Optional[str]:
+        """Find the SR2026 XSD file matching `msg_type` by substring search —
+        mirrors app/sr2026/validation/validators/layer2.py's
+        Layer2Validator._resolve_xsd_path (duplicated narrowly here rather than
+        imported, to avoid a fix_suggester <-> sr2026.validation circular
+        import). Keep the two in sync if SR2026 adds new variant-disambiguation
+        rules (ADV/COV/STP/etc.)."""
+        try:
+            files = [f for f in os.listdir(xsd_dir) if f.endswith(".xsd")]
+        except Exception:
+            return None
+        mt = (msg_type or "").strip().lower()
+        if "pacs.008" in mt:
+            term = "pacs_008_001_08_stp" if "stp" in mt else "pacs_008_001_08_fito"
+        elif "pacs.009" in mt:
+            term = ("pacs_009_001_08_cov" if "cov" in mt
+                    else "pacs_009_001_08_adv" if "adv" in mt
+                    else "pacs_009_001_08_financial")
+        else:
+            parts = mt.split(".")
+            term = "_".join(parts[:2]) if len(parts) >= 2 else mt
+        for f in files:
+            if term and term in f.lower():
+                return os.path.join(xsd_dir, f)
+        # Fallback: bare family prefix (e.g. "pacs_002")
+        parts = mt.split(".")
+        fam = "_".join(parts[:2]) if len(parts) >= 2 else mt
+        for f in files:
+            if fam and fam in f.lower():
+                return os.path.join(xsd_dir, f)
         return None
 
     def _get_xsd_path(self, xml: str) -> Optional[str]:
@@ -3075,6 +3434,22 @@ class FixSuggester:
         msg_type = _detect_msg_type(xml)
         if not msg_type:
             return None
+        # SR2026 ships a SEPARATE XSD set (app/sr2026/xsds) with a different
+        # filename convention (long descriptive names, not '<msgtype>.xsd').
+        # Resolving against SR2025's directory for an SR2026 message silently
+        # picks the wrong schema VERSION (e.g. pacs.002.001.10 → .15) — see
+        # _xsd_extracted_dir's docstring.
+        _active_v = getattr(self, "_sr_version", None) or _ACTIVE_SR_VERSION
+        if _active_v == "SR2026":
+            _sr26_dir = self._sr2026_xsd_dir()
+            if _sr26_dir:
+                _sr26_path = self._sr2026_resolve_xsd_filename(msg_type, _sr26_dir)
+                if _sr26_path:
+                    return _sr26_path
+            # No SR2026 match (e.g. message type not covered by the SR2026 set)
+            # — fall through to SR2025 below rather than returning None, so
+            # schema-aware fixing still degrades gracefully instead of fully
+            # disabling for that message type.
         xsd_dir = self._xsd_extracted_dir()
         if not xsd_dir:
             return None
@@ -3096,11 +3471,31 @@ class FixSuggester:
     def _get_apphdr_xsd_path(self, xml: str) -> Optional[str]:
         """Resolve the Business Application Header (head.001) XSD for AppHdr/*
         fixes. Prefers the exact version declared by the AppHdr namespace, else
-        the newest head.001.001.* on disk."""
+        the newest head.001.001.* on disk.
+
+        SR2026 ships its own head.001.001.02.xsd (app/sr2026/xsds — same simple
+        naming as SR2025's, unlike the Document XSDs) with looser cardinality
+        on some fields (e.g. BizSvc minOccurs="0" — see
+        project_sr2026_bizsvc_missing_check memory); prefer it when active."""
+        m = re.search(r"head\.001\.001\.\d{2}", xml)
+        _active_v = getattr(self, "_sr_version", None) or _ACTIVE_SR_VERSION
+        if _active_v == "SR2026":
+            _sr26_dir = self._sr2026_xsd_dir()
+            if _sr26_dir:
+                if m:
+                    _exact26 = os.path.join(_sr26_dir, f"{m.group(0)}.xsd")
+                    if os.path.exists(_exact26):
+                        return _exact26
+                try:
+                    _cands26 = [f for f in os.listdir(_sr26_dir)
+                                if f.startswith("head.001.001.") and f.endswith(".xsd")]
+                    if _cands26:
+                        return os.path.join(_sr26_dir, sorted(_cands26, reverse=True)[0])
+                except Exception:
+                    pass
         xsd_dir = self._xsd_extracted_dir()
         if not xsd_dir:
             return None
-        m = re.search(r"head\.001\.001\.\d{2}", xml)
         if m:
             exact = os.path.join(xsd_dir, f"{m.group(0)}.xsd")
             if os.path.exists(exact):
@@ -3241,6 +3636,21 @@ class FixSuggester:
                 _el = etree.Element(tag)
                 _el.text = _bv
                 return _el
+
+        # ── 0.5. Account Id — AccountIdentification4Choice requires exactly one
+        #    of <IBAN>/<Othr>; it is NEVER a plain-text leaf. _TEMPLATES["Id"]
+        #    ('<Id>ID-2025-001</Id>') and the bare XSD-type-map build (step 5)
+        #    both produce an empty/invalid <Id/> for this case because "Id" is
+        #    too ambiguous a tag name to route generically. Detect by parent
+        #    (*Acct) the same way the EMPTY_ACCOUNT_CONTAINER handler does. ───
+        if tag_name == "Id" and existing_parent is not None and isinstance(existing_parent.tag, str) \
+                and etree.QName(existing_parent.tag).localname.endswith("Acct"):
+            tag = f"{{{ns}}}{tag_name}" if ns else tag_name
+            _el = etree.Element(tag)
+            _iban_tag = f"{{{ns}}}IBAN" if ns else "IBAN"
+            _iban_el = etree.SubElement(_el, _iban_tag)
+            _iban_el.text = "GB29NWBK60161331926819"
+            return _el
 
         # ── 1. AI Knowledge Base tag template (message-specific) ──────────────
         kb_tmpl = _kb_tag_template(tag_name, msg_type)
@@ -3853,9 +4263,18 @@ class FixSuggester:
         # recovery BEFORE attempting to parse so that even a code-only signal
         # (e.g. the validator caught the error but lxml happens to be lenient
         # enough to parse it anyway) gets the dedicated repair path.
-        _is_syntax_code = code in ("XML_SYNTAX", "XML Syntax Error", "XML_SYNTAX_ERROR",
+        # SR2025 Layer 1 emits "XML Syntax Error" (with space), Layer 2 emits
+        # "XML_SYNTAX". SR2026 Layer 1 emits "XML_SYNTAX_ERROR" plus distinct
+        # codes for missing declaration, illegal control chars, wrong encoding.
+        # All mean the document is malformed — route to recovery BEFORE attempting
+        # to parse so that even a code-only signal gets the dedicated repair path.
+        _is_syntax_code = code in ("XML_SYNTAX", "XML Syntax Error",
                                    "XML Markup Error", "Invalid Characters",
-                                   "Missing Header")
+                                   "Missing Header",
+                                   # SR2026 Layer 1 codes:
+                                   "XML_SYNTAX_ERROR", "MISSING_XML_DECLARATION",
+                                   "ILLEGAL_CONTROL_CHARACTERS", "INVALID_ENCODING",
+                                   "INVALID_XML_STRUCTURE")
         # Only route to XML recovery when there are ACTUAL unescaped ampersands
         # (e.g. "Smith & Jones").  Valid XML entities like &gt; &amp; &lt; are
         # already correct and must NOT trigger recovery — doing so would return
@@ -3869,10 +4288,20 @@ class FixSuggester:
             and any(k in msg.lower() for k in ("declaration", "header", "xml"))
         )
         _msg_lower = msg.lower()
+        # Bare "duplicate" would also match schema-level duplicate-TAG messages
+        # (e.g. "Tag <IBAN> is duplicated.") which _try_remove_duplicate already
+        # owns — scope this to the XML-declaration-specific wording so a
+        # duplicate-element SCHEMA_VAL issue isn't hijacked into Stage -1's
+        # missing-declaration branch (which unconditionally prepends a
+        # declaration whenever one is absent, regardless of the real defect,
+        # short-circuiting before _try_remove_duplicate ever runs).
+        _has_duplicate_decl = "duplicate" in _msg_lower and (
+            "declaration" in _msg_lower or "xml" in _msg_lower
+        )
         if (_is_syntax_code or _has_unescaped_amp or _has_missing_decl
                 or "reserved" in _msg_lower or "unclosed" in _msg_lower
                 or "close the open tag" in _msg_lower
-                or "duplicate" in _msg_lower
+                or _has_duplicate_decl
                 or ("add </" in _msg_lower and "closing tag" in _msg_lower)):
             recovered = self._try_xml_recovery(xml, code, msg)
             if recovered is not None:
@@ -4045,6 +4474,912 @@ class FixSuggester:
                         self._serialize(_txinf_copy), code, msg, "high",
                     )
 
+        # ── camt.055/056 TxInf: OrgnlEndToEndId + OrgnlUETR missing ────────────
+        # CBPR+ SR2026 camt.055 XSD mandates OrgnlEndToEndId and OrgnlUETR before
+        # OrgnlInstdAmt in TxInf. When they're absent, the XSD sequence validator
+        # fires SCHEMA_VAL "OrgnlInstdAmt not allowed here / missed mandatory field".
+        # Insert both missing elements immediately before OrgnlInstdAmt.
+        if (code in ("SCHEMA_VAL", "SCHEMA_ERROR", "XSD_SEQUENCE")
+                and "orgnlinstdamt" in msg.lower()
+                and ("not allowed" in msg.lower() or "missed" in msg.lower()
+                     or "unexpected" in msg.lower() or "expected" in msg.lower())):
+            for _txinf_el in root.iter():
+                if not isinstance(_txinf_el.tag, str):
+                    continue
+                if etree.QName(_txinf_el.tag).localname != "TxInf":
+                    continue
+                _ns_tx = etree.QName(_txinf_el.tag).namespace or ""
+                def _q(tag): return f"{{{_ns_tx}}}{tag}" if _ns_tx else tag
+                _child_lns = [etree.QName(c.tag).localname
+                              for c in _txinf_el if isinstance(c.tag, str)]
+                _has_e2e  = "OrgnlEndToEndId" in _child_lns
+                _has_uetr = "OrgnlUETR"       in _child_lns
+                if _has_e2e and _has_uetr:
+                    continue  # already present — this TxInf is fine
+                # Find OrgnlInstdAmt as the insertion anchor
+                _amt_el = next(
+                    (c for c in _txinf_el if isinstance(c.tag, str)
+                     and etree.QName(c.tag).localname == "OrgnlInstdAmt"),
+                    None,
+                )
+                if _amt_el is None:
+                    continue
+                _txinf_copy = self._copy(_txinf_el)
+                # Locate OrgnlInstdAmt in the copy
+                _amt_copy = next(
+                    (c for c in _txinf_copy if isinstance(c.tag, str)
+                     and etree.QName(c.tag).localname == "OrgnlInstdAmt"),
+                    None,
+                )
+                if _amt_copy is None:
+                    continue
+                _copy_child_lns = [etree.QName(c.tag).localname
+                                   for c in _txinf_copy if isinstance(c.tag, str)]
+                # Insert OrgnlUETR before OrgnlInstdAmt if missing
+                if "OrgnlUETR" not in _copy_child_lns:
+                    import uuid as _uuid2
+                    _uetr_el = etree.Element(_q("OrgnlUETR"))
+                    _uetr_el.text = str(_uuid2.uuid4())
+                    _amt_copy.addprevious(_uetr_el)
+                # Insert OrgnlEndToEndId before OrgnlUETR (or OrgnlInstdAmt) if missing
+                if "OrgnlEndToEndId" not in _copy_child_lns:
+                    # Harvest existing E2E value from document
+                    _e2e_val = None
+                    for _cand in root.iter():
+                        if not isinstance(_cand.tag, str):
+                            continue
+                        if etree.QName(_cand.tag).localname in ("EndToEndId", "OrgnlEndToEndId"):
+                            _v = (_cand.text or "").strip()
+                            if _v:
+                                _e2e_val = _v
+                                break
+                    if not _e2e_val:
+                        import uuid as _uuid2
+                        _e2e_val = "E2E-" + _uuid2.uuid4().hex[:12].upper()
+                    _e2e_el = etree.Element(_q("OrgnlEndToEndId"))
+                    _e2e_el.text = _e2e_val
+                    # Insert before OrgnlUETR (now present) or OrgnlInstdAmt
+                    _anchor_e2e = next(
+                        (c for c in _txinf_copy if isinstance(c.tag, str)
+                         and etree.QName(c.tag).localname in ("OrgnlUETR", "OrgnlInstdAmt")),
+                        None,
+                    )
+                    if _anchor_e2e is not None:
+                        _anchor_e2e.addprevious(_e2e_el)
+                    else:
+                        _txinf_copy.append(_e2e_el)
+                return FixSuggestion(
+                    self._xpath_of(_txinf_el), self._serialize(_txinf_el),
+                    self._serialize(_txinf_copy), code, msg, "high",
+                )
+
+        # ── camt.055/056 TxInf: stray <Rsn> at TxInf level + empty <CxlRsnInf> ──
+        # AI sometimes places <Rsn> directly inside TxInf (wrong) with an adjacent
+        # empty <CxlRsnInf/>. Fix: remove the stray <Rsn>, populate CxlRsnInf with
+        # it. Also fires for SCHEMA_VAL "Rsn not allowed here".
+        if (code in ("SCHEMA_VAL", "SCHEMA_ERROR", "XSD_SEQUENCE")
+                and ("rsn" in msg.lower() or "cxlrsninf" in msg.lower())
+                and ("not allowed" in msg.lower() or "missed" in msg.lower()
+                     or "unexpected" in msg.lower())):
+            for _txinf_el in root.iter():
+                if not isinstance(_txinf_el.tag, str):
+                    continue
+                if etree.QName(_txinf_el.tag).localname != "TxInf":
+                    continue
+                _ns_tx = etree.QName(_txinf_el.tag).namespace or ""
+                def _q2(tag): return f"{{{_ns_tx}}}{tag}" if _ns_tx else tag
+                # Find stray <Rsn> that is a direct child of TxInf
+                _stray_rsn = next(
+                    (c for c in _txinf_el if isinstance(c.tag, str)
+                     and etree.QName(c.tag).localname == "Rsn"),
+                    None,
+                )
+                if _stray_rsn is None:
+                    continue
+                # Find CxlRsnInf (may be empty)
+                _cxlinf = next(
+                    (c for c in _txinf_el if isinstance(c.tag, str)
+                     and etree.QName(c.tag).localname == "CxlRsnInf"),
+                    None,
+                )
+                _txinf_copy = self._copy(_txinf_el)
+                # Work on copy: find stray Rsn and CxlRsnInf
+                _stray_copy = next(
+                    (c for c in _txinf_copy if isinstance(c.tag, str)
+                     and etree.QName(c.tag).localname == "Rsn"),
+                    None,
+                )
+                _cxlinf_copy = next(
+                    (c for c in _txinf_copy if isinstance(c.tag, str)
+                     and etree.QName(c.tag).localname == "CxlRsnInf"),
+                    None,
+                )
+                if _stray_copy is None:
+                    continue
+                # Remove stray Rsn from TxInf level
+                _txinf_copy.remove(_stray_copy)
+                _stray_copy.tail = None
+                if _cxlinf_copy is not None:
+                    # CxlRsnInf exists — populate it if empty
+                    _existing_rsn = next(
+                        (c for c in _cxlinf_copy if isinstance(c.tag, str)
+                         and etree.QName(c.tag).localname == "Rsn"),
+                        None,
+                    )
+                    if _existing_rsn is None:
+                        _cxlinf_copy.append(_stray_copy)
+                else:
+                    # No CxlRsnInf — build one with the Rsn inside
+                    _new_cxlinf = etree.Element(_q2("CxlRsnInf"))
+                    _new_cxlinf.append(_stray_copy)
+                    _txinf_copy.append(_new_cxlinf)
+                # Also insert missing mandatory sequence fields:
+                # OrgnlEndToEndId + OrgnlUETR + OrgnlInstdAmt (required before CxlRsnInf)
+                _copy_lns = [etree.QName(c.tag).localname
+                             for c in _txinf_copy if isinstance(c.tag, str)]
+                # Find CxlRsnInf in copy as insertion anchor
+                _cxl_anchor = next(
+                    (c for c in _txinf_copy if isinstance(c.tag, str)
+                     and etree.QName(c.tag).localname == "CxlRsnInf"),
+                    None,
+                )
+                import uuid as _uuid3
+                if "OrgnlInstdAmt" not in _copy_lns:
+                    _amt2 = etree.Element(_q2("OrgnlInstdAmt"))
+                    _amt2.set("Ccy", "EUR")
+                    _amt2.text = "1000.00"
+                    if _cxl_anchor is not None:
+                        _cxl_anchor.addprevious(_amt2)
+                    else:
+                        _txinf_copy.append(_amt2)
+                    _copy_lns.insert(-1, "OrgnlInstdAmt")
+                if "OrgnlUETR" not in _copy_lns:
+                    _uetr2 = etree.Element(_q2("OrgnlUETR"))
+                    _uetr2.text = str(_uuid3.uuid4())
+                    _ins_before = next(
+                        (c for c in _txinf_copy if isinstance(c.tag, str)
+                         and etree.QName(c.tag).localname in ("OrgnlInstdAmt", "CxlRsnInf")),
+                        None,
+                    )
+                    if _ins_before is not None:
+                        _ins_before.addprevious(_uetr2)
+                    else:
+                        _txinf_copy.append(_uetr2)
+                if "OrgnlEndToEndId" not in _copy_lns:
+                    _e2e2 = etree.Element(_q2("OrgnlEndToEndId"))
+                    _e2e_val2 = next(
+                        ((_c.text or "").strip() for _c in root.iter()
+                         if isinstance(_c.tag, str)
+                         and etree.QName(_c.tag).localname in ("EndToEndId", "OrgnlEndToEndId")
+                         and (_c.text or "").strip()),
+                        None,
+                    ) or "E2E-" + _uuid3.uuid4().hex[:12].upper()
+                    _e2e2.text = _e2e_val2
+                    _ins_before2 = next(
+                        (c for c in _txinf_copy if isinstance(c.tag, str)
+                         and etree.QName(c.tag).localname in
+                         ("OrgnlUETR", "OrgnlInstdAmt", "CxlRsnInf")),
+                        None,
+                    )
+                    if _ins_before2 is not None:
+                        _ins_before2.addprevious(_e2e2)
+                    else:
+                        _txinf_copy.append(_e2e2)
+                return FixSuggestion(
+                    self._xpath_of(_txinf_el), self._serialize(_txinf_el),
+                    self._serialize(_txinf_copy), code, msg, "high",
+                )
+
+        # ── SCHEMA_VAL/INVALID_NAMESPACE_FORMAT: Document has wrong namespace ────
+        # Fires when <Document xmlns="…head.001…"> or other wrong-ns is present but
+        # the body contains a valid ISO 20022 message. Fix: re-namespace Document
+        # using MsgDefIdr from AppHdr (or infer from body element name).
+        _doc_ns_codes = ("SCHEMA_VAL", "INVALID_NAMESPACE_FORMAT", "SCHEMA_ERROR")
+        if code in _doc_ns_codes and (
+            "document" in path.lower()
+            or "no matching global declaration" in msg.lower()
+            or "namespace" in msg.lower()
+            or code == "INVALID_NAMESPACE_FORMAT"
+        ):
+            _doc_el_ns = next(
+                (e for e in root.iter()
+                 if isinstance(e.tag, str) and etree.QName(e.tag).localname == "Document"),
+                None,
+            )
+            if _doc_el_ns is not None:
+                _doc_cur_ns = etree.QName(_doc_el_ns.tag).namespace or ""
+                _ISO_PFX = "urn:iso:std:iso:20022:tech:xsd:"
+                # Wrong if: not an ISO 20022 ns at all, OR is head.001 (AppHdr ns ≠ body ns)
+                import re as _re_ns
+                _doc_ns_match = _re_ns.match(
+                    r"^urn:iso:std:iso:20022:tech:xsd:([a-z]{4}\.\d{3}\.\d{3}\.\d{2})$",
+                    _doc_cur_ns,
+                )
+                _doc_ns_msgid = _doc_ns_match.group(1) if _doc_ns_match else None
+                # head.001 is the AppHdr schema — never valid as a Document body ns
+                _is_wrong_ns = (
+                    _doc_ns_msgid is None
+                    or _doc_ns_msgid.startswith("head.")
+                )
+                if _is_wrong_ns:
+                    # Determine correct ns: 1) MsgDefIdr 2) body element name
+                    _DOC_NS_MAP2 = {
+                        "FIToFICstmrCdtTrf":     "pacs.008.001.08",
+                        "FICdtTrf":               "pacs.009.001.08",
+                        "FIToFICstmrDrctDbt":     "pacs.003.001.08",
+                        "PmtRtr":                 "pacs.004.001.09",
+                        "FIToFIPmtStsRpt":        "pacs.002.001.10",
+                        "CstmrPmtCxlReq":         "camt.055.001.08",
+                        "FIToFIPmtCxlReq":        "camt.056.001.08",
+                        "BkToCstmrAcctRpt":       "camt.052.001.08",
+                        "BkToCstmrStmt":          "camt.053.001.08",
+                        "BkToCstmrDbtCdtNtfctn":  "camt.054.001.08",
+                        "NtfctnToRcv":            "camt.057.001.06",
+                        "RsltnOfInvstgtn":        "camt.029.001.09",
+                        "CstmrCdtTrfInitn":       "pain.001.001.09",
+                        "CstmrDrctDbtInitn":      "pain.008.001.09",
+                        "CstmrPmtStsRpt":         "pain.002.001.09",
+                        "FIToFIPmtStsRpt":        "pacs.002.001.10",
+                        "FIToFIPmtCxlReq":        "camt.056.001.08",
+                    }
+                    _correct_msg_id = None
+                    # 1. Body element name (most authoritative — MsgDefIdr may be wrong)
+                    for _body_ch in _doc_el_ns:
+                        if isinstance(_body_ch.tag, str):
+                            _ln = etree.QName(_body_ch.tag).localname
+                            if _ln in _DOC_NS_MAP2:
+                                _correct_msg_id = _DOC_NS_MAP2[_ln]
+                                break
+                    # 2. MsgDefIdr — only if body lookup failed and MsgDefIdr is not head.*
+                    if not _correct_msg_id:
+                        _apphdr_ns_el = next(
+                            (e for e in root.iter() if isinstance(e.tag, str)
+                             and etree.QName(e.tag).localname == "AppHdr"), None,
+                        )
+                        if _apphdr_ns_el is not None:
+                            _mdi_el = next(
+                                (e for e in _apphdr_ns_el.iter() if isinstance(e.tag, str)
+                                 and etree.QName(e.tag).localname == "MsgDefIdr"), None,
+                            )
+                            if _mdi_el is not None:
+                                _mdi_val = (_mdi_el.text or "").strip()
+                                if _mdi_val and not _mdi_val.startswith("head."):
+                                    _correct_msg_id = _mdi_val
+                    if _correct_msg_id:
+                        _target_ns = (
+                            _ISO_PFX + _correct_msg_id
+                            if not _correct_msg_id.startswith("urn:")
+                            else _correct_msg_id
+                        )
+                        # Re-namespace Document and all children that share the old ns
+                        try:
+                            _parser_dns = etree.XMLParser(remove_blank_text=False, no_network=True, recover=True)
+                            _r_dns = etree.fromstring(xml.encode("utf-8"), _parser_dns)
+                            _doc_dns = next(
+                                (e for e in _r_dns.iter()
+                                 if isinstance(e.tag, str)
+                                 and etree.QName(e.tag).localname == "Document"),
+                                None,
+                            )
+                            if _doc_dns is not None:
+                                _old_doc_ns = etree.QName(_doc_dns.tag).namespace or ""
+                                # Rebuild with default ns so lxml serializes xmlns="..." not ns1:
+                                def _rens_defns2(el, old_ns, new_ns):
+                                    q = etree.QName(el.tag)
+                                    cur = q.namespace or ""
+                                    tgt = new_ns if cur in (old_ns, "") else cur
+                                    nsmap = {None: tgt} if tgt else {}
+                                    ne = etree.Element(
+                                        f"{{{tgt}}}{q.localname}" if tgt else q.localname,
+                                        nsmap=nsmap,
+                                    )
+                                    ne.text = el.text
+                                    ne.tail = el.tail
+                                    for k, v in el.attrib.items():
+                                        ne.set(k, v)
+                                    for ch in el:
+                                        if isinstance(ch.tag, str):
+                                            ne.append(_rens_defns2(ch, old_ns, new_ns))
+                                    return ne
+                                _doc_rens2 = _rens_defns2(_doc_dns, _old_doc_ns, _target_ns)
+                                _doc_parent2 = _doc_dns.getparent()
+                                if _doc_parent2 is not None:
+                                    _idx2 = list(_doc_parent2).index(_doc_dns)
+                                    _doc_parent2.remove(_doc_dns)
+                                    _doc_parent2.insert(_idx2, _doc_rens2)
+                                _decl_dns = '<?xml version="1.0" encoding="UTF-8"?>\n'
+                                _fixed_dns = etree.tostring(_r_dns, encoding="unicode", pretty_print=True)
+                                if not _fixed_dns.startswith("<?"):
+                                    _fixed_dns = _decl_dns + _fixed_dns
+                                if _fixed_dns != xml:
+                                    return FixSuggestion("/", xml, _fixed_dns, code, msg, "high")
+                        except Exception:
+                            pass
+
+        # ── INVALID_MSG_DEF_IDR — fix MsgDefIdr to match Document body ──────────
+        # Fires when MsgDefIdr says head.001.001.02 (or wrong msg type) but the
+        # Document body contains e.g. FIToFICstmrCdtTrf → should be pacs.008.001.08.
+        if code in ("INVALID_MSG_DEF_IDR", "HEAD001_MSGDEFIDR_MISMATCH", "INVALID_MSGDEFIDR"):
+            _MDI_FIX_MAP = {
+                "FIToFICstmrCdtTrf": "pacs.008.001.08",
+                "FICdtTrf":           "pacs.009.001.08",
+                "FIToFICstmrDrctDbt": "pacs.003.001.08",
+                "PmtRtr":             "pacs.004.001.09",
+                "FIToFIPmtStsRpt":    "pacs.002.001.10",
+                "FIToFIPmtCxlReq":    "camt.056.001.08",
+                "CstmrPmtCxlReq":     "camt.055.001.08",
+                "BkToCstmrAcctRpt":   "camt.052.001.08",
+                "BkToCstmrStmt":      "camt.053.001.08",
+                "BkToCstmrDbtCdtNtfctn": "camt.054.001.08",
+                "NtfctnToRcv":        "camt.057.001.06",
+                "RsltnOfInvstgtn":    "camt.029.001.09",
+                "CstmrCdtTrfInitn":   "pain.001.001.09",
+                "CstmrDrctDbtInitn":  "pain.008.001.09",
+                "CstmrPmtStsRpt":     "pain.002.001.09",
+            }
+            _mdi_apphdr = next((e for e in root.iter()
+                                if isinstance(e.tag, str) and etree.QName(e.tag).localname == "AppHdr"), None)
+            _mdi_el2 = next((e for e in root.iter()
+                             if isinstance(e.tag, str) and etree.QName(e.tag).localname == "MsgDefIdr"), None)
+            _doc_el2 = next((e for e in root.iter()
+                             if isinstance(e.tag, str) and etree.QName(e.tag).localname == "Document"), None)
+            if _mdi_el2 is not None and _doc_el2 is not None:
+                _correct_mdi = None
+                for _dch2 in _doc_el2:
+                    if isinstance(_dch2.tag, str):
+                        _dln2 = etree.QName(_dch2.tag).localname
+                        if _dln2 in _MDI_FIX_MAP:
+                            _correct_mdi = _MDI_FIX_MAP[_dln2]
+                            break
+                if _correct_mdi and (_mdi_el2.text or "").strip() != _correct_mdi:
+                    try:
+                        _parser_mdi = etree.XMLParser(remove_blank_text=False, no_network=True, recover=True)
+                        _r_mdi = etree.fromstring(xml.encode("utf-8"), _parser_mdi)
+                        _mdi_fix = next((e for e in _r_mdi.iter()
+                                         if isinstance(e.tag, str) and etree.QName(e.tag).localname == "MsgDefIdr"), None)
+                        if _mdi_fix is not None:
+                            _mdi_fix.text = _correct_mdi
+                            # Also fix Document namespace if it matches old MsgDefIdr (head.*)
+                            _doc_fix = next((e for e in _r_mdi.iter()
+                                             if isinstance(e.tag, str) and etree.QName(e.tag).localname == "Document"), None)
+                            if _doc_fix is not None:
+                                _doc_fix_ns = etree.QName(_doc_fix.tag).namespace or ""
+                                import re as _re_mdi
+                                _doc_fix_m = _re_mdi.match(
+                                    r"^urn:iso:std:iso:20022:tech:xsd:([a-z]{4}\.\d{3}\.\d{3}\.\d{2})$",
+                                    _doc_fix_ns,
+                                )
+                                _doc_fix_mid = _doc_fix_m.group(1) if _doc_fix_m else None
+                                if _doc_fix_mid and _doc_fix_mid.startswith("head."):
+                                    _target_mdi_ns = f"urn:iso:std:iso:20022:tech:xsd:{_correct_mdi}"
+                                    def _rens_mdi(el, old_ns, new_ns):
+                                        q = etree.QName(el.tag)
+                                        cur = q.namespace or ""
+                                        tgt = new_ns if cur in (old_ns, "") else cur
+                                        nsmap = {None: tgt} if tgt else {}
+                                        ne = etree.Element(
+                                            f"{{{tgt}}}{q.localname}" if tgt else q.localname,
+                                            nsmap=nsmap,
+                                        )
+                                        ne.text = el.text; ne.tail = el.tail
+                                        for k, v in el.attrib.items(): ne.set(k, v)
+                                        for ch in el:
+                                            if isinstance(ch.tag, str):
+                                                ne.append(_rens_mdi(ch, old_ns, new_ns))
+                                        return ne
+                                    _doc_rens_mdi = _rens_mdi(_doc_fix, _doc_fix_ns, _target_mdi_ns)
+                                    _doc_par_mdi = _doc_fix.getparent()
+                                    if _doc_par_mdi is not None:
+                                        _idx_mdi = list(_doc_par_mdi).index(_doc_fix)
+                                        _doc_par_mdi.remove(_doc_fix)
+                                        _doc_par_mdi.insert(_idx_mdi, _doc_rens_mdi)
+                            _decl_mdi = '<?xml version="1.0" encoding="UTF-8"?>\n'
+                            _fixed_mdi = etree.tostring(_r_mdi, encoding="unicode", pretty_print=True)
+                            if not _fixed_mdi.startswith("<?"):
+                                _fixed_mdi = _decl_mdi + _fixed_mdi
+                            return FixSuggestion("/", xml, _fixed_mdi, code, msg, "high")
+                    except Exception:
+                        pass
+
+        # ── SCHEMA_VAL //FinInstnId (or stray) in CstmrPmtCxlReq — restructure camt.055 ──
+        # CstmrPmtCxlReq only allows Assgnmt + Undrlyg.
+        # Stray elements (FinInstnId, Agt, Cretr, …) must be stripped.
+        # Orphaned Orig*/CxlRsnInf/TxInf/Case at this level must move into Undrlyg/OrgnlPmtInfAndCxl/TxInf.
+        _CSTMR_ALLOWED = {"Assgnmt", "Undrlyg"}
+        _TXINF_FIELDS = {
+            "CxlId", "Case", "OrgnlInstrId", "OrgnlEndToEndId", "OrgnlUETR",
+            "OrgnlInstdAmt", "OrgnlReqdExctnDt", "OrgnlReqdColltnDt", "CxlRsnInf",
+        }
+        _TXINF_ORDER = [
+            "CxlId", "Case", "OrgnlInstrId", "OrgnlEndToEndId", "OrgnlUETR",
+            "OrgnlInstdAmt", "OrgnlReqdExctnDt", "OrgnlReqdColltnDt", "CxlRsnInf",
+        ]
+        if code == "SCHEMA_VAL" and (
+            "fininstnid" in path.lower() or "cstmrpmtcxlreq" in path.lower()
+            or (
+                "unexpected" in msg.lower()
+                and any(k in msg.lower() for k in ("fininstnid", "agt", "cretr", "assgnmt"))
+            )
+        ):
+            try:
+                _parser_c55 = etree.XMLParser(remove_blank_text=False, no_network=True, recover=True)
+                _r_c55 = etree.fromstring(xml.encode("utf-8"), _parser_c55)
+                _cpr_c55 = next(
+                    (e for e in _r_c55.iter()
+                     if isinstance(e.tag, str) and etree.QName(e.tag).localname == "CstmrPmtCxlReq"),
+                    None,
+                )
+                if _cpr_c55 is not None:
+                    _cpr_ns = etree.QName(_cpr_c55.tag).namespace or ""
+                    _children_c55 = list(_cpr_c55)
+                    _child_lns = [etree.QName(c.tag).localname for c in _children_c55 if isinstance(c.tag, str)]
+                    # Only act if there are stray children
+                    _has_stray = any(ln not in _CSTMR_ALLOWED for ln in _child_lns)
+                    if _has_stray:
+                        def _mk_c55(tag, ns, text=None, children=None, attrib=None):
+                            el = etree.Element(f"{{{ns}}}{tag}" if ns else tag, nsmap={None: ns} if ns else {})
+                            if text:
+                                el.text = text
+                            if attrib:
+                                for k, v in attrib.items():
+                                    el.set(k, v)
+                            if children:
+                                for ch in children:
+                                    el.append(ch)
+                            return el
+
+                        # Collect all children by localname
+                        _by_ln = {}
+                        for _c in _children_c55:
+                            if isinstance(_c.tag, str):
+                                _ln = etree.QName(_c.tag).localname
+                                _by_ln.setdefault(_ln, []).append(_c)
+
+                        # Existing Assgnmt and Undrlyg kept as-is
+                        _assgnmt_el = _by_ln.get("Assgnmt", [None])[0]
+                        _undrlyg_el = _by_ln.get("Undrlyg", [None])[0]
+
+                        # Collect TxInf fields — from orphaned direct children + existing TxInf element
+                        _txinf_existing = _by_ln.get("TxInf", [None])[0]
+                        _txinf_fields_collected = {}  # localname → element
+
+                        # From orphaned direct children
+                        for _fln in _TXINF_FIELDS:
+                            _orphans = _by_ln.get(_fln, [])
+                            if _orphans:
+                                _txinf_fields_collected[_fln] = _orphans[0]
+
+                        # Absorb existing TxInf children if present
+                        if _txinf_existing is not None:
+                            for _tc in list(_txinf_existing):
+                                if isinstance(_tc.tag, str):
+                                    _tln = etree.QName(_tc.tag).localname
+                                    if _tln not in _txinf_fields_collected:
+                                        _txinf_fields_collected[_tln] = _tc
+
+                        # Build new TxInf in XSD order
+                        _txinf_children = []
+                        for _slot in _TXINF_ORDER:
+                            if _slot in _txinf_fields_collected:
+                                _txinf_children.append(_txinf_fields_collected[_slot])
+
+                        # Need at least OrgnlEndToEndId in TxInf
+                        if not any(etree.QName(c.tag).localname == "OrgnlEndToEndId" for c in _txinf_children if isinstance(c.tag, str)):
+                            _ee = _mk_c55("OrgnlEndToEndId", _cpr_ns, text="NOTPROVIDED")
+                            _txinf_children.insert(0, _ee)
+                        # Need OrgnlUETR
+                        if not any(etree.QName(c.tag).localname == "OrgnlUETR" for c in _txinf_children if isinstance(c.tag, str)):
+                            import uuid as _uuid_c55
+                            _uu = _mk_c55("OrgnlUETR", _cpr_ns, text=str(_uuid_c55.uuid4()))
+                            # Insert after OrgnlEndToEndId
+                            _ee_idx = next((i for i,c in enumerate(_txinf_children) if isinstance(c.tag,str) and etree.QName(c.tag).localname=="OrgnlEndToEndId"), -1)
+                            _txinf_children.insert(_ee_idx + 1, _uu)
+                        # Need OrgnlInstdAmt
+                        if not any(etree.QName(c.tag).localname == "OrgnlInstdAmt" for c in _txinf_children if isinstance(c.tag, str)):
+                            _ia = _mk_c55("OrgnlInstdAmt", _cpr_ns, text="0", attrib={"Ccy": "USD"})
+                            _txinf_children.append(_ia)
+                        # Need CxlRsnInf
+                        if not any(etree.QName(c.tag).localname == "CxlRsnInf" for c in _txinf_children if isinstance(c.tag, str)):
+                            _rsn = _mk_c55("Cd", _cpr_ns, text="CUST")
+                            _rsnw = _mk_c55("Rsn", _cpr_ns, children=[_rsn])
+                            _cxl = _mk_c55("CxlRsnInf", _cpr_ns, children=[_rsnw])
+                            _txinf_children.append(_cxl)
+
+                        _new_txinf = _mk_c55("TxInf", _cpr_ns, children=_txinf_children)
+
+                        # Build Undrlyg/OrgnlPmtInfAndCxl
+                        if _undrlyg_el is not None:
+                            # Try to reuse existing OrgnlPmtInfAndCxl inside Undrlyg
+                            _orig_pmt = next(
+                                (c for c in _undrlyg_el if isinstance(c.tag, str)
+                                 and etree.QName(c.tag).localname == "OrgnlPmtInfAndCxl"),
+                                None,
+                            )
+                        else:
+                            _orig_pmt = _by_ln.get("OrgnlPmtInfAndCxl", [None])[0]
+
+                        # Build OrgnlPmtInfAndCxl with mandatory children
+                        _opmti_children = []
+                        # OrgnlPmtInfId (mandatory)
+                        if _orig_pmt is not None:
+                            _existing_opi = next((c for c in _orig_pmt if isinstance(c.tag,str) and etree.QName(c.tag).localname=="OrgnlPmtInfId"), None)
+                        else:
+                            _existing_opi = None
+                        _opmti_children.append(
+                            _existing_opi if _existing_opi is not None
+                            else _mk_c55("OrgnlPmtInfId", _cpr_ns, text="NOTPROVIDED")
+                        )
+                        # OrgnlGrpInf (mandatory): OrgnlMsgId + OrgnlMsgNmId
+                        if _orig_pmt is not None:
+                            _existing_ogi = next((c for c in _orig_pmt if isinstance(c.tag,str) and etree.QName(c.tag).localname=="OrgnlGrpInf"), None)
+                        else:
+                            _existing_ogi = None
+                        if _existing_ogi is None:
+                            _ogi_mid = _mk_c55("OrgnlMsgId", _cpr_ns, text="NOTPROVIDED")
+                            _ogi_mnm = _mk_c55("OrgnlMsgNmId", _cpr_ns, text="pacs.008.001.08")
+                            _existing_ogi = _mk_c55("OrgnlGrpInf", _cpr_ns, children=[_ogi_mid, _ogi_mnm])
+                        _opmti_children.append(_existing_ogi)
+                        # TxInf (mandatory)
+                        _opmti_children.append(_new_txinf)
+
+                        _new_orig_pmt = _mk_c55("OrgnlPmtInfAndCxl", _cpr_ns, children=_opmti_children)
+                        _new_undrlyg = _mk_c55("Undrlyg", _cpr_ns, children=[_new_orig_pmt])
+
+                        # Rebuild CstmrPmtCxlReq with only Assgnmt + Undrlyg
+                        for _ch in list(_cpr_c55):
+                            _cpr_c55.remove(_ch)
+                        if _assgnmt_el is not None:
+                            _cpr_c55.append(_assgnmt_el)
+                        else:
+                            # Assgnmt is mandatory — generate minimal stub
+                            # Assgnr: Party40Choice__1 (Pty|Agt); Pty=PartyIdentification135__1 (only Id)
+                            # Assgne: Party40Choice__2 (only Agt)
+                            _assgnr_fid = _mk_c55("FinInstnId", _cpr_ns, children=[_mk_c55("BICFI", _cpr_ns, text="NOTPROVIDED")])
+                            _assgnr = _mk_c55("Agt", _cpr_ns, children=[_assgnr_fid])
+                            _assgne_fid = _mk_c55("FinInstnId", _cpr_ns, children=[_mk_c55("BICFI", _cpr_ns, text="NOTPROVIDED")])
+                            _assgne = _mk_c55("Agt", _cpr_ns, children=[_assgne_fid])
+                            _assgnmt_stub = _mk_c55("Assgnmt", _cpr_ns, children=[
+                                _mk_c55("Id", _cpr_ns, text="ASSGNMT-001"),
+                                _mk_c55("Assgnr", _cpr_ns, children=[_assgnr]),
+                                _mk_c55("Assgne", _cpr_ns, children=[_assgne]),
+                                _mk_c55("CreDtTm", _cpr_ns, text="2000-01-01T00:00:00+00:00"),
+                            ])
+                            _cpr_c55.append(_assgnmt_stub)
+                        _cpr_c55.append(_new_undrlyg)
+
+                        _decl_c55 = '<?xml version="1.0" encoding="UTF-8"?>\n'
+                        _fixed_c55 = etree.tostring(_r_c55, encoding="unicode", pretty_print=True)
+                        if not _fixed_c55.startswith("<?"):
+                            _fixed_c55 = _decl_c55 + _fixed_c55
+                        return FixSuggestion("/", xml, _fixed_c55, code, msg, "high")
+            except Exception:
+                pass
+
+        # ── SCHEMA_VAL: stray element in camt.056 TxInf — strip + reorder ──────────
+        # PaymentTransaction106__1 has a fixed sequence; AddtlInf and OrgnlInstdAmt are not in it.
+        # Also handles out-of-order children by reordering to XSD sequence.
+        _C056_TXINF_ORDER = [
+            "CxlId", "Case", "OrgnlGrpInf", "OrgnlInstrId", "OrgnlEndToEndId",
+            "OrgnlTxId", "OrgnlUETR", "OrgnlClrSysRef",
+            "OrgnlIntrBkSttlmAmt", "OrgnlIntrBkSttlmDt", "CxlRsnInf",
+        ]
+        _C056_TXINF_ALLOWED = set(_C056_TXINF_ORDER)
+        if code == "SCHEMA_VAL" and "unexpected" in msg.lower() and (
+            path.lower() in ("//addtlinf",)
+            or (
+                any(k in path.lower() for k in ("addtlinf", "orgnlinstdamt"))
+                and "txinf" in xml.lower()
+            )
+            or (
+                "addtlinf" in msg.lower() or "orgnlinstdamt" in msg.lower()
+            )
+        ):
+            try:
+                _parser_c56 = etree.XMLParser(remove_blank_text=False, no_network=True, recover=True)
+                _r_c56 = etree.fromstring(xml.encode("utf-8"), _parser_c56)
+                # Find FIToFIPmtCxlReq TxInf elements
+                _txinf_c56 = [
+                    e for e in _r_c56.iter()
+                    if isinstance(e.tag, str) and etree.QName(e.tag).localname == "TxInf"
+                    and any(
+                        isinstance(p.tag, str) and etree.QName(p.tag).localname in ("Undrlyg", "FIToFIPmtCxlReq")
+                        for p in [e.getparent()] if p is not None
+                    )
+                ]
+                _changed_c56 = False
+                for _txi in _txinf_c56:
+                    _txi_ns = etree.QName(_txi.tag).namespace or ""
+                    _kids = list(_txi)
+                    _lns = [(etree.QName(c.tag).localname if isinstance(c.tag, str) else None, c) for c in _kids]
+                    # Check if any stray (unknown) children exist
+                    _stray = [c for ln, c in _lns if ln is not None and ln not in _C056_TXINF_ALLOWED]
+                    if _stray:
+                        for _sc in _stray:
+                            _txi.remove(_sc)
+                        _changed_c56 = True
+                    # Reorder remaining children by XSD sequence
+                    _remaining = [(etree.QName(c.tag).localname if isinstance(c.tag, str) else None, c) for c in list(_txi)]
+                    _known = {ln: c for ln, c in _remaining if ln in _C056_TXINF_ORDER}
+                    _unknown_rest = [c for ln, c in _remaining if ln not in _C056_TXINF_ORDER and ln is not None]
+                    _ordered = [_known[slot] for slot in _C056_TXINF_ORDER if slot in _known]
+                    _ordered.extend(_unknown_rest)
+                    _cur_order = [c for _, c in _remaining]
+                    if _ordered != _cur_order:
+                        for _c in list(_txi):
+                            _txi.remove(_c)
+                        for _c in _ordered:
+                            _txi.append(_c)
+                        _changed_c56 = True
+                    # Insert mandatory OrgnlInstrId if missing
+                    _child_lns_c56 = {etree.QName(c.tag).localname for c in list(_txi) if isinstance(c.tag, str)}
+                    if "OrgnlInstrId" not in _child_lns_c56:
+                        _ins_el = etree.Element(
+                            f"{{{_txi_ns}}}OrgnlInstrId" if _txi_ns else "OrgnlInstrId",
+                            nsmap={None: _txi_ns} if _txi_ns else {},
+                        )
+                        _ins_el.text = "NOTPROVIDED"
+                        # Insert after OrgnlGrpInf
+                        _ogi_idx = next((i for i, c in enumerate(list(_txi)) if isinstance(c.tag, str) and etree.QName(c.tag).localname == "OrgnlGrpInf"), -1)
+                        _txi.insert(_ogi_idx + 1, _ins_el)
+                        _changed_c56 = True
+                if _changed_c56:
+                    _decl_c56 = '<?xml version="1.0" encoding="UTF-8"?>\n'
+                    _fixed_c56 = etree.tostring(_r_c56, encoding="unicode", pretty_print=True)
+                    if not _fixed_c56.startswith("<?"):
+                        _fixed_c56 = _decl_c56 + _fixed_c56
+                    return FixSuggestion("/", xml, _fixed_c56, code, msg, "high")
+            except Exception:
+                pass
+
+        # ── SCHEMA_VAL //Nm or //Pty: Assgnmt party type violations (camt.055) ──────
+        # Assgnr (Party40Choice__1): Pty allowed but Pty/Nm is NOT (PartyIdentification135__1 has no Nm).
+        # Assgne (Party40Choice__2): only Agt allowed, Pty is forbidden entirely.
+        # Fix: strip stray Nm from Assgnr/Pty; replace Assgne/Pty with Agt stub.
+        if code == "SCHEMA_VAL" and "unexpected" in msg.lower() and path.lower() in ("//nm", "//pty"):
+            try:
+                _parser_asgn = etree.XMLParser(remove_blank_text=False, no_network=True, recover=True)
+                _r_asgn = etree.fromstring(xml.encode("utf-8"), _parser_asgn)
+                _asgn_ns = None
+                _doc_asgn = next((e for e in _r_asgn.iter() if isinstance(e.tag, str) and etree.QName(e.tag).localname == "Document"), None)
+                if _doc_asgn is not None:
+                    _asgn_ns = etree.QName(_doc_asgn.tag).namespace or ""
+                _changed_asgn = False
+
+                # Fix 1: Assgnr/Pty — PartyIdentification135__1 only allows Id (no Nm, no PstlAdr etc.)
+                # If Pty contains only invalid fields (Nm/PstlAdr) and no Id → convert to Agt stub.
+                # If Pty has an Id → only strip invalid sibling fields.
+                _ASSGNR_PTY_VALID = {"Id"}  # PartyIdentification135__1 only allows Id
+                for _assgnr_el in _r_asgn.iter():
+                    if not isinstance(_assgnr_el.tag, str): continue
+                    if etree.QName(_assgnr_el.tag).localname != "Assgnr": continue
+                    _pty_el = next((c for c in _assgnr_el if isinstance(c.tag, str) and etree.QName(c.tag).localname == "Pty"), None)
+                    if _pty_el is not None:
+                        _pty_child_lns = [etree.QName(c.tag).localname for c in _pty_el if isinstance(c.tag, str)]
+                        _has_valid = any(ln in _ASSGNR_PTY_VALID for ln in _pty_child_lns)
+                        _ns_ar = _asgn_ns or (etree.QName(_assgnr_el.tag).namespace or "")
+                        if not _has_valid:
+                            # No valid content — replace Pty with Agt stub
+                            _assgnr_el.remove(_pty_el)
+                            _bicfi_ar = etree.Element(f"{{{_ns_ar}}}BICFI" if _ns_ar else "BICFI", nsmap={None: _ns_ar} if _ns_ar else {})
+                            _bicfi_ar.text = "NOTPROVIDED"
+                            _fid_ar = etree.Element(f"{{{_ns_ar}}}FinInstnId" if _ns_ar else "FinInstnId", nsmap={None: _ns_ar} if _ns_ar else {})
+                            _fid_ar.append(_bicfi_ar)
+                            _agt_ar = etree.Element(f"{{{_ns_ar}}}Agt" if _ns_ar else "Agt", nsmap={None: _ns_ar} if _ns_ar else {})
+                            _agt_ar.append(_fid_ar)
+                            _assgnr_el.append(_agt_ar)
+                            _changed_asgn = True
+                        else:
+                            # Has Id — strip invalid siblings (Nm, PstlAdr, etc.)
+                            for _inv_c in [c for c in list(_pty_el) if isinstance(c.tag, str) and etree.QName(c.tag).localname not in _ASSGNR_PTY_VALID]:
+                                _pty_el.remove(_inv_c)
+                                _changed_asgn = True
+
+                # Fix 2: replace Assgne/Pty with Agt (Party40Choice__2 only allows Agt)
+                for _assgne_el in _r_asgn.iter():
+                    if not isinstance(_assgne_el.tag, str): continue
+                    if etree.QName(_assgne_el.tag).localname != "Assgne": continue
+                    _pty_assgne = next((c for c in _assgne_el if isinstance(c.tag, str) and etree.QName(c.tag).localname == "Pty"), None)
+                    if _pty_assgne is not None:
+                        _assgne_el.remove(_pty_assgne)
+                        _ns_a = _asgn_ns or (etree.QName(_assgne_el.tag).namespace or "")
+                        _bicfi_a = etree.Element(f"{{{_ns_a}}}BICFI" if _ns_a else "BICFI", nsmap={None: _ns_a} if _ns_a else {})
+                        _bicfi_a.text = "NOTPROVIDED"
+                        _fid_a = etree.Element(f"{{{_ns_a}}}FinInstnId" if _ns_a else "FinInstnId", nsmap={None: _ns_a} if _ns_a else {})
+                        _fid_a.append(_bicfi_a)
+                        _agt_a = etree.Element(f"{{{_ns_a}}}Agt" if _ns_a else "Agt", nsmap={None: _ns_a} if _ns_a else {})
+                        _agt_a.append(_fid_a)
+                        _assgne_el.append(_agt_a)
+                        _changed_asgn = True
+
+                if _changed_asgn:
+                    _decl_asgn = '<?xml version="1.0" encoding="UTF-8"?>\n'
+                    _fixed_asgn = etree.tostring(_r_asgn, encoding="unicode", pretty_print=True)
+                    if not _fixed_asgn.startswith("<?"):
+                        _fixed_asgn = _decl_asgn + _fixed_asgn
+                    return FixSuggestion("/", xml, _fixed_asgn, code, msg, "high")
+            except Exception:
+                pass
+
+        # ── SCHEMA_VAL //BICFI: stray BICFI outside FinInstnId ───────────────────
+        # BranchAndFinancialInstitutionIdentification6 only allows FinInstnId.
+        # A stray <BICFI> directly under InstgAgt/InstdAgt/DbtrAgt/etc. must be removed.
+        if code == "SCHEMA_VAL" and "bicfi" in path.lower() and (
+            "wrong place" in msg.lower() or "unexpected" in msg.lower() or "not allowed" in msg.lower()
+        ):
+            # Agent container tags that only allow FinInstnId as child
+            _AGENT_CONTAINERS = {
+                "InstgAgt", "InstdAgt", "DbtrAgt", "CdtrAgt",
+                "IntrmyAgt1", "IntrmyAgt2", "IntrmyAgt3",
+                "PrvsInstgAgt1", "PrvsInstgAgt2", "PrvsInstgAgt3",
+            }
+            _stray_bicfi_found = False
+            for _ag_el in root.iter():
+                if not isinstance(_ag_el.tag, str):
+                    continue
+                if etree.QName(_ag_el.tag).localname not in _AGENT_CONTAINERS:
+                    continue
+                _stray_bics = [c for c in _ag_el if isinstance(c.tag, str)
+                                and etree.QName(c.tag).localname == "BICFI"]
+                if _stray_bics:
+                    _stray_bicfi_found = True
+                    break
+            if _stray_bicfi_found:
+                try:
+                    _parser_bic = etree.XMLParser(remove_blank_text=False, no_network=True, recover=True)
+                    _r_bic = etree.fromstring(xml.encode("utf-8"), _parser_bic)
+                    _removed_bic = 0
+                    for _ag_r in _r_bic.iter():
+                        if not isinstance(_ag_r.tag, str):
+                            continue
+                        if etree.QName(_ag_r.tag).localname not in _AGENT_CONTAINERS:
+                            continue
+                        for _bic_ch in list(_ag_r):
+                            if isinstance(_bic_ch.tag, str) and etree.QName(_bic_ch.tag).localname == "BICFI":
+                                _ag_r.remove(_bic_ch)
+                                _removed_bic += 1
+                    if _removed_bic:
+                        _decl_bic = '<?xml version="1.0" encoding="UTF-8"?>\n'
+                        _fixed_bic = etree.tostring(_r_bic, encoding="unicode", pretty_print=True)
+                        if not _fixed_bic.startswith("<?"):
+                            _fixed_bic = _decl_bic + _fixed_bic
+                        return FixSuggestion("/", xml, _fixed_bic, code, msg, "high")
+                except Exception:
+                    pass
+
+        # ── SCHEMA_VAL order errors in pacs.008 PmtId / CdtTrfTxInf ────────────
+        # "Unexpected field EndToEndId/ChrgBr — missed mandatory field before it"
+        # Cause 1: PmtId missing InstrId (mandatory in pacs.008 SR2026 before EndToEndId)
+        # Cause 2: CdtTrfTxInf child elements out of XSD sequence order
+        if code == "SCHEMA_VAL" and (
+            "endtoendid" in path.lower() or "chrgbr" in path.lower()
+            or (("endtoendid" in msg.lower() or "chrgbr" in msg.lower())
+                and ("missed" in msg.lower() or "unexpected" in msg.lower()))
+        ):
+            # pacs.008 SR2026 CdtTrfTxInf canonical order
+            _CDTTRF_ORDER = [
+                "PmtId", "PmtTpInf", "IntrBkSttlmAmt", "IntrBkSttlmDt",
+                "SttlmPrty", "SttlmTmIndctn", "SttlmTmReq",
+                "InstdAmt", "XchgRate", "ChrgBr", "ChrgsInf",
+                "PrvsInstgAgt1", "PrvsInstgAgt1Acct", "PrvsInstgAgt2", "PrvsInstgAgt2Acct",
+                "PrvsInstgAgt3", "PrvsInstgAgt3Acct",
+                "InstgAgt", "InstdAgt",
+                "IntrmyAgt1", "IntrmyAgt1Acct", "IntrmyAgt2", "IntrmyAgt2Acct",
+                "IntrmyAgt3", "IntrmyAgt3Acct",
+                "UltmtDbtr", "InitgPty",
+                "Dbtr", "DbtrAcct", "DbtrAgt", "DbtrAgtAcct",
+                "CdtrAgt", "CdtrAgtAcct", "Cdtr", "CdtrAcct", "UltmtCdtr",
+                "InstrForCdtrAgt", "InstrForNxtAgt",
+                "Purp", "RgltryRptg", "Tax", "RltdRmtInf", "RmtInf",
+                "SplmtryData",
+            ]
+            # pacs.008 SR2026 PmtId canonical order
+            _PMTID_ORDER = ["InstrId", "EndToEndId", "TxId", "UETR", "ClrSysRef"]
+            _cdttrf_el = next(
+                (e for e in root.iter() if isinstance(e.tag, str)
+                 and etree.QName(e.tag).localname == "CdtTrfTxInf"), None,
+            )
+            if _cdttrf_el is not None:
+                try:
+                    _parser_ord = etree.XMLParser(remove_blank_text=False, no_network=True, recover=True)
+                    _r_ord = etree.fromstring(xml.encode("utf-8"), _parser_ord)
+                    _cdttrf_ord = next(
+                        (e for e in _r_ord.iter() if isinstance(e.tag, str)
+                         and etree.QName(e.tag).localname == "CdtTrfTxInf"), None,
+                    )
+                    if _cdttrf_ord is not None:
+                        _cns = etree.QName(_cdttrf_ord.tag).namespace or ""
+                        def _cq(t): return f"{{{_cns}}}{t}" if _cns else t
+                        _changed_ord = False
+                        # Fix PmtId: insert InstrId if missing
+                        _pmtid_ord = next(
+                            (c for c in _cdttrf_ord if isinstance(c.tag, str)
+                             and etree.QName(c.tag).localname == "PmtId"), None,
+                        )
+                        if _pmtid_ord is not None:
+                            _pmtid_lns = [etree.QName(c.tag).localname for c in _pmtid_ord if isinstance(c.tag, str)]
+                            if "InstrId" not in _pmtid_lns:
+                                _instrid_el = etree.Element(_cq("InstrId"))
+                                _instrid_el.text = "NOTPROVIDED"
+                                _pmtid_ord.insert(0, _instrid_el)
+                                _changed_ord = True
+                            # Reorder PmtId children
+                            _pmtid_kids = [(etree.QName(c.tag).localname, c) for c in list(_pmtid_ord) if isinstance(c.tag, str)]
+                            _orig_pmtid_ord = [ln for ln, _ in _pmtid_kids]
+                            _known_pmtid = {ln: c for ln, c in _pmtid_kids if ln in _PMTID_ORDER}
+                            _unk_pmtid = [c for ln, c in _pmtid_kids if ln not in _PMTID_ORDER]
+                            for c in list(_pmtid_ord): _pmtid_ord.remove(c)
+                            for slot in _PMTID_ORDER:
+                                if slot in _known_pmtid:
+                                    _pmtid_ord.append(_known_pmtid[slot])
+                            for c in _unk_pmtid: _pmtid_ord.append(c)
+                            _new_pmtid_ord = [etree.QName(c.tag).localname for c in _pmtid_ord if isinstance(c.tag, str)]
+                            if _new_pmtid_ord != _orig_pmtid_ord:
+                                _changed_ord = True
+                        # Reorder CdtTrfTxInf children
+                        _cdt_kids = [(etree.QName(c.tag).localname, c) for c in list(_cdttrf_ord) if isinstance(c.tag, str)]
+                        _orig_cdt_ord = [ln for ln, _ in _cdt_kids]
+                        _known_cdt = {ln: c for ln, c in _cdt_kids if ln in _CDTTRF_ORDER}
+                        _unk_cdt = [c for ln, c in _cdt_kids if ln not in _CDTTRF_ORDER]
+                        for c in list(_cdttrf_ord): _cdttrf_ord.remove(c)
+                        for slot in _CDTTRF_ORDER:
+                            if slot in _known_cdt:
+                                _cdttrf_ord.append(_known_cdt[slot])
+                        for c in _unk_cdt: _cdttrf_ord.append(c)
+                        _new_cdt_ord = [etree.QName(c.tag).localname for c in _cdttrf_ord if isinstance(c.tag, str)]
+                        if _new_cdt_ord != _orig_cdt_ord:
+                            _changed_ord = True
+                        if _changed_ord:
+                            _decl_ord = '<?xml version="1.0" encoding="UTF-8"?>\n'
+                            _fixed_ord = etree.tostring(_r_ord, encoding="unicode", pretty_print=True)
+                            if not _fixed_ord.startswith("<?"):
+                                _fixed_ord = _decl_ord + _fixed_ord
+                            return FixSuggestion("/", xml, _fixed_ord, code, msg, "high")
+                except Exception:
+                    pass
+
+        # ── camt.055 TxInf: missing OrgnlReqdExctnDt / OrgnlReqdColltnDt (R8) ──
+        # CBPR+ R8: exactly one must be present. Validator emits EXEC_COLL_DATE_MISSING.
+        if code in ("EXEC_COLL_DATE_MISSING", "SCHEMA_VAL", "SCHEMA_ERROR", "CBPR_FORMAL_RULE") and (
+            "orgnlreqdexctndt" in msg.lower()
+            or "orgnlreqdcolltndt" in msg.lower()
+            or "exec_coll_date_missing" in msg.lower()
+            or ("exectndt" in msg.lower() or "colltndt" in msg.lower())
+            or ("requestedexecutiondate" in msg.lower() or "requestedcollectiondate" in msg.lower())
+            or code == "EXEC_COLL_DATE_MISSING"
+        ):
+            import uuid as _uuid_r8
+            for _txinf_r8 in root.iter():
+                if not isinstance(_txinf_r8.tag, str):
+                    continue
+                if etree.QName(_txinf_r8.tag).localname != "TxInf":
+                    continue
+                _ns_r8 = etree.QName(_txinf_r8.tag).namespace or ""
+                def _q_r8(tag): return f"{{{_ns_r8}}}{tag}" if _ns_r8 else tag
+                _lns_r8 = [etree.QName(c.tag).localname
+                           for c in _txinf_r8 if isinstance(c.tag, str)]
+                if "OrgnlReqdExctnDt" in _lns_r8 or "OrgnlReqdColltnDt" in _lns_r8:
+                    continue  # already has one — not a missing-date error
+                # Insert OrgnlReqdExctnDt before CxlRsnInf (or at end of TxInf)
+                from datetime import date as _date_r8
+                _txinf_r8_copy = self._copy(_txinf_r8)
+                _today = _date_r8.today().isoformat()
+                _exctn_el = etree.Element(_q_r8("OrgnlReqdExctnDt"))
+                _dt_el = etree.SubElement(_exctn_el, _q_r8("Dt"))
+                _dt_el.text = _today
+                _cxlinf_anchor = next(
+                    (c for c in _txinf_r8_copy if isinstance(c.tag, str)
+                     and etree.QName(c.tag).localname == "CxlRsnInf"),
+                    None,
+                )
+                if _cxlinf_anchor is not None:
+                    _cxlinf_anchor.addprevious(_exctn_el)
+                else:
+                    _txinf_r8_copy.append(_exctn_el)
+                return FixSuggestion(
+                    self._xpath_of(_txinf_r8), self._serialize(_txinf_r8),
+                    self._serialize(_txinf_r8_copy), code, msg, "high",
+                )
+
         # ── Structural rescue: elements absorbed into account <Id> ──────────────
         # Handles large-deletion collapse where balance engine nests DrctDbtTxInf-
         # level elements (Dbtr, DbtrAcct, DbtrAgt, RmtInf…) inside CdtrAcct/Id.
@@ -4206,6 +5541,23 @@ class FixSuggester:
                     if _fix is not None and _fix.confidence == "high":
                         return _fix
 
+        # ── Route: HEADER_VAL — AppHdr block entirely absent ─────────────────
+        # When the full <AppHdr> is missing, the validator fires HEADER_VAL at
+        # path "/AppHdr". The generic path handler would fall through to
+        # _suggest_missing_subtree which uses a KB template that lacks BizSvc
+        # and puts OrgId placeholders in Fr/To. Instead call
+        # _insert_missing_apphdr which harvests real values (Fr/To BICs,
+        # BizMsgIdr, MsgDefIdr, BizSvc, CreDt) from the Document body.
+        if (code == "HEADER_VAL"
+                and re.sub(r"[/.]", "", path).strip() == "AppHdr"
+                and root.find(".//{*}AppHdr") is None):
+            try:
+                _missing_ah = self._insert_missing_apphdr(root, xml, code, msg, _detect_msg_type(xml))
+                if _missing_ah is not None:
+                    return _missing_ah
+            except Exception:
+                pass
+
         # ── Route: missing mandatory AppHdr field (validator completeness scan) ─
         # The header completeness scan emits one clean "/AppHdr/<Tag>" issue per
         # missing mandatory BAH field. The normal missing-child flow can't place
@@ -4213,6 +5565,57 @@ class FixSuggester:
         # lacking the head.001 XSD order, append at the end). Route them to the
         # namespace-aware, KB-ordered, indented inserter instead.
         _mh = re.search(r"(?:^|/)AppHdr/(\w+)$", path)
+
+        # ── Route: HEADER_VAL for AppHdr missing/wrong namespace ─────────────
+        # When AppHdr has no xmlns (or the wrong one), the validator emits
+        # HEADER_VAL at path //AppHdr with a message containing "namespace" and
+        # "BusinessApplicationHeaderV02". Fix: re-stamp every element in AppHdr
+        # with the correct head.001.001.02 namespace so lxml serialises it with
+        # xmlns="urn:iso:std:iso:20022:tech:xsd:head.001.001.02".
+        if (code == "HEADER_VAL"
+                and "namespace" in msg.lower()
+                and re.search(r"(?:^|//)AppHdr$", path)):
+            _apphdr_ns_el = next(
+                (el for el in root.iter()
+                 if isinstance(el.tag, str)
+                 and etree.QName(el.tag).localname == "AppHdr"),
+                None
+            )
+            if _apphdr_ns_el is None and etree.QName(root.tag).localname == "AppHdr":
+                _apphdr_ns_el = root
+            if _apphdr_ns_el is not None:
+                _correct_ns = "urn:iso:std:iso:20022:tech:xsd:head.001.001.02"
+                _curr_ns = etree.QName(_apphdr_ns_el.tag).namespace or ""
+                if _curr_ns != _correct_ns:
+                    try:
+                        # Build a fresh AppHdr with correct namespace as default
+                        # (nsmap key None = default xmlns, avoids ns0: prefix).
+                        def _build_ns_fixed(src, ns):
+                            ln = etree.QName(src.tag).localname
+                            new_el = etree.Element(
+                                f"{{{ns}}}{ln}",
+                                nsmap={None: ns},
+                            )
+                            for attr, val in src.attrib.items():
+                                new_el.set(attr, val)
+                            new_el.text = src.text
+                            for child in src:
+                                if not isinstance(child.tag, str):
+                                    continue
+                                new_child = _build_ns_fixed(child, ns)
+                                new_child.tail = child.tail
+                                new_el.append(new_child)
+                            return new_el
+                        _ns_fixed_el = _build_ns_fixed(_apphdr_ns_el, _correct_ns)
+                        _orig_ah = self._serialize(_apphdr_ns_el)
+                        _fixed_ah = self._serialize(_ns_fixed_el)
+                        _ah_xpath = self._xpath_of(_apphdr_ns_el)
+                        if _orig_ah != _fixed_ah and _ah_xpath:
+                            return FixSuggestion(
+                                _ah_xpath, _orig_ah, _fixed_ah, code, msg, "high"
+                            )
+                    except Exception:
+                        pass
 
         # ── Route: HEADER_VAL for AppHdr Fr/To Party44Choice conflict ─────────
         # AppHdr Fr and To are Party44Choice: either <OrgId> OR <FIId>, never
@@ -4267,7 +5670,16 @@ class FixSuggester:
             _apphdr_oos = root.find(".//{*}AppHdr")
             if _apphdr_oos is None and etree.QName(root.tag).localname == "AppHdr":
                 _apphdr_oos = root
-            if _apphdr_oos is not None and self._child_exists(_apphdr_oos, _tag_oos) is not None:
+            _existing_oos_el = self._child_exists(_apphdr_oos, _tag_oos) if _apphdr_oos is not None else None
+            # Skip reorder when the element exists but is empty/invalid-value — that
+            # is a content error, not a sequence error. The reorder path would return
+            # the XML unchanged (order was already correct) and block the value fixer.
+            _oos_is_empty = (
+                _existing_oos_el is not None
+                and not list(_existing_oos_el)
+                and not (_existing_oos_el.text or "").strip()
+            )
+            if _apphdr_oos is not None and self._child_exists(_apphdr_oos, _tag_oos) is not None and not _oos_is_empty:
                 # Element exists. If the error message says the field is "missing", a
                 # previous fix in the same batch already added the full AppHdr block.
                 # Return a resolved suggestion so suggest_batch can detect the overlap
@@ -4290,6 +5702,7 @@ class FixSuggester:
                         def _ln_oos(el) -> str:
                             return etree.QName(el.tag).localname if isinstance(el.tag, str) else ""
                         _ah_children = [((_ln_oos(c)), c) for c in list(_ah_oos)]
+                        _orig_order = [ln for ln, _ in _ah_children]
                         for _, _c in _ah_children:
                             _ah_oos.remove(_c)
                         _known_oos = {ln: c for ln, c in _ah_children if ln in _APPHDR_ORDER}
@@ -4299,18 +5712,185 @@ class FixSuggester:
                                 _ah_oos.append(_known_oos[_slot])
                         for _unk in _unknown_oos:
                             _ah_oos.append(_unk)
-                        _decl = '<?xml version="1.0" encoding="UTF-8"?>\n'
-                        _fixed_oos = etree.tostring(_r_oos, encoding="unicode", pretty_print=True)
-                        if not _fixed_oos.startswith("<?"):
-                            _fixed_oos = _decl + _fixed_oos
-                        return FixSuggestion("/", xml, _fixed_oos, code, msg, "high")
+                        _new_order = [_ln_oos(c) for c in list(_ah_oos)]
+                        if _new_order != _orig_order:
+                            _decl = '<?xml version="1.0" encoding="UTF-8"?>\n'
+                            _fixed_oos = etree.tostring(_r_oos, encoding="unicode", pretty_print=True)
+                            if not _fixed_oos.startswith("<?"):
+                                _fixed_oos = _decl + _fixed_oos
+                            return FixSuggestion("/", xml, _fixed_oos, code, msg, "high")
                 except Exception:
                     pass
+
+        # ── Route: stray/forbidden AppHdr element — strip it ─────────────────
+        # When HEADER_VAL fires for a tag that is NOT in _APPHDR_ORDER (e.g.
+        # Agt, Cretr, Case, CxlRsnInf injected by mistake into the header),
+        # remove all such unknown children from AppHdr in one pass.
+        if code in ("HEADER_VAL",) and _mh:
+            _stray_tag = _mh.group(1)
+            if _stray_tag not in _APPHDR_ORDER:
+                _apphdr_str = root.find(".//{*}AppHdr")
+                if _apphdr_str is None and etree.QName(root.tag).localname == "AppHdr":
+                    _apphdr_str = root
+                if _apphdr_str is not None:
+                    _unknown_children = [
+                        c for c in list(_apphdr_str)
+                        if isinstance(c.tag, str)
+                        and etree.QName(c.tag).localname not in _APPHDR_ORDER
+                    ]
+                    if _unknown_children:
+                        try:
+                            _parser_str = etree.XMLParser(remove_blank_text=False, no_network=True, recover=True)
+                            _r_str = etree.fromstring(xml.encode("utf-8"), _parser_str)
+                            _ah_str = _r_str.find(".//{*}AppHdr")
+                            if _ah_str is None and etree.QName(_r_str.tag).localname == "AppHdr":
+                                _ah_str = _r_str
+                            if _ah_str is not None:
+                                _removed = 0
+                                for _c_str in list(_ah_str):
+                                    if isinstance(_c_str.tag, str) and etree.QName(_c_str.tag).localname not in _APPHDR_ORDER:
+                                        _ah_str.remove(_c_str)
+                                        _removed += 1
+                                # Also fix Document namespace if it's a head.001 ns (wrong body ns)
+                                _doc_str = next(
+                                    (e for e in _r_str.iter()
+                                     if isinstance(e.tag, str) and etree.QName(e.tag).localname == "Document"),
+                                    None,
+                                )
+                                if _doc_str is not None:
+                                    _dstr_ns = etree.QName(_doc_str.tag).namespace or ""
+                                    import re as _re_str
+                                    _dstr_match = _re_str.match(
+                                        r"^urn:iso:std:iso:20022:tech:xsd:([a-z]{4}\.\d{3}\.\d{3}\.\d{2})$",
+                                        _dstr_ns,
+                                    )
+                                    _dstr_msgid = _dstr_match.group(1) if _dstr_match else None
+                                    if _dstr_msgid and _dstr_msgid.startswith("head."):
+                                        _correct_str_ns = None
+                                        # Body element name is authoritative (MsgDefIdr may itself be head.*)
+                                        _STR_NS_MAP = {
+                                            "FIToFICstmrCdtTrf": "urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08",
+                                            "FICdtTrf": "urn:iso:std:iso:20022:tech:xsd:pacs.009.001.08",
+                                            "FIToFICstmrDrctDbt": "urn:iso:std:iso:20022:tech:xsd:pacs.003.001.08",
+                                            "PmtRtr": "urn:iso:std:iso:20022:tech:xsd:pacs.004.001.09",
+                                            "FIToFIPmtStsRpt": "urn:iso:std:iso:20022:tech:xsd:pacs.002.001.10",
+                                            "CstmrPmtCxlReq": "urn:iso:std:iso:20022:tech:xsd:camt.055.001.08",
+                                            "FIToFIPmtCxlReq": "urn:iso:std:iso:20022:tech:xsd:camt.056.001.08",
+                                            "BkToCstmrAcctRpt": "urn:iso:std:iso:20022:tech:xsd:camt.052.001.08",
+                                            "BkToCstmrStmt": "urn:iso:std:iso:20022:tech:xsd:camt.053.001.08",
+                                            "BkToCstmrDbtCdtNtfctn": "urn:iso:std:iso:20022:tech:xsd:camt.054.001.08",
+                                            "NtfctnToRcv": "urn:iso:std:iso:20022:tech:xsd:camt.057.001.06",
+                                            "RsltnOfInvstgtn": "urn:iso:std:iso:20022:tech:xsd:camt.029.001.09",
+                                            "CstmrCdtTrfInitn": "urn:iso:std:iso:20022:tech:xsd:pain.001.001.09",
+                                            "CstmrDrctDbtInitn": "urn:iso:std:iso:20022:tech:xsd:pain.008.001.09",
+                                            "CstmrPmtStsRpt": "urn:iso:std:iso:20022:tech:xsd:pain.002.001.09",
+                                        }
+                                        for _bch in _doc_str:
+                                            if isinstance(_bch.tag, str):
+                                                _bln = etree.QName(_bch.tag).localname
+                                                if _bln in _STR_NS_MAP:
+                                                    _correct_str_ns = _STR_NS_MAP[_bln]
+                                                    break
+                                        # Fallback: MsgDefIdr if body lookup failed and not head.*
+                                        if not _correct_str_ns:
+                                            _mdi_str = next(
+                                                (e for e in _ah_str.iter()
+                                                 if isinstance(e.tag, str) and etree.QName(e.tag).localname == "MsgDefIdr"),
+                                                None,
+                                            )
+                                            if _mdi_str is not None:
+                                                _mv = (_mdi_str.text or "").strip()
+                                                if _mv and not _mv.startswith("head."):
+                                                    _correct_str_ns = f"urn:iso:std:iso:20022:tech:xsd:{_mv}"
+                                        if _correct_str_ns:
+                                            # Rebuild Document subtree with correct ns as default.
+                                            # Use nsmap={None: ns} so lxml serializes xmlns="..." (no prefix).
+                                            def _rens_defaultns(el, old_ns, new_ns):
+                                                q = etree.QName(el.tag)
+                                                cur = q.namespace or ""
+                                                tgt = new_ns if cur in (old_ns, "") else cur
+                                                nsmap = {None: tgt} if tgt else {}
+                                                ne = etree.Element(
+                                                    f"{{{tgt}}}{q.localname}" if tgt else q.localname,
+                                                    nsmap=nsmap,
+                                                )
+                                                ne.text = el.text
+                                                ne.tail = el.tail
+                                                for k, v in el.attrib.items():
+                                                    ne.set(k, v)
+                                                for ch in el:
+                                                    if isinstance(ch.tag, str):
+                                                        ne.append(_rens_defaultns(ch, old_ns, new_ns))
+                                                return ne
+                                            _doc_rens = _rens_defaultns(_doc_str, _dstr_ns, _correct_str_ns)
+                                            _doc_parent = _doc_str.getparent()
+                                            if _doc_parent is not None:
+                                                _doc_idx = list(_doc_parent).index(_doc_str)
+                                                _doc_parent.remove(_doc_str)
+                                                _doc_parent.insert(_doc_idx, _doc_rens)
+                                            _removed += 1
+                                if _removed:
+                                    _decl_str = '<?xml version="1.0" encoding="UTF-8"?>\n'
+                                    _fixed_str = etree.tostring(_r_str, encoding="unicode", pretty_print=True)
+                                    if not _fixed_str.startswith("<?"):
+                                        _fixed_str = _decl_str + _fixed_str
+                                    return FixSuggestion("/", xml, _fixed_str, code, msg, "high")
+                        except Exception:
+                            pass
 
         if code in ("HEADER_VAL", "HEAD001_BIZSVC_MISSING") and _mh:
             _apphdr = root.find(".//{*}AppHdr")
             if _apphdr is None and etree.QName(root.tag).localname == "AppHdr":
                 _apphdr = root
+            if _apphdr is not None:
+                _tag_name = _mh.group(1)
+                _existing_direct = self._child_exists(_apphdr, _tag_name)
+                # ── Present-but-empty AppHdr leaf (e.g. <BizMsgIdr/>, <MsgDefIdr/>) ──
+                # _child_exists returns the element even when empty — route to
+                # _fix_value so the empty-BizMsgIdr handler (and similar) fires.
+                if _existing_direct is not None and not list(_existing_direct) and not (
+                        _existing_direct.text or "").strip():
+                    _ns_local2 = etree.QName(_apphdr.tag).namespace or ""
+                    _vfix2 = self._fix_value(_existing_direct, code, msg, fix_hint, _ns_local2)
+                    if _vfix2 is not None:
+                        return _vfix2
+                elif _existing_direct is None:
+                    # The flattened "//AppHdr/<Tag>" path only names the leaf and its
+                    # nearest reported ancestor — it does NOT mean <Tag> is a DIRECT
+                    # child of AppHdr. e.g. BICFI actually lives at
+                    # AppHdr/Fr/FIId/FinInstnId/BICFI. Without this check, a value
+                    # error (wrong BIC) on that nested element looks "missing" here
+                    # and gets a DUPLICATE inserted straight under AppHdr — turning
+                    # one error into two (the original bad value AND an "unexpected
+                    # field" structural error) while never fixing the real value.
+                    _existing_nested = next(
+                        (d for d in _apphdr.iter()
+                         if d is not _apphdr and isinstance(d.tag, str)
+                         and etree.QName(d.tag).localname == _tag_name),
+                        None
+                    )
+                    if _existing_nested is not None:
+                        # "Character content not allowed in element-only" means
+                        # stray text (e.g. ",k0") is sitting in a container tag.
+                        # _fix_value can't strip it — fall through to the Fr/To
+                        # rebuilder at the HEADER_VAL block below which does.
+                        _is_stray_text_err = (
+                            "character content" in msg.lower()
+                            or "element-only" in msg.lower()
+                            or "not allowed" in msg.lower()
+                        )
+                        if not _is_stray_text_err:
+                            _ns_local = etree.QName(_apphdr.tag).namespace or ""
+                            _vfix = self._fix_value(_existing_nested, code, msg, fix_hint, _ns_local)
+                            if _vfix is not None:
+                                return _vfix
+                    else:
+                        _res = self._try_insert_missing_sibling(
+                            root, xml, code, msg, fix_hint,
+                            explicit_parent=_apphdr, explicit_missing=_tag_name,
+                        )
+                        if _res is not None:
+                            return _res
             if _apphdr is not None and self._child_exists(_apphdr, _mh.group(1)) is None:
                 # The flattened "//AppHdr/<Tag>" path only names the leaf and its
                 # nearest reported ancestor — it does NOT mean <Tag> is a DIRECT
@@ -5058,12 +6638,28 @@ class FixSuggester:
                         confidence="high",
                     )
 
-        # ── Route: camt.056 BAH/BIC mismatch (Fr≠Assgnr or To≠Assgne) ──────────
-        # These rules report via check_bic_match whose path is a line number, not
-        # an XPath, so the normal path-walk fails. The AppHdr BICFI is format-valid
-        # (a real BIC) so _fix_value would exit early with a no-op. Route directly.
-        if code in ("CAMT056_FR_EQ_ASSGNR_BIC", "CAMT056_TO_EQ_ASSGNE_BIC"):
-            _bic_fix = self._fix_bah_assgnr_assgne_bic(root, code, msg)
+        # ── Route: camt BAH/BIC mismatch (Fr≠Assgnr or To≠Assgne) ──────────────
+        # Covers SR2025 codes (CAMT056_FR_EQ_ASSGNR_BIC / CAMT056_TO_EQ_ASSGNE_BIC)
+        # and SR2026 codes (BAH_FR_ASSGNR_MISMATCH / BAH_TO_ASSGNE_MISMATCH).
+        # AppHdr BICFI is format-valid so _fix_value exits early — route directly.
+        _ASSGNR_CODES = {
+            "CAMT056_FR_EQ_ASSGNR_BIC", "BAH_FR_ASSGNR_MISMATCH",
+            "CAMT056_TO_EQ_ASSGNE_BIC", "BAH_TO_ASSGNE_MISMATCH",
+        }
+        _msg_lc = msg.lower()
+        _is_assgnr_msg = (
+            "assgnr" in _msg_lc or "assgne" in _msg_lc
+            or "assigner" in _msg_lc or "assignee" in _msg_lc
+        )
+        if code in _ASSGNR_CODES or (code in ("BAH_FR_INSTGAGT_MISMATCH", "BAH_TO_INSTDAGT_MISMATCH") and _is_assgnr_msg):
+            # Determine side from code
+            if code in ("CAMT056_FR_EQ_ASSGNR_BIC", "BAH_FR_ASSGNR_MISMATCH"):
+                _assgnr_side_code = "CAMT056_FR_EQ_ASSGNR_BIC"
+            elif code in ("CAMT056_TO_EQ_ASSGNE_BIC", "BAH_TO_ASSGNE_MISMATCH"):
+                _assgnr_side_code = "CAMT056_TO_EQ_ASSGNE_BIC"
+            else:
+                _assgnr_side_code = "CAMT056_FR_EQ_ASSGNR_BIC" if ("fr" in _msg_lc or "assgnr" in _msg_lc or "assigner" in _msg_lc) else "CAMT056_TO_EQ_ASSGNE_BIC"
+            _bic_fix = self._fix_bah_assgnr_assgne_bic(root, _assgnr_side_code, msg)
             if _bic_fix is not None:
                 return _bic_fix
 
@@ -5075,13 +6671,11 @@ class FixSuggester:
             "CBPR_R3", "CBPR_P9_R2", "CBPR_P9_R3",
             "L3-PACS-MATCH-TO", "L3-PACS-MATCH-FR",
             "TO_BIC_MISMATCH", "FROM_BIC_MISMATCH",
+            "BAH_FR_INSTGAGT_MISMATCH", "BAH_TO_INSTDAGT_MISMATCH",
         }
-        _msg_lc = msg.lower()
         _is_bic_header_msg = (
             ("apphdr" in _msg_lc and "bicfi" in _msg_lc
              and ("instdagt" in _msg_lc or "instgagt" in _msg_lc))
-            # SR2026 prose form: "BAH To/From BIC does not match the
-            # Instructed/Instructing Agent BIC." — no "AppHdr"/"BICFI" literal.
             or ("bah" in _msg_lc and "bic" in _msg_lc
                 and ("instructed agent" in _msg_lc or "instructing agent" in _msg_lc))
         )
@@ -6023,9 +7617,40 @@ class FixSuggester:
                     # auto-generated "ns0:" prefix — making this comparison always
                     # mismatch and firing a bogus "fix" for every HEADER_VAL issue,
                     # even ones unrelated to Fr/To (e.g. an empty BizMsgIdr).
+                    # Check if FIId contains stray non-whitespace text/tail content
+                    # (e.g. ",k0" after </FinInstnId>) — these cause HEADER_VAL
+                    # "character content not allowed in element-only type". Detect
+                    # before copying because _copy uses etree.fromstring(tostring())
+                    # which fails when a tail contains non-whitespace (extra content
+                    # after root element). Strip tails from _fin before serialising.
+                    _has_stray_text = (
+                        (_fin.tail or "").strip() != ""
+                        or (_fiid is not None and (_fiid.text or "").strip() != "")
+                        or any((_ce.tail or "").strip() != ""
+                               for _ce in _fin.iter() if isinstance(_ce.tag, str))
+                    )
+                    if _has_stray_text:
+                        # Serialise with tail suppressed so _copy doesn't choke,
+                        # then build a clean copy with all stray tails cleared.
+                        _saved_tail = _fin.tail
+                        _fin.tail = None
+                        try:
+                            _fin_copy = self._copy(_fin)
+                        finally:
+                            _fin.tail = _saved_tail
+                        for _ce in _fin_copy.iter():
+                            if isinstance(_ce.tag, str) and (_ce.tail or "").strip():
+                                _ce.tail = None
+                    else:
+                        _fin_copy = self._copy(_fin)
                     _new_pty = etree.Element(_pty.tag, nsmap=({None: _hns} if _hns else None))
                     _new_fiid = etree.SubElement(_new_pty, _hq("FIId"))
-                    _new_fiid.append(self._copy(_fin))
+                    _new_fiid.append(_fin_copy)
+                    # Return immediately when we know stray text was present — the
+                    # rebuilt block is clean by construction.
+                    if _has_stray_text:
+                        return FixSuggestion(self._xpath_of(_pty), self._serialize(_pty),
+                                              self._serialize(_new_pty), code, msg, "high")
                     # Compare structurally (tag/attrs/text), ignoring whitespace-only
                     # text/tail formatting. _pty is part of the original, already
                     # human-indented document; _new_pty is freshly built with no
@@ -6433,6 +8058,30 @@ class FixSuggester:
                         _cd_el.text = "CUST"
                         return FixSuggestion(self._xpath_of(_rsn_el), _orig_rsn,
                                               self._serialize(_rsn_copy), code, msg, "high")
+
+        # ── MISSING_CDTR — pacs.009 ADV/COV CdtTrfTxInf is missing mandatory Cdtr ─
+        # SR2026 pacs009adv_validator emits code=MISSING_CDTR when CdtTrfTxInf has
+        # no <Cdtr> child. Build and insert <Cdtr><FinInstnId><BICFI/></FinInstnId>
+        # </Cdtr> before <RmtInf> (or at the correct XSD position) using the pacs.009
+        # KB template ($CDTR_BICFI harvested from CdtrAgt or dummy).
+        if code == "MISSING_CDTR":
+            _mt_cdtr = _detect_msg_type(xml)
+            _xp_cdtr = self._get_xsd_path(xml)
+            _tmap_cdtr = _XsdTypeMap.get(_xp_cdtr) if _xp_cdtr else None
+            for _tx_el in root.iter():
+                if not isinstance(_tx_el.tag, str):
+                    continue
+                if etree.QName(_tx_el.tag).localname != "CdtTrfTxInf":
+                    continue
+                if self._child_exists(_tx_el, "Cdtr") is not None:
+                    continue
+                _mc_res = self._try_insert_missing_sibling(
+                    root, xml, code, msg, fix_hint,
+                    explicit_parent=_tx_el,
+                    explicit_missing="Cdtr",
+                )
+                if _mc_res is not None:
+                    return _mc_res
 
         # PACS004_RTRCHAIN_CDTR_MISSING / DBTR_MISSING — add Cdtr/Dbtr skeleton
         if code in ("PACS004_RTRCHAIN_CDTR_MISSING", "PACS004_RTRCHAIN_DBTR_MISSING"):
@@ -8951,7 +10600,13 @@ class FixSuggester:
         Returns one fix for the single <Id> tied to this error (nearest the
         reported line); the iterative loop handles any further occurrences.
         """
-        m = re.search(r"element '([\w:{}.\-]+)' is not expected", msg, re.I)
+        # Matches both the raw libxml2 phrasing ("element 'X' is not expected")
+        # and Layer2Mixin._simplify_error_message's friendly rewrite
+        # ("Unexpected field 'X' found here" / "Unexpected field 'X'. It is in
+        # the wrong place..." — see layer2_validator.py _simplify_error_message),
+        # which SR2026 reuses verbatim (see project_sr2026_header_val memory).
+        m = re.search(r"element '([\w:{}.\-]+)' is not expected", msg, re.I) \
+            or re.search(r"[Uu]nexpected field '([\w:{}.\-]+)'", msg)
         off_local = m.group(1).split('}')[-1].split(':')[-1] if m else ""
         if off_local not in ("IBAN", "Othr"):
             return None
@@ -9015,7 +10670,17 @@ class FixSuggester:
         becomes <FinInstnId><PstlAdr>…<Ctry>GB</Ctry></PstlAdr></FinInstnId>.
         Schema-generic (uses the XSD type map), works for all message types.
         """
-        m = re.search(r"element '([^']+)' is not (?:expected|allowed)", msg, re.I)
+        # Matches both the raw libxml2 phrasing ("element 'X' is not expected"/
+        # "is not allowed") and Layer2Mixin._simplify_error_message's friendly
+        # rewrite ("Unexpected field 'X' found here" / "Unexpected field 'X'.
+        # It is in the wrong place..."), which SR2026 reuses verbatim (see
+        # project_sr2026_header_val memory). The friendly rewrite never embeds
+        # the expected-list IN `msg` itself (it lives in the separate fix_hint
+        # field — see suggest()'s call site, which still only passes `msg`
+        # here), so this function's own "following element" guard below only
+        # ever sees that list for the raw-libxml2 message shape, same as before.
+        m = (re.search(r"element '([^']+)' is not (?:expected|allowed)", msg, re.I)
+             or re.search(r"[Uu]nexpected field '([^']+)'", msg))
         if not m:
             return None
         # If the validator supplied an expected list, the dedicated sequence/
@@ -9410,6 +11075,19 @@ class FixSuggester:
                 # silently dropping it looks like "the fix removed most of my
                 # code". Decline (fall through) so we never offer a destructive
                 # delete of a big block.
+                # CONTENT GUARD: never delete structural containers that carry
+                # meaningful user data (FinInstnId, PstlAdr, Id, Nm, etc.) — even
+                # when they are small. These are almost always misplaced/mis-wrapped,
+                # not genuinely stray, and removing them loses real data.
+                _NEVER_DELETE = {
+                    "FinInstnId", "PstlAdr", "Id", "Nm", "Othr", "BrnchId",
+                    "FinInstId", "PrvtId", "OrgId", "Agt", "DbtrAgt", "CdtrAgt",
+                    "IntrmyAgt1", "IntrmyAgt2", "InstgAgt", "InstdAgt",
+                    "Dbtr", "Cdtr", "UltmtDbtr", "UltmtCdtr",
+                    "Acct", "DbtrAcct", "CdtrAcct",
+                }
+                if offending in _NEVER_DELETE:
+                    return None
                 subtree_size = sum(1 for _ in off_el.iter())
                 if subtree_size > 6:
                     return None
@@ -10782,6 +12460,27 @@ class FixSuggester:
                 return FixSuggestion(xpath, original_fragment,
                                      self._serialize(el_copy), code, msg, "high")
 
+        # ── Full datetime placed in a time-only (ISOTime) field ──────────────────
+        # Fields like CLSTm, TillTm, FrTm, RjctTm accept HH:MM:SS[+HH:MM] only.
+        # When the value is a full ISO datetime (YYYY-MM-DDTHH:MM:SS...), extract
+        # just the time portion (after the 'T') as the corrected value.
+        _time_only_fields = {"CLSTm", "TillTm", "FrTm", "RjctTm"}
+        if not list(el) and el.text:
+            _cur = el.text.strip()
+            _is_time_only_field = (
+                el_local in _time_only_fields
+                or (el_local.endswith("Tm") and not el_local.endswith("DtTm"))
+            )
+            _dt_in_time_field = re.match(
+                r"^\d{4}-\d{2}-\d{2}T(\d{2}:\d{2}:\d{2}(?:[+-]\d{2}:\d{2})?)",
+                _cur,
+            )
+            if _is_time_only_field and _dt_in_time_field:
+                el_copy = self._copy(el)
+                el_copy.text = _dt_in_time_field.group(1)
+                return FixSuggestion(xpath, original_fragment,
+                                     self._serialize(el_copy), code, msg, "high")
+
         # ── Garbage value in a datetime field → replace with valid datetime ──────
         # Fires when the value (e.g. 'with', 'abc') is not a datetime at all and
         # the tag name or error message indicates a datetime field.
@@ -10789,8 +12488,7 @@ class FixSuggester:
             _cur = el.text.strip()
             _is_dt_field = (
                 el_local.endswith("DtTm")
-                or el_local in ("CreDt", "CreDtTm", "IntrBkSttlmTm", "PmtStpTm",
-                                 "SttlmTmReq", "CLSTm", "TillTm", "FrTm", "RjctTm")
+                or el_local in ("CreDt", "CreDtTm", "IntrBkSttlmTm", "PmtStpTm")
                 or "date" in msg_l or "datetime" in msg_l
             )
             if _is_dt_field and not re.match(r'^\d{4}-\d{2}-\d{2}', _cur):
@@ -12053,10 +13751,38 @@ class FixSuggester:
                     if _desc_local in self._CBPR_STRUCTURAL_TAGS:
                         return None
 
+                # original_fragment may be truncated (e.g. root[:1500]) and fail to
+                # parse. Fall back to target_tag (derived from xpath last segment) so
+                # the root-tag check still fires — prevents LLM from returning a
+                # tiny fragment (<FinInstnId>) that replaces the whole BusMsgEnvlp.
+                if target_tag and etree.QName(new_el.tag).localname != target_tag:
+                    return None
+        # Size guard: reject if LLM returned a fragment dramatically smaller than
+        # the original. Catches hallucinations where the model returns a single leaf
+        # (<FinInstnId>) as a replacement for a large parent (BusMsgEnvlp/AppHdr).
+        # Only applies when original is large enough to have real content (>200 chars)
+        # — small originals are leaf elements and any valid fix is fine.
+        _orig_stripped_len = len(original_fragment.strip())
+        _frag_stripped_len = len(frag.strip())
+        if _orig_stripped_len > 200 and _frag_stripped_len < _orig_stripped_len * 0.25:
+            return None
         for _el in new_el.iter():
             if isinstance(_el.tag, str) and etree.QName(_el.tag).localname == "BIC":
                 ns = etree.QName(_el.tag).namespace
                 _el.tag = f"{{{ns}}}BICFI" if ns else "BICFI"
+        # Reject fragments where the LLM hallucinated envelope-level elements
+        # (Document, AppHdr, BusMsgEnvlp) as descendants. These belong at the
+        # BusMsgEnvlp root level and must never appear inside party blocks like
+        # <Fr>, <To>, <FIId>, etc. Accepting such a fragment would corrupt the
+        # whole document structure in a way _normalize_busmsgenvlp can't recover.
+        _ENVELOPE_LOCAL = {"Document", "AppHdr", "BusMsgEnvlp", "BusMsg"}
+        _root_local = etree.QName(new_el.tag).localname
+        for _desc in new_el.iter():
+            if _desc is new_el:
+                continue
+            if (isinstance(_desc.tag, str)
+                    and etree.QName(_desc.tag).localname in _ENVELOPE_LOCAL):
+                return None
         if target_tag and not self._fragment_satisfies_constraints(new_el, target_tag):
             return None
         return self._serialize(new_el)
@@ -13130,15 +14856,34 @@ class FixSuggester:
             pos_doc = doc_m.start() if doc_m else -1
             cands = [p for p in (pos_close, pos_doc) if p != -1]
             if not cands:
-                return None
-            b = min(cands)
-            region = after[:b]
-            if b == pos_close:
+                # AppHdr open found but no </AppHdr> and no <Document> in what follows.
+                # This happens when the entire AppHdr content was collapsed (e.g.
+                # "<AppHdr xmlns='...'>  </Agt>\n</Assgne>..."). Use the whole
+                # remaining text as the region for BIC/scalar extraction.
+                region = after
+                # Splice end: consume the stray orphaned close-tag cluster that
+                # immediately follows the AppHdr opener (</Agt>\n</Assgne>\n...).
+                # Keep consuming lines that are whitespace-only or orphaned closes
+                # until we hit a proper open-tag line (real content).
+                _lines = after.split("\n")
+                _consumed_chars = 0
+                for _ln in _lines:
+                    _stripped = _ln.strip()
+                    if not _stripped or re.match(r"^</[A-Za-z]", _stripped):
+                        _consumed_chars += len(_ln) + 1  # +1 for \n
+                    else:
+                        break
+                splice_end = content_start + _consumed_chars if _consumed_chars else content_start
+            elif min(cands) == pos_close:
+                b = pos_close
+                region = after[:b]
                 gt = after.find(">", pos_close)
                 if gt == -1:
                     return None
                 splice_end = content_start + gt + 1  # consume the </AppHdr>
             else:
+                b = pos_doc
+                region = after[:b]
                 splice_end = content_start + b       # boundary is <Document>; we add close
 
         # ── Extract surviving data ────────────────────────────────────────────
@@ -13335,6 +15080,23 @@ class FixSuggester:
 
     def _try_xml_recovery(self, xml: str, code: str, msg: str) -> Optional[FixSuggestion]:
         """Attempt document-level XML syntax repairs. Returns FixSuggestion("/", ...) or None."""
+        # Stage -2: strip illegal XML control characters (SR2026 ILLEGAL_CONTROL_CHARACTERS).
+        # C0 controls except TAB (\x09), LF (\x0a), CR (\x0d) are forbidden in XML 1.0.
+        # Must run first — they prevent parsing and can also corrupt the declaration.
+        if code == "ILLEGAL_CONTROL_CHARACTERS" or re.search(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', xml):
+            fixed = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', xml)
+            if fixed != xml:
+                return FixSuggestion("/", xml, fixed, code, msg, "high")
+
+        # Stage -1.5: wrong encoding declaration (SR2026 INVALID_ENCODING) — rewrite to UTF-8.
+        if code == "INVALID_ENCODING":
+            fixed = re.sub(
+                r'(<\?xml[^?]*\bencoding=["\'])[^"\']+(["\'])',
+                r'\1UTF-8\2', xml, count=1
+            )
+            if fixed != xml:
+                return FixSuggestion("/", xml, fixed, code, msg, "high")
+
         # Stage -1: entirely missing XML declaration — just prepend it.
         # Must run before Stage 0 so that a completely absent prolog is handled
         # without falling through to the LLM path.
@@ -13353,6 +15115,23 @@ class FixSuggester:
             # Remove every XML declaration, then prepend exactly one clean one.
             _stripped = re.sub(r'<\?xml[^?]*\?>\s*', '', xml, flags=re.IGNORECASE)
             fixed = '<?xml version="1.0" encoding="UTF-8"?>\n' + _stripped.lstrip()
+            if fixed != xml:
+                return FixSuggestion("/", xml, fixed, code, msg, "high")
+            return FixSuggestion("/", xml, fixed, code, msg, "high")
+
+        # Stage -0.5: duplicate XML declaration — keep only the first, drop extras.
+        # A second <?xml ...?> anywhere after the first is illegal and causes
+        # "XML syntax error at line N" where N > 1. Remove all but the first.
+        _decl_all = list(re.finditer(r'<\?xml[^?]*\?>', xml))
+        if len(_decl_all) > 1:
+            # Build fixed: keep text up through first decl, then skip all subsequent
+            # <?xml ...?> occurrences, keeping everything else.
+            fixed = xml[:_decl_all[0].end()]
+            rest_start = _decl_all[0].end()
+            for _dm in _decl_all[1:]:
+                fixed += xml[rest_start:_dm.start()]
+                rest_start = _dm.end()
+            fixed += xml[rest_start:]
             if fixed != xml:
                 return FixSuggestion("/", xml, fixed, code, msg, "high")
 
@@ -13398,6 +15177,26 @@ class FixSuggester:
         fixed = self._try_surgical_unclosed_tag_fix(xml, msg)
         if fixed is not None:
             return FixSuggestion("/", xml, fixed, code, msg, "high")
+
+        # Stage 2.1: canonical AppHdr rebuild — runs BEFORE Stage 2.2 so that
+        # AppHdr-mismatch errors ("Opening and ending tag mismatch: AppHdr")
+        # get a proper header reconstruction rather than the Stage 2.2 stripper
+        # which may delete real body content along with the orphaned closes.
+        _apphdr_tag_re_early = r"(" + "|".join(self._APPHDR_REBUILD_TAGS) + r")"
+        if (re.search(r"Unclosed tag <" + _apphdr_tag_re_early + r"\b", msg or "")
+                or re.search(r"Opening and ending tag mismatch:\s*" + _apphdr_tag_re_early + r"\b", msg or "")
+                or re.search(r"mismatch.*AppHdr", msg or "", re.I)):
+            _ah_early = self._rebuild_canonical_apphdr(xml, msg)
+            if _ah_early is not None and _ah_early != xml:
+                _ah_bal_e = self._balance_xml_tags(_ah_early)
+                _ah_fin_e = _ah_bal_e if _ah_bal_e is not None else _ah_early
+                _ah_fin_e = self._normalize_busmsgenvlp(_ah_fin_e)
+                if _ah_fin_e != xml:
+                    try:
+                        etree.fromstring(_ah_fin_e.encode("utf-8"))
+                        return FixSuggestion("/", xml, _ah_fin_e, code, msg, "high")
+                    except etree.XMLSyntaxError:
+                        pass  # fall through to other stages
 
         # Stage 2.2: strip empty AppHdr Fr/To orphaned-close clusters.
         # When the entire content of a <Fr> or <To> block is deleted (both
@@ -13475,9 +15274,13 @@ class FixSuggester:
         # can't reconstruct (Fr/To share identical nesting; scalar opens are
         # deleted in clusters). Rebuild it from the surviving BICs + scalar values,
         # then hand the result to the balance engine to clean up any body damage.
-        if re.search(
-            r"Unclosed tag <(" + "|".join(self._APPHDR_REBUILD_TAGS) + r")\b", msg or ""
-        ):
+        # Also triggers on "Opening and ending tag mismatch: AppHdr" (same damage,
+        # different lxml error message format when the AppHdr close is swapped with
+        # an inner tag like Agt).
+        _apphdr_tag_re = r"(" + "|".join(self._APPHDR_REBUILD_TAGS) + r")"
+        if (re.search(r"Unclosed tag <" + _apphdr_tag_re + r"\b", msg or "")
+                or re.search(r"Opening and ending tag mismatch:\s*" + _apphdr_tag_re + r"\b", msg or "")
+                or re.search(r"mismatch.*AppHdr", msg or "", re.I)):
             _ah = self._rebuild_canonical_apphdr(xml, msg)
             if _ah is not None and _ah != xml:
                 _ah_bal = self._balance_xml_tags(_ah)
@@ -13629,9 +15432,11 @@ class FixSuggester:
         Raises FixApplyError when the target element cannot be located or the
         fragment is not well-formed XML.
         """
+        _xml_parseable = True
         try:
             root = etree.fromstring(xml.encode("utf-8"))
         except etree.XMLSyntaxError:
+            _xml_parseable = False
             try:
                 root = etree.fromstring(
                     xml.encode("utf-8"),
@@ -13645,14 +15450,18 @@ class FixSuggester:
             # Safety: never shrink the document significantly. lxml recover=True
             # silently drops content, so a whole-doc replacement that is much
             # shorter than the original means content was lost, not fixed.
-            # Allow up to 20% size reduction (normalisation / whitespace changes),
-            # but reject anything more aggressive.
+            # Allow up to 20% size reduction for valid XML (normalisation / whitespace).
+            # When the original was already unparseable, most chars are garbage
+            # (orphaned closes, mismatched tags) — not real content. Apply a looser
+            # 25% floor so a correct repair that discards the garbage is accepted.
             _orig_len = len(xml.strip())
             _frag_len = len(fragment_xml.strip())
-            if _orig_len > 0 and _frag_len < _orig_len * 0.8:
+            _floor = 0.8 if _xml_parseable else 0.25
+            if _orig_len > 0 and _frag_len < _orig_len * _floor:
                 raise FixApplyError(
                     f"Whole-document replacement rejected: "
-                    f"fragment ({_frag_len} chars) is more than 20% shorter than "
+                    f"fragment ({_frag_len} chars) is more than "
+                    f"{int((1 - _floor) * 100)}% shorter than "
                     f"the original ({_orig_len} chars). Content would be lost."
                 )
             return fragment_xml
@@ -13671,7 +15480,17 @@ class FixSuggester:
 
         parent = target.getparent()
         if parent is None:
-            # Root element replacement
+            # Root element replacement — only allow when the new element's local
+            # name matches the original root's local name.  An LLM that hallucinated
+            # a tiny leaf (<FinInstnId>) as a replacement for the root (<BusMsgEnvlp>)
+            # must not be applied — it would wipe the entire document.
+            orig_local = etree.QName(target.tag).localname if isinstance(target.tag, str) else ""
+            new_local  = etree.QName(new_el.tag).localname  if isinstance(new_el.tag, str)  else ""
+            if orig_local and new_local and orig_local != new_local:
+                raise FixApplyError(
+                    f"Root element tag mismatch: cannot replace <{orig_local}> with <{new_local}>. "
+                    f"Fragment rejected to prevent document loss."
+                )
             decl = ""
             m = re.match(r"(<\?xml[^?]*\?>)", xml.strip())
             if m:

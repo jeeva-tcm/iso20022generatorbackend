@@ -1593,6 +1593,10 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                 f".//*[local-name()='{tag_local}']"
                 f"//*[local-name()='BICFI']"
             )
+            """Return BICFI text from the first descendant matching tag_local, or ''."""
+            # Use // before FinInstnId to handle Fr/FIId/FinInstnId/BICFI (BAH shape)
+            # and InstgAgt/FinInstnId/BICFI (payload shape) in one pass.
+            results = node.xpath(f".//*[local-name()='{tag_local}']//*[local-name()='FinInstnId']/*[local-name()='BICFI']")
             return (results[0].text or "").strip() if results else ""
 
         root_local = etree.QName(root.tag).localname if isinstance(root.tag, str) else ""
@@ -1621,6 +1625,20 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
             instg_bic = _first_bicfi(document, "InstgAgt")
             instd_bic = _first_bicfi(document, "InstdAgt")
 
+            # camt family: Assgnmt/Assgnr and Assgnmt/Assgne carry the agent BICs.
+            # Assgnr/Assgne have an Agt intermediary: Assgnr/Agt/FinInstnId/BICFI.
+            def _first_bicfi_agt(node, role: str) -> str:
+                results = node.xpath(
+                    f".//*[local-name()='{role}']"
+                    f"/*[local-name()='Agt']"
+                    f"/*[local-name()='FinInstnId']"
+                    f"/*[local-name()='BICFI']"
+                )
+                return (results[0].text or "").strip() if results else ""
+
+            assgnr_bic = _first_bicfi_agt(document, "Assgnr")
+            assgne_bic = _first_bicfi_agt(document, "Assgne")
+
             if fr_bic and instg_bic and fr_bic != instg_bic:
                 fr_el = app_hdr.xpath(".//*[local-name()='Fr']//*[local-name()='BICFI']")
                 line_no = str(fr_el[0].sourceline if fr_el else (app_hdr.sourceline or "?"))
@@ -1629,6 +1647,16 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                     f"AppHdr <Fr> BIC '{fr_bic}' does not match the payload <InstgAgt> BIC "
                     f"'{instg_bic}'. CBPR+ requires these to be identical when <CpyDplct> is absent.",
                     f"Update AppHdr <Fr>...<BICFI> to '{instg_bic}', or update <InstgAgt>...<BICFI> "
+                    f"to '{fr_bic}' in the payload."
+                ))
+            elif fr_bic and assgnr_bic and fr_bic != assgnr_bic:
+                fr_el = app_hdr.xpath(".//*[local-name()='Fr']//*[local-name()='BICFI']")
+                line_no = str(fr_el[0].sourceline if fr_el else (app_hdr.sourceline or "?"))
+                report.add_issue(ValidationIssue(
+                    "ERROR", 3, "BAH_FR_ASSGNR_MISMATCH", line_no,
+                    f"AppHdr <Fr> BIC '{fr_bic}' does not match the payload <Assgnr> BIC "
+                    f"'{assgnr_bic}'. CBPR+ requires these to be identical when <CpyDplct> is absent.",
+                    f"Update AppHdr <Fr>...<BICFI> to '{assgnr_bic}', or update <Assgnr>...<BICFI> "
                     f"to '{fr_bic}' in the payload."
                 ))
 
@@ -1640,6 +1668,16 @@ class ISOValidator(Layer1Mixin, Layer2Mixin, Layer3Mixin, Pacs004Mixin, CBPRJson
                     f"AppHdr <To> BIC '{to_bic}' does not match the payload <InstdAgt> BIC "
                     f"'{instd_bic}'. CBPR+ requires these to be identical when <CpyDplct> is absent.",
                     f"Update AppHdr <To>...<BICFI> to '{instd_bic}', or update <InstdAgt>...<BICFI> "
+                    f"to '{to_bic}' in the payload."
+                ))
+            elif to_bic and assgne_bic and to_bic != assgne_bic:
+                to_el = app_hdr.xpath(".//*[local-name()='To']//*[local-name()='BICFI']")
+                line_no = str(to_el[0].sourceline if to_el else (app_hdr.sourceline or "?"))
+                report.add_issue(ValidationIssue(
+                    "ERROR", 3, "BAH_TO_ASSGNE_MISMATCH", line_no,
+                    f"AppHdr <To> BIC '{to_bic}' does not match the payload <Assgne> BIC "
+                    f"'{assgne_bic}'. CBPR+ requires these to be identical when <CpyDplct> is absent.",
+                    f"Update AppHdr <To>...<BICFI> to '{assgne_bic}', or update <Assgne>...<BICFI> "
                     f"to '{to_bic}' in the payload."
                 ))
 

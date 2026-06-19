@@ -37,7 +37,7 @@ from app.schemas.api_validation import ApiValidateRequest, ApiValidateResponse, 
 from app.chatbot.routes import router as chatbot_router
 from app.chatbot.chat_service import chat_service
 from app.routes.fixes import router as fixes_router
-from app.services.fix_suggester import fix_suggester
+from app.services.fix_suggester import fix_suggester, _set_active_sr_version
 
 # Initialize services
 import logging
@@ -60,6 +60,52 @@ def get_active_version(request: Request, payload_version: str = None) -> str:
         )
     logger.info(f"Version={version}, Endpoint={request.url.path}")
     return version
+
+
+def _resolve_sr2026_msg_type(caller_msg_type: Optional[str], xml_content: str) -> str:
+    """Resolve the message type for an SR2026 /validate call.
+
+    The caller-supplied type (UI dropdown / request field) can drift out of
+    sync with the actual XML — e.g. a user edits the pasted XML body but
+    leaves a stale dropdown selection, or deletes <MsgDefIdr> entirely while
+    damage-testing a message. Blindly trusting the caller's type in that case
+    makes the validator (and every downstream autofix) treat the message as
+    a COMPLETELY DIFFERENT message family — e.g. autofix "completing" a
+    damaged pacs.002 status report as if it were a pacs.008 payment
+    instruction, fabricating CdtTrfTxInf/amounts/parties that have no
+    business being there. The XML body is the ground truth; a UI selection
+    is just a hint. Always cross-check against the Document namespace
+    (skipping the head.* BAH namespace) and prefer it whenever the two
+    disagree on message FAMILY (e.g. "pacs.002" vs "pacs.008") — variant
+    refinement (ADV/COV/STP) still happens after this via BizSvc/structure.
+    """
+    import re as _re_msgtype
+    ns_matches = _re_msgtype.findall(
+        r'xmlns(?::\w+)?=["\']urn:iso:std:iso:20022:tech:xsd:([a-z]{4}\.\d{3}\.\d{3}\.\d{2})["\']',
+        xml_content,
+    )
+    xml_msg_type = next((m for m in ns_matches if not m.startswith("head.")), "")
+
+    caller_msg_type = (caller_msg_type or "").strip()
+    if not caller_msg_type or caller_msg_type == "Auto-detect":
+        return xml_msg_type or "pacs.008.001.08"
+
+    # Compare message FAMILY only (e.g. "pacs.002" from "pacs.002.001.10") —
+    # caller may legitimately pass a different version/variant of the same
+    # family (pacs.008.001.08 vs .001.13); only a family mismatch indicates
+    # the caller's type is stale/wrong relative to the actual XML content.
+    def _family(mt: str) -> str:
+        parts = mt.split(".")
+        return ".".join(parts[:2]) if len(parts) >= 2 else mt
+
+    if xml_msg_type and _family(xml_msg_type) != _family(caller_msg_type):
+        logger.warning(
+            f"[SR2026] message_type mismatch: caller said '{caller_msg_type}' "
+            f"but XML Document namespace says '{xml_msg_type}' — trusting the XML."
+        )
+        return xml_msg_type
+
+    return caller_msg_type
 
 history_service = FirebaseHistoryService()
 validator = ISOValidator(history_service=history_service)
@@ -213,7 +259,8 @@ async def _validate_unified(xml_content: str, message_type: str, version: str) -
     if version == "SR2026":
         from app.sr2026.validation.validators.validator import SR2026Validator
         sr2026_val = SR2026Validator(history_service=history_service)
-        resp = await sr2026_val.validate(xml_content, message_type or "Auto-detect")
+        resolved_type = _resolve_sr2026_msg_type(message_type, xml_content)
+        resp = await sr2026_val.validate(xml_content, resolved_type)
         details = [issue.model_dump()
                    for bucket in (resp.errors, resp.warnings, resp.info)
                    for issue in bucket]
@@ -352,11 +399,25 @@ async def _auto_fix_iterative(original_xml: str, message_type: str = "Auto-detec
         # and removes extras beyond maxOccurs.  Runs BEFORE suggest_batch so
         # the batch receives a structurally more complete document, yielding
         # better ordering-fix success rates in the same round.
+        #
+        # _set_active_sr_version is REQUIRED here: xsd_completeness_pass reads
+        # the module-level _ACTIVE_SR_VERSION global (not request-scoped) to
+        # pick SR2025 vs SR2026's XSD directory, and it's otherwise only ever
+        # set inside suggest()/suggest_batch() — which hasn't run yet this
+        # round. Without this, the FIRST round of every auto-fix call resolves
+        # against whichever release a PRIOR unrelated request last set
+        # (shared singleton fix_suggester instance), silently validating an
+        # SR2026 message's structure against SR2025 XSDs (e.g. pacs.002.001.10
+        # resolving to pacs.002.001.15.xsd — a different transaction-type
+        # shape, breaking mandatory-field inserts for that message).
+        _set_active_sr_version(version)
+        _xsd_pass_changed = False
         try:
             _xsd_complete = fix_suggester.xsd_completeness_pass(cur)
             if _xsd_complete != cur:
                 cur = _xsd_complete
                 applied_total += 1
+                _xsd_pass_changed = True
         except Exception as _xsd_e:
             print(f"[auto-fix] xsd_completeness_pass failed: {_xsd_e}")
 
@@ -364,10 +425,20 @@ async def _auto_fix_iterative(original_xml: str, message_type: str = "Auto-detec
         # ordering/value fixes — improves convergence within each batch.
         # Fix up to 20 per round; the next round re-validates and continues,
         # so >20 issues are handled across rounds rather than dropped.
+        #
+        # `fixable` reflects the document as it was BEFORE xsd_completeness_pass
+        # ran above — if that pass resolved the issue(s) suggest_batch would
+        # otherwise act on, every suggestion here legitimately no-ops against
+        # the now-already-fixed `cur`. That must NOT be read as "nothing
+        # actionable remains" (which would wrongly break the loop) — the
+        # xsd_completeness_pass change is itself real progress; let the next
+        # round's fresh validate find whatever issue (if any) remains.
         try:
             suggestions = fix_suggester.suggest_batch(cur, _priority_sort_issues(fixable)[:20], version=version)
         except Exception as e:
             print(f"[auto-fix] suggest_batch failed: {e}")
+            if _xsd_pass_changed:
+                continue
             break
 
         fixes_list = [
@@ -377,6 +448,8 @@ async def _auto_fix_iterative(original_xml: str, message_type: str = "Auto-detec
             and s.fragment_xml and s.fragment_xml != s.original_fragment
         ]
         if not fixes_list:
+            if _xsd_pass_changed:
+                continue  # xsd_completeness_pass made real progress this round — re-validate fresh
             break  # nothing actionable remains (only declines / unavailable)
 
         new_xml = fix_suggester.apply_batch(cur, fixes_list)
@@ -510,34 +583,25 @@ async def api_validate(request: ApiValidateRequest, raw_request: Request):
     elif version == "SR2026":
         from app.sr2026.validation.validators.validator import SR2026Validator
         
-        actual_msg_type = request.messageType
-        if not actual_msg_type or actual_msg_type == "Auto-detect":
-            import re
-            ns_matches = re.findall(r'xmlns(?::\w+)?=["\']urn:iso:std:iso:20022:tech:xsd:([a-z]{4}\.\d{3}\.\d{3}\.\d{2})["\']', request.xml)
-            actual_msg_type = "pacs.008.001.08"
-            if ns_matches:
-                for match in ns_matches:
-                    if not match.startswith("head."):
-                        actual_msg_type = match
-                        break
-            
-            # Refine auto-detection using BizSvc for ADV, COV, and STP variants
-            import re as _re_bizsvc
-            try:
-                _xml_src = xml_content if 'xml_content' in locals() else (request.xml_content if hasattr(request, 'xml_content') else getattr(request, 'xml', ''))
-                bizsvc_match = _re_bizsvc.search(r'<(?:\w+:)?BizSvc[^>]*>([^<]+)</(?:\w+:)?BizSvc>', _xml_src)
-                if bizsvc_match:
-                    bizsvc = bizsvc_match.group(1).strip().lower()
-                    if actual_msg_type == "pacs.009.001.08":
-                        if "adv" in bizsvc or bizsvc == "swift.cbprplus.03" or bizsvc == "swift.cbprplus.adv.04":
-                            actual_msg_type = "pacs.009.001.08_ADV"
-                        elif "cov" in bizsvc or bizsvc == "swift.cbprplus.02" or bizsvc == "swift.cbprplus.cov.04":
-                            actual_msg_type = "pacs.009.001.08_COV"
-                    elif actual_msg_type == "pacs.008.001.08":
-                        if "stp" in bizsvc or bizsvc == "swift.cbprplus.02" or bizsvc == "swift.cbprplus.stp.04":
-                            actual_msg_type = "pacs.008.001.08_STP"
-            except Exception:
-                pass
+        actual_msg_type = _resolve_sr2026_msg_type(request.messageType, request.xml)
+
+        # Refine auto-detection using BizSvc for ADV, COV, and STP variants
+        import re as _re_bizsvc
+        try:
+            _xml_src = request.xml
+            bizsvc_match = _re_bizsvc.search(r'<(?:\w+:)?BizSvc[^>]*>([^<]+)</(?:\w+:)?BizSvc>', _xml_src)
+            if bizsvc_match:
+                bizsvc = bizsvc_match.group(1).strip().lower()
+                if actual_msg_type == "pacs.009.001.08":
+                    if "adv" in bizsvc or bizsvc == "swift.cbprplus.03" or bizsvc == "swift.cbprplus.adv.04":
+                        actual_msg_type = "pacs.009.001.08_ADV"
+                    elif "cov" in bizsvc or bizsvc == "swift.cbprplus.02" or bizsvc == "swift.cbprplus.cov.04":
+                        actual_msg_type = "pacs.009.001.08_COV"
+                elif actual_msg_type == "pacs.008.001.08":
+                    if "stp" in bizsvc or bizsvc == "swift.cbprplus.02" or bizsvc == "swift.cbprplus.stp.04":
+                        actual_msg_type = "pacs.008.001.08_STP"
+        except Exception:
+            pass
 
         val2026 = SR2026Validator(history_service=history_service)
         return await val2026.validate(request.xml, actual_msg_type)
@@ -556,35 +620,36 @@ async def validate_message(
         import time
         from datetime import datetime, timezone
         
-        actual_msg_type = request.message_type
-        if not actual_msg_type or actual_msg_type == "Auto-detect":
-            import re
-            ns_matches = re.findall(r'xmlns(?::\w+)?=["\']urn:iso:std:iso:20022:tech:xsd:([a-z]{4}\.\d{3}\.\d{3}\.\d{2})["\']', request.xml_content)
-            actual_msg_type = "pacs.008.001.08"
-            if ns_matches:
-                for match in ns_matches:
-                    if not match.startswith("head."):
-                        actual_msg_type = match
-                        break
-            
-            # Refine auto-detection using BizSvc for ADV, COV, and STP variants
+        actual_msg_type = _resolve_sr2026_msg_type(request.message_type, request.xml_content)
+
+        # Always refine pacs.009/pacs.008 base type → COV/ADV/STP using BizSvc or
+        # message structure. A caller that passes "pacs.009.001.08" explicitly gets
+        # the wrong (CORE) XSD when the message is actually a COV — refine here so
+        # the correct XSD profile is always selected regardless of how the type arrived.
+        if actual_msg_type in ("pacs.009.001.08", "pacs.008.001.08"):
             import re as _re_bizsvc
             try:
-                _xml_src = xml_content if 'xml_content' in locals() else (request.xml_content if hasattr(request, 'xml_content') else getattr(request, 'xml', ''))
+                _xml_src = request.xml_content
                 bizsvc_match = _re_bizsvc.search(r'<(?:\w+:)?BizSvc[^>]*>([^<]+)</(?:\w+:)?BizSvc>', _xml_src)
                 if bizsvc_match:
                     bizsvc = bizsvc_match.group(1).strip().lower()
                     if actual_msg_type == "pacs.009.001.08":
-                        if "adv" in bizsvc or bizsvc == "swift.cbprplus.03" or bizsvc == "swift.cbprplus.adv.04":
+                        if "adv" in bizsvc or bizsvc in ("swift.cbprplus.03", "swift.cbprplus.adv.04"):
                             actual_msg_type = "pacs.009.001.08_ADV"
-                        elif "cov" in bizsvc or bizsvc == "swift.cbprplus.02" or bizsvc == "swift.cbprplus.cov.04":
+                        elif "cov" in bizsvc or bizsvc in ("swift.cbprplus.cov.04",):
                             actual_msg_type = "pacs.009.001.08_COV"
                     elif actual_msg_type == "pacs.008.001.08":
-                        if "stp" in bizsvc or bizsvc == "swift.cbprplus.02" or bizsvc == "swift.cbprplus.stp.04":
+                        if "stp" in bizsvc or bizsvc in ("swift.cbprplus.stp.04",):
                             actual_msg_type = "pacs.008.001.08_STP"
+                # Structure fallback: COV always has UndrlygCstmrCdtTrf; ADV has UndrlygFITxInf
+                if actual_msg_type == "pacs.009.001.08":
+                    if "UndrlygCstmrCdtTrf" in _xml_src:
+                        actual_msg_type = "pacs.009.001.08_COV"
+                    elif "UndrlygFITxInf" in _xml_src:
+                        actual_msg_type = "pacs.009.001.08_ADV"
             except Exception:
                 pass
-                
+
         val2026 = SR2026Validator(history_service=history_service)
         api_resp = await val2026.validate(request.xml_content, actual_msg_type)
         report_dict = {
@@ -674,34 +739,24 @@ async def validate_file(
         import time
         from datetime import datetime, timezone
 
-        actual_msg_type = message_type
-        if not actual_msg_type or actual_msg_type == "Auto-detect":
-            import re
-            ns_matches = re.findall(r'xmlns(?::\w+)?=["\']urn:iso:std:iso:20022:tech:xsd:([a-z]{4}\.\d{3}\.\d{3}\.\d{2})["\']', xml_content)
-            actual_msg_type = "pacs.008.001.08"
-            if ns_matches:
-                for match in ns_matches:
-                    if not match.startswith("head."):
-                        actual_msg_type = match
-                        break
-            
-            # Refine auto-detection using BizSvc for ADV, COV, and STP variants
-            import re as _re_bizsvc
-            try:
-                _xml_src = xml_content if 'xml_content' in locals() else (request.xml_content if hasattr(request, 'xml_content') else getattr(request, 'xml', ''))
-                bizsvc_match = _re_bizsvc.search(r'<(?:\w+:)?BizSvc[^>]*>([^<]+)</(?:\w+:)?BizSvc>', _xml_src)
-                if bizsvc_match:
-                    bizsvc = bizsvc_match.group(1).strip().lower()
-                    if actual_msg_type == "pacs.009.001.08":
-                        if "adv" in bizsvc or bizsvc == "swift.cbprplus.03" or bizsvc == "swift.cbprplus.adv.04":
-                            actual_msg_type = "pacs.009.001.08_ADV"
-                        elif "cov" in bizsvc or bizsvc == "swift.cbprplus.02" or bizsvc == "swift.cbprplus.cov.04":
-                            actual_msg_type = "pacs.009.001.08_COV"
-                    elif actual_msg_type == "pacs.008.001.08":
-                        if "stp" in bizsvc or bizsvc == "swift.cbprplus.02" or bizsvc == "swift.cbprplus.stp.04":
-                            actual_msg_type = "pacs.008.001.08_STP"
-            except Exception:
-                pass
+        actual_msg_type = _resolve_sr2026_msg_type(message_type, xml_content)
+
+        # Refine auto-detection using BizSvc for ADV, COV, and STP variants
+        import re as _re_bizsvc
+        try:
+            bizsvc_match = _re_bizsvc.search(r'<(?:\w+:)?BizSvc[^>]*>([^<]+)</(?:\w+:)?BizSvc>', xml_content)
+            if bizsvc_match:
+                bizsvc = bizsvc_match.group(1).strip().lower()
+                if actual_msg_type == "pacs.009.001.08":
+                    if "adv" in bizsvc or bizsvc == "swift.cbprplus.03" or bizsvc == "swift.cbprplus.adv.04":
+                        actual_msg_type = "pacs.009.001.08_ADV"
+                    elif "cov" in bizsvc or bizsvc == "swift.cbprplus.02" or bizsvc == "swift.cbprplus.cov.04":
+                        actual_msg_type = "pacs.009.001.08_COV"
+                elif actual_msg_type == "pacs.008.001.08":
+                    if "stp" in bizsvc or bizsvc == "swift.cbprplus.02" or bizsvc == "swift.cbprplus.stp.04":
+                        actual_msg_type = "pacs.008.001.08_STP"
+        except Exception:
+            pass
 
         val2026 = SR2026Validator(history_service=history_service)
         api_resp = await val2026.validate(xml_content, actual_msg_type)

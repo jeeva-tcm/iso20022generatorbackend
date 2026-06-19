@@ -11,10 +11,10 @@
   },
   "newMandatory": [
     { "field": "InstdAmt", "path": "CdtTrfTxInf/InstdAmt", "label": "Instructed Amount", "formControls": ["instdAmt"], "note": "Optional [0..1] in SR2025, mandatory [1..1] in SR2026" },
-    { "field": "DbtrCtry", "path": "CdtTrfTxInf/Debtor/PostalAddress/Country", "label": "Debtor Country", "formControls": ["dbtrCtry"] },
-    { "field": "DbtrTwnNm", "path": "CdtTrfTxInf/Debtor/PostalAddress/TownName", "label": "Debtor Town Name", "formControls": ["dbtrTwnNm"] },
-    { "field": "CdtrCtry", "path": "CdtTrfTxInf/Creditor/PostalAddress/Country", "label": "Creditor Country", "formControls": ["cdtrCtry"] },
-    { "field": "CdtrTwnNm", "path": "CdtTrfTxInf/Creditor/PostalAddress/TownName", "label": "Creditor Town Name", "formControls": ["cdtrTwnNm"] },
+    { "field": "DbtrCtry", "path": "CdtTrfTxInf/Debtor/PostalAddress/Country", "label": "Debtor Country", "formControls": ["dbtrCtry"], "enforceRequired": true },
+    { "field": "DbtrTwnNm", "path": "CdtTrfTxInf/Debtor/PostalAddress/TownName", "label": "Debtor Town Name", "formControls": ["dbtrTwnNm"], "enforceRequired": true },
+    { "field": "CdtrCtry", "path": "CdtTrfTxInf/Creditor/PostalAddress/Country", "label": "Creditor Country", "formControls": ["cdtrCtry"], "enforceRequired": true },
+    { "field": "CdtrTwnNm", "path": "CdtTrfTxInf/Creditor/PostalAddress/TownName", "label": "Creditor Town Name", "formControls": ["cdtrTwnNm"], "enforceRequired": true },
     { "field": "DbtrAcctProxyTp", "path": "CdtTrfTxInf/DebtorAccount/Proxy/Type", "label": "Debtor Account Proxy Type", "formControls": ["dbtrAcctPrxyTp"] },
     { "field": "CdtrAcctProxyTp", "path": "CdtTrfTxInf/CreditorAccount/Proxy/Type", "label": "Creditor Account Proxy Type", "formControls": ["cdtrAcctPrxyTp"] },
     { "field": "DbtrAgtAcctProxyTp", "path": "CdtTrfTxInf/DebtorAgentAccount/Proxy/Type", "label": "Debtor Agent Account Proxy Type", "formControls": ["dbtrAgtAcctPrxyTp"] },
@@ -32,7 +32,7 @@
     { "field": "AdrLine", "path": "Debtor/Creditor PostalAddress/AddressLine", "sr2025Max": 3, "sr2026Max": 2 }
   ],
   "dropdownChanges": [
-    { "field": "SvcLvl", "path": "CdtTrfTxInf/PmtTpInf/ServiceLevel/Code", "sr2026Allowed": ["G001"], "rule": "CBPR_GPI_ServiceLevel_Code_FormalRule", "note": "GPI ServiceLevel Code must be 'G001'; G002-G007, G009 not allowed" }
+    { "field": "SvcLvl", "path": "CdtTrfTxInf/PmtTpInf/ServiceLevel/Code", "formControls": ["svcLvlCd"], "sr2026Allowed": ["G001"], "rule": "CBPR_GPI_ServiceLevel_Code_FormalRule", "note": "GPI ServiceLevel Code must be 'G001'; G002-G007, G009 not allowed" }
   ],
   "newRules": [
     "CBPR_BusinessMessageIdentifier_FormalRule",

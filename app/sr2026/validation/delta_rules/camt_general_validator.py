@@ -317,7 +317,7 @@ class CamtGeneralValidator:
         for tx in root.xpath("//*[local-name()='TxInf']"):
             src = tx.sourceline or 1
 
-            # R8: OriginalRequestedExecutionDate and OriginalRequestedCollectionDate mutually exclusive
+            # R8: exactly one of OrgnlReqdExctnDt / OrgnlReqdColltnDt must be present
             exec_dt = tx.xpath("*[local-name()='OrgnlReqdExctnDt']")
             coll_dt = tx.xpath("*[local-name()='OrgnlReqdColltnDt']")
             if exec_dt and coll_dt:
@@ -328,6 +328,15 @@ class CamtGeneralValidator:
                      "(CBPR_OriginalRequestedExecutionDate_OriginalRequestedCollectionDate_FormalRule R8).",
                      "Remove one of OriginalRequestedExecutionDate or OriginalRequestedCollectionDate.",
                      exec_dt[0].sourceline or src)
+            elif not exec_dt and not coll_dt:
+                _add(report, "ERROR", "EXEC_COLL_DATE_MISSING",
+                     "//TxInf",
+                     "Either OriginalRequestedExecutionDate or OriginalRequestedCollectionDate must be "
+                     "present in TransactionInformation — neither is present "
+                     "(CBPR_OriginalRequestedExecutionDate_OriginalRequestedCollectionDate_FormalRule R8).",
+                     "Add <OrgnlReqdExctnDt><Dt>YYYY-MM-DD</Dt></OrgnlReqdExctnDt> or "
+                     "<OrgnlReqdColltnDt>YYYY-MM-DD</OrgnlReqdColltnDt> to TxInf.",
+                     src)
 
             # R9: Case/Identification slash rules
             for node in tx.xpath("*[local-name()='Case']/*[local-name()='Id']"):
