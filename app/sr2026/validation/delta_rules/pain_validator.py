@@ -259,3 +259,19 @@ class PainValidator:
                      "(CBPR_MessageIdentification_PaymentInformationIdentification_FormalRule R7).",
                      "Set PaymentInformationIdentification to the same value as GroupHeader/MessageIdentification.",
                      pmt_inf_id_nodes[0].sourceline or src)
+
+        # UETR mandatory in pain.008 DrctDbtTxInf/PmtId per CBPR+ SR2026
+        for tx in root.xpath("//*[local-name()='DrctDbtTxInf']"):
+            pmtid_nodes = tx.xpath("*[local-name()='PmtId']")
+            if not pmtid_nodes:
+                continue
+            pmtid = pmtid_nodes[0]
+            uetr_nodes = pmtid.xpath("*[local-name()='UETR']")
+            if not uetr_nodes or not (uetr_nodes[0].text or "").strip():
+                _add(report, "ERROR", "MISSING_UETR",
+                     "//DrctDbtTxInf/PmtId/UETR",
+                     "DirectDebitTransactionInformation/PaymentIdentification/UETR is mandatory "
+                     "in pain.008 under CBPR+ SR2026.",
+                     "Add a <UETR> element with a valid lowercase UUID v4. "
+                     "Example: 4a1a0945-5772-409a-83ba-240e666e0267",
+                     pmtid.sourceline or tx.sourceline or 1)

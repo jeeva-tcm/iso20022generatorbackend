@@ -1833,7 +1833,16 @@ def _xsd_build(name: str, type_name: str, tmap: Optional[_XsdTypeMap], ns: str, 
     elif _nl in ("prtry", "issr"):   el.text = "NOTPROVIDED"
     elif _nl in ("chrgbr",):         el.text = "SHAR"
     elif _nl in ("txsts", "grpsts"): el.text = "ACCP"
-    else:                            el.text = f"SMPL-{name}"
+    else:
+        # Check KB field constraint example (covers AnyBIC, BICFI, IBAN, LEI, etc.)
+        # before falling back to the generic "SMPL-{name}" placeholder.
+        _fc_ex = (_kb_field_constraint(name) or {}).get("example")
+        if _fc_ex:
+            el.text = _fc_ex
+        elif "bic" in _nl:           el.text = "DEUTDEFFXXX"
+        elif "iban" in _nl:          el.text = "GB29NWBK60161331926819"
+        elif "lei" in _nl:           el.text = "549300TRUWOII88U4F73"
+        else:                        el.text = f"SMPL-{name}"
     return el
 
 
@@ -5246,14 +5255,16 @@ class FixSuggester:
                 except Exception:
                     pass
 
-        # ── SCHEMA_VAL order errors in pacs.008 PmtId / CdtTrfTxInf ────────────
+        # ── SCHEMA_VAL order errors in pacs.008/pain.008 PmtId ──────────────────
         # "Unexpected field EndToEndId/ChrgBr — missed mandatory field before it"
         # Cause 1: PmtId missing InstrId (mandatory in pacs.008 SR2026 before EndToEndId)
         # Cause 2: CdtTrfTxInf child elements out of XSD sequence order
+        # For pain.008 (DrctDbtTxInf): comprehensive repair — add InstrId, EndToEndId,
+        # and UETR if any are missing, so a single fix covers all three at once.
         if code == "SCHEMA_VAL" and (
-            "endtoendid" in path.lower() or "chrgbr" in path.lower()
-            or (("endtoendid" in msg.lower() or "chrgbr" in msg.lower())
-                and ("missed" in msg.lower() or "unexpected" in msg.lower()))
+            "endtoendid" in path.lower() or "chrgbr" in path.lower() or "pmtid" in path.lower()
+            or (("endtoendid" in msg.lower() or "chrgbr" in msg.lower() or "pmtid" in msg.lower())
+                and ("missed" in msg.lower() or "unexpected" in msg.lower() or "missing" in msg.lower() or "complete" in msg.lower()))
         ):
             # pacs.008 SR2026 CdtTrfTxInf canonical order
             _CDTTRF_ORDER = [
@@ -5272,8 +5283,70 @@ class FixSuggester:
                 "Purp", "RgltryRptg", "Tax", "RltdRmtInf", "RmtInf",
                 "SplmtryData",
             ]
-            # pacs.008 SR2026 PmtId canonical order
+            # pacs.008 / pain.008 SR2026 PmtId canonical order
             _PMTID_ORDER = ["InstrId", "EndToEndId", "TxId", "UETR", "ClrSysRef"]
+
+            # ── pain.008 branch: DrctDbtTxInf/PmtId comprehensive repair ─────
+            _drdbt_el = next(
+                (e for e in root.iter() if isinstance(e.tag, str)
+                 and etree.QName(e.tag).localname == "DrctDbtTxInf"), None,
+            )
+            if _drdbt_el is not None:
+                try:
+                    _parser_p8 = etree.XMLParser(remove_blank_text=False, no_network=True, recover=True)
+                    _r_p8 = etree.fromstring(xml.encode("utf-8"), _parser_p8)
+                    _drdbt_p8 = next(
+                        (e for e in _r_p8.iter() if isinstance(e.tag, str)
+                         and etree.QName(e.tag).localname == "DrctDbtTxInf"), None,
+                    )
+                    if _drdbt_p8 is not None:
+                        _p8ns = etree.QName(_drdbt_p8.tag).namespace or ""
+                        def _cq_p8(t): return f"{{{_p8ns}}}{t}" if _p8ns else t
+                        _changed_p8 = False
+                        _pmtid_p8 = next(
+                            (c for c in _drdbt_p8 if isinstance(c.tag, str)
+                             and etree.QName(c.tag).localname == "PmtId"), None,
+                        )
+                        if _pmtid_p8 is not None:
+                            _p8_lns = [etree.QName(c.tag).localname for c in _pmtid_p8 if isinstance(c.tag, str)]
+                            if "InstrId" not in _p8_lns:
+                                _el = etree.Element(_cq_p8("InstrId"))
+                                _el.text = "NOTPROVIDED"
+                                _pmtid_p8.insert(0, _el)
+                                _changed_p8 = True
+                            if "EndToEndId" not in _p8_lns:
+                                _el = etree.Element(_cq_p8("EndToEndId"))
+                                _el.text = "E2E-2025-001"
+                                _pmtid_p8.append(_el)
+                                _changed_p8 = True
+                            if "UETR" not in _p8_lns:
+                                _el = etree.Element(_cq_p8("UETR"))
+                                _el.text = str(uuid.uuid4())
+                                _pmtid_p8.append(_el)
+                                _changed_p8 = True
+                            # Reorder to canonical sequence
+                            _p8_kids = [(etree.QName(c.tag).localname, c) for c in list(_pmtid_p8) if isinstance(c.tag, str)]
+                            _known_p8 = {ln: c for ln, c in _p8_kids if ln in _PMTID_ORDER}
+                            _unk_p8 = [c for ln, c in _p8_kids if ln not in _PMTID_ORDER]
+                            _orig_p8_ord = [ln for ln, _ in _p8_kids]
+                            for c in list(_pmtid_p8): _pmtid_p8.remove(c)
+                            for slot in _PMTID_ORDER:
+                                if slot in _known_p8:
+                                    _pmtid_p8.append(_known_p8[slot])
+                            for c in _unk_p8: _pmtid_p8.append(c)
+                            _new_p8_ord = [etree.QName(c.tag).localname for c in _pmtid_p8 if isinstance(c.tag, str)]
+                            if _new_p8_ord != _orig_p8_ord:
+                                _changed_p8 = True
+                        if _changed_p8:
+                            _decl_p8 = '<?xml version="1.0" encoding="UTF-8"?>\n'
+                            _fixed_p8 = etree.tostring(_r_p8, encoding="unicode", pretty_print=True)
+                            if not _fixed_p8.startswith("<?"):
+                                _fixed_p8 = _decl_p8 + _fixed_p8
+                            return FixSuggestion("/", xml, _fixed_p8, code, msg, "high")
+                except Exception:
+                    pass
+
+            # ── pacs.008 branch: CdtTrfTxInf/PmtId repair ───────────────────
             _cdttrf_el = next(
                 (e for e in root.iter() if isinstance(e.tag, str)
                  and etree.QName(e.tag).localname == "CdtTrfTxInf"), None,
@@ -6305,7 +6378,7 @@ class FixSuggester:
             # a blind choice-member removal (which the code below rightly refuses
             # to guess), this is unambiguous: exactly one must go. Keep whichever
             # member is VALID, preferring IBAN, and drop the competing member.
-            _choice_fix = self._try_collapse_choice(root, code, msg)
+            _choice_fix = self._try_collapse_choice(root, code, msg, xml)
             if _choice_fix is not None:
                 return _choice_fix
             # ── CBPR+ forbidden element → remove it outright ──────────────────
@@ -6861,8 +6934,10 @@ class FixSuggester:
                         code, msg, "high"
                     )
 
-        # ── Route: pain.001 UETR missing inside CdtTrfTxInf/PmtId ─────────────
-        if code == "PAIN001_UETR_REQUIRED":
+        # ── Route: pain.001/008 UETR missing inside PmtId ──────────────────────
+        # PAIN001_UETR_REQUIRED: pain.001 CdtTrfTxInf/PmtId
+        # MISSING_UETR:          pain.008 DrctDbtTxInf/PmtId
+        if code in ("PAIN001_UETR_REQUIRED", "MISSING_UETR"):
             _lh = getattr(self, "_line_hint", None)
             _pmtid_els = [
                 el for el in root.iter()
@@ -6878,14 +6953,31 @@ class FixSuggester:
                 _target_pmtid = self._pick_nearest(_pmtid_els, _lh)
                 if _target_pmtid is not None:
                     _ns = etree.QName(_target_pmtid.tag).namespace or ""
+                    def _cq_uetr(t): return f"{{{_ns}}}{t}" if _ns else t
                     _new_uetr = str(uuid.uuid4())
                     _orig = self._serialize(_target_pmtid)
                     _copy = self._copy(_target_pmtid)
-                    _uetr_el = etree.SubElement(
-                        _copy,
-                        f"{{{_ns}}}UETR" if _ns else "UETR"
-                    )
+                    _pmtid_lns = [etree.QName(c.tag).localname for c in _copy if isinstance(c.tag, str)]
+                    # For pain.008 (MISSING_UETR): also add InstrId if absent —
+                    # it precedes EndToEndId in the XSD sequence and a complete
+                    # PmtId should carry all three identifiers.
+                    if code == "MISSING_UETR" and "InstrId" not in _pmtid_lns:
+                        _instrid_el = etree.Element(_cq_uetr("InstrId"))
+                        _instrid_el.text = "NOTPROVIDED"
+                        _copy.insert(0, _instrid_el)
+                    # Append UETR
+                    _uetr_el = etree.SubElement(_copy, _cq_uetr("UETR"))
                     _uetr_el.text = _new_uetr
+                    # Reorder PmtId children to canonical sequence
+                    _PMTID_ORDER = ["InstrId", "EndToEndId", "TxId", "UETR", "ClrSysRef"]
+                    _kids = [(etree.QName(c.tag).localname, c) for c in list(_copy) if isinstance(c.tag, str)]
+                    _known = {ln: c for ln, c in _kids if ln in _PMTID_ORDER}
+                    _unk = [c for ln, c in _kids if ln not in _PMTID_ORDER]
+                    for c in list(_copy): _copy.remove(c)
+                    for slot in _PMTID_ORDER:
+                        if slot in _known:
+                            _copy.append(_known[slot])
+                    for c in _unk: _copy.append(c)
                     return FixSuggestion(
                         self._xpath_of(_target_pmtid), _orig,
                         self._serialize(_copy), code, msg, "high"
@@ -8383,6 +8475,43 @@ class FixSuggester:
                             return FixSuggestion(self._xpath_of(_af_el), self._serialize(_af_el),
                                                   self._serialize(_af_copy), code, msg, "high")
 
+        # ── INVALID_ORIG_MSG_NAME_ID — pain.002 OrgnlMsgNmId must be pain.001/008 ─
+        # R9: OrgnlGrpInfAndSts/OrgnlMsgNmId must match pain.001.001.xx or
+        # pain.008.001.xx. Common wrong value: pacs.008.001.08 (copy-paste from
+        # the original pacs message). Fix: replace with the correct pain.001
+        # or pain.008 version extracted from the fix_hint, or default to
+        # pain.001.001.09 (the most common original for a pain.002 status report).
+        if code == "INVALID_ORIG_MSG_NAME_ID":
+            _PAIN_NM_RE = re.compile(r'^pain\.00[18]\.001\.[0-9]{2}$')
+            for _nm_el in root.iter():
+                if not isinstance(_nm_el.tag, str):
+                    continue
+                if etree.QName(_nm_el.tag).localname != "OrgnlMsgNmId":
+                    continue
+                _cur_val = (_nm_el.text or "").strip()
+                if _PAIN_NM_RE.match(_cur_val):
+                    continue  # already valid — skip
+                # Derive correct value from fix_hint (e.g. "Use 'pain.001.001.09'")
+                _hint_m = re.search(r'pain\.00[18]\.001\.[0-9]{2}', fix_hint or "")
+                if not _hint_m:
+                    _hint_m = re.search(r'pain\.00[18]\.001\.[0-9]{2}', msg or "")
+                if _hint_m:
+                    _correct_val = _hint_m.group(0)
+                else:
+                    # Fallback: pain.001 for pain.002 status reports (acknowledging
+                    # a credit transfer); pain.008 only when current value hints at it
+                    _correct_val = ("pain.008.001.08"
+                                    if "pain.008" in _cur_val or "pain008" in _cur_val
+                                    else "pain.001.001.09")
+                _nm_copy = self._copy(_nm_el)
+                _nm_copy.text = _correct_val
+                return FixSuggestion(
+                    self._xpath_of(_nm_el),
+                    self._serialize(_nm_el),
+                    self._serialize(_nm_copy),
+                    code, msg, "high",
+                )
+
         # ── PACS004_ADDINF_LEN — AddtlInf too long → truncate to 140 ─────────
         if code == "PACS004_ADDINF_LEN":
             for _ai_el in root.iter():
@@ -9664,6 +9793,14 @@ class FixSuggester:
                         tmpl_str = self._resolve_placeholders(tmpl_str, wrapper_tag, root)
                         wrapper_el = etree.fromstring(tmpl_str.encode("utf-8"))
                         wrapper_el = self._apply_ns(wrapper_el, ns)
+                        # A plain-text leaf template (e.g. _TEMPLATES["Id"] = "<Id>ID-2025-001</Id>")
+                        # cannot act as an intermediate wrapper — mixing text with child elements
+                        # produces invalid mixed-content XML (e.g. <Id>ID-2025-001<OrgId>...</OrgId></Id>).
+                        # Skip it so we fall through to the bare-element wrapper below.
+                        if (wrapper_el is not None
+                                and (wrapper_el.text or "").strip()
+                                and not len(wrapper_el)):
+                            wrapper_el = None
                     except Exception:
                         wrapper_el = None
 
@@ -10585,8 +10722,83 @@ class FixSuggester:
             confidence="high",
         )
 
+    def _try_collapse_generic_choice(self, root: etree._Element, code: str,
+                                     msg: str, xml: str, off_local: str) -> Optional[FixSuggestion]:
+        """Schema-driven fallback for _try_collapse_choice: handles any XSD
+        xs:choice over-population, not just AccountIdentification4Choice
+        (IBAN/Othr). Example: Party40Choice (Dbtr/Cdtr/UltmtDbtr/UltmtCdtr in
+        pacs.004's RtrChain) permits EXACTLY ONE of <Pty> or <Agt> — an edit
+        that leaves both populated (e.g. a real <Pty> plus a stray <Agt> BICFI
+        block) trips "Unexpected field 'Agt'" the same way IBAN+Othr does.
+
+        Finds the offending element, walks up to its parent, resolves the
+        parent's XSD type via the type map, and only acts when that type is a
+        genuine xs:choice whose declared members include `off_local` AND at
+        least one OTHER declared member. Keeps the member with real content
+        (text, or any non-empty descendant), preferring the FIRST schema-listed
+        member when multiple have content (mirrors the IBAN-preferred-over-Othr
+        precedent above) — deterministic, not a guess about user intent.
+        """
+        if not off_local or not xml:
+            return None
+        off_cands = [el for el in root.iter()
+                     if isinstance(el.tag, str) and etree.QName(el.tag).localname == off_local]
+        if not off_cands:
+            return None
+        off_el = self._pick_candidate(off_cands)
+        parent = off_el.getparent()
+        if parent is None:
+            return None
+
+        parent_path = self._local_name_path(parent)
+        _ah_idx = next((i for i, p in enumerate(parent_path) if p == "AppHdr"), -1)
+        _doc_after_ah = any(p == "Document" for p in parent_path[_ah_idx + 1:]) if _ah_idx >= 0 else False
+        in_apphdr = _ah_idx >= 0 and not _doc_after_ah
+        xsd_path = (self._get_apphdr_xsd_path(xml) if in_apphdr else self._get_xsd_path(xml))
+        tmap = _XsdTypeMap.get(xsd_path) if xsd_path else None
+        if not tmap:
+            return None
+        parent_type = tmap.type_of_path(parent_path)
+        if not parent_type:
+            return None
+        pinfo = tmap.type_info.get(parent_type, {})
+        if pinfo.get("kind") != "choice":
+            return None
+        member_names = [c["name"] for c in pinfo.get("children", [])]
+        if off_local not in member_names or len(member_names) < 2:
+            return None
+
+        present_members = [c for c in parent if isinstance(c.tag, str)
+                            and etree.QName(c.tag).localname in member_names]
+        if len(present_members) < 2:
+            return None  # not actually over-populated
+
+        def _has_content(el) -> bool:
+            if (el.text or "").strip():
+                return True
+            return any((d.text or "").strip() for d in el.iter()
+                       if isinstance(d.tag, str))
+
+        keep_name = next((n for n in member_names
+                          for el in present_members
+                          if etree.QName(el.tag).localname == n and _has_content(el)),
+                         member_names[0])
+
+        pcopy = self._copy(parent)
+        for c in list(pcopy):
+            if (isinstance(c.tag, str)
+                    and etree.QName(c.tag).localname in member_names
+                    and etree.QName(c.tag).localname != keep_name):
+                pcopy.remove(c)
+        if self._serialize(pcopy) == self._serialize(parent):
+            return None
+        return FixSuggestion(
+            self._xpath_of(parent), self._serialize(parent),
+            self._serialize(pcopy), code, msg, "high",
+        )
+
     def _try_collapse_choice(self, root: etree._Element, code: str,
-                             msg: str) -> Optional[FixSuggestion]:
+                             msg: str, xml: str = "") -> Optional[FixSuggestion]:
         """Collapse an over-populated XML Choice container to a single member.
 
         AccountIdentification4Choice (<Id> under any *Acct) permits EXACTLY ONE
@@ -10609,7 +10821,7 @@ class FixSuggester:
             or re.search(r"[Uu]nexpected field '([\w:{}.\-]+)'", msg)
         off_local = m.group(1).split('}')[-1].split(':')[-1] if m else ""
         if off_local not in ("IBAN", "Othr"):
-            return None
+            return self._try_collapse_generic_choice(root, code, msg, xml, off_local)
 
         # AccountIdentification4Choice == an <Id> carrying BOTH IBAN and Othr.
         cands = []
